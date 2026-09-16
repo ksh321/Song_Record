@@ -1,6 +1,6 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 1.7
+- 기록 버전: 1.8
 - 작성일: 2026-09-16
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
@@ -9,7 +9,7 @@
 
 ## 1. 현재 상태
 
-P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. 앱 코드 구현·서버 실행·Android 실기 테스트는 수행하지 않았다.
+P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 Android 에뮬레이터 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. 서버 실행과 Android 실기 테스트는 아직 수행하지 않았다.
 
 | 작업 | 상태                    | 확인 내용 | 남은 확인 |
 |---|-----------------------|---|---|
@@ -22,7 +22,7 @@ P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현
 | P00-07 스냅샷과 백업 계약 | 완료 | D09~D11 추천 A안 승인·만료/재개/인증/완료 표시·공통 사례 반영 | 구현 검증은 P07·P10·P21·P22·P23·P24, fixture 통합은 P00-08 |
 | P00-08 공통 검증 데이터 작성 | 완료(산출물) | JSON 169사례·합성 파일 3개·참조 대조 31건 | 앱/서버 로더 P01/P03, 통합 명세 138건 후속 실행 |
 | P01-01 저장소 구조 만들기 | 완료 | apps/mobile·services/api·infra·README·설정 예시·Git 제외 규칙 | 없음. 프로젝트 생성·실행은 후속 작업 |
-| P01-02~P25 | 미실행 | Flutter·서버 프로젝트 생성부터 진행 | 기존 선행 조건에 따라 구현·검증 |
+| P01-02 Flutter 프로젝트 생성 | 완료 | Flutter 3.47.4/Dart 3.13.3, Android dev/staging/prod flavor, 앱 ID·초기 라우트·분석 규칙·lockfile 반영 | P01-03 서버 프로젝트 생성 |
 
 “수행 기록 없음”은 사용자가 별도로 수행한 작업까지 없었다고 단정하는 상태가 아니다. 증거를 확인하면 갱신한다.
 
@@ -185,3 +185,17 @@ P01-01 저장소 구조 만들기 완료. 앱·서버·환경 폴더에 역할 R
 - 범위: 디렉터리 구성과 설정 예시. Flutter/Spring 프로젝트·컨테이너·빌드·DB 연결은 미실행.
 - 기존 docs/reference 및 공통 fixtures는 변경하지 않았다.
 - 다음: P01-02 Flutter 프로젝트 생성. 커밋은 이 파일의 GitHub History 참조.
+
+
+### 1.8 — 2026-09-16
+
+P01-02 Flutter 프로젝트 생성 완료.
+
+- 실행 환경: Windows 11, Flutter 3.47.4 stable, Dart 3.13.3, Android SDK 36 계열, Android Emulator.
+- 사용자 확인: `flutter pub get`, `flutter analyze`, `flutter test`, Chrome 실행 및 Android 에뮬레이터 실행 성공.
+- 앱 식별자: 운영 `com.ksh321.songrecord`, 개발 `com.ksh321.songrecord.dev`, 검증 `com.ksh321.songrecord.staging`.
+- 환경: Android flavor `dev/staging/prod`와 Dart define `APP_ENV`, `API_BASE_URL` 계약을 추가했다.
+- 골격: 초기 라우트 `/`, 앱 진입점·설정·라우팅 분리, 기본 샘플 카운터 제거, 분석 엄격 옵션과 새 위젯 테스트 반영.
+- 도구 기록: AGP 9.1.0, Kotlin 2.4.0, Android Gradle Wrapper 9.3.1, JVM target 17, `pubspec.lock` 추적.
+- 범위: Riverpod·Drift·go_router·Dio는 각 기능 구현 단계에서 추가하고 해결 버전을 lockfile로 고정한다. 서버·DB 연결은 P01-03 이후다.
+- 다음 작업: P01-03 Spring Boot 프로젝트 생성.

@@ -59,11 +59,16 @@ P00-05 완료: 추천 조합을 D02~D04로 확정했다. 정렬·날짜·기기 
 
 | 경로 | 역할 |
 |---|---|
-| [apps/mobile](apps/mobile/README.md) | Flutter Android 앱, 프로젝트 생성은 P01-02 |
+| [apps/mobile](apps/mobile/README.md) | Flutter Android 앱, P01-02 실행 골격 완료 |
 | [services/api](services/api/README.md) | Spring Boot 서버, 프로젝트 생성은 P01-03 |
 | [infra](infra/README.md) | 개발 환경·DB 설정 예시 |
 | [docs](docs/requirements.md) | 설계·결정·요구사항·진행 기록 |
 | [fixtures](fixtures/README.md) | 앱·서버 공통 검증 자료 |
 | [tools](tools/validate_fixtures.py) | 검증 도구 |
 
-로컬 비밀 설정·빌드 결과는 루트 `.gitignore`로 제외하고 앱 lockfile·Gradle Wrapper는 추적한다. 실제 앱/서버 실행과 DB 연결은 후속 단계다.
+로컬 비밀 설정·빌드 결과는 루트 `.gitignore`로 제외하고 앱 lockfile·Gradle Wrapper는 추적한다. Flutter 빈 앱은 dev 환경에서 실행 확인했다. 서버 실행과 DB 연결은 후속 단계다.
+
+
+## P01-02 Flutter 프로젝트 — 완료
+
+고유 Android 앱 ID, dev/staging/prod 환경, 초기 경로 `/`, 분석 규칙과 기본 테스트를 설정했다. 실행 명령과 환경 계약은 [모바일 README](apps/mobile/README.md)를 따른다.
