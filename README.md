@@ -54,3 +54,16 @@ P00-05 완료: 추천 조합을 D02~D04로 확정했다. 정렬·날짜·기기 
 [공통 데이터·사용 방법](fixtures/README.md) · [자체 검증 결과](docs/research/P00-08-validation.json)
 
 169사례(참조 대조 31, 후속 통합 명세 138), 정상 합성 M4A 2개·잘림 파일 1개. 제품 앱/서버 테스트는 별도다.
+
+## 저장소 구조 — P01-01 완료
+
+| 경로 | 역할 |
+|---|---|
+| [apps/mobile](apps/mobile/README.md) | Flutter Android 앱, 프로젝트 생성은 P01-02 |
+| [services/api](services/api/README.md) | Spring Boot 서버, 프로젝트 생성은 P01-03 |
+| [infra](infra/README.md) | 개발 환경·DB 설정 예시 |
+| [docs](docs/requirements.md) | 설계·결정·요구사항·진행 기록 |
+| [fixtures](fixtures/README.md) | 앱·서버 공통 검증 자료 |
+| [tools](tools/validate_fixtures.py) | 검증 도구 |
+
+로컬 비밀 설정·빌드 결과는 루트 `.gitignore`로 제외하고 앱 lockfile·Gradle Wrapper는 추적한다. 실제 앱/서버 실행과 DB 연결은 후속 단계다.
