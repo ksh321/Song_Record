@@ -1,0 +1,1799 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "P00-05-S01",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "#기록, 10번, Blue, 노래10, 가을, 2번, Apple, 나비, 노래2"
+      },
+      "expected": {
+        "description": "가을 → 나비 → 노래2 → 노래10 → Apple → Blue → 2번 → 10번 → #기록"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S01"
+      ]
+    },
+    {
+      "id": "P00-05-S02",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "id2=Apple, id1=空白apple空白 (空白은 U+0020)"
+      },
+      "expected": {
+        "description": "키 동률, TITLE에서 id1 → id2"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S02"
+      ]
+    },
+    {
+      "id": "P00-05-S03",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "id2=가(U+AC00), id1=가(U+1100 U+1161)"
+      },
+      "expected": {
+        "description": "NFC 키 동률, id1 → id2"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S03"
+      ]
+    },
+    {
+      "id": "P00-05-S04",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "id2=노래02, id1=노래2, id3=노래10"
+      },
+      "expected": {
+        "description": "숫자 02/2 동률 후 ID, id1 → id2 → id3"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S04"
+      ]
+    },
+    {
+      "id": "P00-05-S05",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "노래, 노래2, 노래가"
+      },
+      "expected": {
+        "description": "노래 → 노래2 → 노래가"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S05"
+      ]
+    },
+    {
+      "id": "P00-05-S06",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "가, ㄱ, A, 1, #, é, 😀, 빈 문자열"
+      },
+      "expected": {
+        "description": "ㄱ → 가 → A → 1 → # → é → 😀 → 빈 문자열. 독립 자모는 독음 변환 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S06"
+      ]
+    },
+    {
+      "id": "P00-05-S07",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "id1/id2 제목 동일·가수 다름"
+      },
+      "expected": {
+        "description": "TITLE은 가수를 추가 기준으로 쓰지 않아 id1 → id2"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S07"
+      ]
+    },
+    {
+      "id": "P00-05-S08",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "id1 가수=Blue 제목=나비, id2 가수=blue 제목=가을"
+      },
+      "expected": {
+        "description": "ARTIST에서 가수 키 동률, 제목으로 id2 → id1"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S08"
+      ]
+    },
+    {
+      "id": "P00-05-S09",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "created_at 동일인 id2, id1"
+      },
+      "expected": {
+        "description": "ADDED_DESC에서 id1 → id2"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S09"
+      ]
+    },
+    {
+      "id": "P00-05-S10",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "곡A 연결 녹음 없음, 곡B 최신 ACTIVE SAVED=9/16·파일 없음, 곡C=9/15, 곡C의 9/17 녹음은 TRASHED"
+      },
+      "expected": {
+        "description": "RECORDED_DESC: B → C → A"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S10"
+      ]
+    },
+    {
+      "id": "P00-05-S11",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "곡A 티어=null 제목=가을, 곡B 티어=S 제목=나비, 곡C 티어=S 제목=가을"
+      },
+      "expected": {
+        "description": "TIER: C → B → A"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S11"
+      ]
+    },
+    {
+      "id": "P00-05-S12",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "UUID 80000000-0000-4000-8000-000000000000, 7fffffff-ffff-4fff-8fff-ffffffffffff"
+      },
+      "expected": {
+        "description": "7fffffff… → 80000000… (unsigned 비교)"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S12"
+      ]
+    },
+    {
+      "id": "P00-05-S13",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "제목에 40자리 정수 포함"
+      },
+      "expected": {
+        "description": "오버플로 없이 유효 자릿수·숫자열 비교. 앱/서버 결과 동일"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S13"
+      ]
+    },
+    {
+      "id": "P00-05-S14",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "오프라인 새 곡과 서버 곡에 같은 정규화 전 제목 입력"
+      },
+      "expected": {
+        "description": "같은 SR-SORT-1 키, 동기화 전후 순서 동일"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#S14"
+      ]
+    },
+    {
+      "id": "P00-05-T01",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "시작 2026-09-01, 종료 2026-09-16"
+      },
+      "expected": {
+        "description": "UTC [2026-08-31T15:00:00.000Z, 2026-09-16T15:00:00.000Z)"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#T01"
+      ]
+    },
+    {
+      "id": "P00-05-T02",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "T01 하한 1ms 전 / 하한 / 상한 1ms 전 / 상한"
+      },
+      "expected": {
+        "description": "제외 / 포함 / 포함 / 제외"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#T02"
+      ]
+    },
+    {
+      "id": "P00-05-T03",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "시작=종료=2026-09-16"
+      },
+      "expected": {
+        "description": "UTC [2026-09-15T15:00:00Z, 2026-09-16T15:00:00Z)"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#T03"
+      ]
+    },
+    {
+      "id": "P00-05-T04",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "시작 2028-02-29, 종료 2028-02-29"
+      },
+      "expected": {
+        "description": "UTC [2028-02-28T15:00:00Z, 2028-02-29T15:00:00Z)"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#T04"
+      ]
+    },
+    {
+      "id": "P00-05-T05",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "종료 2026-12-31"
+      },
+      "expected": {
+        "description": "UTC 상한 2026-12-31T15:00:00Z 미만 (한국 2027-01-01 00시)"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#T05"
+      ]
+    },
+    {
+      "id": "P00-05-T06",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "시작만 / 종료만 / 둘 다 없음"
+      },
+      "expected": {
+        "description": "하한만 / 상한만 / 기간 제한 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#T06"
+      ]
+    },
+    {
+      "id": "P00-05-T07",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "시작>종료 또는 2026-02-30"
+      },
+      "expected": {
+        "description": "적용 거절, 기존 조건·cursor 유지"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#T07"
+      ]
+    },
+    {
+      "id": "P00-05-T08",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "UTC 2026-09-15T16:00:00Z, 기기 서울→뉴욕 변경"
+      },
+      "expected": {
+        "description": "표시 날짜 9/16 유지, 한국 시간 01:00, 원래 시간대 메타정보 보존"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#T08"
+      ]
+    },
+    {
+      "id": "P00-05-T09",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "동일 제목 id1=9/15, id2=9/16, id3=9/16 (시각까지 동일)"
+      },
+      "expected": {
+        "description": "곡명순 id2 → id3 → id1"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#T09"
+      ]
+    },
+    {
+      "id": "P00-05-T10",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "녹음 S티어 9/15, A티어 9/16, S티어 9/16"
+      },
+      "expected": {
+        "description": "S 9/16 → S 9/15 → A 9/16"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#T10"
+      ]
+    },
+    {
+      "id": "P00-05-T11",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "현재 연결 곡 제목 변경, 녹음 스냅샷 제목 유지"
+      },
+      "expected": {
+        "description": "녹음 곡명순은 변하지 않음"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#T11"
+      ]
+    },
+    {
+      "id": "P00-05-T12",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "recorded_at 보정으로 날짜 범위 밖으로 이동"
+      },
+      "expected": {
+        "description": "기록 원본·보정 이력 보존, 필터에서 제외·cursor 재시작"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#T12"
+      ]
+    },
+    {
+      "id": "P00-05-F01",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "전체"
+      },
+      "expected": {
+        "description": "r1~r6 메타정보 모두 표시"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F01"
+      ]
+    },
+    {
+      "id": "P00-05-F02",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "이 기기에만 있음"
+      },
+      "expected": {
+        "description": "확인된 r1,r6; r5 미확인 안내, 최종 전체 개수 확정 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F02"
+      ]
+    },
+    {
+      "id": "P00-05-F03",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "서버에 보관됨"
+      },
+      "expected": {
+        "description": "r2"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F03"
+      ]
+    },
+    {
+      "id": "P00-05-F04",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "이 기기와 서버에 있음"
+      },
+      "expected": {
+        "description": "r3"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F04"
+      ]
+    },
+    {
+      "id": "P00-05-F05",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "현재 기기에 파일 없음"
+      },
+      "expected": {
+        "description": "확인된 r4; r5를 없음으로 포함하지 않음"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F05"
+      ]
+    },
+    {
+      "id": "P00-05-F06",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "용량 부족"
+      },
+      "expected": {
+        "description": "r6, 위치 조건과 별도"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F06"
+      ]
+    },
+    {
+      "id": "P00-05-F07",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "r5 확인 결과 ABSENT"
+      },
+      "expected": {
+        "description": "파일 없음 r4,r5, 정확한 개수 2로 갱신"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F07"
+      ]
+    },
+    {
+      "id": "P00-05-F08",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "다른 기기에만 파일 보고 있음, 현재 기기는 ABSENT, 서버 STORED 아님"
+      },
+      "expected": {
+        "description": "현재 기기 PRESENT 아님; 모든 기기에서 파일 소실이라고 단정 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F08"
+      ]
+    },
+    {
+      "id": "P00-05-F09",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "최초 메타 동기화 일부만 완료"
+      },
+      "expected": {
+        "description": "잠정 결과·동기화 중 표시, 최종 0건 판정 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F09"
+      ]
+    },
+    {
+      "id": "P00-05-F10",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "파일 검사 권한/I/O 실패"
+      },
+      "expected": {
+        "description": "UNKNOWN 유지·확인 불가 안내, ABSENT로 처리 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F10"
+      ]
+    },
+    {
+      "id": "P00-05-F11",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "필터 초안 변경 후 취소"
+      },
+      "expected": {
+        "description": "기존 목록·개수·cursor 유지"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F11"
+      ]
+    },
+    {
+      "id": "P00-05-F12",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "초기화 후 적용"
+      },
+      "expected": {
+        "description": "모든 조건 해제·첫 페이지부터 다시 조회"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F12"
+      ]
+    },
+    {
+      "id": "P00-05-F13",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "반음=0 AND 버전=MR AND 태그=t1"
+      },
+      "expected": {
+        "description": "세 조건 모두 만족해야 포함. 반음 0은 조건 없음이 아님"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F13"
+      ]
+    },
+    {
+      "id": "P00-05-F14",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "계정 A의 파일 경로, 계정 B 로그인"
+      },
+      "expected": {
+        "description": "B의 기기 파일 PRESENT 근거로 사용 불가"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F14"
+      ]
+    },
+    {
+      "id": "P00-05-F15",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "오프라인 서버 캐시 STORED"
+      },
+      "expected": {
+        "description": "마지막 동기화 기준임을 표시, 실시간 서버 사본 확인 완료로 표시 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#F15"
+      ]
+    },
+    {
+      "id": "P00-05-P01",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "같은 조건 120개 모두 S=false, 1~50번 ABSENT, 51~120번 PRESENT. 이 기기에만 있음, limit=50"
+      },
+      "expected": {
+        "description": "첫 페이지 51~100, 다음 101~120, total=70. 빈 첫 페이지·전체 0건 오류 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#P01"
+      ]
+    },
+    {
+      "id": "P00-05-P02",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "같은 제목·시각 3개 id3,id1,id2, limit=2"
+      },
+      "expected": {
+        "description": "id1,id2 / id3; 중복·누락 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#P02"
+      ]
+    },
+    {
+      "id": "P00-05-P03",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "다음 페이지 전에 정렬/적용 필터 변경"
+      },
+      "expected": {
+        "description": "기존 cursor 폐기, 첫 페이지·개수 재조회"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#P03"
+      ]
+    },
+    {
+      "id": "P00-05-P04",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "다음 페이지 전에 파일 삭제·새 기록·정렬 필드 변경"
+      },
+      "expected": {
+        "description": "조회 세대 불일치 → cursor 거절/초기화, 다른 세대 페이지 이어 붙이기 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#P04"
+      ]
+    },
+    {
+      "id": "P00-05-P05",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "변경 없는 같은 세대, 끝까지 조회"
+      },
+      "expected": {
+        "description": "합집합 크기=COUNT, 중복 ID 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#P05"
+      ]
+    },
+    {
+      "id": "P00-05-P06",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "limit 생략 / 0 / 101"
+      },
+      "expected": {
+        "description": "50 / 오류 / 오류"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#P06"
+      ]
+    },
+    {
+      "id": "P00-05-P07",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "다른 계정·변조 cursor"
+      },
+      "expected": {
+        "description": "요청 거절, 데이터 노출 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#P07"
+      ]
+    },
+    {
+      "id": "P00-05-P08",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "일치 0개·모든 확인 완료"
+      },
+      "expected": {
+        "description": "items=[], count=0, next_cursor 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#P08"
+      ]
+    },
+    {
+      "id": "P00-05-P09",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "전체→티어별 보기, 선택 정렬=최근 추가"
+      },
+      "expected": {
+        "description": "검색어·정렬 유지, 그룹 고정 후 그룹 내부 최근 추가순, cursor 초기화"
+      },
+      "refs": [
+        "docs/contracts/P00-05-examples.md#P09"
+      ]
+    },
+    {
+      "id": "P00-06-I01",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "제목 앞뒤 공백 + 가 200개"
+      },
+      "expected": {
+        "description": "trim 후 200자, 허용"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#I01"
+      ]
+    },
+    {
+      "id": "P00-06-I02",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "제목 가 201개 / 공백뿐인 제목"
+      },
+      "expected": {
+        "description": "각각 길이 초과 / 필수값 오류, 입력 유지"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#I02"
+      ]
+    },
+    {
+      "id": "P00-06-I03",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "😀 200개 / 201개"
+      },
+      "expected": {
+        "description": "200 / 201 코드 포인트, 각각 허용 / 거절"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#I03"
+      ]
+    },
+    {
+      "id": "P00-06-I04",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "👍🏽 100개 / 101개"
+      },
+      "expected": {
+        "description": "200 / 202 코드 포인트"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#I04"
+      ]
+    },
+    {
+      "id": "P00-06-I05",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "가 U+AC00 / 가 U+1100 U+1161"
+      },
+      "expected": {
+        "description": "저장 원문 유지, 각각 1 / 2 코드 포인트"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#I05"
+      ]
+    },
+    {
+      "id": "P00-06-I06",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "메모 가 2000개 / 2001개"
+      },
+      "expected": {
+        "description": "허용 / 거절. 조용한 절단 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#I06"
+      ]
+    },
+    {
+      "id": "P00-06-I07",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "태그 이름 50 / 51, 목록명 100 / 101"
+      },
+      "expected": {
+        "description": "경계 허용 / 초과 거절"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#I07"
+      ]
+    },
+    {
+      "id": "P00-06-I08",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "메모 CRLF / 단독 CR"
+      },
+      "expected": {
+        "description": "LF로 통일 후 계산, 줄바꿈 보존"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#I08"
+      ]
+    },
+    {
+      "id": "P00-06-I09",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "한글 IME 조합 중"
+      },
+      "expected": {
+        "description": "조합 문자열 강제 절단 금지, 완료 후 검증"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#I09"
+      ]
+    },
+    {
+      "id": "P00-06-C01",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "새 녹음 컨디션 미선택"
+      },
+      "expected": {
+        "description": "null, 저장 가능. 자동 보통 지정 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#C01"
+      ]
+    },
+    {
+      "id": "P00-06-C02",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "매우 좋음 선택 후 좋음"
+      },
+      "expected": {
+        "description": "GOOD 하나만 저장"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#C02"
+      ]
+    },
+    {
+      "id": "P00-06-C03",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "컨디션 해제"
+      },
+      "expected": {
+        "description": "null, 태그 관계 유지"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#C03"
+      ]
+    },
+    {
+      "id": "P00-06-C04",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "복수 컨디션 입력 / 모르는 코드"
+      },
+      "expected": {
+        "description": "400, 일부 값 저장 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#C04"
+      ]
+    },
+    {
+      "id": "P00-06-C05",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "사용자 태그 고음연습·재도전 생성 후 둘 다 선택"
+      },
+      "expected": {
+        "description": "두 태그 관계, 컨디션 0~1개와 독립"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#C05"
+      ]
+    },
+    {
+      "id": "P00-06-C06",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "같은 태그 ID를 배열에 두 번"
+      },
+      "expected": {
+        "description": "400 DUPLICATE_TAG_ID"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#C06"
+      ]
+    },
+    {
+      "id": "P00-06-C07",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "태그 이름 변경·archive"
+      },
+      "expected": {
+        "description": "과거 이름·관계 유지, archived 태그 신규 연결 거절"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#C07"
+      ]
+    },
+    {
+      "id": "P00-06-C08",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "다른 계정 태그 연결"
+      },
+      "expected": {
+        "description": "404, 관계 추가 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#C08"
+      ]
+    },
+    {
+      "id": "P00-06-C09",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "condition_code 누락 / null, tag_ids 누락 / [] / null"
+      },
+      "expected": {
+        "description": "유지 / 해제, 유지 / 모두 해제 / 오류"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#C09"
+      ]
+    },
+    {
+      "id": "P00-06-C10",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "고정 컨디션 변경 API 요청"
+      },
+      "expected": {
+        "description": "405, 카탈로그 불변"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#C10"
+      ]
+    },
+    {
+      "id": "P00-06-C11",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "과거 복수 커스텀 컨디션 백업"
+      },
+      "expected": {
+        "description": "보존·이관 보류, 네 단계로 자동 추정 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#C11"
+      ]
+    },
+    {
+      "id": "P00-06-L01",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "목록 삭제 버튼"
+      },
+      "expected": {
+        "description": "영구 삭제·복원 불가·곡과 녹음 유지 안내"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#L01"
+      ]
+    },
+    {
+      "id": "P00-06-L02",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "확인창 취소"
+      },
+      "expected": {
+        "description": "데이터·전송 큐 불변"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#L02"
+      ]
+    },
+    {
+      "id": "P00-06-L03",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "영구 삭제 승인·서버 성공"
+      },
+      "expected": {
+        "description": "목록·구성·순서 접근 불가, 곡/녹음/파일 유지, 휴지통에 목록 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#L03"
+      ]
+    },
+    {
+      "id": "P00-06-L04",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "오프라인 삭제"
+      },
+      "expected": {
+        "description": "목록 숨김 + 전송 대기, 서버 완료 표시 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#L04"
+      ]
+    },
+    {
+      "id": "P00-06-L05",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "다른 기기 수정으로 revision 충돌"
+      },
+      "expected": {
+        "description": "409, 최신 상태 안내 후 재확인, 자동 재삭제 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#L05"
+      ]
+    },
+    {
+      "id": "P00-06-L06",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "삭제 응답 유실 후 같은 op_id 재시도"
+      },
+      "expected": {
+        "description": "같은 결과, 중복 삭제·정리 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#L06"
+      ]
+    },
+    {
+      "id": "P00-06-L07",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "삭제 UUID가 들어 있는 오래된 백업/변경"
+      },
+      "expected": {
+        "description": "목록 부활 거절, 나머지 독립 데이터 보존"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#L07"
+      ]
+    },
+    {
+      "id": "P00-06-L08",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "정리 Job 실패"
+      },
+      "expected": {
+        "description": "접근 차단·삭제 원장 유지, 재시도, 곡/녹음 삭제 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#L08"
+      ]
+    },
+    {
+      "id": "P00-06-S01",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "강조색 변경·앱 재실행·계정 전환"
+      },
+      "expected": {
+        "description": "같은 기기 선택 유지, 서버 요청 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#S01"
+      ]
+    },
+    {
+      "id": "P00-06-S02",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "다른 기기·유효하지 않은 색 ID"
+      },
+      "expected": {
+        "description": "계정 색 자동 동기화 없음 / 기본색 적용"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#S02"
+      ]
+    },
+    {
+      "id": "P00-06-Q01",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "PIN_LIMIT 제출"
+      },
+      "expected": {
+        "description": "201 RECEIVED, 한도 불변"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q01"
+      ]
+    },
+    {
+      "id": "P00-06-Q02",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "동일 사용자가 동일 종류를 새 ID/op_id로 다시 제출"
+      },
+      "expected": {
+        "description": "별도 요청 1건 추가, 고유 사용자 수는 중복 증가 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q02"
+      ]
+    },
+    {
+      "id": "P00-06-Q03",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "응답 유실·자동 재시도는 같은 ID/op_id"
+      },
+      "expected": {
+        "description": "최초 상태/본문 재현, 건수 증가 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q03"
+      ]
+    },
+    {
+      "id": "P00-06-Q04",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "같은 op_id 다른 본문"
+      },
+      "expected": {
+        "description": "409 IDEMPOTENCY_CONFLICT"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q04"
+      ]
+    },
+    {
+      "id": "P00-06-Q05",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "같은 request_id, 다른 op_id·같은 종류"
+      },
+      "expected": {
+        "description": "200 기존 요청, 건수 증가 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q05"
+      ]
+    },
+    {
+      "id": "P00-06-Q06",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "같은 request_id, 다른 종류"
+      },
+      "expected": {
+        "description": "409 REQUEST_ID_CONFLICT"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q06"
+      ]
+    },
+    {
+      "id": "P00-06-Q07",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "두 종류를 한 번 제출"
+      },
+      "expected": {
+        "description": "요청 1건, 종류별 건수 각각 1"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q07"
+      ]
+    },
+    {
+      "id": "P00-06-Q08",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "빈 types·중복 enum·알 수 없는 enum"
+      },
+      "expected": {
+        "description": "400 INVALID_REQUEST_TYPES"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q08"
+      ]
+    },
+    {
+      "id": "P00-06-Q09",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "오프라인에서 새 요청 두 번, 각 전송 재시도"
+      },
+      "expected": {
+        "description": "서로 다른 두 요청만 접수, 서버 확인 전 전송 대기"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q09"
+      ]
+    },
+    {
+      "id": "P00-06-Q10",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "보존 기간 90일 경과·영수증도 만료한 ID 재전송"
+      },
+      "expected": {
+        "description": "원본 상세 없음, 409 STORAGE_REQUEST_EXPIRED, 자동 새 ID 생성 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q10"
+      ]
+    },
+    {
+      "id": "P00-06-Q11",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "사용자 새로 보내기"
+      },
+      "expected": {
+        "description": "새 ID/op_id로 정상 접수"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q11"
+      ]
+    },
+    {
+      "id": "P00-06-Q12",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "계정 탈퇴"
+      },
+      "expected": {
+        "description": "연결 요청·최소 접수 ID 원장 제거, 재접수 차단"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q12"
+      ]
+    },
+    {
+      "id": "P00-06-Q13",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "타인의 요청 조회"
+      },
+      "expected": {
+        "description": "404"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q13"
+      ]
+    },
+    {
+      "id": "P00-06-Q14",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "접수 성공"
+      },
+      "expected": {
+        "description": "접수 안내, 결제·한도 증가·업로드 완료로 표시 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-06-examples.md#Q14"
+      ]
+    },
+    {
+      "id": "P00-07-S01",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "스냅샷 생성 중 다른 기기에서 곡 수정·삭제"
+      },
+      "expected": {
+        "description": "모든 페이지는 같은 읽기 시점, 이후 변경은 기준 cursor 다음 로그로 수신"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S01"
+      ]
+    },
+    {
+      "id": "P00-07-S02",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "기준 cursor 조회와 데이터 읽기"
+      },
+      "expected": {
+        "description": "동일 읽기 뷰, 미커밋 변경 누락을 cursor로 건너뛰지 않음"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S02"
+      ]
+    },
+    {
+      "id": "P00-07-S03",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "BUILDING 부분 행 저장 후 조회"
+      },
+      "expected": {
+        "description": "409 NOT_READY, 부분 사본 미노출"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S03"
+      ]
+    },
+    {
+      "id": "P00-07-S04",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "생성 중 서버 재시작"
+      },
+      "expected": {
+        "description": "이전 부분 attempt 폐기 후 전체 재생성, 새 읽기 뷰와 혼합 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S04"
+      ]
+    },
+    {
+      "id": "P00-07-S05",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "READY 서버 재시작"
+      },
+      "expected": {
+        "description": "원래 사본과 남은 TTL로 재개"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S05"
+      ]
+    },
+    {
+      "id": "P00-07-S06",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "준비 완료 29분59초 / 정확히30분"
+      },
+      "expected": {
+        "description": "유효 / 410 만료. 조회로 연장 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S06"
+      ]
+    },
+    {
+      "id": "P00-07-S07",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "만료 중 앱에 미전송 메모·파일 존재"
+      },
+      "expected": {
+        "description": "새 사본으로 수신 staging 재시작, 미전송·파일 보존"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S07"
+      ]
+    },
+    {
+      "id": "P00-07-S08",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "전체 수신 전 앱 종료"
+      },
+      "expected": {
+        "description": "현재 기준 DB 불변, staging 지점부터 유효 사본 재개"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S08"
+      ]
+    },
+    {
+      "id": "P00-07-S09",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "마지막 엔터티 해시 오류"
+      },
+      "expected": {
+        "description": "기준 사본/cursor 교체 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S09"
+      ]
+    },
+    {
+      "id": "P00-07-S10",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "같은 op_id 생성 재시도"
+      },
+      "expected": {
+        "description": "같은 작업/사본, TTL 재설정 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S10"
+      ]
+    },
+    {
+      "id": "P00-07-S11",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "타 계정 token / 다른 entity cursor"
+      },
+      "expected": {
+        "description": "접근/잘못된 cursor 거절"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S11"
+      ]
+    },
+    {
+      "id": "P00-07-S12",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "계정 동시 사본 2개 상태에서 추가 생성"
+      },
+      "expected": {
+        "description": "429, 기존 유효 사본 유지"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S12"
+      ]
+    },
+    {
+      "id": "P00-07-S13",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "payload 100MiB 초과 또는 전역 1GiB 예약 초과"
+      },
+      "expected": {
+        "description": "용량 오류, 부분 게시 금지, 예약/임시 데이터 정리"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S13"
+      ]
+    },
+    {
+      "id": "P00-07-S14",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "스냅샷 수신 도중 탈퇴 접수"
+      },
+      "expected": {
+        "description": "즉시 추가 조회 차단, 사본 정리 대상"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#S14"
+      ]
+    },
+    {
+      "id": "P00-07-B01",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "로컬 음성1·2·3, 서버 전용a·b·c의 정보만 동기화"
+      },
+      "expected": {
+        "description": "ZIP 음성1·2·3, a·b·c 명세는 미포함 사유, 서버 자료 불변"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B01"
+      ]
+    },
+    {
+      "id": "P00-07-B02",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "a·b·c도 로컬 정상 파일, 여섯 개 선택"
+      },
+      "expected": {
+        "description": "여섯 파일 포함·해시 검사"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B02"
+      ]
+    },
+    {
+      "id": "P00-07-B03",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "다른 기기 최신 변경 미수신"
+      },
+      "expected": {
+        "description": "포함 보장 없음 표시, 서버 최신 전체 백업으로 표시 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B03"
+      ]
+    },
+    {
+      "id": "P00-07-B04",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "확정 서버 cursor 없는 오프라인 내보내기"
+      },
+      "expected": {
+        "description": "null·baseline incomplete, 로컬 부분 백업 표시"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B04"
+      ]
+    },
+    {
+      "id": "P00-07-B05",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "미전송·충돌 값 존재"
+      },
+      "expected": {
+        "description": "기준 revision과 양쪽 값 보존, 자동 덮어쓰기 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B05"
+      ]
+    },
+    {
+      "id": "P00-07-B06",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "온라인 전체 manifest 취득 전 30분 만료"
+      },
+      "expected": {
+        "description": "새 스냅샷 기준으로 다시 취득, 기존 로컬 원본 보존"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B06"
+      ]
+    },
+    {
+      "id": "P00-07-B07",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "전체 manifest 고정 후 30분 경과"
+      },
+      "expected": {
+        "description": "로컬 작업 계속 가능, 파일 다운로드는 현재 권한·삭제 확인"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B07"
+      ]
+    },
+    {
+      "id": "P00-07-B08",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "백업 중 명시적 서버 파일 삭제"
+      },
+      "expected": {
+        "description": "누락 기록, 삭제 취소/무기한 지연 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B08"
+      ]
+    },
+    {
+      "id": "P00-07-B09",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "백업 중 새 녹음 추가"
+      },
+      "expected": {
+        "description": "기준 이후 항목으로 구분, 작성 중 ZIP에 임의 혼합 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B09"
+      ]
+    },
+    {
+      "id": "P00-07-B10",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "앱 종료 후 임시 파일 정상"
+      },
+      "expected": {
+        "description": "저장된 job/해시 검증 후 재개"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B10"
+      ]
+    },
+    {
+      "id": "P00-07-B11",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "디스크 부족·손상·외부 저장 중단"
+      },
+      "expected": {
+        "description": "정상 완료 금지, 기존 정상 백업·원본 보존"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B11"
+      ]
+    },
+    {
+      "id": "P00-07-B12",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "만든 ZIP 이후 온라인 복귀"
+      },
+      "expected": {
+        "description": "ZIP 자동 수정 없음, 정보 동기화와 선별 음성 업로드만 별도 진행"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B12"
+      ]
+    },
+    {
+      "id": "P00-07-B13",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "녹음 중 백업 요청"
+      },
+      "expected": {
+        "description": "안전 종료 성공 후 진행, 실패/취소면 백업 시작하지 않음"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B13"
+      ]
+    },
+    {
+      "id": "P00-07-B14",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "오프라인 ZIP에 영구 삭제된 목록 포함 후 가져오기"
+      },
+      "expected": {
+        "description": "온라인 소유권·현재 삭제 표식 확인, 목록 부활 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B14"
+      ]
+    },
+    {
+      "id": "P00-07-B15",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "계정 인증 토큰·탈퇴 확인증"
+      },
+      "expected": {
+        "description": "ZIP에 포함하지 않음"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#B15"
+      ]
+    },
+    {
+      "id": "P00-07-D01",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "확인증 준비만 성공"
+      },
+      "expected": {
+        "description": "계정 활성 유지, 준비 TTL10분"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D01"
+      ]
+    },
+    {
+      "id": "P00-07-D02",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "준비 응답 유실·저장 실패"
+      },
+      "expected": {
+        "description": "탈퇴 미접수, 정상 인증으로 새 준비 가능"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D02"
+      ]
+    },
+    {
+      "id": "P00-07-D03",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "만료된 준비·타인 준비로 탈퇴 접수"
+      },
+      "expected": {
+        "description": "거절, 계정 차단 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D03"
+      ]
+    },
+    {
+      "id": "P00-07-D04",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "유효한 최종 탈퇴 접수"
+      },
+      "expected": {
+        "description": "DELETING·Job·확인증 활성화 원자적 반영, 일반 API 차단"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D04"
+      ]
+    },
+    {
+      "id": "P00-07-D05",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "최종 접수 응답 유실"
+      },
+      "expected": {
+        "description": "미리 저장된 확인증으로 접수 여부 조회, 일반 세션 복구 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D05"
+      ]
+    },
+    {
+      "id": "P00-07-D06",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "확인증으로 곡·파일·복구 API 호출"
+      },
+      "expected": {
+        "description": "거절, 상태 조회만 가능"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D06"
+      ]
+    },
+    {
+      "id": "P00-07-D07",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "다른 준비 ID/토큰·추측 ID·이메일 조회"
+      },
+      "expected": {
+        "description": "상태·개인정보 노출 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D07"
+      ]
+    },
+    {
+      "id": "P00-07-D08",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "앱·서버 재시작"
+      },
+      "expected": {
+        "description": "유효 확인증·영속 Job으로 조회/삭제 재개"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D08"
+      ]
+    },
+    {
+      "id": "P00-07-D09",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "R2 삭제 실패"
+      },
+      "expected": {
+        "description": "재시도 중, COMPLETED 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D09"
+      ]
+    },
+    {
+      "id": "P00-07-D10",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "운영 DB/R2 삭제 완료·백업 남음"
+      },
+      "expected": {
+        "description": "BACKUP_CLEANUP, 백업 기한 안내"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D10"
+      ]
+    },
+    {
+      "id": "P00-07-D11",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "운영 백업 제거 확인"
+      },
+      "expected": {
+        "description": "COMPLETED, 시각 기록"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D11"
+      ]
+    },
+    {
+      "id": "P00-07-D12",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "접수 후 정확히30일"
+      },
+      "expected": {
+        "description": "확인증 만료, 자동 연장/계정 접근 재개 없음"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D12"
+      ]
+    },
+    {
+      "id": "P00-07-D13",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "확인증 분실"
+      },
+      "expected": {
+        "description": "재발급 복구 기능 없음 안내, 삭제 작업은 계속"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D13"
+      ]
+    },
+    {
+      "id": "P00-07-D14",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "오프라인 기기·앱 밖 ZIP 존재"
+      },
+      "expected": {
+        "description": "모든 사본 원격 삭제 완료라고 표시하지 않음"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D14"
+      ]
+    },
+    {
+      "id": "P00-07-D15",
+      "kind": "integration_spec",
+      "input": {
+        "scenario": "7일 백업 정리 기한 초과"
+      },
+      "expected": {
+        "description": "운영 경고·지연 표시, 시간만으로 완료 처리 금지"
+      },
+      "refs": [
+        "docs/contracts/P00-07-examples.md#D15"
+      ]
+    }
+  ]
+}

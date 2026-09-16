@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "RET-01",
+      "kind": "retention",
+      "input": {
+        "recordings": [
+          {
+            "id": "00000000-0000-4000-8000-0000000001f4",
+            "tier": "A",
+            "recorded_at": "2026-09-14T00:00:00Z",
+            "lifecycle": "ACTIVE",
+            "metadata": "SAVED",
+            "valid_file_manifest": true,
+            "key_shift": 0,
+            "version": "NORMAL"
+          },
+          {
+            "id": "00000000-0000-4000-8000-0000000001f5",
+            "tier": "D",
+            "recorded_at": "2026-09-15T00:00:00Z",
+            "lifecycle": "ACTIVE",
+            "metadata": "SAVED",
+            "valid_file_manifest": true,
+            "key_shift": 0,
+            "version": "NORMAL"
+          },
+          {
+            "id": "00000000-0000-4000-8000-0000000001f6",
+            "tier": "D",
+            "recorded_at": "2026-09-16T00:00:00Z",
+            "lifecycle": "ACTIVE",
+            "metadata": "SAVED",
+            "valid_file_manifest": true,
+            "key_shift": 0,
+            "version": "NORMAL"
+          }
+        ],
+        "representative_id": "00000000-0000-4000-8000-0000000001f4"
+      },
+      "expected": {
+        "representative": "00000000-0000-4000-8000-0000000001f4",
+        "latest": "00000000-0000-4000-8000-0000000001f6",
+        "lowest": "00000000-0000-4000-8000-0000000001f6",
+        "unique_ids": [
+          "00000000-0000-4000-8000-0000000001f4",
+          "00000000-0000-4000-8000-0000000001f6"
+        ]
+      },
+      "refs": [
+        "docs/requirements.md#P11"
+      ]
+    },
+    {
+      "id": "RET-02",
+      "kind": "retention",
+      "input": {
+        "recordings": [
+          {
+            "id": "00000000-0000-4000-8000-0000000001f7",
+            "tier": null,
+            "recorded_at": "2026-09-15T00:00:00Z",
+            "lifecycle": "ACTIVE",
+            "metadata": "SAVED",
+            "valid_file_manifest": true,
+            "key_shift": 0,
+            "version": "NORMAL"
+          },
+          {
+            "id": "00000000-0000-4000-8000-0000000001f8",
+            "tier": null,
+            "recorded_at": "2026-09-16T00:00:00Z",
+            "lifecycle": "ACTIVE",
+            "metadata": "SAVED",
+            "valid_file_manifest": true,
+            "key_shift": 0,
+            "version": "NORMAL"
+          }
+        ],
+        "representative_id": null
+      },
+      "expected": {
+        "representative": null,
+        "latest": "00000000-0000-4000-8000-0000000001f8",
+        "lowest": null,
+        "unique_ids": [
+          "00000000-0000-4000-8000-0000000001f8"
+        ]
+      },
+      "refs": [
+        "docs/requirements.md#V09"
+      ]
+    },
+    {
+      "id": "RET-03",
+      "kind": "retention",
+      "input": {
+        "recordings": [
+          {
+            "id": "00000000-0000-4000-8000-0000000001f5",
+            "tier": "D",
+            "recorded_at": "2026-09-15T00:00:00Z",
+            "lifecycle": "ACTIVE",
+            "metadata": "SAVED",
+            "valid_file_manifest": true,
+            "key_shift": 0,
+            "version": "NORMAL"
+          },
+          {
+            "id": "00000000-0000-4000-8000-0000000001f6",
+            "tier": "D",
+            "recorded_at": "2026-09-16T00:00:00Z",
+            "lifecycle": "TRASHED",
+            "metadata": "SAVED",
+            "valid_file_manifest": true,
+            "key_shift": 0,
+            "version": "NORMAL"
+          },
+          {
+            "id": "00000000-0000-4000-8000-0000000001f9",
+            "tier": "D",
+            "recorded_at": "2026-09-17T00:00:00Z",
+            "lifecycle": "ACTIVE",
+            "metadata": "DRAFT",
+            "valid_file_manifest": true,
+            "key_shift": 0,
+            "version": "NORMAL"
+          }
+        ],
+        "representative_id": null
+      },
+      "expected": {
+        "representative": null,
+        "latest": "00000000-0000-4000-8000-0000000001f5",
+        "lowest": "00000000-0000-4000-8000-0000000001f5",
+        "unique_ids": [
+          "00000000-0000-4000-8000-0000000001f5"
+        ]
+      },
+      "refs": [
+        "docs/requirements.md#P11"
+      ]
+    },
+    {
+      "id": "RET-04",
+      "kind": "retention",
+      "input": {
+        "recordings": [
+          {
+            "id": "00000000-0000-4000-8000-0000000001f5",
+            "tier": "D",
+            "recorded_at": "2026-09-16T00:00:00Z",
+            "lifecycle": "ACTIVE",
+            "metadata": "SAVED",
+            "valid_file_manifest": true,
+            "key_shift": 0,
+            "version": "NORMAL"
+          },
+          {
+            "id": "00000000-0000-4000-8000-0000000001f6",
+            "tier": "D",
+            "recorded_at": "2026-09-16T00:00:00Z",
+            "lifecycle": "ACTIVE",
+            "metadata": "SAVED",
+            "valid_file_manifest": true,
+            "key_shift": 2,
+            "version": "MR"
+          }
+        ],
+        "representative_id": null
+      },
+      "expected": {
+        "representative": null,
+        "latest": "00000000-0000-4000-8000-0000000001f5",
+        "lowest": "00000000-0000-4000-8000-0000000001f5",
+        "unique_ids": [
+          "00000000-0000-4000-8000-0000000001f5"
+        ]
+      },
+      "refs": [
+        "docs/requirements.md#V44"
+      ]
+    }
+  ]
+}

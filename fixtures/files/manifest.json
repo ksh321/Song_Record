@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "assets": [
+    {
+      "path": "fixtures/files/silence.m4a",
+      "size_bytes": 1184,
+      "sha256": "c94b135bdf33a4019e2ba08b11fa93653dc8815740c564f78190b4f9cd56ff6a",
+      "expected_decode": true,
+      "duration_ms": 1000,
+      "codec": "aac",
+      "sample_rate": 44100,
+      "channels": 1
+    },
+    {
+      "path": "fixtures/files/tone.m4a",
+      "size_bytes": 9306,
+      "sha256": "493501cd8ac1014076988c61dfa77bffdfa620bfcff154c9a2e29786c9edd3d5",
+      "expected_decode": true,
+      "duration_ms": 1000,
+      "codec": "aac",
+      "sample_rate": 44100,
+      "channels": 1
+    },
+    {
+      "path": "fixtures/files/truncated.m4a",
+      "size_bytes": 24,
+      "sha256": "13755725e664bd52d16773239d0b1344bafd195663b84382cd9dc600a30ac1c9",
+      "expected_decode": false
+    }
+  ],
+  "mismatch_case": {
+    "path": "fixtures/files/tone.m4a",
+    "claimed_sha256": "c94b135bdf33a4019e2ba08b11fa93653dc8815740c564f78190b4f9cd56ff6a",
+    "expected": "CHECKSUM_MISMATCH"
+  }
+}

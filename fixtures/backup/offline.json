@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "BACKUP-01",
+      "kind": "offline_backup",
+      "input": {
+        "local_audio": [
+          "1",
+          "2",
+          "3"
+        ],
+        "server_audio": [
+          "a",
+          "b",
+          "c"
+        ],
+        "known_metadata": [
+          "1",
+          "2",
+          "3",
+          "a",
+          "b",
+          "c"
+        ],
+        "selected": [
+          "1",
+          "2",
+          "3",
+          "a",
+          "b",
+          "c"
+        ],
+        "snapshot_cursor": "opaque-test-cursor"
+      },
+      "expected": {
+        "included": [
+          "1",
+          "2",
+          "3"
+        ],
+        "missing": [
+          "a",
+          "b",
+          "c"
+        ],
+        "scope": "OFFLINE_PARTIAL"
+      },
+      "refs": [
+        "docs/decisions/D10-offline-backup.md"
+      ]
+    }
+  ]
+}

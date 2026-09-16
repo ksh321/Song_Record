@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "SONG-01",
+      "kind": "song_identity",
+      "input": {
+        "existing": {
+          "id": "00000000-0000-4000-8000-0000000000c8",
+          "account_id": "00000000-0000-4000-8000-000000000064",
+          "title": "검증곡 가",
+          "artist": "가상가수",
+          "tj_number": "00123",
+          "tier": null,
+          "lifecycle": "ACTIVE"
+        },
+        "incoming": {
+          "id": "00000000-0000-4000-8000-0000000000c9",
+          "account_id": "00000000-0000-4000-8000-000000000064",
+          "title": "검증곡 가",
+          "artist": "가상가수",
+          "tj_number": "00456",
+          "tier": "S",
+          "lifecycle": "ACTIVE"
+        }
+      },
+      "expected": {
+        "same_identity": false
+      },
+      "refs": [
+        "docs/requirements.md#R013"
+      ]
+    },
+    {
+      "id": "SONG-02",
+      "kind": "song_identity",
+      "input": {
+        "existing": {
+          "id": "00000000-0000-4000-8000-0000000000c8",
+          "account_id": "00000000-0000-4000-8000-000000000064",
+          "title": "검증곡 가",
+          "artist": "가상가수",
+          "tj_number": "00123",
+          "tier": null,
+          "lifecycle": "ACTIVE"
+        },
+        "incoming": {
+          "id": "00000000-0000-4000-8000-0000000000d1",
+          "account_id": "00000000-0000-4000-8000-000000000064",
+          "title": "검증곡 가",
+          "artist": "가상가수",
+          "tj_number": "00123",
+          "tier": null,
+          "lifecycle": "ACTIVE"
+        }
+      },
+      "expected": {
+        "same_identity": true,
+        "existing_id": "00000000-0000-4000-8000-0000000000c8"
+      },
+      "refs": [
+        "docs/requirements.md#R013"
+      ]
+    },
+    {
+      "id": "SONG-03",
+      "kind": "song_identity",
+      "input": {
+        "existing": {
+          "id": "00000000-0000-4000-8000-0000000000c8",
+          "account_id": "00000000-0000-4000-8000-000000000064",
+          "title": "검증곡 가",
+          "artist": "가상가수",
+          "tj_number": "00123",
+          "tier": null,
+          "lifecycle": "ACTIVE"
+        },
+        "incoming": {
+          "id": "00000000-0000-4000-8000-0000000000ca",
+          "account_id": "00000000-0000-4000-8000-000000000065",
+          "title": "검증곡 가",
+          "artist": "가상가수",
+          "tj_number": "00123",
+          "tier": "A",
+          "lifecycle": "ACTIVE"
+        }
+      },
+      "expected": {
+        "same_identity": false
+      },
+      "refs": [
+        "docs/requirements.md#R013"
+      ]
+    }
+  ]
+}

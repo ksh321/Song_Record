@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "COND-01",
+      "kind": "classification",
+      "input": {
+        "condition": null,
+        "tag_ids": [
+          "00000000-0000-4000-8000-00000000012c"
+        ]
+      },
+      "expected": {
+        "valid": true
+      },
+      "refs": [
+        "docs/decisions/D06-condition-tags.md"
+      ]
+    },
+    {
+      "id": "COND-02",
+      "kind": "classification",
+      "input": {
+        "condition": "VERY_GOOD",
+        "tag_ids": [
+          "00000000-0000-4000-8000-00000000012c",
+          "00000000-0000-4000-8000-00000000012e"
+        ]
+      },
+      "expected": {
+        "valid": true
+      },
+      "refs": [
+        "docs/decisions/D06-condition-tags.md"
+      ]
+    },
+    {
+      "id": "COND-03",
+      "kind": "classification",
+      "input": {
+        "condition": [
+          "GOOD",
+          "BAD"
+        ],
+        "tag_ids": []
+      },
+      "expected": {
+        "valid": false
+      },
+      "refs": [
+        "docs/decisions/D06-condition-tags.md"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "DATE-01",
+      "kind": "date_range",
+      "input": {
+        "from": "2026-09-01",
+        "to": "2026-09-16",
+        "zone": "Asia/Seoul"
+      },
+      "expected": {
+        "start": "2026-08-31T15:00:00Z",
+        "end_exclusive": "2026-09-16T15:00:00Z"
+      },
+      "refs": [
+        "docs/decisions/D03-date-boundaries.md"
+      ]
+    },
+    {
+      "id": "DATE-02",
+      "kind": "date_range",
+      "input": {
+        "from": "2028-02-29",
+        "to": "2028-02-29",
+        "zone": "Asia/Seoul"
+      },
+      "expected": {
+        "start": "2028-02-28T15:00:00Z",
+        "end_exclusive": "2028-02-29T15:00:00Z"
+      },
+      "refs": [
+        "docs/decisions/D03-date-boundaries.md"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "FILE-FILTER-01",
+      "kind": "file_filter",
+      "input": {
+        "rows": [
+          {
+            "id": "00000000-0000-4000-8000-000000000258",
+            "local": "PRESENT",
+            "stored": false,
+            "quota_wait": false
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000259",
+            "local": "ABSENT",
+            "stored": true,
+            "quota_wait": false
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000025a",
+            "local": "PRESENT",
+            "stored": true,
+            "quota_wait": false
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000025b",
+            "local": "ABSENT",
+            "stored": false,
+            "quota_wait": false
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000025c",
+            "local": "UNKNOWN",
+            "stored": false,
+            "quota_wait": false
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000025d",
+            "local": "PRESENT",
+            "stored": false,
+            "quota_wait": true
+          }
+        ],
+        "filter": "LOCAL_ONLY"
+      },
+      "expected": {
+        "ids": [
+          "00000000-0000-4000-8000-000000000258",
+          "00000000-0000-4000-8000-00000000025d"
+        ],
+        "unknown_ids": [
+          "00000000-0000-4000-8000-00000000025c"
+        ],
+        "exact": false
+      },
+      "refs": [
+        "docs/decisions/D04-device-file-filter.md"
+      ]
+    },
+    {
+      "id": "FILE-FILTER-02",
+      "kind": "file_filter",
+      "input": {
+        "rows": [
+          {
+            "id": "00000000-0000-4000-8000-000000000258",
+            "local": "PRESENT",
+            "stored": false,
+            "quota_wait": false
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000259",
+            "local": "ABSENT",
+            "stored": true,
+            "quota_wait": false
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000025a",
+            "local": "PRESENT",
+            "stored": true,
+            "quota_wait": false
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000025b",
+            "local": "ABSENT",
+            "stored": false,
+            "quota_wait": false
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000025c",
+            "local": "UNKNOWN",
+            "stored": false,
+            "quota_wait": false
+          },
+          {
+            "id": "00000000-0000-4000-8000-00000000025d",
+            "local": "PRESENT",
+            "stored": false,
+            "quota_wait": true
+          }
+        ],
+        "filter": "BOTH_ABSENT"
+      },
+      "expected": {
+        "ids": [
+          "00000000-0000-4000-8000-00000000025b"
+        ],
+        "unknown_ids": [
+          "00000000-0000-4000-8000-00000000025c"
+        ],
+        "exact": false
+      },
+      "refs": [
+        "docs/decisions/D04-device-file-filter.md"
+      ]
+    }
+  ]
+}

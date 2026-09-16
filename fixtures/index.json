@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "fixtures/backup/offline.json",
+      "case_ids": [
+        "BACKUP-01"
+      ],
+      "sha256": "d10c318f28f20bb71f1c1a4057f8fb66e6499cd539d115b51f82991f398fd0c9"
+    },
+    {
+      "path": "fixtures/contracts/conditions.json",
+      "case_ids": [
+        "COND-01",
+        "COND-02",
+        "COND-03"
+      ],
+      "sha256": "a593777e98b2ef7168e7f42eae0fc2aee30cd00d19ec1df9ed5c8cfe858b0e0e"
+    },
+    {
+      "path": "fixtures/contracts/dates.json",
+      "case_ids": [
+        "DATE-01",
+        "DATE-02"
+      ],
+      "sha256": "91dd6f321d97f757710133c4ca9a3db7356d6cb9119264a59232590fed13c048"
+    },
+    {
+      "path": "fixtures/contracts/file-filter.json",
+      "case_ids": [
+        "FILE-FILTER-01",
+        "FILE-FILTER-02"
+      ],
+      "sha256": "544059f06dc01bf52c078f56ecd73b95e452192c1ce7aa220d00f57892b3656d"
+    },
+    {
+      "path": "fixtures/contracts/input.json",
+      "case_ids": [
+        "INPUT-01",
+        "INPUT-02",
+        "INPUT-03",
+        "INPUT-04",
+        "INPUT-05",
+        "INPUT-06",
+        "INPUT-07",
+        "INPUT-08",
+        "INPUT-09",
+        "INPUT-10",
+        "INPUT-11"
+      ],
+      "sha256": "e24e06bb0d05d6681e124c76a57b80f5bf40d3384fdcc9806c4cb2ed589a9303"
+    },
+    {
+      "path": "fixtures/contracts/scenarios.json",
+      "case_ids": [
+        "P00-05-S01",
+        "P00-05-S02",
+        "P00-05-S03",
+        "P00-05-S04",
+        "P00-05-S05",
+        "P00-05-S06",
+        "P00-05-S07",
+        "P00-05-S08",
+        "P00-05-S09",
+        "P00-05-S10",
+        "P00-05-S11",
+        "P00-05-S12",
+        "P00-05-S13",
+        "P00-05-S14",
+        "P00-05-T01",
+        "P00-05-T02",
+        "P00-05-T03",
+        "P00-05-T04",
+        "P00-05-T05",
+        "P00-05-T06",
+        "P00-05-T07",
+        "P00-05-T08",
+        "P00-05-T09",
+        "P00-05-T10",
+        "P00-05-T11",
+        "P00-05-T12",
+        "P00-05-F01",
+        "P00-05-F02",
+        "P00-05-F03",
+        "P00-05-F04",
+        "P00-05-F05",
+        "P00-05-F06",
+        "P00-05-F07",
+        "P00-05-F08",
+        "P00-05-F09",
+        "P00-05-F10",
+        "P00-05-F11",
+        "P00-05-F12",
+        "P00-05-F13",
+        "P00-05-F14",
+        "P00-05-F15",
+        "P00-05-P01",
+        "P00-05-P02",
+        "P00-05-P03",
+        "P00-05-P04",
+        "P00-05-P05",
+        "P00-05-P06",
+        "P00-05-P07",
+        "P00-05-P08",
+        "P00-05-P09",
+        "P00-06-I01",
+        "P00-06-I02",
+        "P00-06-I03",
+        "P00-06-I04",
+        "P00-06-I05",
+        "P00-06-I06",
+        "P00-06-I07",
+        "P00-06-I08",
+        "P00-06-I09",
+        "P00-06-C01",
+        "P00-06-C02",
+        "P00-06-C03",
+        "P00-06-C04",
+        "P00-06-C05",
+        "P00-06-C06",
+        "P00-06-C07",
+        "P00-06-C08",
+        "P00-06-C09",
+        "P00-06-C10",
+        "P00-06-C11",
+        "P00-06-L01",
+        "P00-06-L02",
+        "P00-06-L03",
+        "P00-06-L04",
+        "P00-06-L05",
+        "P00-06-L06",
+        "P00-06-L07",
+        "P00-06-L08",
+        "P00-06-S01",
+        "P00-06-S02",
+        "P00-06-Q01",
+        "P00-06-Q02",
+        "P00-06-Q03",
+        "P00-06-Q04",
+        "P00-06-Q05",
+        "P00-06-Q06",
+        "P00-06-Q07",
+        "P00-06-Q08",
+        "P00-06-Q09",
+        "P00-06-Q10",
+        "P00-06-Q11",
+        "P00-06-Q12",
+        "P00-06-Q13",
+        "P00-06-Q14",
+        "P00-07-S01",
+        "P00-07-S02",
+        "P00-07-S03",
+        "P00-07-S04",
+        "P00-07-S05",
+        "P00-07-S06",
+        "P00-07-S07",
+        "P00-07-S08",
+        "P00-07-S09",
+        "P00-07-S10",
+        "P00-07-S11",
+        "P00-07-S12",
+        "P00-07-S13",
+        "P00-07-S14",
+        "P00-07-B01",
+        "P00-07-B02",
+        "P00-07-B03",
+        "P00-07-B04",
+        "P00-07-B05",
+        "P00-07-B06",
+        "P00-07-B07",
+        "P00-07-B08",
+        "P00-07-B09",
+        "P00-07-B10",
+        "P00-07-B11",
+        "P00-07-B12",
+        "P00-07-B13",
+        "P00-07-B14",
+        "P00-07-B15",
+        "P00-07-D01",
+        "P00-07-D02",
+        "P00-07-D03",
+        "P00-07-D04",
+        "P00-07-D05",
+        "P00-07-D06",
+        "P00-07-D07",
+        "P00-07-D08",
+        "P00-07-D09",
+        "P00-07-D10",
+        "P00-07-D11",
+        "P00-07-D12",
+        "P00-07-D13",
+        "P00-07-D14",
+        "P00-07-D15"
+      ],
+      "sha256": "cc72682f1fdbc5bf8c6f3dfb0f487c627ba56c7bbb873426022adfda3498c7b4"
+    },
+    {
+      "path": "fixtures/contracts/sorting.json",
+      "case_ids": [
+        "SORT-01",
+        "SORT-02",
+        "SORT-03",
+        "SORT-04",
+        "SORT-05"
+      ],
+      "sha256": "eaa956d046c45078d43c950aa64a2682bb5ac6d1ddaf0744257b85fc31b8706b"
+    },
+    {
+      "path": "fixtures/files/manifest.json",
+      "case_ids": [],
+      "sha256": "b7d83433aceb72e7692a1e3420cba6dad950bb4383f8f69f08622f52d497b2d9"
+    },
+    {
+      "path": "fixtures/retention/selection.json",
+      "case_ids": [
+        "RET-01",
+        "RET-02",
+        "RET-03",
+        "RET-04"
+      ],
+      "sha256": "6b9ef06c47488c727ab4f2d7eee374967d83dbef7b26590eecda98daf66a291e"
+    },
+    {
+      "path": "fixtures/songs/entities.json",
+      "case_ids": [],
+      "sha256": "56c43e2023112445af9977da43d91abc84767f049f46c2c019d6340837734971"
+    },
+    {
+      "path": "fixtures/songs/identity.json",
+      "case_ids": [
+        "SONG-01",
+        "SONG-02",
+        "SONG-03"
+      ],
+      "sha256": "cbd97aac993d3e5340dc5dddc3dcaab287eff5c3a97ea807e255ada43ac019f3"
+    }
+  ],
+  "source_contracts": [
+    {
+      "path": "docs/contracts/P00-05-examples.md",
+      "sha256_utf8": "de25ab49893dd67faa9bda6b657f7bd7a41ce0f9f1a376df44be0b71bef9c7a9"
+    },
+    {
+      "path": "docs/contracts/P00-06-examples.md",
+      "sha256_utf8": "c72853b21488b26d1c91f52bc9a32922fe96bf137c69cd4e01a979d645834a5e"
+    },
+    {
+      "path": "docs/contracts/P00-07-examples.md",
+      "sha256_utf8": "984b74d0e0dfdf6059d92ad4d8ab4ebd2fa1882cc97021b51d9d63a22a63fc47"
+    },
+    {
+      "path": "docs/decisions/D01-implementation-stack.md",
+      "sha256_utf8": "8a6fed50fb2237c451e307dc592bc4fbb2ec00f655ca0e10e0a3dd086299a9ea"
+    },
+    {
+      "path": "docs/decisions/D02-sort-order.md",
+      "sha256_utf8": "4726676c91674a7ec2d68024a556e61838067a8371bcb8ba7ff5b458c1ac0c4a"
+    },
+    {
+      "path": "docs/decisions/D03-date-boundaries.md",
+      "sha256_utf8": "2d1bb7f2422e5c8e22c2814dd09b29e5d23f680f5e9407a0f22404fc631bdc07"
+    },
+    {
+      "path": "docs/decisions/D04-device-file-filter.md",
+      "sha256_utf8": "6397845cbe0ee81d5eea473af7fbc48d140a792f80698e233be9a89c00257870"
+    },
+    {
+      "path": "docs/decisions/D05-input-length.md",
+      "sha256_utf8": "4a6dd95533191c35d5df864cbdab464736b627fa8862009fdd621f50071f42df"
+    },
+    {
+      "path": "docs/decisions/D06-condition-tags.md",
+      "sha256_utf8": "01be8dbeb3dc8cffc63b10e6e238bdaeb26a9ce5711bfae2a0bd452c9cc7e908"
+    },
+    {
+      "path": "docs/decisions/D07-playlist-delete.md",
+      "sha256_utf8": "9da6886bfe650445dc3507d1ef9a41fe9aa9982788a1df3a4923a9af5fd48b48"
+    },
+    {
+      "path": "docs/decisions/D08-settings-storage-requests.md",
+      "sha256_utf8": "f3185661e1afe30bb6e82ee2138a157a552014eb202fe68e704f49aad1c95848"
+    },
+    {
+      "path": "docs/decisions/D09-materialized-snapshots.md",
+      "sha256_utf8": "3e7080564a59a8f0ad99c3bc404fb72001f91da24b600ecafa720338f0d5e541"
+    },
+    {
+      "path": "docs/decisions/D10-offline-backup.md",
+      "sha256_utf8": "f4b3f12de61849c399552a8811d9e1e319caa4124a32bd1107c10dbf687294b7"
+    },
+    {
+      "path": "docs/decisions/D11-deletion-status.md",
+      "sha256_utf8": "f67f611efb6972ebe192e1c3f9864d26e23f7dde98a1269d7b4aa95659b722cf"
+    },
+    {
+      "path": "docs/decisions/D12-popular-periods.md",
+      "sha256_utf8": "b979e082b5bda187e3abdc3a8153f9705159a6e444b58b5f6e577435c319882d"
+    }
+  ]
+}
