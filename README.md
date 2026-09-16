@@ -23,7 +23,11 @@
 
 - [요구사항 목록](docs/requirements.md) · [진행 기록](docs/progress.md)
 - [D01: A안 구현 기술 결정](docs/decisions/D01-implementation-stack.md) · [버전 기준·고정 대상](docs/contracts/toolchain-versions.md)
+- [D02: 공통 정렬](docs/decisions/D02-sort-order.md) · [D03: 날짜·동률](docs/decisions/D03-date-boundaries.md) · [D04: 기기 파일 필터](docs/decisions/D04-device-file-filter.md)
+- [P00-05 공통 입력·기대 결과·페이징 사례](docs/contracts/P00-05-examples.md)
 - [D12: 일간·주간·월간 인기곡 채택](docs/decisions/D12-popular-periods.md)
 - [P00-03 외부 데이터 조사 및 실제 호출 결과](docs/research/external-data.md)
 
 2026-09-16 사용자 승인: 차트는 과거 연월 선택 대신 Manana의 TJ/KY 일간·주간·월간 인기곡으로 구현한다. 원본 설계서·구현계획서·HTML·UI_REFERENCE의 차트 관련 내용과 충돌하면 D12를 우선 적용한다. 원본 파일과 해시는 보존한다. API 호출 성공과 이용 허용·집계 정확성·앱 통합 검증은 구분한다.
+
+P00-05 완료: 추천 조합을 D02~D04로 확정했다. 정렬·날짜·기기 파일 필터의 세부 구현 계약은 해당 결정서를 따른다. 원본 자료는 보존하며 실제 앱·서버 검증 결과는 후속 구현 단계에서 기록한다.
