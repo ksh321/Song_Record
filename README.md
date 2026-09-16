@@ -22,6 +22,7 @@
 ## 현재 구현 기준과 변경 계약
 
 - [요구사항 목록](docs/requirements.md) · [진행 기록](docs/progress.md)
+- [D01: A안 구현 기술 결정](docs/decisions/D01-implementation-stack.md) · [버전 기준·고정 대상](docs/contracts/toolchain-versions.md)
 - [D12: 일간·주간·월간 인기곡 채택](docs/decisions/D12-popular-periods.md)
 - [P00-03 외부 데이터 조사 및 실제 호출 결과](docs/research/external-data.md)
 
