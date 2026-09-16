@@ -1,0 +1,134 @@
+[
+  {
+    "attempt": 1,
+    "brand": "tj",
+    "checked_at": "2026-09-16T02:05:55.955618+00:00",
+    "count": 100,
+    "keys": [
+      "brand",
+      "composer",
+      "lyricist",
+      "no",
+      "release",
+      "singer",
+      "title"
+    ],
+    "period": "daily",
+    "seconds": 16.55,
+    "sha256": "a4b00271593c8b4e92867906dcd55114d1ef2d71db24a103a2970f5f0883cd3b",
+    "status": 200,
+    "unique_numbers": 100,
+    "url": "https://api.manana.kr/karaoke/popular/tj/daily.json",
+    "valid": true
+  },
+  {
+    "attempt": 1,
+    "brand": "tj",
+    "checked_at": "2026-09-16T02:05:55.960356+00:00",
+    "count": 100,
+    "keys": [
+      "brand",
+      "composer",
+      "lyricist",
+      "no",
+      "release",
+      "singer",
+      "title"
+    ],
+    "period": "weekly",
+    "seconds": 16.39,
+    "sha256": "a820d2e62cadeae7eed8699cc4ec51e7e751b6610c62ff1aa127d13e1765bc5c",
+    "status": 200,
+    "unique_numbers": 100,
+    "url": "https://api.manana.kr/karaoke/popular/tj/weekly.json",
+    "valid": true
+  },
+  {
+    "attempt": 1,
+    "brand": "tj",
+    "checked_at": "2026-09-16T02:05:55.963404+00:00",
+    "count": 100,
+    "keys": [
+      "brand",
+      "composer",
+      "lyricist",
+      "no",
+      "release",
+      "singer",
+      "title"
+    ],
+    "period": "monthly",
+    "seconds": 16.81,
+    "sha256": "5e8129d03a1abb69af89b42d483aee08936998e20999a539f183c68681127c1e",
+    "status": 200,
+    "unique_numbers": 100,
+    "url": "https://api.manana.kr/karaoke/popular/tj/monthly.json",
+    "valid": true
+  },
+  {
+    "attempt": 1,
+    "brand": "kumyoung",
+    "checked_at": "2026-09-16T02:06:12.349496+00:00",
+    "count": 100,
+    "keys": [
+      "brand",
+      "composer",
+      "lyricist",
+      "no",
+      "release",
+      "singer",
+      "title"
+    ],
+    "period": "daily",
+    "seconds": 14.63,
+    "sha256": "ad2c0e6b1917cdc1c28e384b2bd07a0bbfe38c358eb9c09aac86c45aa4850401",
+    "status": 200,
+    "unique_numbers": 100,
+    "url": "https://api.manana.kr/karaoke/popular/kumyoung/daily.json",
+    "valid": true
+  },
+  {
+    "attempt": 1,
+    "brand": "kumyoung",
+    "checked_at": "2026-09-16T02:06:12.506404+00:00",
+    "count": 100,
+    "keys": [
+      "brand",
+      "composer",
+      "lyricist",
+      "no",
+      "release",
+      "singer",
+      "title"
+    ],
+    "period": "weekly",
+    "seconds": 14.86,
+    "sha256": "ad2c0e6b1917cdc1c28e384b2bd07a0bbfe38c358eb9c09aac86c45aa4850401",
+    "status": 200,
+    "unique_numbers": 100,
+    "url": "https://api.manana.kr/karaoke/popular/kumyoung/weekly.json",
+    "valid": true
+  },
+  {
+    "attempt": 1,
+    "brand": "kumyoung",
+    "checked_at": "2026-09-16T02:06:12.769167+00:00",
+    "count": 100,
+    "keys": [
+      "brand",
+      "composer",
+      "lyricist",
+      "no",
+      "release",
+      "singer",
+      "title"
+    ],
+    "period": "monthly",
+    "seconds": 14.41,
+    "sha256": "89e55b9dcab5c02ed0b69049135557492059ffb082c1c2226967fb0d981ff20a",
+    "status": 200,
+    "unique_numbers": 100,
+    "url": "https://api.manana.kr/karaoke/popular/kumyoung/monthly.json",
+    "valid": true
+  }
+]

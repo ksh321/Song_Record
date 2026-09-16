@@ -18,3 +18,11 @@
 - 색상 JSON의 `source.sha256`은 HTML의 실제 SHA-256과 일치한다.
 - HTML 기준 SHA-256: `3a0b44fa03b8c4adbb0bd22fef8ff728c9f96acbebabf79a59cb7a5b8dd91555`
 - 따라서 설계서 v1.11과 HTML·UI 규칙·팔레트의 대응 관계를 확인할 수 있다.
+
+## 현재 구현 기준과 변경 계약
+
+- [요구사항 목록](docs/requirements.md) · [진행 기록](docs/progress.md)
+- [D12: 일간·주간·월간 인기곡 채택](docs/decisions/D12-popular-periods.md)
+- [P00-03 외부 데이터 조사 및 실제 호출 결과](docs/research/external-data.md)
+
+2026-09-16 사용자 승인: 차트는 과거 연월 선택 대신 Manana의 TJ/KY 일간·주간·월간 인기곡으로 구현한다. 원본 설계서·구현계획서·HTML·UI_REFERENCE의 차트 관련 내용과 충돌하면 D12를 우선 적용한다. 원본 파일과 해시는 보존한다. API 호출 성공과 이용 허용·집계 정확성·앱 통합 검증은 구분한다.

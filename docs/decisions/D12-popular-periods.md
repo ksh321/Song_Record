@@ -1,0 +1,55 @@
+# D12 — Manana 일간·주간·월간 인기곡 채택
+
+- 상태: 확정 (2026-09-16 사용자 요청: daily/weekly/monthly 호출 후 정상 동작 시 반영)
+- 검증: [P00-03 조사](../research/external-data.md), [6개 호출 기록](../research/manana-popular-probe.json)
+- 적용: 구현설계서 v1.11 및 코드구현계획서 v1.0의 차트 관련 후속 변경 계약.
+
+## 우선순위와 범위
+
+차트에 한해 이 계약이 원본 설계서 1.3·2.1·11.4·12.3·13.2·15.2(V40/V41)·15.3 및 원본 HTML/UI_REFERENCE의 연월 선택 규칙보다 우선한다. 원본은 변경 이력을 위해 보존하며 실제 앱 구현 시 과거 연월 선택 UI를 복제하지 않는다. 다른 정책은 변경하지 않는다.
+
+과거 특정 달 차트 대신 제공자의 daily/weekly/monthly 인기곡을 사용한다. 양 브랜드에서 완료 월 2개를 확보해야 한다는 기존 출시 조건은 폐기하고 6개 브랜드/기간 조합 검증으로 대체한다. 공급자 이용 조건 확인 의무는 유지한다.
+
+## UI·API·모델 계약
+
+- 인기 차트 탭에서 TJ/KY 및 일간/주간/월간을 선택한다. 기본은 TJ·월간, 브랜드 변경 시 선택 기간 유지.
+- 연도·월 달력 선택과 완료 월/집계 중 배지를 제거한다. 제공자 기준 기간이라는 안내, 출처와 서버 수집 시각을 표시한다. 수집 시각을 제공자 갱신 시각으로 표시하지 않는다.
+- API: GET /v1/charts/popular?brand=TJ&period=MONTHLY. brand는 TJ/KY, period는 DAILY/WEEKLY/MONTHLY. 잘못된 값은 400 VALIDATION_FAILED.
+- 어댑터: GET https://api.manana.kr/karaoke/popular/{tj|kumyoung}/{daily|weekly|monthly}.json.
+- 응답 계약: brand, period, provider=MANANA, source_url, fetched_at, revision, stale, items. items는 number/title/artist/position 및 TJ용 source_token을 포함한다. position은 반환 배열 순서의 1부터 시작하는 번호이며 원본 rank 필드가 아니다.
+- 기존 GET /charts/months 및 /charts/monthly는 첫 출시 구현 대상에서 제외한다. 아직 앱/서버 구현 전이므로 이관 호환 API를 추가하지 않는다.
+- ChartMonth 대신 ChartSnapshot/ChartItem으로 설계한다. 스냅샷 ID·brand·period·source_url·fetched_at·revision·STAGING/PUBLISHED 상태, 항목은 snapshot_id·position·brand·number·title·artist를 가진다. (snapshot_id, number) 유일성, (brand,period)의 게시 포인터로 전체 스냅샷을 원자 교체한다. 정확한 집계 시작/종료·year_month·is_final은 제공자 값이 없어 생성하지 않는다.
+- 번호는 문자열로 유지한다. 정확한 브랜드, 필수 비어 있지 않은 번호/곡명/가수, 번호 중복 없음, JSON 전체 수신을 검증한다. 관측 결과는 100곡이지만 항상 정확히 100개라고 하드코딩하지 않는다. 빈 배열은 신규 정상 차트로 게시하지 않고 마지막 정상 결과 또는 자료 없음으로 처리한다.
+- 제공 배열 순서를 보존한다. 기간별 결과가 동일할 수 있으며 차이를 조작하지 않는다. 금영 daily/weekly 동일 응답 관측 사실을 기록한다.
+- TJ 등록·플레이리스트 추가의 source_token 및 KY의 TJ에서 찾기 흐름은 유지한다.
+
+## 실패·성능·운영
+
+사용자 요청은 서버 게시본을 조회하고 원본 수집은 백그라운드에서 수행한다. 캐시/게시본 저장·재배포는 제공자 이용 조건 확인 후 운영 활성화한다. 확인 전에는 개발 fixture를 사용하고 실데이터 저장 기능은 출시 차단 대상으로 기록한다.
+
+이번 단일 측정은 약 14~17초였다. 검색 API의 기존 3초 타임아웃을 차트 수집에 그대로 적용하지 않는다. 초기 차트 작업 전체 제한 30초, 동시 원본 요청 최대 2개, 실패 시 자동 재시도 최대 1회를 구현 시작값으로 두고 부하/허용 조건 확인 후 조정한다. 제공자 갱신 주기는 미확인으로, 수집 주기·TTL을 제공자 사실처럼 기재하지 않는다.
+
+실패 시 같은 brand+period의 마지막 정상 게시본을 stale=true와 fetched_at으로 표시한다. 게시본도 없으면 503 CHART_SOURCE_UNAVAILABLE과 재시도 안내를 반환한다. 다른 기간 결과를 대신 표시하지 않는다. 요청 ID+brand+period가 바뀐 뒤 도착한 응답은 무시한다. 네트워크 오류는 내 곡·녹음 작업을 막지 않는다.
+
+## 기존 구현계획서 변경표
+
+작업 ID·선행 조건은 유지한다. 아래 차트 부분의 내용과 완료 기준을 원본 계획서 대신 적용한다.
+
+| 작업 | 변경 내용·완료 기준 |
+|---|---|
+| P00-03 | 6개 기간 API 실제 호출 및 이용 조건 조사. 호출은 확인, 이용 조건은 미확인으로 분리 |
+| P04-07 | ChartMonth 대신 ChartSnapshot/ChartItem·brand+period 게시 포인터 구현. 공용 데이터는 개인 동기화 제외 |
+| P07-01 | 새 /charts/popular 계약과 오류·stale 스키마 작성 |
+| P16-01 | period enum·브랜드 매핑·제공자 기준 기간·정확 집계일 미제공 계약 |
+| P16-02 | 브랜드/기간별 백그라운드 수집. 사용자 요청마다 원본 호출 금지 |
+| P16-03 | 전체 배열·브랜드·필수값·중복 번호 검사. 원본 배열 순서 보존 |
+| P16-04 | brand+period별 원자 게시·실패 시 동일 조건 이전 게시본 유지 |
+| P16-05 | /charts/popular 조회. 연월 목록/월별 조회 API 제거 |
+| P16-06 | 연월 선택 대신 일간·주간·월간 선택 UI, 출처·수집 시각·stale 표시 |
+| P16-07 | TJ/KY 등록 정책 유지, 브랜드+period+요청 ID 지연 응답 차단 |
+| P16-08 | 6개 기간 실응답과 빈/손상/장애·동일 결과·stale 처리 검수, 이용 조건 확인 |
+| P25-04·P25-05 | 변경된 V40/V41 및 D12 UI/API 정합성 검증. 옛 완료 월 2개 조건 제거 |
+
+## V40/V41 판정
+
+이번 6개 실제 요청은 공급자 연결 증거다. 앱/서버가 아직 구현되지 않았으므로 V40·V41을 통과 처리하지 않는다. 후속 검증에는 조건 변경 중 지연 응답, 빈 배열, 필드 누락, 잘못된 브랜드, 중복 번호, 시간 초과, 동일 결과, 기존 스냅샷 보존을 포함한다.
