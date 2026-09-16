@@ -1,6 +1,6 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 1.8
+- 기록 버전: 1.9
 - 작성일: 2026-09-16
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
@@ -9,7 +9,7 @@
 
 ## 1. 현재 상태
 
-P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 Android 에뮬레이터 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. 서버 실행과 Android 실기 테스트는 아직 수행하지 않았다.
+P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. 서버 실행과 녹음 기능 실기 테스트는 아직 수행하지 않았다.
 
 | 작업 | 상태                    | 확인 내용 | 남은 확인 |
 |---|-----------------------|---|---|
@@ -191,11 +191,23 @@ P01-01 저장소 구조 만들기 완료. 앱·서버·환경 폴더에 역할 R
 
 P01-02 Flutter 프로젝트 생성 완료.
 
-- 실행 환경: Windows 11, Flutter 3.47.4 stable, Dart 3.13.3, Android SDK 36 계열, Android Emulator.
-- 사용자 확인: `flutter pub get`, `flutter analyze`, `flutter test`, Chrome 실행 및 Android 에뮬레이터 실행 성공.
+- 실행 환경: Windows 11, Flutter 3.47.4 stable, Dart 3.13.3, Android SDK 36 계열, 실제 기기 SM A546S, Android 16(API 36).
+- 사용자 확인: `flutter pub get`, `flutter analyze`, `flutter test`, Chrome 실행 및 USB 연결 실제 기기 dev debug 실행 성공.
 - 앱 식별자: 운영 `com.ksh321.songrecord`, 개발 `com.ksh321.songrecord.dev`, 검증 `com.ksh321.songrecord.staging`.
 - 환경: Android flavor `dev/staging/prod`와 Dart define `APP_ENV`, `API_BASE_URL` 계약을 추가했다.
 - 골격: 초기 라우트 `/`, 앱 진입점·설정·라우팅 분리, 기본 샘플 카운터 제거, 분석 엄격 옵션과 새 위젯 테스트 반영.
-- 도구 기록: AGP 9.1.0, Kotlin 2.4.0, Android Gradle Wrapper 9.3.1, JVM target 17, `pubspec.lock` 추적.
+- 도구 기록: AGP 9.1.0, Kotlin 2.4.0, Android Gradle Wrapper 9.3.1, NDK 28.2.13676358, JVM target 17, `pubspec.lock` 추적.
+- 해결 기록: NDK 누락을 SDK Manager 설치로 해결하고, AGP 9 flavor별 리소스 값 사용을 위해 `buildFeatures.resValues = true`를 적용했다.
 - 범위: Riverpod·Drift·go_router·Dio는 각 기능 구현 단계에서 추가하고 해결 버전을 lockfile로 고정한다. 서버·DB 연결은 P01-03 이후다.
 - 다음 작업: P01-03 Spring Boot 프로젝트 생성.
+
+
+### 1.9 — 2026-09-16
+
+P01-02 실제 Android 기기 실행 증거를 보완했다.
+
+- 기기: Samsung SM A546S, Android 16(API 36), USB 디버깅.
+- 실행: `flutter run -d <device-id> --flavor dev --dart-define=APP_ENV=dev`.
+- 결과: `assembleDevDebug` 빌드·설치·앱 실행 성공.
+- 선행 오류와 조치: NDK 28.2.13676358 누락은 SDK Manager에서 설치했고, AGP 9의 flavor 리소스 기능 비활성 오류는 `buildFeatures.resValues = true`로 수정했다.
+- 판정: P01-02 완료 조건인 새 환경 의존성 설치 후 빈 앱 실행을 실제 Android 기기에서 확인했다.

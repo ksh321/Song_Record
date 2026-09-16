@@ -12,7 +12,7 @@ P01-02 실행 가능한 Flutter 골격이다.
 | 검증 앱 ID | `com.ksh321.songrecord.staging` |
 | 환경 | `dev`, `staging`, `prod` |
 | 초기 라우트 | `/` |
-| 개발 API 기본값 | Android Emulator용 `http://10.0.2.2:8080` |
+| 개발 API 기본값 | Emulator용 `http://10.0.2.2:8080`; 실제 기기는 실행 시 주소 주입 |
 
 staging/prod의 `.invalid` 주소는 안전한 자리표시자다. 실제 배포 주소는 `API_BASE_URL`로 주입한다. 서버 DB·R2 비밀값은 앱에 넣지 않는다.
 
@@ -25,7 +25,8 @@ cd apps/mobile
 flutter pub get
 flutter analyze
 flutter test
-flutter run --flavor dev --dart-define=APP_ENV=dev
+flutter devices
+flutter run -d <device-id> --flavor dev --dart-define=APP_ENV=dev
 ```
 
 검증 환경:
@@ -45,3 +46,17 @@ Android flavor와 `APP_ENV`는 같은 환경을 사용한다. `API_BASE_URL`에�
 - 기술 기준: [D01](../../docs/decisions/D01-implementation-stack.md), [버전 목록](../../docs/contracts/toolchain-versions.md)
 - 화면 기준: [원본 자료](../../docs/reference/)
 - 공통 데이터: [fixtures](../../fixtures/README.md)
+
+
+## USB 실제 기기 검증
+
+P01-02는 Samsung SM A546S, Android 16(API 36)에서 dev debug 앱 실행을 확인했다.
+
+서버가 생긴 뒤 USB 연결로 PC의 8080 포트를 사용할 때:
+
+```powershell
+adb reverse tcp:8080 tcp:8080
+flutter run -d <device-id> --flavor dev --dart-define=APP_ENV=dev --dart-define=API_BASE_URL=http://127.0.0.1:8080
+```
+
+`adb reverse`는 USB를 다시 연결하거나 기기를 재부팅한 뒤 다시 실행할 수 있다.

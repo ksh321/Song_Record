@@ -1,5 +1,5 @@
 # 구현 기술 버전 기준 및 고정 대상
-- 문서 버전: 1.1
+- 문서 버전: 1.2
 - 확인일: 2026-09-16
 - 결정: [D01 A안](../decisions/D01-implementation-stack.md)
 - 상태: 기술 기준 확정 / P01-02 Flutter 골격·Android 빌드·lockfile 반영 완료
@@ -34,7 +34,7 @@
 - [ ] Flutter SDK 정확한 버전·revision·다운로드 체크섬을 개발 환경과 CI에 동일 적용
 - [x] P01-02 기본 앱 pubspec.yaml과 실제 해결된 pubspec.lock 커밋 (기능 의존성은 담당 단계에서 추가)
 - [ ] Drift 보조 패키지·코드 생성 도구와 SQLite 네이티브 런타임 버전 기록
-- [x] 앱 Android AGP 9.1.0·Kotlin 2.4.0·Gradle Wrapper 9.3.1 기록 및 Android 에뮬레이터 빌드 확인
+- [x] 앱 Android AGP 9.1.0·Kotlin 2.4.0·Gradle Wrapper 9.3.1 기록 및 실제 Android 기기 dev debug 빌드·실행 확인
 - [ ] 서버 Java 배포판·패치와 CI/컨테이너 이미지 digest 기록
 - [ ] 서버 Boot 플러그인/BOM 4.1.1 적용, Wrapper 8.14.3 파일 및 배포 체크섬 커밋
 - [ ] 서버 의존성 잠금·검증 메타데이터 생성, BOM이 정한 실제 JPA/JDBC/Flyway 버전 기록
@@ -49,6 +49,8 @@
 ## P01-02 실제 환경 기록
 
 - Flutter 3.47.4 stable / Dart 3.13.3를 사용했다. 초기 기준 3.47.2/3.13.2에서 stable 패치 버전으로 갱신했다.
-- Android 앱은 JVM target 17을 사용한다. 서버 Java 21 결정과는 별개다.
-- `flutter pub get`, `flutter analyze`, `flutter test`, Chrome 및 Android 에뮬레이터 실행을 사용자 환경에서 확인했다.
+- Android 앱은 JVM target 17과 NDK 28.2.13676358을 사용한다. 서버 Java 21 결정과는 별개다.
+- `flutter pub get`, `flutter analyze`, `flutter test`, Chrome 및 실제 기기 Samsung SM A546S(Android 16/API 36) dev debug 실행을 사용자 환경에서 확인했다.
 - Flutter SDK revision·배포 체크섬과 CI 고정은 P01-08에서 기록한다.
+
+- AGP 9에서 flavor별 `resValue`를 사용하기 위해 `android.buildFeatures.resValues = true`를 명시했다.

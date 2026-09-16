@@ -40,6 +40,6 @@ B안의 Bloc은 이벤트·상태 전이가 명시적이지만 초기 작성량�
 ## 검증 범위와 완료 판단
 P00-04는 A안 채택, 역할·대안·영향 기록, 공식 SDK/도구 요구 조건 대조, 버전 기준과 고정 대상 목록 작성으로 완료한다. 공식 최소 버전 조건 대조는 전체 의존성 해결이나 빌드 성공을 의미하지 않는다.
 
-P01-02에서 Flutter 앱 골격, pubspec.lock, Android Gradle Wrapper, dev/staging/prod 환경과 Android 에뮬레이터 실행을 반영했다. 앱 정적 분석과 기본 위젯 테스트도 통과했다. 서버 프로젝트·컨테이너 digest·DB 마이그레이션은 P01-03 이후 수행하고 녹음 실기 테스트는 P02에서 진행한다.
+P01-02에서 Flutter 앱 골격, pubspec.lock, Android Gradle Wrapper, dev/staging/prod 환경과 실제 Android 기기 실행을 반영했다. 앱 정적 분석과 기본 위젯 테스트도 통과했다. 서버 프로젝트·컨테이너 digest·DB 마이그레이션은 P01-03 이후 수행하고 녹음 실기 테스트는 P02에서 진행한다.
 
-P01-02에서는 기본 앱 의존성 해결·분석·테스트·Android dev debug 실행을 확인했다. Riverpod·Drift·go_router·Dio는 담당 기능 단계에서 추가하고 lockfile에 고정한다. P01-03 이후 Java 21 서버 빌드, MySQL 연결·Flyway 마이그레이션을 확인한다. 실패하면 원인과 수정 버전을 본 결정서/버전 목록에 기록한다. 녹음 플러그인 채택은 P02의 별도 완료 조건이다.
+P01-02에서는 기본 앱 의존성 해결·분석·테스트와 Samsung SM A546S(Android 16/API 36)의 Android dev debug 실행을 확인했다. Riverpod·Drift·go_router·Dio는 담당 기능 단계에서 추가하고 lockfile에 고정한다. P01-03 이후 Java 21 서버 빌드, MySQL 연결·Flyway 마이그레이션을 확인한다. 실패하면 원인과 수정 버전을 본 결정서/버전 목록에 기록한다. 녹음 플러그인 채택은 P02의 별도 완료 조건이다.
