@@ -87,3 +87,8 @@ MySQL 8.4.11 이미지를 SHA-256 digest로 고정하고, 로컬 전용 포트·
 ## P01-05 스키마 버전 관리 — 완료
 
 Flyway 최초 마이그레이션과 기동 시 체크섬 검증을 연결했다. Hibernate는 `validate`만 수행하고, DB 변경은 버전이 붙은 SQL 마이그레이션으로만 진행한다. 자세한 실행·확인 방법은 [서버 README](services/api/README.md)를 따른다. Windows 11 환경에서 같은 DB의 첫 실행과 재실행이 모두 성공해 완료했다.
+
+
+## P01-06 Flutter 서버 health 연결 — 검증 대기
+
+Flutter 개발 화면에서 Spring Boot `/actuator/health`를 호출해 상태와 JSON 응답을 표시하도록 연결했다. Android 로컬 HTTP 허용은 debug 빌드로 제한했으며, 실제 기기는 USB `adb reverse`, 에뮬레이터는 `10.0.2.2`를 사용한다. 실제 SM A546S에서 `UP` 표시를 확인한 뒤 완료로 갱신한다.

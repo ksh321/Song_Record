@@ -146,3 +146,10 @@ SELECT * FROM app_schema_metadata;
 | 상태 | P01-05 완료 |
 
 실행 과정에서 생성한 `bootrun-error.log`는 진단용 임시 파일이므로 커밋하지 않는다. `gradle.lockfile`은 실제 해결된 의존성 버전을 고정하므로 저장소에서 추적한다.
+
+
+## P01-06 개발 health 공개 범위
+
+Flutter 개발 앱이 인증 정보 없이 상태를 확인할 수 있도록 `GET /actuator/health`만 공개했다. 그 밖의 요청은 현재 보안 설정에서 거부한다. health 응답의 상세 정보는 계속 숨기며, 기본 응답은 `{"status":"UP"}`이다.
+
+실제 Android 앱은 MySQL에 직접 연결하지 않는다. 연결 순서는 `Flutter → Spring Boot /actuator/health → Spring Boot 상태 검사`다. 휴대폰 연결과 주소별 실행 방법은 [모바일 README](../../apps/mobile/README.md)를 따른다.

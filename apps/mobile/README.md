@@ -60,3 +60,47 @@ flutter run -d <device-id> --flavor dev --dart-define=APP_ENV=dev --dart-define=
 ```
 
 `adb reverse`는 USB를 다시 연결하거나 기기를 재부팅한 뒤 다시 실행할 수 있다.
+
+
+## P01-06 Spring Boot health 연결
+
+개발 앱은 `GET /actuator/health`를 호출하고 응답 상태와 원문 JSON을 화면에 표시한다. 앱에는 MySQL 주소·계정·비밀번호를 넣지 않는다. Flutter는 Spring Boot API만 호출하고 Spring Boot가 MySQL에 연결한다.
+
+### API 주소 규칙
+
+| 실행 대상 | API 주소 | 설명 |
+|---|---|---|
+| Android 에뮬레이터 | `http://10.0.2.2:8080` | 에뮬레이터에서 개발 PC를 가리키는 전용 주소 |
+| 실제 기기 USB | `http://127.0.0.1:8080` | 먼저 `adb reverse tcp:8080 tcp:8080` 실행 |
+| 실제 기기 같은 Wi-Fi | `http://<PC IPv4>:8080` | PC·휴대폰이 같은 사설망이고 Windows 방화벽의 개인 네트워크 허용 필요 |
+| staging·prod | HTTPS 주소 | 현재 자리표시자이며 운영 주소 확정 전 사용 금지 |
+
+로컬 HTTP 허용은 Android `debug` manifest에만 설정했다. release 빌드에는 적용되지 않는다.
+
+### 실제 기기 USB 실행
+
+Spring Boot를 dev 프로필로 먼저 실행한다. 다른 PowerShell에서 다음을 실행한다.
+
+```powershell
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" reverse tcp:8080 tcp:8080
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" reverse --list
+
+cd C:\Users\shoon111111\Documents\GitHub\Song_Record\apps\mobile
+flutter run -d R5CW618VA1M --flavor dev --dart-define=APP_ENV=dev --dart-define=API_BASE_URL=http://127.0.0.1:8080
+```
+
+앱 화면에 `서버 연결 성공: UP`과 `응답: {"status":"UP"}`이 나오면 실제 기기 연결 성공이다. 실패하면 Spring Boot 실행 상태, USB 디버깅 승인, `adb reverse --list`의 `tcp:8080 tcp:8080`을 확인하고 앱의 `다시 확인`을 누른다.
+
+USB를 뽑거나 매핑을 지우려면 다음 명령을 사용한다.
+
+```powershell
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" reverse --remove tcp:8080
+```
+
+### 에뮬레이터 실행
+
+dev 기본 주소가 이미 `10.0.2.2:8080`이므로 별도 주소 없이 실행한다.
+
+```powershell
+flutter run --flavor dev --dart-define=APP_ENV=dev
+```
