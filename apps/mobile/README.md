@@ -121,3 +121,16 @@ flutter run --flavor dev --dart-define=APP_ENV=dev
 ### P01-07 검증 결과
 
 2026-09-17 Windows 11에서 `flutter analyze`와 `flutter test`가 모두 성공했다. 공통 오류 JSON 파서가 오류 코드·메시지·재시도 여부·요청 ID·상세 정보를 읽고, 계약에 맞지 않는 JSON을 거부하는 테스트를 확인했다. 서버의 실제 오류 요청에서도 동일 요청 ID가 응답과 서버 로그에 연결됐다.
+
+
+## P01-08 CI
+
+GitHub Actions의 `Flutter analyze and test` 작업은 Flutter 3.47.4 stable을 설치하고 다음 검사를 수행한다.
+
+```powershell
+flutter pub get --enforce-lockfile
+flutter analyze
+flutter test
+```
+
+`--enforce-lockfile`은 저장소의 `pubspec.lock`과 다른 의존성 해석이 필요한 경우 실패시켜, 개발 PC와 CI가 같은 패키지 조합을 사용하도록 한다.

@@ -107,3 +107,10 @@ P01-04에서는 연결과 영속성까지만 확인한다. Flyway 초기 마이�
 2026-09-17 Windows 11·Docker Desktop 환경에서 MySQL 컨테이너 `healthy`, Spring Boot `dev` 프로필의 Hikari 연결, MySQL 재시작 후 확인 데이터 유지와 임시 테이블 제거를 확인했다.
 
 최초 연결에서는 수동으로 입력한 `DB_PASSWORD` 불일치로 MySQL 1045 오류가 발생했다. 컨테이너에 적용된 `MYSQL_PASSWORD`와 동일한 값을 Spring의 `DB_PASSWORD`로 설정해 해결했다. Hibernate Dialect 오류는 인증 실패로 DB 메타데이터를 읽지 못해 따라온 2차 오류였다.
+
+
+## P01-08 CI
+
+GitHub Actions의 `MySQL Compose smoke test` 작업은 실제 개발 비밀번호 대신 CI 안에서만 사용하는 임시값으로 `.env`를 만든다. Compose 설정 검사, MySQL healthy 대기, `SELECT 1` 실행 후 컨테이너와 CI용 named volume을 제거한다.
+
+이 검사는 MySQL 이미지와 Compose 구성이 새 환경에서 실행되는지 확인한다. Spring Boot의 JPA·Flyway 연결 검증은 기존 P01-04·P01-05 기록을 유지하며, 전체 서버 연결 통합 테스트는 후속 기능 단계에서 확장한다.

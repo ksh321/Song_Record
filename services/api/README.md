@@ -212,3 +212,14 @@ curl.exe -i http://127.0.0.1:8080/api/dev/errors/sample
 | 상태 | P01-07 완료 |
 
 초기 검증 중 Spring Security의 개발용 임시 비밀번호가 시작 로그에 자동 출력됐다. 인증 사용자를 아직 구현하지 않은 현재 단계에서는 빈 `UserDetailsService`를 명시해 자동 사용자와 임시 비밀번호 생성을 막았다. 실제 회원 인증은 후속 인증 단계에서 별도 구현한다.
+
+
+## P01-08 CI
+
+GitHub Actions의 `Spring Boot build and test` 작업은 Temurin Java 21을 설치하고 `services/api`에서 다음 명령과 같은 검사를 수행한다.
+
+```powershell
+.\gradlew.bat clean build
+```
+
+CI의 Linux 환경에서는 `./gradlew clean build --no-daemon`을 사용한다. Gradle `build`는 컴파일과 테스트를 포함하며 기본 `bootstrap` 프로필을 사용하므로 MySQL 없이 서버 골격을 검사한다. 실제 MySQL 기동은 별도 CI 작업에서 검사한다.

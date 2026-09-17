@@ -1,8 +1,8 @@
 # 구현 기술 버전 기준 및 고정 대상
-- 문서 버전: 1.7
+- 문서 버전: 1.8
 - 확인일: 2026-09-17
 - 결정: [D01 A안](../decisions/D01-implementation-stack.md)
-- 상태: 기술 기준 확정 / P01-02 완료 / P01-03 완료 / P01-04 완료 / P01-05 완료
+- 상태: 기술 기준 확정 / P01-02~P01-07 완료 / P01-08 CI 확인 대기
 
 ## 초기 버전 기준
 아래 값은 프로젝트 생성 시 사용할 기준이다. 빌드 성공을 증명하는 lockfile은 아니다.
@@ -103,3 +103,16 @@
 - Flyway `clean`과 자동 baseline은 비활성화했다.
 - 적용된 파일은 수정하지 않고, 후속 변경은 증가한 버전 번호의 새 SQL 파일로 작성한다.
 - 검증 완료: 빈 DB 첫 실행에서 V1 적용, 같은 DB 재실행에서 이력·체크섬 검증과 서버 기동 성공.
+
+
+## P01-08 CI 실행 기준
+
+| 대상 | 고정 기준 |
+|---|---|
+| actions/checkout | `11d5960a326750d5838078e36cf38b85af677262` (v4 참조 확인값) |
+| actions/setup-java | `cf277c60eb25467037889841efdb72551f06f6c3` (v4 참조 확인값) |
+| subosito/flutter-action | `1a449444c387b1966244ae4d4f8c696479add0b2` (v2 참조 확인값) |
+| GitHub runner | `ubuntu-latest` |
+| 워크플로 권한 | `contents: read` |
+
+CI도 로컬과 같은 Flutter 3.47.4, Java 21, Gradle Wrapper 9.7.1, digest 고정 MySQL 8.4.11을 사용한다. Action 태그가 나중에 이동해도 동일 코드를 실행하도록 전체 커밋 SHA를 기록한다.

@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter:
+    name: Flutter analyze and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Flutter 3.47.4
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: 3.47.4
+          cache: true
+          pub-cache: true
+
+      - name: Show Flutter version
+        run: flutter --version
+
+      - name: Resolve locked dependencies
+        run: flutter pub get --enforce-lockfile
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test --reporter expanded
+
+  api:
+    name: Spring Boot build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: services/api
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+          cache-dependency-path: |
+            services/api/*.gradle*
+            services/api/gradle.lockfile
+            services/api/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Allow Gradle Wrapper execution
+        run: chmod +x gradlew
+
+      - name: Build and test
+        run: ./gradlew clean build --no-daemon
+
+  mysql:
+    name: MySQL Compose smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Create CI-only environment
+        run: |
+          cp .env.example .env
+          sed -i 's/^MYSQL_PASSWORD=.*/MYSQL_PASSWORD=ci_song_record_password/' .env
+          sed -i 's/^MYSQL_ROOT_PASSWORD=.*/MYSQL_ROOT_PASSWORD=ci_root_password/' .env
+
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+
+      - name: Start MySQL
+        run: docker compose up -d --wait mysql
+
+      - name: Verify database query
+        run: |
+          docker compose exec -T mysql sh -lc 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" -e "SELECT 1 AS ci_ready;"'
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs --tail=100 mysql
+
+      - name: Stop MySQL and remove CI data
+        if: always()
+        run: docker compose down -v
