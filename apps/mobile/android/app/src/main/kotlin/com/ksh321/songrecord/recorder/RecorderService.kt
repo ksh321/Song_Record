@@ -209,9 +209,7 @@ class RecorderService : Service() {
             .setSmallIcon(applicationInfo.icon)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            builder.setSilent(true)
-        } else {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             @Suppress("DEPRECATION")
             builder.setSound(null).setVibrate(null)
         }
