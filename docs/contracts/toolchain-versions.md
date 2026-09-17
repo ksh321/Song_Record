@@ -1,8 +1,8 @@
 # 구현 기술 버전 기준 및 고정 대상
-- 문서 버전: 1.3
-- 확인일: 2026-09-16
+- 문서 버전: 1.4
+- 확인일: 2026-09-17
 - 결정: [D01 A안](../decisions/D01-implementation-stack.md)
-- 상태: 기술 기준 확정 / P01-02 완료 / P01-03 Spring Boot 골격 반영·실행 검증 대기
+- 상태: 기술 기준 확정 / P01-02 완료 / P01-03 Spring Boot 골격·테스트·기동 완료
 
 ## 초기 버전 기준
 아래 값은 프로젝트 생성 시 사용할 기준이다. 빌드 성공을 증명하는 lockfile은 아니다.
@@ -37,7 +37,7 @@
 - [x] 앱 Android AGP 9.1.0·Kotlin 2.4.0·Gradle Wrapper 9.3.1 기록 및 실제 Android 기기 dev debug 빌드·실행 확인
 - [ ] 서버 Java 로컬 배포판·패치는 Temurin 21.0.12.1+1로 확인. CI/컨테이너 이미지 digest는 미정
 - [ ] 서버 Boot 플러그인/BOM 4.1.1과 Wrapper 9.7.1 파일 커밋. Wrapper 배포 체크섬은 미기록
-- [ ] 서버 의존성 잠금·검증 메타데이터 생성, BOM이 정한 실제 JPA/JDBC/Flyway 버전 기록
+- [ ] 서버 의존성 잠금은 활성화했고 로컬 gradle.lockfile 생성을 확인. 원격 파일 추적·검증 메타데이터와 실제 JPA/JDBC/Flyway 버전 기록은 남음
 - [ ] Flyway MySQL 지원 모듈 포함 여부 확인, 실제 MySQL 연결·마이그레이션 검증
 - [ ] MySQL 8.4.12 이미지 사용 가능 여부 확인 및 digest 고정 (latest 금지)
 - [ ] 생성한 lock/Wrapper로 깨끗한 환경에서 재빌드 후 명령·결과·커밋 기록
@@ -63,4 +63,14 @@
 - Gradle Wrapper 9.7.1과 Launcher/Daemon JVM Temurin 21.0.12.1을 사용자 Windows 환경에서 확인했다.
 - Web MVC·Validation·Security·Data JPA·Actuator·MySQL·Flyway 의존성을 추가했고 개별 버전은 Boot BOM에 맡겼다.
 - P01-04 전 서버 골격 검증을 위해 기본 `bootstrap` 프로필에서 DataSource·Hibernate JPA·Flyway 자동설정을 제외했다.
-- Gradle 의존성 잠금을 활성화했다. `gradle.lockfile` 생성, `clean test`, `bootRun` 실제 결과는 아직 검증 대기다.
+- Gradle 의존성 잠금을 활성화했고 사용자 환경에서 `gradle.lockfile` 생성과 `clean test` 성공을 확인했다. `bootRun`은 bootstrap 프로필, Tomcat 11.0.24/8080, `Started ApiApplication in 1.759 seconds`로 성공했다.
+
+
+### P01-03 실행 검증
+
+- 검증일: 2026-09-17.
+- `clean test`: 성공.
+- `bootRun`: Java 21.0.12.1, 기본 bootstrap 프로필, Tomcat 11.0.24, HTTP 8080, 애플리케이션 시작 성공.
+- Gradle의 80% EXECUTING 표시는 서버 프로세스를 계속 유지하는 `bootRun` 특성에 따른 정상 상태다.
+- 생성된 Spring Security 개발 비밀번호는 저장하지 않았으며 실제 인증 구성은 후속 단계에서 교체한다.
+- DB 자동설정을 제외한 골격 검증이므로 MySQL 8.4와 Flyway 검증은 P01-04에서 수행한다.

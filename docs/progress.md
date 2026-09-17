@@ -1,6 +1,6 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 2.0
+- 기록 버전: 2.1
 - 작성일: 2026-09-17
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
@@ -9,7 +9,7 @@
 
 ## 1. 현재 상태
 
-P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. 서버 실제 기동 검증과 녹음 기능 실기 테스트는 아직 수행하지 않았다.
+P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
 
 | 작업 | 상태                    | 확인 내용 | 남은 확인 |
 |---|-----------------------|---|---|
@@ -23,7 +23,7 @@ P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현
 | P00-08 공통 검증 데이터 작성 | 완료(산출물) | JSON 169사례·합성 파일 3개·참조 대조 31건 | 앱/서버 로더 P01/P03, 통합 명세 138건 후속 실행 |
 | P01-01 저장소 구조 만들기 | 완료 | apps/mobile·services/api·infra·README·설정 예시·Git 제외 규칙 | 없음. 프로젝트 생성·실행은 후속 작업 |
 | P01-02 Flutter 프로젝트 생성 | 완료 | Flutter 3.47.4/Dart 3.13.3, Android dev/staging/prod flavor, 앱 ID·초기 라우트·분석 규칙·lockfile 반영 | 없음. 서버 작업은 P01-03에서 별도 추적 |
-| P01-03 Spring Boot 프로젝트 생성 | 검증 대기 | Boot 4.1.1·Java Toolchain 21·Gradle Wrapper 9.7.1, 필수 의존성, bootstrap 프로필, 테스트 프로필·의존성 잠금 설정 반영 | pull 후 gradle.lockfile 생성, clean test·bootRun 실제 성공 확인 |
+| P01-03 Spring Boot 프로젝트 생성 | 완료 | Boot 4.1.1·Java 21·Gradle 9.7.1, 필수 의존성, bootstrap 프로필, clean test·Tomcat 8080 기동 성공 | DB 연결·Flyway 실행은 P01-04. 로컬 생성 gradle.lockfile은 원격 추적 필요 |
 
 “수행 기록 없음”은 사용자가 별도로 수행한 작업까지 없었다고 단정하는 상태가 아니다. 증거를 확인하면 갱신한다.
 
@@ -222,4 +222,17 @@ P01-03 Spring Boot 프로젝트 생성 및 기동 전 구성을 반영했다.
 - 사용자 Windows 환경에서 Eclipse Temurin 21.0.12.1의 java·javac 및 Gradle Launcher/Daemon JVM 21을 확인했다.
 - P01-04의 MySQL 구성 전에도 서버 골격을 검증하도록 기본 bootstrap 프로필을 추가했다. 이 프로필은 DataSource·Hibernate JPA·Flyway 자동설정을 제외하며 운영용이 아니다.
 - 테스트는 bootstrap 프로필로 고정했고 Gradle 의존성 잠금을 활성화했다.
-- 상태는 검증 대기다. 로컬 pull 후 gradle.lockfile 생성, clean test와 bootRun 성공 증거를 확인해야 완료로 바꾼다.
+- 사용자 환경에서 gradle.lockfile 생성, clean test 성공을 보고받았고 bootRun의 bootstrap 적용·Tomcat 8080·Started ApiApplication 로그를 확인했다. P01-03은 완료다.
+
+
+### 2.1 — 2026-09-17
+
+P01-03 Spring Boot 프로젝트 생성 완료.
+
+- 검증 환경: Windows 11, Eclipse Temurin 21.0.12.1, Spring Boot 4.1.1, Gradle Wrapper 9.7.1.
+- `dependencies --write-locks`: 사용자 환경에서 실행 및 `gradle.lockfile` 생성 확인 보고. 기록 시점 원격 저장소에는 아직 파일이 없어 후속 Push가 필요하다.
+- `clean test`: `BUILD SUCCESSFUL` 사용자 확인.
+- `bootRun`: 기본 `bootstrap` 프로필 적용, Tomcat 11.0.24가 8080 포트에서 시작, `Started ApiApplication in 1.759 seconds` 로그 확인.
+- `bootRun`의 80% EXECUTING 표시는 서버가 종료될 때까지 작업이 계속 실행되는 정상 상태다.
+- Spring Security의 생성 비밀번호 경고는 개발용 기본 자동설정이며 비밀번호 값은 문서에 기록하지 않는다.
+- 완료 범위는 DB 없는 서버 골격이다. 실제 MySQL 연결과 Flyway 마이그레이션은 P01-04에서 검증한다.

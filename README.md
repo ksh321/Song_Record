@@ -60,13 +60,13 @@ P00-05 완료: 추천 조합을 D02~D04로 확정했다. 정렬·날짜·기기 
 | 경로 | 역할 |
 |---|---|
 | [apps/mobile](apps/mobile/README.md) | Flutter Android 앱, P01-02 실행 골격 완료 |
-| [services/api](services/api/README.md) | Spring Boot 4.1.1 서버 골격, P01-03 기동 검증 대기 |
+| [services/api](services/api/README.md) | Spring Boot 4.1.1 서버 골격, P01-03 테스트·기동 완료 |
 | [infra](infra/README.md) | 개발 환경·DB 설정 예시 |
 | [docs](docs/requirements.md) | 설계·결정·요구사항·진행 기록 |
 | [fixtures](fixtures/README.md) | 앱·서버 공통 검증 자료 |
 | [tools](tools/validate_fixtures.py) | 검증 도구 |
 
-로컬 비밀 설정·빌드 결과는 루트 `.gitignore`로 제외하고 앱 lockfile·Gradle Wrapper는 추적한다. Flutter 빈 앱은 dev 환경에서 실행 확인했다. Spring Boot 서버 골격은 생성했으며 실제 기동 검증과 DB 연결은 후속 단계다.
+로컬 비밀 설정·빌드 결과는 루트 `.gitignore`로 제외하고 앱 lockfile·Gradle Wrapper는 추적한다. Flutter 빈 앱은 dev 환경에서 실행 확인했다. Spring Boot 서버 골격은 테스트와 기동을 확인했다. 실제 MySQL 연결과 Flyway 검증은 P01-04에서 수행한다.
 
 
 ## P01-02 Flutter 프로젝트 — 완료
@@ -74,6 +74,6 @@ P00-05 완료: 추천 조합을 D02~D04로 확정했다. 정렬·날짜·기기 
 고유 Android 앱 ID, dev/staging/prod 환경, 초기 경로 `/`, 분석 규칙과 기본 테스트를 설정했다. 실행 명령과 환경 계약은 [모바일 README](apps/mobile/README.md)를 따른다.
 
 
-## P01-03 Spring Boot 프로젝트 — 검증 대기
+## P01-03 Spring Boot 프로젝트 — 완료
 
-Java 21, Spring Boot 4.1.1, Gradle Wrapper 9.7.1과 필수 서버 의존성을 반영했다. MySQL 설치 전 골격 검증용 `bootstrap` 프로필과 의존성 잠금 설정을 추가했다. 실행 방법과 주의점은 [서버 README](services/api/README.md)를 따른다.
+Java 21, Spring Boot 4.1.1, Gradle Wrapper 9.7.1과 필수 서버 의존성을 반영했다. MySQL 설치 전 골격 검증용 `bootstrap` 프로필에서 `clean test`와 Tomcat 8080 서버 기동을 확인했다. 실행 방법과 검증 범위는 [서버 README](services/api/README.md)를 따른다.

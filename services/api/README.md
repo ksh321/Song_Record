@@ -54,3 +54,21 @@ Spring Boot 4.1.1은 Gradle 8.14 이상과 Gradle 9.x를 지원한다. Initializ
 - API·정책 기준: [요구사항](../../docs/requirements.md), [결정 기록](../../docs/decisions/)
 - 공통 데이터: [fixtures](../../fixtures/README.md)
 - 비밀값은 런타임 환경 변수로 주입한다.
+
+
+## P01-03 검증 결과
+
+2026-09-17 Windows 11 환경에서 다음을 확인했다.
+
+| 검증 | 결과 |
+|---|---|
+| Java·Gradle | Temurin 21.0.12.1, Gradle 9.7.1 |
+| 의존성 잠금 생성 | `dependencies --write-locks` 성공, 로컬 `gradle.lockfile` 생성 |
+| Context 테스트 | `clean test` → `BUILD SUCCESSFUL` |
+| 서버 기동 | 기본 `bootstrap` 프로필 적용 |
+| 내장 서버 | Tomcat 11.0.24, HTTP 8080 |
+| 완료 로그 | `Started ApiApplication in 1.759 seconds` |
+
+`bootRun`은 서버를 계속 띄우는 장기 실행 작업이므로 Gradle 표시가 80% EXECUTING에서 유지되는 것이 정상이다. 멈춘 것이 아니며 `Ctrl+C`로 서버를 종료하면 작업도 끝난다.
+
+이 검증은 Spring Web 서버와 애플리케이션 Context가 정상 구성됐다는 뜻이다. `bootstrap` 프로필에서는 DB 관련 자동설정을 끄므로 MySQL·JPA CRUD·Flyway 검증은 P01-04에 속한다.
