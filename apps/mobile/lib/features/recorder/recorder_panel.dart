@@ -167,6 +167,7 @@ class _RecorderPanelState extends State<RecorderPanel>
     final elapsed = Duration(milliseconds: _status.elapsedMs);
     final minutes = elapsed.inMinutes.toString().padLeft(2, '0');
     final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
+    final limitMessage = _limitMessage(_status);
 
     return Card(
       child: Padding(
@@ -181,6 +182,17 @@ class _RecorderPanelState extends State<RecorderPanel>
             const SizedBox(height: 12),
             Text('상태: ${_phaseLabel(_status.phase)}'),
             Text('경과 시간: $minutes:$seconds'),
+            if (limitMessage != null)
+              Text(
+                limitMessage,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.tertiary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            if (_status.phase == RecorderPhase.completed &&
+                _status.stopReason == 'time_limit')
+              const Text('6분 제한에 도달해 자동 종료되었습니다.'),
             if (_status.recordingId != null)
               SelectableText('녹음 ID: ${_status.recordingId}'),
             if (_status.outputPath != null)
@@ -254,4 +266,17 @@ class _RecorderPanelState extends State<RecorderPanel>
     RecorderPhase.completed => '파일 생성 완료',
     RecorderPhase.error => '오류',
   };
+
+  String? _limitMessage(RecorderStatus status) {
+    if (status.phase != RecorderPhase.recording ||
+        status.limitWarning == RecorderLimitWarning.none) {
+      return null;
+    }
+
+    final fallbackRemainingMs = 360000 - status.elapsedMs;
+    final remainingMs = status.remainingMs ??
+        (fallbackRemainingMs < 0 ? 0 : fallbackRemainingMs);
+    final remainingSeconds = (remainingMs + 999) ~/ 1000;
+    return '녹음 종료 임박: $remainingSeconds초 후 자동 종료됩니다.';
+  }
 }

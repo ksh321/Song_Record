@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 
 enum RecorderPhase { idle, starting, recording, stopping, completed, error }
 
+enum RecorderLimitWarning { none, thirtySeconds, tenSeconds }
+
 class RecorderPermissions {
   const RecorderPermissions({
     required this.microphoneGranted,
@@ -27,6 +29,9 @@ class RecorderStatus {
     this.recordingId,
     this.outputPath,
     this.elapsedMs = 0,
+    this.remainingMs,
+    this.limitWarning = RecorderLimitWarning.none,
+    this.stopReason,
     this.sizeBytes,
     this.actualMime,
     this.actualSampleRate,
@@ -44,12 +49,20 @@ class RecorderStatus {
       (candidate) => candidate.name == phaseName,
       orElse: () => RecorderPhase.error,
     );
+    final warning = switch (map['limitWarning']?.toString()) {
+      'thirty_seconds' => RecorderLimitWarning.thirtySeconds,
+      'ten_seconds' => RecorderLimitWarning.tenSeconds,
+      _ => RecorderLimitWarning.none,
+    };
 
     return RecorderStatus(
       phase: phase,
       recordingId: map['recordingId']?.toString(),
       outputPath: map['outputPath']?.toString(),
       elapsedMs: (map['elapsedMs'] as num?)?.toInt() ?? 0,
+      remainingMs: (map['remainingMs'] as num?)?.toInt(),
+      limitWarning: warning,
+      stopReason: map['stopReason']?.toString(),
       sizeBytes: (map['sizeBytes'] as num?)?.toInt(),
       actualMime: map['actualMime']?.toString(),
       actualSampleRate: (map['actualSampleRate'] as num?)?.toInt(),
@@ -64,6 +77,9 @@ class RecorderStatus {
   final String? recordingId;
   final String? outputPath;
   final int elapsedMs;
+  final int? remainingMs;
+  final RecorderLimitWarning limitWarning;
+  final String? stopReason;
   final int? sizeBytes;
   final String? actualMime;
   final int? actualSampleRate;

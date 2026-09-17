@@ -95,6 +95,10 @@ class MainActivity : FlutterActivity() {
     private fun stopRecorder(result: MethodChannel.Result) {
         val intent = Intent(this, RecorderService::class.java)
             .setAction(RecorderService.ACTION_STOP)
+            .putExtra(
+                RecorderService.EXTRA_STOP_REASON,
+                RecorderService.STOP_REASON_APP_BUTTON,
+            )
         startService(intent)
         result.success(null)
     }

@@ -24,15 +24,22 @@ class RecorderService : Service() {
     private var recordingId: String? = null
     private var outputFile: File? = null
     private var startedAtElapsedMs = 0L
+    private var stopping = false
     private val handler = Handler(Looper.getMainLooper())
 
     private val ticker = object : Runnable {
         override fun run() {
-            if (recorder == null) return
-            val elapsedMs = SystemClock.elapsedRealtime() - startedAtElapsedMs
+            if (recorder == null || stopping) return
+
+            val elapsedMs = currentElapsedMs()
+            if (elapsedMs >= MAX_DURATION_MS) {
+                requestStop(STOP_REASON_TIME_LIMIT)
+                return
+            }
+
             publish(recordingState(elapsedMs))
             notifyProgress(elapsedMs)
-            handler.postDelayed(this, 1_000L)
+            handler.postDelayed(this, nextTickDelayMs(elapsedMs))
         }
     }
 
@@ -43,8 +50,10 @@ class RecorderService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_STOP -> stopRecording()
-            else -> startRecording()
+            ACTION_START -> startRecording()
+            ACTION_STOP -> requestStop(
+                intent.getStringExtra(EXTRA_STOP_REASON) ?: STOP_REASON_APP_BUTTON,
+            )
         }
         return START_NOT_STICKY
     }
@@ -52,13 +61,15 @@ class RecorderService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
-        if (recorder != null) stopRecording()
+        if (recorder != null) requestStop(STOP_REASON_SERVICE_DESTROYED)
         super.onDestroy()
     }
 
     private fun startRecording() {
+        if (stopping) return
+
         if (recorder != null) {
-            publish(recordingState(SystemClock.elapsedRealtime() - startedAtElapsedMs))
+            publish(recordingState(currentElapsedMs()))
             return
         }
 
@@ -69,14 +80,16 @@ class RecorderService : Service() {
         val directory = File(filesDir, "recordings").apply { mkdirs() }
         val file = File(directory, "$id.m4a")
 
+        var newRecorder: MediaRecorder? = null
         try {
-            val newRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val candidate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 MediaRecorder(this)
             } else {
                 @Suppress("DEPRECATION")
                 MediaRecorder()
             }
-            newRecorder.apply {
+            newRecorder = candidate
+            candidate.apply {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
@@ -88,14 +101,14 @@ class RecorderService : Service() {
                 start()
             }
 
-            recorder = newRecorder
+            recorder = candidate
             recordingId = id
             outputFile = file
             startedAtElapsedMs = SystemClock.elapsedRealtime()
             publish(recordingState(0L))
             handler.post(ticker)
         } catch (error: Exception) {
-            recorder?.release()
+            runCatching { newRecorder?.release() }
             recorder = null
             file.delete()
             publishError("RECORDER_START_FAILED", error)
@@ -104,20 +117,23 @@ class RecorderService : Service() {
         }
     }
 
-    private fun stopRecording() {
+    private fun requestStop(stopReason: String) {
+        if (stopping) return
+
         val activeRecorder = recorder ?: run {
             stopForegroundCompat()
             stopSelf()
             return
         }
 
+        stopping = true
         handler.removeCallbacks(ticker)
-        val elapsedMs = SystemClock.elapsedRealtime() - startedAtElapsedMs
-        publish(recordingState(elapsedMs, "stopping"))
+        val elapsedMs = currentElapsedMs()
+        publish(recordingState(elapsedMs, "stopping", stopReason))
 
         try {
             activeRecorder.stop()
-            activeRecorder.release()
+            runCatching { activeRecorder.release() }
             recorder = null
 
             val file = outputFile
@@ -138,24 +154,32 @@ class RecorderService : Service() {
                     "actualSampleRate" to inspection?.sampleRate,
                     "actualChannels" to inspection?.channels,
                     "actualAacProfile" to inspection?.aacProfile,
+                    "stopReason" to stopReason,
                 ),
             )
         } catch (error: RuntimeException) {
-            activeRecorder.release()
+            runCatching { activeRecorder.release() }
             recorder = null
             outputFile?.delete()
-            publishError("RECORDER_STOP_FAILED", error)
+            publishError("RECORDER_STOP_FAILED", error, stopReason)
         } finally {
             stopForegroundCompat()
             stopSelf()
         }
     }
 
-    private fun recordingState(elapsedMs: Long, phase: String = "recording") = mapOf(
+    private fun recordingState(
+        elapsedMs: Long,
+        phase: String = "recording",
+        stopReason: String? = null,
+    ) = mapOf(
         "phase" to phase,
         "recordingId" to recordingId,
         "outputPath" to outputFile?.absolutePath,
         "elapsedMs" to elapsedMs,
+        "remainingMs" to (MAX_DURATION_MS - elapsedMs).coerceAtLeast(0L),
+        "limitWarning" to limitWarning(elapsedMs),
+        "stopReason" to stopReason,
         "container" to "M4A",
         "codec" to "AAC-LC",
         "bitRate" to AUDIO_BIT_RATE,
@@ -163,7 +187,7 @@ class RecorderService : Service() {
         "channels" to AUDIO_CHANNELS,
     )
 
-    private fun publishError(code: String, error: Exception) {
+    private fun publishError(code: String, error: Exception, stopReason: String? = null) {
         publish(
             mapOf(
                 "phase" to "error",
@@ -171,6 +195,7 @@ class RecorderService : Service() {
                 "outputPath" to outputFile?.absolutePath,
                 "errorCode" to code,
                 "errorMessage" to (error.message ?: error.javaClass.simpleName),
+                "stopReason" to stopReason,
             ),
         )
     }
@@ -185,12 +210,16 @@ class RecorderService : Service() {
             description = "잠금 상태에서도 진행되는 녹음 상태"
             setSound(null, null)
             enableVibration(false)
+            enableLights(false)
+            setShowBadge(false)
         }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
     private fun buildNotification(text: String, includeStop: Boolean): Notification {
-        val stopIntent = Intent(this, RecorderService::class.java).setAction(ACTION_STOP)
+        val stopIntent = Intent(this, RecorderService::class.java)
+            .setAction(ACTION_STOP)
+            .putExtra(EXTRA_STOP_REASON, STOP_REASON_NOTIFICATION_BUTTON)
         val stopPendingIntent = PendingIntent.getService(
             this,
             1,
@@ -209,9 +238,13 @@ class RecorderService : Service() {
             .setSmallIcon(applicationInfo.icon)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setCategory(Notification.CATEGORY_SERVICE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            builder.setSilent(true)
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             @Suppress("DEPRECATION")
-            builder.setSound(null).setVibrate(null)
+            builder.setDefaults(0).setSound(null).setVibrate(longArrayOf())
         }
         if (includeStop) {
             builder.addAction(Notification.Action.Builder(0, "녹음 종료", stopPendingIntent).build())
@@ -252,10 +285,33 @@ class RecorderService : Service() {
     )
 
     private fun notifyProgress(elapsedMs: Long) {
-        val totalSeconds = elapsedMs / 1_000L
-        val text = "%02d:%02d / 06:00".format(totalSeconds / 60, totalSeconds % 60)
+        val totalSeconds = (elapsedMs / 1_000L).coerceAtMost(MAX_DURATION_SECONDS)
+        val progress = "%02d:%02d / 06:00".format(
+            totalSeconds / 60,
+            totalSeconds % 60,
+        )
+        val remainingSeconds =
+            ((MAX_DURATION_MS - elapsedMs).coerceAtLeast(0L) + 999L) / 1_000L
+        val text = if (limitWarning(elapsedMs) == null) {
+            progress
+        } else {
+            "$progress · ${remainingSeconds}초 후 자동 종료"
+        }
         getSystemService(NotificationManager::class.java)
             .notify(NOTIFICATION_ID, buildNotification(text, true))
+    }
+
+    private fun currentElapsedMs(): Long =
+        (SystemClock.elapsedRealtime() - startedAtElapsedMs).coerceAtLeast(0L)
+
+    private fun nextTickDelayMs(elapsedMs: Long): Long =
+        (TICK_INTERVAL_MS - (elapsedMs % TICK_INTERVAL_MS))
+            .coerceIn(1L, TICK_INTERVAL_MS)
+
+    private fun limitWarning(elapsedMs: Long): String? = when {
+        elapsedMs >= TEN_SECOND_WARNING_AT_MS -> LIMIT_WARNING_TEN_SECONDS
+        elapsedMs >= THIRTY_SECOND_WARNING_AT_MS -> LIMIT_WARNING_THIRTY_SECONDS
+        else -> null
     }
 
     private fun startAsForeground(notification: Notification) {
@@ -282,11 +338,24 @@ class RecorderService : Service() {
     companion object {
         const val ACTION_START = "com.ksh321.songrecord.recorder.START"
         const val ACTION_STOP = "com.ksh321.songrecord.recorder.STOP"
+        const val EXTRA_STOP_REASON = "com.ksh321.songrecord.recorder.STOP_REASON"
+        const val STOP_REASON_APP_BUTTON = "app_button"
+        const val STOP_REASON_NOTIFICATION_BUTTON = "notification_button"
+        const val STOP_REASON_TIME_LIMIT = "time_limit"
+
+        private const val STOP_REASON_SERVICE_DESTROYED = "service_destroyed"
+        private const val LIMIT_WARNING_THIRTY_SECONDS = "thirty_seconds"
+        private const val LIMIT_WARNING_TEN_SECONDS = "ten_seconds"
         private const val CHANNEL_ID = "song_record_recording"
         private const val NOTIFICATION_ID = 2102
         private const val AUDIO_BIT_RATE = 96_000
         private const val AUDIO_SAMPLE_RATE = 48_000
         private const val AUDIO_CHANNELS = 1
+        private const val TICK_INTERVAL_MS = 1_000L
+        private const val THIRTY_SECOND_WARNING_AT_MS = 5L * 60L * 1_000L + 30_000L
+        private const val TEN_SECOND_WARNING_AT_MS = 5L * 60L * 1_000L + 50_000L
+        private const val MAX_DURATION_MS = 6L * 60L * 1_000L
+        private const val MAX_DURATION_SECONDS = MAX_DURATION_MS / 1_000L
 
         private val listeners = CopyOnWriteArraySet<(Map<String, Any?>) -> Unit>()
 

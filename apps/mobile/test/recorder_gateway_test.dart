@@ -34,6 +34,41 @@ void main() {
     expect(status.isRecording, isFalse);
   });
 
+  test('6분 제한 안내 상태와 남은 시간을 변환한다', () {
+    final thirtySecondWarning = RecorderStatus.fromMap(const {
+      'phase': 'recording',
+      'elapsedMs': 330000,
+      'remainingMs': 30000,
+      'limitWarning': 'thirty_seconds',
+    });
+    final tenSecondWarning = RecorderStatus.fromMap(const {
+      'phase': 'recording',
+      'elapsedMs': 350000,
+      'remainingMs': 10000,
+      'limitWarning': 'ten_seconds',
+    });
+
+    expect(
+      thirtySecondWarning.limitWarning,
+      RecorderLimitWarning.thirtySeconds,
+    );
+    expect(thirtySecondWarning.remainingMs, 30000);
+    expect(tenSecondWarning.limitWarning, RecorderLimitWarning.tenSeconds);
+    expect(tenSecondWarning.remainingMs, 10000);
+  });
+
+  test('6분 자동 종료 원인을 변환한다', () {
+    final status = RecorderStatus.fromMap(const {
+      'phase': 'completed',
+      'elapsedMs': 360000,
+      'stopReason': 'time_limit',
+    });
+
+    expect(status.phase, RecorderPhase.completed);
+    expect(status.stopReason, 'time_limit');
+    expect(status.isRecording, isFalse);
+  });
+
   test('알 수 없는 상태는 오류로 처리한다', () {
     final status = RecorderStatus.fromMap(const {'phase': 'unexpected'});
 

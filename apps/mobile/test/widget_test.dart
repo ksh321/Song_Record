@@ -103,6 +103,69 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('5분 30초와 5분 50초 종료 임박 안내를 표시한다', (tester) async {
+    final statuses = [
+      const RecorderStatus(
+        phase: RecorderPhase.recording,
+        elapsedMs: 330000,
+        remainingMs: 30000,
+        limitWarning: RecorderLimitWarning.thirtySeconds,
+      ),
+      const RecorderStatus(
+        phase: RecorderPhase.recording,
+        elapsedMs: 350000,
+        remainingMs: 10000,
+        limitWarning: RecorderLimitWarning.tenSeconds,
+      ),
+    ];
+
+    for (final status in statuses) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RecorderPanel(
+              gateway: _FakeRecorderGateway(status: status),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final seconds = status.remainingMs! ~/ 1000;
+      expect(
+        find.text('녹음 종료 임박: $seconds초 후 자동 종료됩니다.'),
+        findsOneWidget,
+      );
+    }
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('6분 제한 자동 종료 결과를 표시한다', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RecorderPanel(
+            gateway: const _FakeRecorderGateway(
+              status: RecorderStatus(
+                phase: RecorderPhase.completed,
+                elapsedMs: 360000,
+                stopReason: 'time_limit',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('상태: 파일 생성 완료'), findsOneWidget);
+    expect(find.text('경과 시간: 06:00'), findsOneWidget);
+    expect(find.text('6분 제한에 도달해 자동 종료되었습니다.'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 }
 
 class _FakeRecorderGateway implements RecorderGateway {
