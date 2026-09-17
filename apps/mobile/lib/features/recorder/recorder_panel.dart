@@ -12,36 +12,84 @@ class RecorderPanel extends StatefulWidget {
   State<RecorderPanel> createState() => _RecorderPanelState();
 }
 
-class _RecorderPanelState extends State<RecorderPanel> {
+class _RecorderPanelState extends State<RecorderPanel>
+    with WidgetsBindingObserver {
+  static const _statusPollInterval = Duration(seconds: 1);
+  static const _startGracePeriod = Duration(seconds: 5);
+
   RecorderStatus _status = const RecorderStatus.idle();
   RecorderPermissions? _permissions;
   StreamSubscription<RecorderStatus>? _subscription;
+  Timer? _statusPoller;
+  DateTime? _startGraceDeadline;
+  bool _statusRefreshInProgress = false;
   String? _operationError;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _subscription = widget.gateway.watchStatus().listen(
-      _applyStatus,
+      _handleStatus,
       onError: (Object error) => _showError(error.toString()),
     );
-    _restoreStatus();
+    _startStatusPolling();
+    unawaited(_refreshStatus(reportErrors: true));
   }
 
-  Future<void> _restoreStatus() async {
-    try {
-      _applyStatus(await widget.gateway.getCurrentStatus());
-    } on Object catch (error) {
-      _showError(error.toString());
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _startStatusPolling();
+      unawaited(_refreshStatus());
+      return;
     }
+
+    _statusPoller?.cancel();
+    _statusPoller = null;
+  }
+
+  void _startStatusPolling() {
+    _statusPoller?.cancel();
+    _statusPoller = Timer.periodic(_statusPollInterval, (_) {
+      unawaited(_refreshStatus());
+    });
+  }
+
+  Future<void> _refreshStatus({bool reportErrors = false}) async {
+    if (_statusRefreshInProgress) return;
+    _statusRefreshInProgress = true;
+
+    try {
+      _handleStatus(await widget.gateway.getCurrentStatus());
+    } on Object catch (error) {
+      if (reportErrors) {
+        _showError(error.toString());
+      }
+    } finally {
+      _statusRefreshInProgress = false;
+    }
+  }
+
+  void _handleStatus(RecorderStatus status) {
+    final deadline = _startGraceDeadline;
+    final isStaleIdle = status.phase == RecorderPhase.idle &&
+        deadline != null &&
+        DateTime.now().isBefore(deadline);
+
+    if (isStaleIdle) return;
+    _startGraceDeadline = null;
+    _applyStatus(status);
   }
 
   void _applyStatus(RecorderStatus status) {
     if (!mounted) return;
-    setState(() {
-      _status = status;
-      _operationError = null;
-    });
+    setState(() => _status = status);
+  }
+
+  void _clearOperationError() {
+    if (!mounted || _operationError == null) return;
+    setState(() => _operationError = null);
   }
 
   void _showError(String message) {
@@ -50,6 +98,8 @@ class _RecorderPanelState extends State<RecorderPanel> {
   }
 
   Future<void> _start() async {
+    _clearOperationError();
+
     try {
       final permissions = await widget.gateway.requestPermissions();
       if (!mounted) return;
@@ -59,21 +109,44 @@ class _RecorderPanelState extends State<RecorderPanel> {
         _showError('마이크 권한이 필요합니다. 권한을 허용한 뒤 다시 시도하세요.');
         return;
       }
+
+      _startGraceDeadline = DateTime.now().add(_startGracePeriod);
+      _applyStatus(const RecorderStatus(phase: RecorderPhase.starting));
       await widget.gateway.start();
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      await _refreshStatus(reportErrors: true);
     } on Object catch (error) {
+      _startGraceDeadline = null;
+      unawaited(_refreshStatus());
       _showError(error.toString());
     }
   }
 
   Future<void> _stop() async {
+    _clearOperationError();
+    _startGraceDeadline = null;
+    _applyStatus(
+      RecorderStatus(
+        phase: RecorderPhase.stopping,
+        recordingId: _status.recordingId,
+        outputPath: _status.outputPath,
+        elapsedMs: _status.elapsedMs,
+      ),
+    );
+
     try {
       await widget.gateway.stop();
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      await _refreshStatus(reportErrors: true);
     } on Object catch (error) {
+      unawaited(_refreshStatus());
       _showError(error.toString());
     }
   }
 
   Future<void> _playLatest() async {
+    _clearOperationError();
+
     try {
       await widget.gateway.playLatest();
     } on Object catch (error) {
@@ -83,6 +156,8 @@ class _RecorderPanelState extends State<RecorderPanel> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _statusPoller?.cancel();
     _subscription?.cancel();
     super.dispose();
   }
