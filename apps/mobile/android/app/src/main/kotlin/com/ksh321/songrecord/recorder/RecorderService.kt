@@ -205,13 +205,14 @@ class RecorderService : Service() {
         val channel = NotificationChannel(
             CHANNEL_ID,
             "녹음 진행",
-            NotificationManager.IMPORTANCE_LOW,
+            NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
-            description = "잠금 상태에서도 진행되는 녹음 상태"
+            description = "잠금 화면에서도 녹음 상태와 종료 버튼을 표시합니다."
             setSound(null, null)
             enableVibration(false)
             enableLights(false)
             setShowBadge(false)
+            lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
@@ -239,6 +240,12 @@ class RecorderService : Service() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_SERVICE)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setPriority(Notification.PRIORITY_DEFAULT)
+            .setShowWhen(true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             @Suppress("DEPRECATION")
             builder.setDefaults(0).setSound(null).setVibrate(longArrayOf())
@@ -343,7 +350,9 @@ class RecorderService : Service() {
         private const val STOP_REASON_SERVICE_DESTROYED = "service_destroyed"
         private const val LIMIT_WARNING_THIRTY_SECONDS = "thirty_seconds"
         private const val LIMIT_WARNING_TEN_SECONDS = "ten_seconds"
-        private const val CHANNEL_ID = "song_record_recording"
+        // Android keeps a channel's original importance and lock-screen settings.
+        // A new ID applies the lock-screen-visible defaults to existing installs too.
+        private const val CHANNEL_ID = "song_record_recording_lockscreen_v2"
         private const val NOTIFICATION_ID = 2102
         private const val AUDIO_BIT_RATE = 96_000
         private const val AUDIO_SAMPLE_RATE = 48_000
