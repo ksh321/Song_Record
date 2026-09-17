@@ -1,6 +1,6 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 2.6
+- 기록 버전: 2.7
 - 작성일: 2026-09-17
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
@@ -9,7 +9,7 @@
 
 ## 1. 현재 상태
 
-P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. P01-04용 MySQL 8.4.11 digest 고정 Compose와 Spring dev 프로필을 반영하고 로컬 연결·영속성 검증까지 완료했다. P01-05 Flyway 최초 마이그레이션과 스키마 검증 설정을 반영하고 로컬 첫 기동·재기동을 모두 확인했다. P01-06 Flutter health 호출 화면과 실제 기기 USB 주소 연결을 구현했으며 실기 검증을 기다린다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
+P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. P01-04용 MySQL 8.4.11 digest 고정 Compose와 Spring dev 프로필을 반영하고 로컬 연결·영속성 검증까지 완료했다. P01-05 Flyway 최초 마이그레이션과 스키마 검증 설정을 반영하고 로컬 첫 기동·재기동을 모두 확인했다. P01-06 Flutter health 호출 화면과 실제 기기 USB 주소 연결을 구현하고 SM A546S 실기 검증을 완료했다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
 
 | 작업 | 상태                    | 확인 내용 | 남은 확인 |
 |---|-----------------------|---|---|
@@ -24,7 +24,7 @@ P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현
 | P01-01 저장소 구조 만들기 | 완료 | apps/mobile·services/api·infra·README·설정 예시·Git 제외 규칙 | 없음. 프로젝트 생성·실행은 후속 작업 |
 | P01-02 Flutter 프로젝트 생성 | 완료 | Flutter 3.47.4/Dart 3.13.3, Android dev/staging/prod flavor, 앱 ID·초기 라우트·분석 규칙·lockfile 반영 | 없음. 서버 작업은 P01-03에서 별도 추적 |
 | P01-03 Spring Boot 프로젝트 생성 | 완료 | Boot 4.1.1·Java 21·Gradle 9.7.1, 필수 의존성, bootstrap 프로필, clean test·Tomcat 8080 기동 성공 | DB 연결은 P01-04, Flyway 실행은 P01-05. 로컬 생성 gradle.lockfile은 원격 추적 필요 |
-| P01-04 MySQL 개발 DB 준비 | 완료 | MySQL 8.4.11 digest 고정, 컨테이너 healthy, Spring dev/Hikari 연결, 재시작 후 `id = 1` 유지 및 확인용 테이블 제거 | 없음. Flyway는 P01-05에서 추적 |\n| P01-05 스키마 버전 관리 연결 | 완료 | Flyway V1 적용, 재기동 시 기존 이력·체크섬 검증, Hibernate validate, 서버 정상 기동 확인 | 없음 |\n| P01-06 헬스 조회 연결 | 검증 대기 | Flutter health 화면·실패/재시도, 공개 health 경로, debug HTTP, 에뮬레이터·실기 주소 문서화 | SM A546S에서 Spring Boot `UP` 응답 표시 확인 |
+| P01-04 MySQL 개발 DB 준비 | 완료 | MySQL 8.4.11 digest 고정, 컨테이너 healthy, Spring dev/Hikari 연결, 재시작 후 `id = 1` 유지 및 확인용 테이블 제거 | 없음. Flyway는 P01-05에서 추적 |\n| P01-05 스키마 버전 관리 연결 | 완료 | Flyway V1 적용, 재기동 시 기존 이력·체크섬 검증, Hibernate validate, 서버 정상 기동 확인 | 없음 |\n| P01-06 헬스 조회 연결 | 완료 | SM A546S에서 USB `adb reverse`를 통해 Spring Boot health 호출 및 `UP` 표시 확인 | 없음 |
 
 “수행 기록 없음”은 사용자가 별도로 수행한 작업까지 없었다고 단정하는 상태가 아니다. 증거를 확인하면 갱신한다.
 
@@ -298,3 +298,14 @@ P01-06 헬스 조회 연결을 구현하고 실제 기기 검증 대기로 전�
 - 주소 계약: 에뮬레이터 `10.0.2.2`, 실제 기기 USB `adb reverse` + `127.0.0.1`, 같은 Wi-Fi에서는 PC IPv4.
 - 위젯 성공·실패 상태 테스트를 추가했다.
 - 남은 완료 조건: 사용자 SM A546S에서 Spring Boot health 응답 `UP` 표시 확인.
+
+
+### 2.7 — 2026-09-17
+
+P01-06 헬스 조회 연결 완료.
+
+- 실제 기기 Samsung SM A546S에서 dev debug 앱 설치와 실행을 확인했다.
+- USB ADB 연결과 `adb reverse tcp:8080 tcp:8080`을 사용해 휴대폰 요청을 PC의 Spring Boot 8080 포트로 전달했다.
+- Flutter 화면에서 Spring Boot health 응답 `UP` 표시를 확인했다.
+- 앱이 MySQL에 직접 접속하지 않고 Spring Boot API만 호출한다는 완료 조건을 충족했다.
+- 기존 설치 앱과 새 APK의 서명 불일치는 개발 앱 제거·재설치로 해결했다. 이는 개발 APK 교체 과정이며 서버 연결 실패가 아니다.

@@ -104,3 +104,8 @@ dev 기본 주소가 이미 `10.0.2.2:8080`이므로 별도 주소 없이 실행
 ```powershell
 flutter run --flavor dev --dart-define=APP_ENV=dev
 ```
+
+
+### P01-06 실제 기기 검증 결과
+
+2026-09-17 Samsung SM A546S에서 dev debug 앱을 실행하고 USB `adb reverse`로 PC의 Spring Boot에 연결했다. 앱 화면에서 health 상태 `UP`을 확인했다. 기존 개발 APK와 새 APK의 서명이 달라 최초 설치가 거부됐으나 기존 dev 패키지를 제거한 뒤 재설치해 해결했다.

@@ -153,3 +153,8 @@ SELECT * FROM app_schema_metadata;
 Flutter 개발 앱이 인증 정보 없이 상태를 확인할 수 있도록 `GET /actuator/health`만 공개했다. 그 밖의 요청은 현재 보안 설정에서 거부한다. health 응답의 상세 정보는 계속 숨기며, 기본 응답은 `{"status":"UP"}`이다.
 
 실제 Android 앱은 MySQL에 직접 연결하지 않는다. 연결 순서는 `Flutter → Spring Boot /actuator/health → Spring Boot 상태 검사`다. 휴대폰 연결과 주소별 실행 방법은 [모바일 README](../../apps/mobile/README.md)를 따른다.
+
+
+### P01-06 실제 호출 결과
+
+2026-09-17 SM A546S의 Flutter dev 앱이 USB `adb reverse`를 통해 `GET /actuator/health`를 호출하고 `UP` 응답을 표시했다. 앱에는 MySQL 접속 정보가 없으며 서버 API만 호출하는 구조를 확인했다.
