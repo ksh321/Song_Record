@@ -378,3 +378,4 @@ P02-01~03 Android 녹음 시제품을 구현하고 CI·실제 기기 확인 대�
 - CI가 Flutter 분석·테스트뿐 아니라 dev debug APK도 빌드해 Kotlin·Manifest 연결을 검사하도록 확장했다.
 - 이번 범위에는 5분 30초·5분 50초 경고와 6분 자동 종료가 포함되지 않는다. 이는 P02-04 이후 작업이다.
 - 남은 완료 조건: GitHub Actions 성공, SM A546S에서 권한 거절·재허용, 녹음·파일 형식·재생·화면 재구독 확인.
+- GitHub Actions [실행 #6](https://github.com/ksh321/Song_Record/actions/runs/35198869345)에서 Flutter analyze·8개 테스트·dev APK 빌드, Spring Boot, MySQL 작업이 모두 성공했다. 실제 기기 확인은 계속 대기한다.
