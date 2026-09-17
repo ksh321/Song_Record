@@ -99,8 +99,8 @@ Flutter 개발 화면에서 Spring Boot `/actuator/health`를 호출해 상태�
 Spring Boot에 요청 ID, 공통 오류 JSON, 환경별 로그 수준과 민감정보 마스킹 테스트를 추가했다. Flutter는 공통 오류를 파싱해 오류 코드와 요청 ID를 표시한다. Windows 11에서 서버 `clean test`, Flutter `analyze/test`, dev 오류 응답과 동일 요청 ID의 서버 로그를 확인했다. Spring Security 자동 생성 비밀번호도 로그에 남지 않도록 제거해 완료했다.
 
 
-## P01-08 최소 자동 검증 — 구현 완료·CI 확인 대기
+## P01-08 최소 자동 검증 — 완료
 
-GitHub Actions가 새 Ubuntu 환경에서 Flutter 분석·테스트, Spring Boot 빌드·테스트, MySQL Compose 기동과 실제 쿼리를 각각 실행한다. 외부 Action, Flutter, Java, Gradle, MySQL 버전은 저장소 계약에 맞춰 고정했다. 세 작업이 GitHub에서 모두 성공하면 P01-08을 완료한다.
+GitHub Actions가 새 Ubuntu 환경에서 Flutter 분석·테스트, Spring Boot 빌드·테스트, MySQL Compose 기동과 실제 쿼리를 각각 실행한다. 외부 Action, Flutter, Java, Gradle, MySQL 버전은 저장소 계약에 맞춰 고정했다. GitHub Actions 실행 #2에서 세 작업이 모두 성공해 P01-08을 완료했다.
 
 자세한 검사 항목과 새 체크아웃 순서는 [P01-08 검증 문서](docs/verification/P01-08-ci.md)를 따른다.

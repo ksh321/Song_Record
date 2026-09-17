@@ -1,6 +1,6 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 3.0
+- 기록 버전: 3.1
 - 작성일: 2026-09-17
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
@@ -9,7 +9,7 @@
 
 ## 1. 현재 상태
 
-P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. P01-04용 MySQL 8.4.11 digest 고정 Compose와 Spring dev 프로필을 반영하고 로컬 연결·영속성 검증까지 완료했다. P01-05 Flyway 최초 마이그레이션과 스키마 검증 설정을 반영하고 로컬 첫 기동·재기동을 모두 확인했다. P01-06 Flutter health 호출 화면과 실제 기기 USB 주소 연결을 구현하고 SM A546S 실기 검증을 완료했다. P01-07 요청 ID·공통 오류 응답·안전한 로그·Flutter 오류 파서를 구현하고 서버와 Flutter 테스트 및 실제 오류 추적 검증을 완료했다. P01-08 GitHub Actions 최소 자동 검증을 구현했으며 원격 CI 결과 확인을 기다린다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
+P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. P01-04용 MySQL 8.4.11 digest 고정 Compose와 Spring dev 프로필을 반영하고 로컬 연결·영속성 검증까지 완료했다. P01-05 Flyway 최초 마이그레이션과 스키마 검증 설정을 반영하고 로컬 첫 기동·재기동을 모두 확인했다. P01-06 Flutter health 호출 화면과 실제 기기 USB 주소 연결을 구현하고 SM A546S 실기 검증을 완료했다. P01-07 요청 ID·공통 오류 응답·안전한 로그·Flutter 오류 파서를 구현하고 서버와 Flutter 테스트 및 실제 오류 추적 검증을 완료했다. P01-08 GitHub Actions 최소 자동 검증을 구현하고 Flutter·Spring Boot·MySQL 세 작업의 원격 CI 성공을 확인했다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
 
 | 작업 | 상태                    | 확인 내용 | 남은 확인 |
 |---|-----------------------|---|---|
@@ -27,7 +27,7 @@ P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현
 | P01-04 MySQL 개발 DB 준비 | 완료 | MySQL 8.4.11 digest 고정, 컨테이너 healthy, Spring dev/Hikari 연결, 재시작 후 `id = 1` 유지 및 확인용 테이블 제거 | 없음. Flyway는 P01-05에서 추적 |
 | P01-05 스키마 버전 관리 연결 | 완료 | Flyway V1 적용, 재기동 시 기존 이력·체크섬 검증, Hibernate validate, 서버 정상 기동 확인 | 없음 |
 | P01-06 헬스 조회 연결 | 완료 | SM A546S에서 USB `adb reverse`를 통해 Spring Boot health 호출 및 `UP` 표시 확인 | 없음 |
-| P01-07 기본 오류와 로그 구성 | 완료 | 서버 `clean test`, Flutter `analyze/test`, HTTP 400 공통 오류 응답, 헤더·본문·로그의 `p0107-test-001` 일치, 자동 생성 비밀번호 로그 제거 확인 | 없음 |\n| P01-08 최소 자동 검증 구성 | CI 확인 대기 | Flutter analyze/test, Spring clean build, MySQL Compose·SELECT 1 워크플로 구성 | GitHub Actions의 세 작업 성공 확인 |
+| P01-07 기본 오류와 로그 구성 | 완료 | 서버 `clean test`, Flutter `analyze/test`, HTTP 400 공통 오류 응답, 헤더·본문·로그의 `p0107-test-001` 일치, 자동 생성 비밀번호 로그 제거 확인 | 없음 |\n| P01-08 최소 자동 검증 구성 | 완료 | GitHub Actions 실행 #2에서 Flutter analyze/test, Spring clean build, MySQL Compose·SELECT 1 모두 성공 | 없음 |
 
 “수행 기록 없음”은 사용자가 별도로 수행한 작업까지 없었다고 단정하는 상태가 아니다. 증거를 확인하면 갱신한다.
 
@@ -353,3 +353,15 @@ P01-08 최소 자동 검증을 구현하고 원격 CI 확인 대기로 전환했
 - 외부 Action은 조회한 커밋 SHA로 고정하고 워크플로 권한은 저장소 읽기로 제한했다.
 - 자세한 재현 순서와 성공 기준은 [P01-08 검증 문서](verification/P01-08-ci.md)에 기록했다.
 - 남은 완료 조건: GitHub Actions에서 Flutter, Spring Boot, MySQL 세 작업이 모두 성공해야 한다.
+
+
+### 3.1 — 2026-09-17
+
+P01-08 최소 자동 검증 완료.
+
+- GitHub Actions 실행 [#2](https://github.com/ksh321/Song_Record/actions/runs/35195006942)에서 세 독립 작업이 모두 성공했다.
+- Flutter: 3.47.4 설치, lockfile 기반 의존성 해결, 정적 분석, 테스트 성공.
+- Spring Boot: Temurin Java 21과 Gradle Wrapper 9.7.1로 clean build 성공.
+- MySQL: digest 고정 8.4.11 이미지의 Compose 기동과 실제 SELECT 1 성공.
+- 첫 실행에서는 MySQL 초기화 중 임시 서버가 healthcheck에 먼저 응답해 검증 쿼리가 너무 일찍 실행됐다. 실제 사용자 DB가 쿼리를 받을 때까지 제한 시간 안에서 재시도하도록 수정했다.
+- 완료 판정: 새 GitHub Ubuntu 환경에서 앱·서버·DB 기본 구성을 자동으로 재현하고 검사한다는 P01-08 완료 조건을 충족했다.

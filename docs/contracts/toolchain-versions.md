@@ -1,8 +1,8 @@
 # 구현 기술 버전 기준 및 고정 대상
-- 문서 버전: 1.8
+- 문서 버전: 1.9
 - 확인일: 2026-09-17
 - 결정: [D01 A안](../decisions/D01-implementation-stack.md)
-- 상태: 기술 기준 확정 / P01-02~P01-07 완료 / P01-08 CI 확인 대기
+- 상태: 기술 기준 확정 / P01-02~P01-08 완료
 
 ## 초기 버전 기준
 아래 값은 프로젝트 생성 시 사용할 기준이다. 빌드 성공을 증명하는 lockfile은 아니다.
@@ -116,3 +116,12 @@
 | 워크플로 권한 | `contents: read` |
 
 CI도 로컬과 같은 Flutter 3.47.4, Java 21, Gradle Wrapper 9.7.1, digest 고정 MySQL 8.4.11을 사용한다. Action 태그가 나중에 이동해도 동일 코드를 실행하도록 전체 커밋 SHA를 기록한다.
+
+
+## P01-08 CI 검증 결과
+
+- 검증일: 2026-09-17.
+- 커밋: `8168aba2da7e39e7d08eee71fb7155ed6f9359fc`.
+- GitHub Actions 실행: [CI #2](https://github.com/ksh321/Song_Record/actions/runs/35195006942).
+- 결과: Flutter analyze/test, Spring Boot clean build, MySQL Compose 및 SELECT 1 모두 성공.
+- MySQL 초기화 구간에서는 임시 서버의 health 응답과 실제 사용자 DB 준비 시점이 다를 수 있어, 검증 쿼리를 최대 60초 동안 재시도한다.
