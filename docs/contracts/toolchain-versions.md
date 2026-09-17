@@ -1,8 +1,8 @@
 # 구현 기술 버전 기준 및 고정 대상
-- 문서 버전: 1.5
+- 문서 버전: 1.6
 - 확인일: 2026-09-17
 - 결정: [D01 A안](../decisions/D01-implementation-stack.md)
-- 상태: 기술 기준 확정 / P01-02 완료 / P01-03 완료 / P01-04 MySQL 구성 완료·로컬 검증 대기
+- 상태: 기술 기준 확정 / P01-02 완료 / P01-03 완료 / P01-04 MySQL 연결·영속성 검증 완료
 
 ## 초기 버전 기준
 아래 값은 프로젝트 생성 시 사용할 기준이다. 빌드 성공을 증명하는 lockfile은 아니다.
@@ -38,7 +38,7 @@
 - [ ] 서버 Java 로컬 배포판·패치는 Temurin 21.0.12.1+1로 확인. CI/컨테이너 이미지 digest는 미정
 - [ ] 서버 Boot 플러그인/BOM 4.1.1과 Wrapper 9.7.1 파일 커밋. Wrapper 배포 체크섬은 미기록
 - [ ] 서버 의존성 잠금은 활성화했고 로컬 gradle.lockfile 생성을 확인. 원격 파일 추적·검증 메타데이터와 실제 JPA/JDBC/Flyway 버전 기록은 남음
-- [ ] Flyway MySQL 지원 모듈 포함 여부 확인, 실제 MySQL 연결·마이그레이션 검증
+- [ ] Flyway MySQL 지원 모듈은 포함됨. 실제 MySQL 연결은 P01-04 완료, 초기 마이그레이션 검증은 P01-05에서 수행
 - [x] MySQL 8.4.11 공식 이미지를 `sha256:85b9bf2e29cf836ecb8c2a15a935d4ba0c606631dff1dd79531a11983c638f2a`로 고정 (8.4.12는 조회 시 미제공, latest 금지)
 - [ ] 생성한 lock/Wrapper로 깨끗한 환경에서 재빌드 후 명령·결과·커밋 기록
 
@@ -81,5 +81,14 @@
 - 계획 기준 8.4.12 태그는 공식 Docker 이미지에서 조회되지 않아 사용할 수 없었다.
 - 같은 8.4 LTS 계열의 8.4.11을 조회하고 사용자 환경에서 확인한 repo digest를 Compose에 고정했다.
 - 태그만 쓰지 않고 digest까지 지정하므로 같은 설정에서 다른 이미지가 내려오는 일을 막는다.
-- Compose·Spring `dev` 프로필 구성은 완료했지만, 컨테이너 `healthy`·서버 연결·재시작 후 데이터 유지 확인 전까지 P01-04 상태는 검증 대기다.
+- Compose·Spring `dev` 프로필에서 컨테이너 `healthy`, Hikari 연결, 서버 기동, 재시작 후 데이터 유지를 Windows 11에서 확인했다.
 - Flyway 실행과 초기 스키마는 P01-05에서 다룬다.
+
+
+## P01-04 실제 검증 기록
+
+- 환경: Windows 11, Docker Desktop, MySQL 8.4.11, Spring Boot 4.1.1, Java 21.
+- 컨테이너 상태: `healthy`.
+- 서버 연결: `dev` 프로필, Hikari 연결 풀 시작, `Started ApiApplication` 확인.
+- 영속성: 확인용 테이블에 `id = 1`을 저장하고 MySQL 재시작 후 동일 행 조회, 이후 테이블 제거.
+- 해결 기록: 최초 Spring 실행의 MySQL 1045 오류는 `DB_PASSWORD`와 컨테이너 `MYSQL_PASSWORD` 불일치가 원인이었으며 동일 값으로 맞춰 해결.

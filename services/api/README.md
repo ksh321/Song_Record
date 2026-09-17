@@ -79,3 +79,18 @@ Spring Boot 4.1.1은 Gradle 8.14 이상과 Gradle 9.x를 지원한다. Initializ
 `dev` 프로필은 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` 환경변수로 MySQL에 연결한다. 기본값은 로컬 호스트·3306·`song_record`이며 비밀번호에는 기본값이 없다.
 
 Hibernate의 `ddl-auto`는 `none`으로 고정해 자동 스키마 변경을 막았다. Flyway는 P01-05 전까지 비활성화했다. MySQL 실행·연결·영속성 검증 명령은 [infra README](../../infra/README.md)를 따른다.
+
+
+## P01-04 검증 결과
+
+2026-09-17 Windows 11에서 MySQL 8.4.11 컨테이너가 `healthy`인 상태로 `dev` 프로필을 실행했다.
+
+| 검증 | 결과 |
+|---|---|
+| 활성 프로필 | `dev` |
+| 연결 풀 | `HikariPool-1 - Start completed` |
+| 서버 | `Started ApiApplication` |
+| 데이터 영속성 | MySQL 재시작 후 확인 행 `id = 1` 유지 |
+| 정리 | 확인용 테이블 제거 |
+
+최초 시도에서는 Spring의 `DB_PASSWORD`가 컨테이너의 `MYSQL_PASSWORD`와 달라 MySQL 1045 인증 오류가 발생했다. 두 값을 일치시켜 해결했다. 비밀번호 값 자체는 저장소와 로그에 기록하지 않는다.

@@ -79,6 +79,6 @@ P00-05 완료: 추천 조합을 D02~D04로 확정했다. 정렬·날짜·기기 
 Java 21, Spring Boot 4.1.1, Gradle Wrapper 9.7.1과 필수 서버 의존성을 반영했다. MySQL 설치 전 골격 검증용 `bootstrap` 프로필에서 `clean test`와 Tomcat 8080 서버 기동을 확인했다. 실행 방법과 검증 범위는 [서버 README](services/api/README.md)를 따른다.
 
 
-## P01-04 MySQL 개발 DB — 검증 대기
+## P01-04 MySQL 개발 DB — 완료
 
-MySQL 8.4.11 이미지를 SHA-256 digest로 고정하고, 로컬 전용 포트·utf8mb4·UTC·named volume·healthcheck를 설정했다. Spring Boot `dev` 프로필은 환경변수로만 비밀번호를 받아 DB에 연결하고 자동 스키마 변경과 Flyway 실행을 막는다. [실행 및 영속성 확인 절차](infra/README.md)를 통과하면 완료로 변경한다.
+MySQL 8.4.11 이미지를 SHA-256 digest로 고정하고, 로컬 전용 포트·utf8mb4·UTC·named volume·healthcheck를 설정했다. Spring Boot `dev` 프로필의 Hikari 연결과 MySQL 재시작 후 데이터 유지까지 Windows 11에서 확인했다. 자동 스키마 변경과 Flyway 실행은 막아 두었으며 Flyway 초기 마이그레이션은 P01-05에서 진행한다.

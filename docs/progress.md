@@ -1,6 +1,6 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 2.2
+- 기록 버전: 2.3
 - 작성일: 2026-09-17
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
@@ -9,7 +9,7 @@
 
 ## 1. 현재 상태
 
-P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. P01-04용 MySQL 8.4.11 digest 고정 Compose와 Spring dev 프로필을 반영했으며 로컬 연결·영속성 검증을 기다린다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
+P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. P01-04용 MySQL 8.4.11 digest 고정 Compose와 Spring dev 프로필을 반영하고 로컬 연결·영속성 검증까지 완료했다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
 
 | 작업 | 상태                    | 확인 내용 | 남은 확인 |
 |---|-----------------------|---|---|
@@ -24,7 +24,7 @@ P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현
 | P01-01 저장소 구조 만들기 | 완료 | apps/mobile·services/api·infra·README·설정 예시·Git 제외 규칙 | 없음. 프로젝트 생성·실행은 후속 작업 |
 | P01-02 Flutter 프로젝트 생성 | 완료 | Flutter 3.47.4/Dart 3.13.3, Android dev/staging/prod flavor, 앱 ID·초기 라우트·분석 규칙·lockfile 반영 | 없음. 서버 작업은 P01-03에서 별도 추적 |
 | P01-03 Spring Boot 프로젝트 생성 | 완료 | Boot 4.1.1·Java 21·Gradle 9.7.1, 필수 의존성, bootstrap 프로필, clean test·Tomcat 8080 기동 성공 | DB 연결은 P01-04, Flyway 실행은 P01-05. 로컬 생성 gradle.lockfile은 원격 추적 필요 |
-| P01-04 MySQL 개발 DB 준비 | 검증 대기 | MySQL 8.4.11 digest 고정, Compose의 로컬 포트·utf8mb4·UTC·named volume·healthcheck, Spring dev 프로필 구성 | 컨테이너 healthy, 서버 dev 기동, 재시작 후 데이터 유지 확인 |
+| P01-04 MySQL 개발 DB 준비 | 완료 | MySQL 8.4.11 digest 고정, 컨테이너 healthy, Spring dev/Hikari 연결, 재시작 후 `id = 1` 유지 및 확인용 테이블 제거 | Flyway 초기 마이그레이션은 P01-05 |
 
 “수행 기록 없음”은 사용자가 별도로 수행한 작업까지 없었다고 단정하는 상태가 아니다. 증거를 확인하면 갱신한다.
 
@@ -249,3 +249,16 @@ P01-04 MySQL 개발 DB 구성을 반영하고 로컬 검증 대기로 전환했�
 - Spring `dev` 프로필은 DB 비밀번호를 런타임 환경변수로만 받고 Hibernate 자동 스키마 변경을 막는다.
 - Flyway는 P01-05에서 초기 마이그레이션을 추가할 때까지 비활성화했다.
 - 남은 완료 조건: MySQL `healthy`, Spring Boot dev 프로필 연결 성공, MySQL 재시작 후 확인 데이터 유지.
+
+
+### 2.3 — 2026-09-17
+
+P01-04 MySQL 개발 DB 준비 완료.
+
+- Windows 11·Docker Desktop에서 digest가 고정된 MySQL 8.4.11 컨테이너의 `healthy` 상태를 확인했다.
+- Spring Boot `dev` 프로필에서 Hikari 연결 풀 시작과 `Started ApiApplication` 로그를 확인했다.
+- 확인용 테이블에 `id = 1`을 저장한 뒤 MySQL 컨테이너를 재시작하고 동일 데이터를 조회해 named volume 영속성을 확인했다.
+- 검증 후 확인용 테이블을 제거했다.
+- 최초 Spring 연결의 MySQL 1045 오류는 수동 입력한 `DB_PASSWORD` 불일치가 원인이었다. 컨테이너의 `MYSQL_PASSWORD`와 동일하게 맞춰 해결했으며 비밀번호 값은 기록하지 않았다.
+- Hibernate Dialect 오류는 인증 실패로 메타데이터를 읽지 못해 발생한 2차 오류였다.
+- P01-04 완료 범위는 개발 DB 실행·서버 연결·데이터 유지다. Flyway 초기 스키마와 마이그레이션 검증은 P01-05에서 수행한다.

@@ -61,19 +61,49 @@ Spring Boot는 `infra/.env`를 자동으로 읽지 않는다. Compose는 `.env`�
 
 ## 4. 재시작 후 데이터 유지 확인
 
-아래 명령의 `-p` 뒤에는 비밀번호를 쓰지 않는다. 프롬프트가 뜨면 `MYSQL_PASSWORD` 값을 입력한다.
+PowerShell의 중첩 따옴표 문제를 피하기 위해 MySQL 대화형 콘솔에서 확인한다.
 
 ```powershell
-docker compose exec mysql mysql -usong_record -p song_record -e "CREATE TABLE IF NOT EXISTS p01_04_persistence_check (id INT PRIMARY KEY); INSERT IGNORE INTO p01_04_persistence_check VALUES (1);"
-docker compose restart mysql
-docker compose exec mysql mysql -usong_record -p song_record -e "SELECT * FROM p01_04_persistence_check;"
-docker compose exec mysql mysql -usong_record -p song_record -e "DROP TABLE p01_04_persistence_check;"
+docker compose exec mysql mysql -u song_record -p song_record
 ```
 
-재시작 뒤 조회 결과에 `1`이 보이면 named volume의 영속성 검증이 끝난다. 마지막 명령은 P01-04 확인용 임시 테이블을 제거한다.
+`.env`의 `MYSQL_PASSWORD`를 입력한 뒤 다음 SQL을 실행한다.
+
+```sql
+CREATE TABLE p01_04_persistence_check (id INT PRIMARY KEY);
+INSERT INTO p01_04_persistence_check (id) VALUES (1);
+SELECT * FROM p01_04_persistence_check;
+exit;
+```
+
+컨테이너를 재시작하고 `healthy`를 확인한다.
+
+```powershell
+docker compose restart mysql
+Start-Sleep -Seconds 30
+docker compose ps
+docker compose exec mysql mysql -u song_record -p song_record
+```
+
+다시 접속한 콘솔에서 다음을 실행한다.
+
+```sql
+SELECT * FROM p01_04_persistence_check;
+DROP TABLE p01_04_persistence_check;
+exit;
+```
+
+재시작 뒤에도 조회 결과에 `id = 1`이 보이면 named volume의 영속성 검증이 끝난다. 마지막 명령은 확인용 임시 테이블을 제거한다.
 
 ## 종료와 주의사항
 
 데이터를 보존한 채 멈출 때는 `docker compose stop`, 다시 켤 때는 `docker compose up -d`를 사용한다. `docker compose down -v`는 named volume과 DB 데이터를 삭제하므로 초기화가 정말 필요할 때만 사용한다.
 
 P01-04에서는 연결과 영속성까지만 확인한다. Flyway 초기 마이그레이션과 Hibernate 스키마 검증은 P01-05에서 구성한다.
+
+
+## P01-04 실제 검증 결과
+
+2026-09-17 Windows 11·Docker Desktop 환경에서 MySQL 컨테이너 `healthy`, Spring Boot `dev` 프로필의 Hikari 연결, MySQL 재시작 후 확인 데이터 유지와 임시 테이블 제거를 확인했다.
+
+최초 연결에서는 수동으로 입력한 `DB_PASSWORD` 불일치로 MySQL 1045 오류가 발생했다. 컨테이너에 적용된 `MYSQL_PASSWORD`와 동일한 값을 Spring의 `DB_PASSWORD`로 설정해 해결했다. Hibernate Dialect 오류는 인증 실패로 DB 메타데이터를 읽지 못해 따라온 2차 오류였다.
