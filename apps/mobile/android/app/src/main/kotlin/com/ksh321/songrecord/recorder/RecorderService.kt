@@ -205,7 +205,7 @@ class RecorderService : Service() {
         val channel = NotificationChannel(
             CHANNEL_ID,
             "녹음 진행",
-            NotificationManager.IMPORTANCE_DEFAULT,
+            NotificationManager.IMPORTANCE_HIGH,
         ).apply {
             description = "잠금 화면에서도 녹음 상태와 종료 버튼을 표시합니다."
             setSound(null, null)
@@ -241,7 +241,7 @@ class RecorderService : Service() {
             .setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_SERVICE)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .setPriority(Notification.PRIORITY_DEFAULT)
+            .setPriority(Notification.PRIORITY_HIGH)
             .setShowWhen(true)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
@@ -252,6 +252,10 @@ class RecorderService : Service() {
         }
         if (includeStop) {
             builder.addAction(Notification.Action.Builder(0, "녹음 종료", stopPendingIntent).build())
+            builder.setStyle(
+                Notification.MediaStyle()
+                    .setShowActionsInCompactView(0),
+            )
         }
         return builder.build()
     }
@@ -352,7 +356,7 @@ class RecorderService : Service() {
         private const val LIMIT_WARNING_TEN_SECONDS = "ten_seconds"
         // Android keeps a channel's original importance and lock-screen settings.
         // A new ID applies the lock-screen-visible defaults to existing installs too.
-        private const val CHANNEL_ID = "song_record_recording_lockscreen_v2"
+        private const val CHANNEL_ID = "song_record_recording_lockscreen_v3"
         private const val NOTIFICATION_ID = 2102
         private const val AUDIO_BIT_RATE = 96_000
         private const val AUDIO_SAMPLE_RATE = 48_000
