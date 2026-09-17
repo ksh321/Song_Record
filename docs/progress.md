@@ -1,7 +1,7 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 1.9
-- 작성일: 2026-09-16
+- 기록 버전: 2.0
+- 작성일: 2026-09-17
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
 - 권장 위치: `docs/progress.md`
@@ -9,7 +9,7 @@
 
 ## 1. 현재 상태
 
-P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. 서버 실행과 녹음 기능 실기 테스트는 아직 수행하지 않았다.
+P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. 서버 실제 기동 검증과 녹음 기능 실기 테스트는 아직 수행하지 않았다.
 
 | 작업 | 상태                    | 확인 내용 | 남은 확인 |
 |---|-----------------------|---|---|
@@ -22,7 +22,8 @@ P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현
 | P00-07 스냅샷과 백업 계약 | 완료 | D09~D11 추천 A안 승인·만료/재개/인증/완료 표시·공통 사례 반영 | 구현 검증은 P07·P10·P21·P22·P23·P24, fixture 통합은 P00-08 |
 | P00-08 공통 검증 데이터 작성 | 완료(산출물) | JSON 169사례·합성 파일 3개·참조 대조 31건 | 앱/서버 로더 P01/P03, 통합 명세 138건 후속 실행 |
 | P01-01 저장소 구조 만들기 | 완료 | apps/mobile·services/api·infra·README·설정 예시·Git 제외 규칙 | 없음. 프로젝트 생성·실행은 후속 작업 |
-| P01-02 Flutter 프로젝트 생성 | 완료 | Flutter 3.47.4/Dart 3.13.3, Android dev/staging/prod flavor, 앱 ID·초기 라우트·분석 규칙·lockfile 반영 | P01-03 서버 프로젝트 생성 |
+| P01-02 Flutter 프로젝트 생성 | 완료 | Flutter 3.47.4/Dart 3.13.3, Android dev/staging/prod flavor, 앱 ID·초기 라우트·분석 규칙·lockfile 반영 | 없음. 서버 작업은 P01-03에서 별도 추적 |
+| P01-03 Spring Boot 프로젝트 생성 | 검증 대기 | Boot 4.1.1·Java Toolchain 21·Gradle Wrapper 9.7.1, 필수 의존성, bootstrap 프로필, 테스트 프로필·의존성 잠금 설정 반영 | pull 후 gradle.lockfile 생성, clean test·bootRun 실제 성공 확인 |
 
 “수행 기록 없음”은 사용자가 별도로 수행한 작업까지 없었다고 단정하는 상태가 아니다. 증거를 확인하면 갱신한다.
 
@@ -211,3 +212,14 @@ P01-02 실제 Android 기기 실행 증거를 보완했다.
 - 결과: `assembleDevDebug` 빌드·설치·앱 실행 성공.
 - 선행 오류와 조치: NDK 28.2.13676358 누락은 SDK Manager에서 설치했고, AGP 9의 flavor 리소스 기능 비활성 오류는 `buildFeatures.resValues = true`로 수정했다.
 - 판정: P01-02 완료 조건인 새 환경 의존성 설치 후 빈 앱 실행을 실제 Android 기기에서 확인했다.
+
+
+### 2.0 — 2026-09-17
+
+P01-03 Spring Boot 프로젝트 생성 및 기동 전 구성을 반영했다.
+
+- 사용자 커밋에서 Spring Boot 4.1.1, Java Toolchain 21, Gradle Wrapper 9.7.1과 Web MVC·Validation·Security·JPA·Actuator·MySQL·Flyway 의존성을 확인했다.
+- 사용자 Windows 환경에서 Eclipse Temurin 21.0.12.1의 java·javac 및 Gradle Launcher/Daemon JVM 21을 확인했다.
+- P01-04의 MySQL 구성 전에도 서버 골격을 검증하도록 기본 bootstrap 프로필을 추가했다. 이 프로필은 DataSource·Hibernate JPA·Flyway 자동설정을 제외하며 운영용이 아니다.
+- 테스트는 bootstrap 프로필로 고정했고 Gradle 의존성 잠금을 활성화했다.
+- 상태는 검증 대기다. 로컬 pull 후 gradle.lockfile 생성, clean test와 bootRun 성공 증거를 확인해야 완료로 바꾼다.
