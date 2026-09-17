@@ -16,9 +16,9 @@ concurrency:
 
 jobs:
   flutter:
-    name: Flutter analyze and test
+    name: Flutter analyze, test, and Android build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: apps/mobile
@@ -46,6 +46,9 @@ jobs:
 
       - name: Test
         run: flutter test --reporter expanded
+
+      - name: Build dev Android APK
+        run: flutter build apk --debug --flavor dev -t lib/main.dart
 
   api:
     name: Spring Boot build and test

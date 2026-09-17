@@ -1,0 +1,138 @@
+import 'dart:async';
+
+import 'package:flutter/services.dart';
+
+enum RecorderPhase { idle, starting, recording, stopping, completed, error }
+
+class RecorderPermissions {
+  const RecorderPermissions({
+    required this.microphoneGranted,
+    required this.notificationsGranted,
+  });
+
+  factory RecorderPermissions.fromMap(Map<Object?, Object?> map) {
+    return RecorderPermissions(
+      microphoneGranted: map['microphoneGranted'] == true,
+      notificationsGranted: map['notificationsGranted'] == true,
+    );
+  }
+
+  final bool microphoneGranted;
+  final bool notificationsGranted;
+}
+
+class RecorderStatus {
+  const RecorderStatus({
+    required this.phase,
+    this.recordingId,
+    this.outputPath,
+    this.elapsedMs = 0,
+    this.sizeBytes,
+    this.actualMime,
+    this.actualSampleRate,
+    this.actualChannels,
+    this.actualAacProfile,
+    this.errorCode,
+    this.errorMessage,
+  });
+
+  const RecorderStatus.idle() : this(phase: RecorderPhase.idle);
+
+  factory RecorderStatus.fromMap(Map<Object?, Object?> map) {
+    final phaseName = map['phase']?.toString() ?? 'idle';
+    final phase = RecorderPhase.values.firstWhere(
+      (candidate) => candidate.name == phaseName,
+      orElse: () => RecorderPhase.error,
+    );
+
+    return RecorderStatus(
+      phase: phase,
+      recordingId: map['recordingId']?.toString(),
+      outputPath: map['outputPath']?.toString(),
+      elapsedMs: (map['elapsedMs'] as num?)?.toInt() ?? 0,
+      sizeBytes: (map['sizeBytes'] as num?)?.toInt(),
+      actualMime: map['actualMime']?.toString(),
+      actualSampleRate: (map['actualSampleRate'] as num?)?.toInt(),
+      actualChannels: (map['actualChannels'] as num?)?.toInt(),
+      actualAacProfile: (map['actualAacProfile'] as num?)?.toInt(),
+      errorCode: map['errorCode']?.toString(),
+      errorMessage: map['errorMessage']?.toString(),
+    );
+  }
+
+  final RecorderPhase phase;
+  final String? recordingId;
+  final String? outputPath;
+  final int elapsedMs;
+  final int? sizeBytes;
+  final String? actualMime;
+  final int? actualSampleRate;
+  final int? actualChannels;
+  final int? actualAacProfile;
+  final String? errorCode;
+  final String? errorMessage;
+
+  bool get isRecording =>
+      phase == RecorderPhase.starting ||
+      phase == RecorderPhase.recording ||
+      phase == RecorderPhase.stopping;
+}
+
+abstract interface class RecorderGateway {
+  Stream<RecorderStatus> watchStatus();
+
+  Future<RecorderStatus> getCurrentStatus();
+
+  Future<RecorderPermissions> requestPermissions();
+
+  Future<void> start();
+
+  Future<void> stop();
+
+  Future<void> playLatest();
+}
+
+class MethodChannelRecorderGateway implements RecorderGateway {
+  const MethodChannelRecorderGateway();
+
+  static const _commands = MethodChannel(
+    'com.ksh321.songrecord/recorder_commands',
+  );
+  static const _events = EventChannel(
+    'com.ksh321.songrecord/recorder_events',
+  );
+
+  @override
+  Stream<RecorderStatus> watchStatus() {
+    return _events.receiveBroadcastStream().map((event) {
+      return RecorderStatus.fromMap(
+        Map<Object?, Object?>.from(event as Map),
+      );
+    });
+  }
+
+  @override
+  Future<RecorderStatus> getCurrentStatus() async {
+    final response = await _commands.invokeMapMethod<Object?, Object?>(
+      'getStatus',
+    );
+    return RecorderStatus.fromMap(response ?? const {});
+  }
+
+  @override
+  Future<RecorderPermissions> requestPermissions() async {
+    final response = await _commands.invokeMapMethod<Object?, Object?>(
+      'requestPermissions',
+    );
+    return RecorderPermissions.fromMap(response ?? const {});
+  }
+
+  @override
+  Future<void> start() => _commands.invokeMethod<void>('start');
+
+  @override
+  Future<void> stop() => _commands.invokeMethod<void>('stop');
+
+  @override
+  Future<void> playLatest() => _commands.invokeMethod<void>('playLatest');
+}

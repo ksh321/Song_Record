@@ -134,3 +134,13 @@ flutter test
 ```
 
 `--enforce-lockfile`은 저장소의 `pubspec.lock`과 다른 의존성 해석이 필요한 경우 실패시켜, 개발 PC와 CI가 같은 패키지 조합을 사용하도록 한다.
+
+## P02-01~03 Android 녹음 시제품
+
+개발 화면 아래쪽의 `녹음 시제품`은 Flutter `RecorderGateway`를 통해 Android 네이티브 `RecorderService`를 제어한다. 녹음은 화면에서 사용자가 버튼을 누른 경우에만 시작하며, 앱 내부 `files/recordings`에 AAC 96kbps·48kHz·모노 M4A를 저장한다.
+
+```powershell
+flutter run --flavor dev -t lib/main.dart
+```
+
+마이크·알림 권한을 허용하고 5~10초 녹음한 뒤 종료한다. 화면에 실제 MIME, 48000Hz, 채널 1이 표시되는지 확인하고 `녹음 파일 재생 확인`을 누른다. 6분 자동 종료와 사전 경고는 P02-04 이후 범위다. 전체 실기 절차는 [검증 문서](../../docs/verification/P02-01-03-recorder.md)를 따른다.

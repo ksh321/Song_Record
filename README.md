@@ -104,3 +104,9 @@ Spring Boot에 요청 ID, 공통 오류 JSON, 환경별 로그 수준과 민감�
 GitHub Actions가 새 Ubuntu 환경에서 Flutter 분석·테스트, Spring Boot 빌드·테스트, MySQL Compose 기동과 실제 쿼리를 각각 실행한다. 외부 Action, Flutter, Java, Gradle, MySQL 버전은 저장소 계약에 맞춰 고정했다. GitHub Actions 실행 #2에서 세 작업이 모두 성공해 P01-08을 완료했다.
 
 자세한 검사 항목과 새 체크아웃 순서는 [P01-08 검증 문서](docs/verification/P01-08-ci.md)를 따른다.
+
+## P02-01~03 Android 녹음 시제품 — 구현 완료·실기 확인 대기
+
+Flutter `RecorderGateway`와 Android microphone foreground service를 연결했다. 사용자가 누른 경우에만 권한을 요청해 AAC 96kbps·48kHz·모노 M4A를 앱 내부 영구 경로에 만들며, 화면 재생성 시 서비스 상태를 다시 구독한다. 종료 후 실제 오디오 형식을 표시하고 앱에서 재생할 수 있다.
+
+자동 분석·테스트·dev APK 빌드는 GitHub Actions에서 확인하고, 실제 Android 기기에서 권한 거절·재허용과 녹음·재생을 확인한 뒤 P02-01~03을 완료 처리한다. 자세한 순서는 [P02-01~03 검증 문서](docs/verification/P02-01-03-recorder.md)를 따른다.

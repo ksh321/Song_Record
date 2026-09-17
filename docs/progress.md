@@ -1,6 +1,6 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 3.1
+- 기록 버전: 3.2
 - 작성일: 2026-09-17
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
@@ -365,3 +365,16 @@ P01-08 최소 자동 검증 완료.
 - MySQL: digest 고정 8.4.11 이미지의 Compose 기동과 실제 SELECT 1 성공.
 - 첫 실행에서는 MySQL 초기화 중 임시 서버가 healthcheck에 먼저 응답해 검증 쿼리가 너무 일찍 실행됐다. 실제 사용자 DB가 쿼리를 받을 때까지 제한 시간 안에서 재시도하도록 수정했다.
 - 완료 판정: 새 GitHub Ubuntu 환경에서 앱·서버·DB 기본 구성을 자동으로 재현하고 검사한다는 P01-08 완료 조건을 충족했다.
+
+### 3.2 — 2026-09-17
+
+P02-01~03 Android 녹음 시제품을 구현하고 CI·실제 기기 확인 대기로 전환했다.
+
+- Flutter에 `RecorderGateway` 명령/상태 계약과 화면 상태 재구독을 추가했다.
+- Android `MediaRecorder` 기반 microphone foreground service, 런타임 마이크·알림 권한, 진행 알림과 알림의 종료 동작을 추가했다.
+- M4A(AAC 96kbps·48kHz·모노)를 앱 내부 영구 경로에 생성한다.
+- 종료 후 `MediaExtractor`로 실제 MIME·샘플링·채널·AAC 프로파일을 표시하고 `MediaPlayer`로 재생한다.
+- health 위젯 테스트를 새 gateway 주입 구조에 맞추고 상태 복원·오디오 정보 변환 테스트를 추가했다.
+- CI가 Flutter 분석·테스트뿐 아니라 dev debug APK도 빌드해 Kotlin·Manifest 연결을 검사하도록 확장했다.
+- 이번 범위에는 5분 30초·5분 50초 경고와 6분 자동 종료가 포함되지 않는다. 이는 P02-04 이후 작업이다.
+- 남은 완료 조건: GitHub Actions 성공, SM A546S에서 권한 거절·재허용, 녹음·파일 형식·재생·화면 재구독 확인.
