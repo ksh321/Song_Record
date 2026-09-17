@@ -11,6 +11,7 @@ import android.media.MediaRecorder
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -24,6 +25,7 @@ class RecorderService : Service() {
     private var recordingId: String? = null
     private var outputFile: File? = null
     private var startedAtElapsedMs = 0L
+    private var startedAtWallClockMs = 0L
     private var stopping = false
     private val handler = Handler(Looper.getMainLooper())
 
@@ -105,7 +107,9 @@ class RecorderService : Service() {
             recordingId = id
             outputFile = file
             startedAtElapsedMs = SystemClock.elapsedRealtime()
+            startedAtWallClockMs = System.currentTimeMillis()
             publish(recordingState(0L))
+            notifyProgress(0L)
             handler.post(ticker)
         } catch (error: Exception) {
             runCatching { newRecorder?.release() }
@@ -239,10 +243,17 @@ class RecorderService : Service() {
             .setSmallIcon(applicationInfo.icon)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
-            .setCategory(Notification.CATEGORY_SERVICE)
+            .setCategory(
+                if (includeStop) Notification.CATEGORY_STOPWATCH
+                else Notification.CATEGORY_SERVICE,
+            )
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setPriority(Notification.PRIORITY_HIGH)
             .setShowWhen(true)
+            .setWhen(
+                if (includeStop && startedAtWallClockMs > 0L) startedAtWallClockMs
+                else System.currentTimeMillis(),
+            )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
         }
@@ -251,11 +262,24 @@ class RecorderService : Service() {
             builder.setDefaults(0).setSound(null).setVibrate(longArrayOf())
         }
         if (includeStop) {
-            builder.addAction(Notification.Action.Builder(0, "녹음 종료", stopPendingIntent).build())
-            builder.setStyle(
-                Notification.MediaStyle()
-                    .setShowActionsInCompactView(0),
-            )
+            builder
+                .setUsesChronometer(true)
+                .addExtras(
+                    Bundle().apply {
+                        // Android 16.1+ Live Update API. Older Android versions ignore it.
+                        putBoolean(PROMOTED_ONGOING_EXTRA, true)
+                    },
+                )
+                .addAction(
+                    Notification.Action.Builder(
+                        applicationInfo.icon,
+                        "녹음 종료",
+                        stopPendingIntent,
+                    ).build(),
+                )
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                builder.setChronometerCountDown(false)
+            }
         }
         return builder.build()
     }
@@ -357,6 +381,7 @@ class RecorderService : Service() {
         // Android keeps a channel's original importance and lock-screen settings.
         // A new ID applies the lock-screen-visible defaults to existing installs too.
         private const val CHANNEL_ID = "song_record_recording_lockscreen_v3"
+        private const val PROMOTED_ONGOING_EXTRA = "android.requestPromotedOngoing"
         private const val NOTIFICATION_ID = 2102
         private const val AUDIO_BIT_RATE = 96_000
         private const val AUDIO_SAMPLE_RATE = 48_000
