@@ -133,4 +133,16 @@ ORDER BY installed_rank;
 SELECT * FROM app_schema_metadata;
 ```
 
-예상값은 성공한 버전 `1` 한 건과 `schema_contract = 1`이다. P01-05 완료 표시는 이 두 번의 서버 기동을 실제로 확인한 뒤 갱신한다.
+예상값은 성공한 버전 `1` 한 건과 `schema_contract = 1`이다. 2026-09-17 Windows 11 환경에서 첫 기동의 V1 적용과 같은 DB 재기동의 이력 검증·서버 시작을 모두 확인해 P01-05를 완료했다.
+
+
+### P01-05 검증 결과
+
+| 검증 | 결과 |
+|---|---|
+| 빈 DB 첫 기동 | Flyway V1 적용 후 서버 시작 성공 |
+| 기존 DB 재기동 | 기존 마이그레이션 이력·체크섬 검증 후 서버 시작 성공 |
+| Hibernate | `ddl-auto=validate`, 자동 스키마 변경 없음 |
+| 상태 | P01-05 완료 |
+
+실행 과정에서 생성한 `bootrun-error.log`는 진단용 임시 파일이므로 커밋하지 않는다. `gradle.lockfile`은 실제 해결된 의존성 버전을 고정하므로 저장소에서 추적한다.

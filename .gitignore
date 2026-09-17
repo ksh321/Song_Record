@@ -18,6 +18,9 @@ build/
 # Gradle caches (keep Wrapper and lockfiles)
 .gradle/
 
+# Local diagnostic logs
+*.log
+
 # IDE / OS
 .idea/
 *.iml

@@ -66,7 +66,7 @@ P00-05 완료: 추천 조합을 D02~D04로 확정했다. 정렬·날짜·기기 
 | [fixtures](fixtures/README.md) | 앱·서버 공통 검증 자료 |
 | [tools](tools/validate_fixtures.py) | 검증 도구 |
 
-로컬 비밀 설정·빌드 결과는 루트 `.gitignore`로 제외하고 앱 lockfile·Gradle Wrapper는 추적한다. Flutter 빈 앱은 dev 환경에서 실행 확인했다. Spring Boot 서버 골격은 테스트와 기동을 확인했다. MySQL Compose와 Spring `dev` 프로필은 P01-04에서 구성하고 로컬 연결·영속성을 확인했다. P01-05 Flyway 설정과 최초 마이그레이션은 반영했으며 첫 기동·재기동 검증을 기다린다.
+로컬 비밀 설정·빌드 결과는 루트 `.gitignore`로 제외하고 앱 lockfile·Gradle Wrapper는 추적한다. Flutter 빈 앱은 dev 환경에서 실행 확인했다. Spring Boot 서버 골격은 테스트와 기동을 확인했다. MySQL Compose와 Spring `dev` 프로필은 P01-04에서 구성하고 로컬 연결·영속성을 확인했다. P01-05 Flyway 설정과 최초 마이그레이션을 반영하고 첫 기동·재기동까지 확인했다.
 
 
 ## P01-02 Flutter 프로젝트 — 완료
@@ -84,6 +84,6 @@ Java 21, Spring Boot 4.1.1, Gradle Wrapper 9.7.1과 필수 서버 의존성을 �
 MySQL 8.4.11 이미지를 SHA-256 digest로 고정하고, 로컬 전용 포트·utf8mb4·UTC·named volume·healthcheck를 설정했다. Spring Boot `dev` 프로필의 Hikari 연결과 MySQL 재시작 후 데이터 유지까지 Windows 11에서 확인했다. 자동 스키마 변경과 Flyway 실행은 막아 두었으며 Flyway 초기 마이그레이션은 P01-05에서 진행한다.
 
 
-## P01-05 스키마 버전 관리 — 검증 대기
+## P01-05 스키마 버전 관리 — 완료
 
-Flyway 최초 마이그레이션과 기동 시 체크섬 검증을 연결했다. Hibernate는 `validate`만 수행하고, DB 변경은 버전이 붙은 SQL 마이그레이션으로만 진행한다. 자세한 실행·확인 방법은 [서버 README](services/api/README.md)를 따른다. 같은 DB에서 첫 실행과 재실행이 모두 성공하면 완료로 갱신한다.
+Flyway 최초 마이그레이션과 기동 시 체크섬 검증을 연결했다. Hibernate는 `validate`만 수행하고, DB 변경은 버전이 붙은 SQL 마이그레이션으로만 진행한다. 자세한 실행·확인 방법은 [서버 README](services/api/README.md)를 따른다. Windows 11 환경에서 같은 DB의 첫 실행과 재실행이 모두 성공해 완료했다.
