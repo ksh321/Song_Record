@@ -125,6 +125,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: RecorderPanel(
+              key: ValueKey(status.elapsedMs),
               gateway: _FakeRecorderGateway(status: status),
             ),
           ),
