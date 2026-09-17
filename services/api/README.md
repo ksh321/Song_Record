@@ -158,3 +158,40 @@ Flutter 개발 앱이 인증 정보 없이 상태를 확인할 수 있도록 `GE
 ### P01-06 실제 호출 결과
 
 2026-09-17 SM A546S의 Flutter dev 앱이 USB `adb reverse`를 통해 `GET /actuator/health`를 호출하고 `UP` 응답을 표시했다. 앱에는 MySQL 접속 정보가 없으며 서버 API만 호출하는 구조를 확인했다.
+
+
+## P01-07 공통 오류와 안전한 로그
+
+모든 HTTP 응답에는 `X-Request-Id`가 포함된다. 클라이언트가 안전한 형식의 요청 ID를 보내면 그대로 사용하고, 없거나 허용되지 않은 형식이면 서버가 UUID를 만든다. 같은 값이 오류 응답의 `error.request_id`와 서버 로그의 `request_id`에 기록되므로 한 요청을 연결해 찾을 수 있다.
+
+공통 오류 형식:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "요청 값이 올바르지 않습니다.",
+    "retryable": false,
+    "request_id": "요청 추적 ID",
+    "details": {}
+  }
+}
+```
+
+요청 완료 로그에는 HTTP 메서드, 상태 코드, 처리 시간, 요청 ID만 남긴다. 요청·응답 본문, Authorization 헤더, URL 쿼리 문자열은 기록하지 않는다. 토큰·비밀번호·메모·서명 URL용 마스킹 유틸리티와 단위 테스트도 추가했다. 예외 로그는 공개 오류 코드와 예외 타입만 기록하며 원본 예외 메시지는 기록하지 않는다.
+
+개발 프로필에서만 의도한 오류를 만드는 확인용 경로가 열린다.
+
+```powershell
+curl.exe -i http://127.0.0.1:8080/api/dev/errors/sample
+```
+
+성공 기준:
+
+- HTTP 상태는 `400`
+- 응답 헤더에 `X-Request-Id`가 있음
+- JSON에 `VALIDATION_FAILED`, `retryable: false`, 같은 `request_id`가 있음
+- 서버 로그에서 같은 요청 ID를 찾을 수 있음
+- 로그에 토큰·비밀번호·메모 원문·서명 URL이 없음
+
+`/api/dev/errors/sample`은 `dev` 프로필에서만 생성된다. staging/prod에는 이 컨트롤러가 등록되지 않는다.

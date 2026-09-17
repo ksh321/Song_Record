@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io';\n\nimport 'api_error.dart';
 
 class HealthResponse {
   const HealthResponse({
@@ -45,9 +45,13 @@ class HealthClient {
       final body = await utf8.decoder.bind(response).join().timeout(timeout);
 
       if (response.statusCode != HttpStatus.ok) {
-        throw HealthCheckException(
-          '서버가 HTTP ${response.statusCode}을 반환했습니다.',
-        );
+        try {
+          throw ApiRequestException(ApiError.fromBody(body));
+        } on FormatException {
+          throw HealthCheckException(
+            '서버가 HTTP ${response.statusCode}을 반환했습니다.',
+          );
+        }
       }
 
       final decoded = jsonDecode(body);
