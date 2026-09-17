@@ -116,3 +116,8 @@ flutter run --flavor dev --dart-define=APP_ENV=dev
 서버가 공통 오류 JSON을 반환하면 Flutter가 `code`, 사용자 메시지, `retryable`, `request_id`, `details`를 파싱한다. 현재 health 화면은 실패 메시지 아래에 오류 코드와 요청 ID를 표시하므로 서버 로그와 같은 요청을 찾을 수 있다.
 
 앱은 오류 응답의 `message`만 사용자용 문장으로 사용하고, 토큰·비밀번호·메모·서명 URL을 화면이나 로그에 출력하지 않는다. 공통 계약이 아닌 응답은 기존 HTTP 상태 오류로 처리한다.
+
+
+### P01-07 검증 결과
+
+2026-09-17 Windows 11에서 `flutter analyze`와 `flutter test`가 모두 성공했다. 공통 오류 JSON 파서가 오류 코드·메시지·재시도 여부·요청 ID·상세 정보를 읽고, 계약에 맞지 않는 JSON을 거부하는 테스트를 확인했다. 서버의 실제 오류 요청에서도 동일 요청 ID가 응답과 서버 로그에 연결됐다.

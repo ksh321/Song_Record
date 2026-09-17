@@ -1,6 +1,6 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 2.8
+- 기록 버전: 2.9
 - 작성일: 2026-09-17
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
@@ -9,7 +9,7 @@
 
 ## 1. 현재 상태
 
-P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. P01-04용 MySQL 8.4.11 digest 고정 Compose와 Spring dev 프로필을 반영하고 로컬 연결·영속성 검증까지 완료했다. P01-05 Flyway 최초 마이그레이션과 스키마 검증 설정을 반영하고 로컬 첫 기동·재기동을 모두 확인했다. P01-06 Flutter health 호출 화면과 실제 기기 USB 주소 연결을 구현하고 SM A546S 실기 검증을 완료했다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
+P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. P01-04용 MySQL 8.4.11 digest 고정 Compose와 Spring dev 프로필을 반영하고 로컬 연결·영속성 검증까지 완료했다. P01-05 Flyway 최초 마이그레이션과 스키마 검증 설정을 반영하고 로컬 첫 기동·재기동을 모두 확인했다. P01-06 Flutter health 호출 화면과 실제 기기 USB 주소 연결을 구현하고 SM A546S 실기 검증을 완료했다. P01-07 요청 ID·공통 오류 응답·안전한 로그·Flutter 오류 파서를 구현하고 서버와 Flutter 테스트 및 실제 오류 추적 검증을 완료했다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
 
 | 작업 | 상태                    | 확인 내용 | 남은 확인 |
 |---|-----------------------|---|---|
@@ -24,7 +24,10 @@ P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현
 | P01-01 저장소 구조 만들기 | 완료 | apps/mobile·services/api·infra·README·설정 예시·Git 제외 규칙 | 없음. 프로젝트 생성·실행은 후속 작업 |
 | P01-02 Flutter 프로젝트 생성 | 완료 | Flutter 3.47.4/Dart 3.13.3, Android dev/staging/prod flavor, 앱 ID·초기 라우트·분석 규칙·lockfile 반영 | 없음. 서버 작업은 P01-03에서 별도 추적 |
 | P01-03 Spring Boot 프로젝트 생성 | 완료 | Boot 4.1.1·Java 21·Gradle 9.7.1, 필수 의존성, bootstrap 프로필, clean test·Tomcat 8080 기동 성공 | DB 연결은 P01-04, Flyway 실행은 P01-05. 로컬 생성 gradle.lockfile은 원격 추적 필요 |
-| P01-04 MySQL 개발 DB 준비 | 완료 | MySQL 8.4.11 digest 고정, 컨테이너 healthy, Spring dev/Hikari 연결, 재시작 후 `id = 1` 유지 및 확인용 테이블 제거 | 없음. Flyway는 P01-05에서 추적 |\n| P01-05 스키마 버전 관리 연결 | 완료 | Flyway V1 적용, 재기동 시 기존 이력·체크섬 검증, Hibernate validate, 서버 정상 기동 확인 | 없음 |\n| P01-06 헬스 조회 연결 | 완료 | SM A546S에서 USB `adb reverse`를 통해 Spring Boot health 호출 및 `UP` 표시 확인 | 없음 |\n| P01-07 기본 오류와 로그 구성 | 검증 대기 | 요청 ID·공통 오류 JSON·안전한 요청 로그·마스킹 유틸리티·Flutter 오류 파서 구현 | 서버/Flutter 테스트, dev 오류 응답과 로그의 요청 ID 일치 확인 |
+| P01-04 MySQL 개발 DB 준비 | 완료 | MySQL 8.4.11 digest 고정, 컨테이너 healthy, Spring dev/Hikari 연결, 재시작 후 `id = 1` 유지 및 확인용 테이블 제거 | 없음. Flyway는 P01-05에서 추적 |
+| P01-05 스키마 버전 관리 연결 | 완료 | Flyway V1 적용, 재기동 시 기존 이력·체크섬 검증, Hibernate validate, 서버 정상 기동 확인 | 없음 |
+| P01-06 헬스 조회 연결 | 완료 | SM A546S에서 USB `adb reverse`를 통해 Spring Boot health 호출 및 `UP` 표시 확인 | 없음 |
+| P01-07 기본 오류와 로그 구성 | 완료 | 서버 `clean test`, Flutter `analyze/test`, HTTP 400 공통 오류 응답, 헤더·본문·로그의 `p0107-test-001` 일치, 자동 생성 비밀번호 로그 제거 확인 | 없음 |
 
 “수행 기록 없음”은 사용자가 별도로 수행한 작업까지 없었다고 단정하는 상태가 아니다. 증거를 확인하면 갱신한다.
 
@@ -323,3 +326,17 @@ P01-07 기본 오류와 로그 구성을 구현하고 로컬 검증 대기로 �
 - dev 전용 `GET /api/dev/errors/sample`로 의도한 오류와 요청 ID 연결을 확인할 수 있다.
 - Flutter에 공통 오류 파서를 추가했고 오류 코드와 요청 ID를 표시하도록 기존 health 클라이언트에 연결했다.
 - 남은 완료 조건: Spring `clean test`, Flutter `analyze/test`, dev 오류 호출의 헤더·본문·로그 요청 ID 일치 및 비밀값 부재 확인.
+
+
+### 2.9 — 2026-09-17
+
+P01-07 기본 오류와 로그 구성 완료.
+
+- 사용자 Windows 11 환경에서 Spring Boot `clean test`와 Flutter `analyze`, `test`가 모두 성공했다.
+- dev 전용 오류 경로에 `X-Request-Id: p0107-test-001`을 보내 HTTP 400과 `VALIDATION_FAILED` 공통 오류 JSON을 확인했다.
+- 응답 헤더와 JSON의 `request_id`, 서버의 `api_error` 및 `request_completed` 로그가 모두 `p0107-test-001`로 일치했다.
+- 로그에는 요청 본문·Authorization 헤더·URL 쿼리를 기록하지 않고 메서드·상태·처리 시간·요청 ID만 남긴다.
+- 토큰·비밀번호·메모·서명 URL 마스킹 단위 테스트가 성공했다.
+- 최초 검증에서 Spring Security 개발용 자동 생성 비밀번호가 시작 로그에 표시되는 것을 발견했다. 빈 `UserDetailsService`를 명시해 자동 비밀번호 생성을 막았고, 재기동 후 해당 로그가 사라진 것을 확인했다.
+- `bootRun`의 80% EXECUTING 표시는 서버가 요청을 기다리며 실행 중인 정상 상태다.
+- 완료 판정: 의도한 오류를 요청 ID로 추적할 수 있고, 보호 대상 값이 애플리케이션 로그에 남지 않는다는 P01-07 완료 조건을 충족했다.

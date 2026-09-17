@@ -94,6 +94,6 @@ Flyway 최초 마이그레이션과 기동 시 체크섬 검증을 연결했다.
 Flutter 개발 화면에서 Spring Boot `/actuator/health`를 호출해 상태와 JSON 응답을 표시하도록 연결했다. Android 로컬 HTTP 허용은 debug 빌드로 제한했으며, 실제 기기는 USB `adb reverse`, 에뮬레이터는 `10.0.2.2`를 사용한다. SM A546S에서 USB `adb reverse`를 통한 실제 Spring Boot 호출과 `UP` 표시를 확인했다.
 
 
-## P01-07 기본 오류와 로그 — 구현 완료·검증 대기
+## P01-07 기본 오류와 로그 — 완료
 
-Spring Boot에 요청 ID, 공통 오류 JSON, 환경별 로그 수준과 민감정보 마스킹 테스트를 추가했다. Flutter는 공통 오류를 파싱해 오류 코드와 요청 ID를 표시한다. 로컬 `clean test`, Flutter 분석·테스트, dev 오류 응답과 로그 연결 확인 후 완료로 전환한다.
+Spring Boot에 요청 ID, 공통 오류 JSON, 환경별 로그 수준과 민감정보 마스킹 테스트를 추가했다. Flutter는 공통 오류를 파싱해 오류 코드와 요청 ID를 표시한다. Windows 11에서 서버 `clean test`, Flutter `analyze/test`, dev 오류 응답과 동일 요청 ID의 서버 로그를 확인했다. Spring Security 자동 생성 비밀번호도 로그에 남지 않도록 제거해 완료했다.

@@ -195,3 +195,20 @@ curl.exe -i http://127.0.0.1:8080/api/dev/errors/sample
 - 로그에 토큰·비밀번호·메모 원문·서명 URL이 없음
 
 `/api/dev/errors/sample`은 `dev` 프로필에서만 생성된다. staging/prod에는 이 컨트롤러가 등록되지 않는다.
+
+
+### P01-07 검증 결과
+
+2026-09-17 Windows 11 개발 환경에서 다음을 확인했다.
+
+| 검증 | 결과 |
+|---|---|
+| 서버 단위 테스트 | `clean test` 성공 |
+| 의도한 오류 호출 | `GET /api/dev/errors/sample` → HTTP 400 |
+| 오류 계약 | `VALIDATION_FAILED`, `retryable: false`, `details` 확인 |
+| 요청 추적 | 헤더·본문·두 서버 로그에서 `p0107-test-001` 일치 |
+| 민감정보 보호 | 마스킹 테스트 성공, 본문·헤더·쿼리를 요청 로그에 기록하지 않음 |
+| 시작 로그 | Spring Security 자동 생성 비밀번호 출력 제거 |
+| 상태 | P01-07 완료 |
+
+초기 검증 중 Spring Security의 개발용 임시 비밀번호가 시작 로그에 자동 출력됐다. 인증 사용자를 아직 구현하지 않은 현재 단계에서는 빈 `UserDetailsService`를 명시해 자동 사용자와 임시 비밀번호 생성을 막았다. 실제 회원 인증은 후속 인증 단계에서 별도 구현한다.
