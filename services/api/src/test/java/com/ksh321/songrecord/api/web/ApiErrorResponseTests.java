@@ -20,7 +20,7 @@ class ApiErrorResponseTests {
 
         assertThat(response.error().code()).isEqualTo("VALIDATION_FAILED");
         assertThat(response.error().retryable()).isFalse();
-        assertThat(response.error().requestId()).isEqualTo("request-123");
+        assertThat(response.error().request_id()).isEqualTo("request-123");
         assertThat(response.error().details()).containsEntry("field", "title");
     }
 }

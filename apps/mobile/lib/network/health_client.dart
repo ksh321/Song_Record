@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';\n\nimport 'api_error.dart';
+import 'dart:io';
+
+import 'api_error.dart';
 
 class HealthResponse {
   const HealthResponse({
