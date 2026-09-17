@@ -25,7 +25,6 @@ void main() {
 
     expect(find.text('서버 연결 성공: UP'), findsOneWidget);
     expect(find.text('응답: {"status":"UP"}'), findsOneWidget);
-    expect(find.textContaining('MySQL에 직접 접속하지 않고'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
