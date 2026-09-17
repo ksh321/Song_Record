@@ -1,6 +1,6 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 2.3
+- 기록 버전: 2.4
 - 작성일: 2026-09-17
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
@@ -9,7 +9,7 @@
 
 ## 1. 현재 상태
 
-P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. P01-04용 MySQL 8.4.11 digest 고정 Compose와 Spring dev 프로필을 반영하고 로컬 연결·영속성 검증까지 완료했다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
+P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. P01-04용 MySQL 8.4.11 digest 고정 Compose와 Spring dev 프로필을 반영하고 로컬 연결·영속성 검증까지 완료했다. P01-05 Flyway 최초 마이그레이션과 스키마 검증 설정을 반영했으며 로컬 첫 기동·재기동 검증을 기다린다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
 
 | 작업 | 상태                    | 확인 내용 | 남은 확인 |
 |---|-----------------------|---|---|
@@ -24,7 +24,7 @@ P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현
 | P01-01 저장소 구조 만들기 | 완료 | apps/mobile·services/api·infra·README·설정 예시·Git 제외 규칙 | 없음. 프로젝트 생성·실행은 후속 작업 |
 | P01-02 Flutter 프로젝트 생성 | 완료 | Flutter 3.47.4/Dart 3.13.3, Android dev/staging/prod flavor, 앱 ID·초기 라우트·분석 규칙·lockfile 반영 | 없음. 서버 작업은 P01-03에서 별도 추적 |
 | P01-03 Spring Boot 프로젝트 생성 | 완료 | Boot 4.1.1·Java 21·Gradle 9.7.1, 필수 의존성, bootstrap 프로필, clean test·Tomcat 8080 기동 성공 | DB 연결은 P01-04, Flyway 실행은 P01-05. 로컬 생성 gradle.lockfile은 원격 추적 필요 |
-| P01-04 MySQL 개발 DB 준비 | 완료 | MySQL 8.4.11 digest 고정, 컨테이너 healthy, Spring dev/Hikari 연결, 재시작 후 `id = 1` 유지 및 확인용 테이블 제거 | Flyway 초기 마이그레이션은 P01-05 |
+| P01-04 MySQL 개발 DB 준비 | 완료 | MySQL 8.4.11 digest 고정, 컨테이너 healthy, Spring dev/Hikari 연결, 재시작 후 `id = 1` 유지 및 확인용 테이블 제거 | 없음. Flyway는 P01-05에서 추적 |\n| P01-05 스키마 버전 관리 연결 | 검증 대기 | Flyway V1 baseline, 체크섬 검증, Hibernate validate, clean 비활성화 반영 | 로컬 빈 DB 첫 기동과 기존 DB 재기동 확인 |
 
 “수행 기록 없음”은 사용자가 별도로 수행한 작업까지 없었다고 단정하는 상태가 아니다. 증거를 확인하면 갱신한다.
 
@@ -262,3 +262,14 @@ P01-04 MySQL 개발 DB 준비 완료.
 - 최초 Spring 연결의 MySQL 1045 오류는 수동 입력한 `DB_PASSWORD` 불일치가 원인이었다. 컨테이너의 `MYSQL_PASSWORD`와 동일하게 맞춰 해결했으며 비밀번호 값은 기록하지 않았다.
 - Hibernate Dialect 오류는 인증 실패로 메타데이터를 읽지 못해 발생한 2차 오류였다.
 - P01-04 완료 범위는 개발 DB 실행·서버 연결·데이터 유지다. Flyway 초기 스키마와 마이그레이션 검증은 P01-05에서 수행한다.
+
+
+### 2.4 — 2026-09-17
+
+P01-05 스키마 버전 관리 연결을 구현하고 로컬 검증 대기로 전환했다.
+
+- `V1__baseline.sql`을 추가해 Flyway가 스키마 변경의 단일 소유자가 되도록 했다.
+- V1은 `app_schema_metadata`를 생성하고 스키마 계약 버전 1을 기록한다. 전체 도메인 테이블은 각 기능 구현 단계의 후속 마이그레이션으로 추가한다.
+- dev 프로필에서 Flyway 실행·기동 시 체크섬 검증을 켰고, `clean`과 자동 baseline은 막았다.
+- Hibernate는 `ddl-auto=validate`로 설정해 임의 테이블 생성·수정 없이 향후 엔티티 매핑만 검증한다.
+- 남은 완료 조건: 같은 MySQL DB에 첫 기동하여 V1 적용, 종료 후 재기동하여 기존 이력 검증과 서버 시작 확인.

@@ -1,6 +1,6 @@
 # Spring Boot API 서버
 
-P01-03에서 Java 21·Spring Boot 서버 골격을 생성했고, P01-04에서 MySQL 개발 연결 프로필을 추가했다.
+P01-03에서 Java 21·Spring Boot 서버 골격을 생성했고, P01-04에서 MySQL 개발 연결을 확인했다. P01-05에서는 Flyway 마이그레이션과 스키마 검증을 연결했다.
 
 ## 현재 고정한 도구
 
@@ -78,7 +78,7 @@ Spring Boot 4.1.1은 Gradle 8.14 이상과 Gradle 9.x를 지원한다. Initializ
 
 `dev` 프로필은 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` 환경변수로 MySQL에 연결한다. 기본값은 로컬 호스트·3306·`song_record`이며 비밀번호에는 기본값이 없다.
 
-Hibernate의 `ddl-auto`는 `none`으로 고정해 자동 스키마 변경을 막았다. Flyway는 P01-05 전까지 비활성화했다. MySQL 실행·연결·영속성 검증 명령은 [infra README](../../infra/README.md)를 따른다.
+P01-04 검증 당시 Hibernate의 `ddl-auto`는 `none`, Flyway는 비활성 상태였다. P01-05부터는 Flyway만 스키마를 변경하고 Hibernate는 `validate`만 수행한다. MySQL 실행·연결·영속성 검증 명령은 [infra README](../../infra/README.md)를 따른다.
 
 
 ## P01-04 검증 결과
@@ -94,3 +94,43 @@ Hibernate의 `ddl-auto`는 `none`으로 고정해 자동 스키마 변경을 막
 | 정리 | 확인용 테이블 제거 |
 
 최초 시도에서는 Spring의 `DB_PASSWORD`가 컨테이너의 `MYSQL_PASSWORD`와 달라 MySQL 1045 인증 오류가 발생했다. 두 값을 일치시켜 해결했다. 비밀번호 값 자체는 저장소와 로그에 기록하지 않는다.
+
+
+## P01-05 Flyway 스키마 버전 관리
+
+`dev` 프로필에서 Flyway를 활성화했다. 최초 마이그레이션 `V1__baseline.sql`은 `app_schema_metadata`를 만들고 스키마 계약 버전 `1`을 기록한다. Flyway는 적용 이력과 체크섬을 `flyway_schema_history`에 저장한다.
+
+- 스키마 변경은 `db/migration/V<번호>__<설명>.sql` 파일로만 추가한다.
+- 이미 적용한 마이그레이션 파일은 수정하지 않는다. 변경이 필요하면 다음 번호 파일을 만든다.
+- `spring.jpa.hibernate.ddl-auto=validate`: Hibernate는 매핑을 검사할 뿐 테이블을 생성·수정하지 않는다.
+- `spring.flyway.validate-on-migrate=true`: 기동할 때 적용 이력과 파일 체크섬을 검사한다.
+- `spring.flyway.clean-disabled=true`: 애플리케이션에서 DB 전체 삭제 명령을 실행하지 못하게 막는다.
+- `baseline-on-migrate=false`: Flyway가 관리하지 않던 기존 테이블을 임의로 기준선 처리하지 않는다.
+
+### Windows 검증
+
+MySQL 컨테이너가 `healthy`인 상태에서 `services/api` PowerShell에 DB 비밀번호를 주입하고 실행한다. 비밀번호는 저장소에 기록하지 않는다.
+
+```powershell
+.\gradlew.bat bootRun --args="--spring.profiles.active=dev"
+```
+
+첫 실행 성공 기준:
+
+- Flyway가 스키마 기록 테이블을 만들고 버전 1을 적용한다.
+- Hikari 연결 풀이 시작한다.
+- `Started ApiApplication`이 출력된다.
+
+`Ctrl+C`로 종료한 뒤 같은 명령을 다시 실행한다. 두 번째 실행에서 Flyway가 기존 버전 1을 검증하고 추가 적용 없이 서버가 시작되면 “빈 DB 기동”과 “기존 DB 재기동” 조건을 모두 만족한다.
+
+적용 결과는 MySQL에서 다음처럼 확인한다.
+
+```sql
+SELECT installed_rank, version, description, success
+FROM flyway_schema_history
+ORDER BY installed_rank;
+
+SELECT * FROM app_schema_metadata;
+```
+
+예상값은 성공한 버전 `1` 한 건과 `schema_contract = 1`이다. P01-05 완료 표시는 이 두 번의 서버 기동을 실제로 확인한 뒤 갱신한다.
