@@ -1,8 +1,8 @@
 # 구현 기술 버전 기준 및 고정 대상
-- 문서 버전: 1.4
+- 문서 버전: 1.5
 - 확인일: 2026-09-17
 - 결정: [D01 A안](../decisions/D01-implementation-stack.md)
-- 상태: 기술 기준 확정 / P01-02 완료 / P01-03 Spring Boot 골격·테스트·기동 완료
+- 상태: 기술 기준 확정 / P01-02 완료 / P01-03 완료 / P01-04 MySQL 구성 완료·로컬 검증 대기
 
 ## 초기 버전 기준
 아래 값은 프로젝트 생성 시 사용할 기준이다. 빌드 성공을 증명하는 lockfile은 아니다.
@@ -19,7 +19,7 @@
 | Spring Boot | 4.1.1 | [시스템 요구사항](https://docs.spring.io/spring-boot/system-requirements.html) |
 | 서버 Gradle Wrapper | 9.7.1 (Initializr 실제 생성값) | [Spring Boot 4.1.1 시스템 요구사항](https://docs.spring.io/spring-boot/system-requirements.html)의 Gradle 9.x 지원 범위 |
 | Spring Data JPA / Hibernate / MySQL JDBC / Flyway | Spring Boot 4.1.1 BOM 관리 버전 | [관리 의존성](https://docs.spring.io/spring-boot/appendix/dependency-versions/coordinates.html). 임의 개별 버전 덮어쓰기 금지 |
-| MySQL | 8.4.12, 8.4 LTS 계열 | [공식 릴리스 노트](https://dev.mysql.com/doc/relnotes/mysql/8.4/en/news-8-4-12.html), 2026-08-18 배포 |
+| MySQL | 8.4.11, 8.4 LTS 계열 · `mysql:8.4.11@sha256:85b9bf2e29cf836ecb8c2a15a935d4ba0c606631dff1dd79531a11983c638f2a` | 계획 기준 8.4.12 공식 Docker 이미지를 조회할 수 없어 실제 제공된 같은 LTS 계열 이미지를 digest로 고정 |
 | SQLite 네이티브 패키지·코드 생성 보조 도구 | Drift 구성 후 P01에서 해결된 버전 고정 | SQLite 런타임 버전도 기록 |
 | Android AGP / Kotlin / Gradle / SDK | AGP 9.1.0 / Kotlin 2.4.0 / Gradle Wrapper 9.3.1 / Android SDK 36 계열 | Flutter 3.47.4 생성 템플릿과 실제 프로젝트 파일 기준 |
 | R2 연동 SDK | 서버 구현 시 선택·고정 | 비공개 저장소 정책 유지 |
@@ -39,7 +39,7 @@
 - [ ] 서버 Boot 플러그인/BOM 4.1.1과 Wrapper 9.7.1 파일 커밋. Wrapper 배포 체크섬은 미기록
 - [ ] 서버 의존성 잠금은 활성화했고 로컬 gradle.lockfile 생성을 확인. 원격 파일 추적·검증 메타데이터와 실제 JPA/JDBC/Flyway 버전 기록은 남음
 - [ ] Flyway MySQL 지원 모듈 포함 여부 확인, 실제 MySQL 연결·마이그레이션 검증
-- [ ] MySQL 8.4.12 이미지 사용 가능 여부 확인 및 digest 고정 (latest 금지)
+- [x] MySQL 8.4.11 공식 이미지를 `sha256:85b9bf2e29cf836ecb8c2a15a935d4ba0c606631dff1dd79531a11983c638f2a`로 고정 (8.4.12는 조회 시 미제공, latest 금지)
 - [ ] 생성한 lock/Wrapper로 깨끗한 환경에서 재빌드 후 명령·결과·커밋 기록
 
 ## 이후 변경
@@ -74,3 +74,12 @@
 - Gradle의 80% EXECUTING 표시는 서버 프로세스를 계속 유지하는 `bootRun` 특성에 따른 정상 상태다.
 - 생성된 Spring Security 개발 비밀번호는 저장하지 않았으며 실제 인증 구성은 후속 단계에서 교체한다.
 - DB 자동설정을 제외한 골격 검증이므로 MySQL 8.4와 Flyway 검증은 P01-04에서 수행한다.
+
+
+## P01-04 MySQL 이미지 결정
+
+- 계획 기준 8.4.12 태그는 공식 Docker 이미지에서 조회되지 않아 사용할 수 없었다.
+- 같은 8.4 LTS 계열의 8.4.11을 조회하고 사용자 환경에서 확인한 repo digest를 Compose에 고정했다.
+- 태그만 쓰지 않고 digest까지 지정하므로 같은 설정에서 다른 이미지가 내려오는 일을 막는다.
+- Compose·Spring `dev` 프로필 구성은 완료했지만, 컨테이너 `healthy`·서버 연결·재시작 후 데이터 유지 확인 전까지 P01-04 상태는 검증 대기다.
+- Flyway 실행과 초기 스키마는 P01-05에서 다룬다.

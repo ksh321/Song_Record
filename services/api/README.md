@@ -1,6 +1,6 @@
 # Spring Boot API 서버
 
-P01-03에서 Java 21·Spring Boot 서버 골격을 생성했다. 실제 MySQL 개발 환경은 P01-04에서 연결한다.
+P01-03에서 Java 21·Spring Boot 서버 골격을 생성했고, P01-04에서 MySQL 개발 연결 프로필을 추가했다.
 
 ## 현재 고정한 도구
 
@@ -71,4 +71,11 @@ Spring Boot 4.1.1은 Gradle 8.14 이상과 Gradle 9.x를 지원한다. Initializ
 
 `bootRun`은 서버를 계속 띄우는 장기 실행 작업이므로 Gradle 표시가 80% EXECUTING에서 유지되는 것이 정상이다. 멈춘 것이 아니며 `Ctrl+C`로 서버를 종료하면 작업도 끝난다.
 
-이 검증은 Spring Web 서버와 애플리케이션 Context가 정상 구성됐다는 뜻이다. `bootstrap` 프로필에서는 DB 관련 자동설정을 끄므로 MySQL·JPA CRUD·Flyway 검증은 P01-04에 속한다.
+이 검증은 Spring Web 서버와 애플리케이션 Context가 정상 구성됐다는 뜻이다. `bootstrap` 프로필에서는 DB 관련 자동설정을 끈다. 실제 MySQL 연결과 재시작 후 데이터 유지 검증은 P01-04 절차로 수행하며, Flyway 마이그레이션은 P01-05에서 수행한다.
+
+
+## P01-04 MySQL 개발 프로필
+
+`dev` 프로필은 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` 환경변수로 MySQL에 연결한다. 기본값은 로컬 호스트·3306·`song_record`이며 비밀번호에는 기본값이 없다.
+
+Hibernate의 `ddl-auto`는 `none`으로 고정해 자동 스키마 변경을 막았다. Flyway는 P01-05 전까지 비활성화했다. MySQL 실행·연결·영속성 검증 명령은 [infra README](../../infra/README.md)를 따른다.

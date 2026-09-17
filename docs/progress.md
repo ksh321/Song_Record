@@ -1,6 +1,6 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 2.1
+- 기록 버전: 2.2
 - 작성일: 2026-09-17
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
@@ -9,7 +9,7 @@
 
 ## 1. 현재 상태
 
-P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
+P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현 기술 결정과 P00-05 정렬과 필터 계약, P00-06 입력과 누락 API 계약, P00-07 스냅샷과 백업 계약을 완료했다. GitHub main에서 기준 파일 위치·원본 동일성·README와 요구사항/진행 문서의 원격 반영을 확인했다. Flutter 빈 앱 생성과 실제 Android 기기 실행, 정적 분석 및 기본 위젯 테스트를 확인했다. Spring Boot 4.1.1 프로젝트와 Java 21·Gradle 9.7.1 도구 확인 및 DB 없는 bootstrap 기동 구성을 반영했다. Windows 11에서 clean test와 bootstrap 서버 기동을 확인해 P01-03을 완료했다. P01-04용 MySQL 8.4.11 digest 고정 Compose와 Spring dev 프로필을 반영했으며 로컬 연결·영속성 검증을 기다린다. 녹음 기능 실기 테스트는 아직 수행하지 않았다.
 
 | 작업 | 상태                    | 확인 내용 | 남은 확인 |
 |---|-----------------------|---|---|
@@ -23,7 +23,8 @@ P00-01 기준 파일 등록, P00-02 요구사항 목록 만들기, P00-04 구현
 | P00-08 공통 검증 데이터 작성 | 완료(산출물) | JSON 169사례·합성 파일 3개·참조 대조 31건 | 앱/서버 로더 P01/P03, 통합 명세 138건 후속 실행 |
 | P01-01 저장소 구조 만들기 | 완료 | apps/mobile·services/api·infra·README·설정 예시·Git 제외 규칙 | 없음. 프로젝트 생성·실행은 후속 작업 |
 | P01-02 Flutter 프로젝트 생성 | 완료 | Flutter 3.47.4/Dart 3.13.3, Android dev/staging/prod flavor, 앱 ID·초기 라우트·분석 규칙·lockfile 반영 | 없음. 서버 작업은 P01-03에서 별도 추적 |
-| P01-03 Spring Boot 프로젝트 생성 | 완료 | Boot 4.1.1·Java 21·Gradle 9.7.1, 필수 의존성, bootstrap 프로필, clean test·Tomcat 8080 기동 성공 | DB 연결·Flyway 실행은 P01-04. 로컬 생성 gradle.lockfile은 원격 추적 필요 |
+| P01-03 Spring Boot 프로젝트 생성 | 완료 | Boot 4.1.1·Java 21·Gradle 9.7.1, 필수 의존성, bootstrap 프로필, clean test·Tomcat 8080 기동 성공 | DB 연결은 P01-04, Flyway 실행은 P01-05. 로컬 생성 gradle.lockfile은 원격 추적 필요 |
+| P01-04 MySQL 개발 DB 준비 | 검증 대기 | MySQL 8.4.11 digest 고정, Compose의 로컬 포트·utf8mb4·UTC·named volume·healthcheck, Spring dev 프로필 구성 | 컨테이너 healthy, 서버 dev 기동, 재시작 후 데이터 유지 확인 |
 
 “수행 기록 없음”은 사용자가 별도로 수행한 작업까지 없었다고 단정하는 상태가 아니다. 증거를 확인하면 갱신한다.
 
@@ -236,3 +237,15 @@ P01-03 Spring Boot 프로젝트 생성 완료.
 - `bootRun`의 80% EXECUTING 표시는 서버가 종료될 때까지 작업이 계속 실행되는 정상 상태다.
 - Spring Security의 생성 비밀번호 경고는 개발용 기본 자동설정이며 비밀번호 값은 문서에 기록하지 않는다.
 - 완료 범위는 DB 없는 서버 골격이다. 실제 MySQL 연결과 Flyway 마이그레이션은 P01-04에서 검증한다.
+
+
+### 2.2 — 2026-09-17
+
+P01-04 MySQL 개발 DB 구성을 반영하고 로컬 검증 대기로 전환했다.
+
+- Docker Desktop과 WSL 2는 사용자 환경에서 실행 가능한 상태로 확인했다.
+- 계획 기준 MySQL 8.4.12 공식 이미지는 조회되지 않아, 같은 8.4 LTS 계열의 8.4.11을 `sha256:85b9bf2e29cf836ecb8c2a15a935d4ba0c606631dff1dd79531a11983c638f2a`로 고정했다.
+- Compose에 로컬 전용 포트, utf8mb4, UTC, named volume, healthcheck를 설정했다.
+- Spring `dev` 프로필은 DB 비밀번호를 런타임 환경변수로만 받고 Hibernate 자동 스키마 변경을 막는다.
+- Flyway는 P01-05에서 초기 마이그레이션을 추가할 때까지 비활성화했다.
+- 남은 완료 조건: MySQL `healthy`, Spring Boot dev 프로필 연결 성공, MySQL 재시작 후 확인 데이터 유지.
