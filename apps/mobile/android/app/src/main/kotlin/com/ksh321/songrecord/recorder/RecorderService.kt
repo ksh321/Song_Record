@@ -239,9 +239,6 @@ class RecorderService : Service() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(Notification.CATEGORY_SERVICE)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            builder.setSilent(true)
-        }
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             @Suppress("DEPRECATION")
             builder.setDefaults(0).setSound(null).setVibrate(longArrayOf())
