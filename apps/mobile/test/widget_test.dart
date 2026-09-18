@@ -52,6 +52,33 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('실기 검증용 기기 정보를 표시한다', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: RecorderPanel(
+            gateway: _FakeRecorderGateway(
+              deviceInfo: RecorderDeviceInfo(
+                manufacturer: 'samsung',
+                model: 'SM-A546S',
+                androidVersion: '16',
+                sdkInt: 36,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('검증 기기: samsung SM-A546S · Android 16 (SDK 36)'),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('화면을 다시 만들어도 서비스의 녹음 상태를 복원한다', (tester) async {
     await tester.pumpWidget(
       SongRecordApp(
@@ -251,12 +278,24 @@ void main() {
 }
 
 class _FakeRecorderGateway implements RecorderGateway {
-  const _FakeRecorderGateway({this.status = const RecorderStatus.idle()});
+  const _FakeRecorderGateway({
+    this.status = const RecorderStatus.idle(),
+    this.deviceInfo = const RecorderDeviceInfo(
+      manufacturer: 'test',
+      model: 'test-device',
+      androidVersion: '1',
+      sdkInt: 1,
+    ),
+  });
 
   final RecorderStatus status;
+  final RecorderDeviceInfo deviceInfo;
 
   @override
   Future<RecorderStatus> getCurrentStatus() async => status;
+
+  @override
+  Future<RecorderDeviceInfo> getDeviceInfo() async => deviceInfo;
 
   @override
   Future<void> playLatest() async {}
@@ -283,6 +322,15 @@ class _PollingRecorderGateway implements RecorderGateway {
 
   @override
   Future<RecorderStatus> getCurrentStatus() async => _status;
+
+  @override
+  Future<RecorderDeviceInfo> getDeviceInfo() async =>
+      const RecorderDeviceInfo(
+        manufacturer: 'test',
+        model: 'poll-device',
+        androidVersion: '1',
+        sdkInt: 1,
+      );
 
   @override
   Future<void> playLatest() async {}

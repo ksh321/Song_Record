@@ -19,6 +19,7 @@ class _RecorderPanelState extends State<RecorderPanel>
 
   RecorderStatus _status = const RecorderStatus.idle();
   RecorderPermissions? _permissions;
+  RecorderDeviceInfo? _deviceInfo;
   StreamSubscription<RecorderStatus>? _subscription;
   Timer? _statusPoller;
   DateTime? _startGraceDeadline;
@@ -34,6 +35,7 @@ class _RecorderPanelState extends State<RecorderPanel>
       onError: (Object error) => _showError(error.toString()),
     );
     _startStatusPolling();
+    unawaited(_refreshDeviceInfo());
     unawaited(_refreshStatus(reportErrors: true));
   }
 
@@ -54,6 +56,16 @@ class _RecorderPanelState extends State<RecorderPanel>
     _statusPoller = Timer.periodic(_statusPollInterval, (_) {
       unawaited(_refreshStatus());
     });
+  }
+
+  Future<void> _refreshDeviceInfo() async {
+    try {
+      final deviceInfo = await widget.gateway.getDeviceInfo();
+      if (!mounted) return;
+      setState(() => _deviceInfo = deviceInfo);
+    } on Object catch (error) {
+      _showError(error.toString());
+    }
   }
 
   Future<void> _refreshStatus({bool reportErrors = false}) async {
@@ -180,6 +192,12 @@ class _RecorderPanelState extends State<RecorderPanel>
             const SizedBox(height: 8),
             const Text('최대 녹음 시간 6분'),
             const Text('AAC-LC · 96kbps · 48kHz · 모노 · M4A'),
+            if (_deviceInfo != null)
+              Text(
+                '검증 기기: ${_deviceInfo!.manufacturer} '
+                '${_deviceInfo!.model} · Android '
+                '${_deviceInfo!.androidVersion} (SDK ${_deviceInfo!.sdkInt})',
+              ),
             const SizedBox(height: 12),
             Text('상태: ${_phaseLabel(_status.phase)}'),
             if (_status.localState != RecorderLocalState.none)

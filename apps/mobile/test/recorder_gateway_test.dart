@@ -2,6 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 
 void main() {
+  test('실기 검증용 Android 기기 정보를 변환한다', () {
+    final info = RecorderDeviceInfo.fromMap(const {
+      'manufacturer': 'samsung',
+      'model': 'SM-A546S',
+      'androidVersion': '16',
+      'sdkInt': 36,
+    });
+
+    expect(info.manufacturer, 'samsung');
+    expect(info.model, 'SM-A546S');
+    expect(info.androidVersion, '16');
+    expect(info.sdkInt, 36);
+  });
+
   test('네이티브 녹음 중 상태를 변환한다', () {
     final status = RecorderStatus.fromMap(const {
       'phase': 'recording',

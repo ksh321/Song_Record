@@ -31,6 +31,7 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "getStatus" -> result.success(RecorderService.currentState())
+                "getDeviceInfo" -> result.success(deviceInfo())
                 "requestPermissions" -> requestRecorderPermissions(result)
                 "start" -> startRecorder(result)
                 "stop" -> stopRecorder(result)
@@ -154,6 +155,13 @@ class MainActivity : FlutterActivity() {
 
     private fun hasPermission(permission: String): Boolean =
         ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+
+    private fun deviceInfo() = mapOf(
+        "manufacturer" to Build.MANUFACTURER,
+        "model" to Build.MODEL,
+        "androidVersion" to Build.VERSION.RELEASE,
+        "sdkInt" to Build.VERSION.SDK_INT,
+    )
 
     private fun permissionState() = mapOf(
         "microphoneGranted" to hasPermission(Manifest.permission.RECORD_AUDIO),

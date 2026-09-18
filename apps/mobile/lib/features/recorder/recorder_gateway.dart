@@ -8,6 +8,29 @@ enum RecorderLimitWarning { none, thirtySeconds, tenSeconds }
 
 enum RecorderLocalState { none, capturing, inputPending, saved, interrupted, corrupt }
 
+class RecorderDeviceInfo {
+  const RecorderDeviceInfo({
+    required this.manufacturer,
+    required this.model,
+    required this.androidVersion,
+    required this.sdkInt,
+  });
+
+  factory RecorderDeviceInfo.fromMap(Map<Object?, Object?> map) {
+    return RecorderDeviceInfo(
+      manufacturer: map['manufacturer']?.toString() ?? 'unknown',
+      model: map['model']?.toString() ?? 'unknown',
+      androidVersion: map['androidVersion']?.toString() ?? 'unknown',
+      sdkInt: (map['sdkInt'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  final String manufacturer;
+  final String model;
+  final String androidVersion;
+  final int sdkInt;
+}
+
 class RecorderPermissions {
   const RecorderPermissions({
     required this.microphoneGranted,
@@ -127,6 +150,8 @@ abstract interface class RecorderGateway {
 
   Future<RecorderStatus> getCurrentStatus();
 
+  Future<RecorderDeviceInfo> getDeviceInfo();
+
   Future<RecorderPermissions> requestPermissions();
 
   Future<void> start();
@@ -161,6 +186,14 @@ class MethodChannelRecorderGateway implements RecorderGateway {
       'getStatus',
     );
     return RecorderStatus.fromMap(response ?? const {});
+  }
+
+  @override
+  Future<RecorderDeviceInfo> getDeviceInfo() async {
+    final response = await _commands.invokeMapMethod<Object?, Object?>(
+      'getDeviceInfo',
+    );
+    return RecorderDeviceInfo.fromMap(response ?? const {});
   }
 
   @override
