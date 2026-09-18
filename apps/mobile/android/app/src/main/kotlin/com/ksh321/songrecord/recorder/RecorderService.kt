@@ -21,6 +21,7 @@ import java.io.File
 import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArraySet
+import com.ksh321.songrecord.MainActivity
 
 class RecorderService : Service() {
     private var recorder: MediaRecorder? = null
@@ -299,6 +300,7 @@ class RecorderService : Service() {
             .setContentTitle("노래기록 녹음 중")
             .setContentText(text)
             .setSmallIcon(applicationInfo.icon)
+            .setContentIntent(openAppPendingIntent())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(
@@ -340,6 +342,17 @@ class RecorderService : Service() {
             }
         }
         return builder.build()
+    }
+
+    private fun openAppPendingIntent(): PendingIntent {
+        val openAppIntent = Intent(this, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        return PendingIntent.getActivity(
+            this,
+            OPEN_APP_REQUEST_CODE,
+            openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
     }
 
     private fun stopPendingIntent(requestCode: Int): PendingIntent {
@@ -422,6 +435,7 @@ class RecorderService : Service() {
         private const val PROMOTED_ONGOING_EXTRA = "android.requestPromotedOngoing"
         private const val NOTIFICATION_ID = 2102
         private const val FOREGROUND_STOP_REQUEST_CODE = 1
+        private const val OPEN_APP_REQUEST_CODE = 2
         private const val AUDIO_BIT_RATE = 96_000
         private const val AUDIO_SAMPLE_RATE = 48_000
         private const val AUDIO_CHANNELS = 1
