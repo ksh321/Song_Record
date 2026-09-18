@@ -52,6 +52,54 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('권한 거부 후 앱에서 마이크 권한을 다시 요청한다', (tester) async {
+    final gateway = _DeniedPermissionGateway();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: RecorderPanel(gateway: gateway)),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('녹음 시작'));
+    await tester.pump();
+
+    expect(find.text('마이크 권한 다시 요청'), findsOneWidget);
+    expect(
+      find.text('마이크 권한이 필요합니다. 아래 버튼으로 다시 요청하세요.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('마이크 권한 다시 요청'));
+    await tester.pump();
+
+    expect(gateway.permissionRequestCount, 2);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('재요청이 차단되면 앱 설정을 직접 연다', (tester) async {
+    final gateway = _DeniedPermissionGateway(canAskAgain: false);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: RecorderPanel(gateway: gateway)),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('녹음 시작'));
+    await tester.pump();
+    expect(find.text('앱 권한 설정 열기'), findsOneWidget);
+
+    await tester.tap(find.text('앱 권한 설정 열기'));
+    await tester.pump();
+    expect(gateway.settingsOpenCount, 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('실기 검증용 기기 정보를 표시한다', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -298,6 +346,12 @@ class _FakeRecorderGateway implements RecorderGateway {
   Future<RecorderDeviceInfo> getDeviceInfo() async => deviceInfo;
 
   @override
+  Future<void> openAppSettings() async {}
+
+  @override
+  Future<void> openAppSettings() async {}
+
+  @override
   Future<void> playLatest() async {}
 
   @override
@@ -355,6 +409,54 @@ class _PollingRecorderGateway implements RecorderGateway {
   Future<void> stop() async {
     _status = const RecorderStatus(phase: RecorderPhase.completed);
   }
+
+  @override
+  Stream<RecorderStatus> watchStatus() => const Stream.empty();
+}
+
+class _DeniedPermissionGateway implements RecorderGateway {
+  _DeniedPermissionGateway({this.canAskAgain = true});
+
+  final bool canAskAgain;
+  int permissionRequestCount = 0;
+  int settingsOpenCount = 0;
+
+  @override
+  Future<RecorderStatus> getCurrentStatus() async =>
+      const RecorderStatus.idle();
+
+  @override
+  Future<RecorderDeviceInfo> getDeviceInfo() async =>
+      const RecorderDeviceInfo(
+        manufacturer: 'test',
+        model: 'permission-device',
+        androidVersion: '1',
+        sdkInt: 1,
+      );
+
+  @override
+  Future<void> openAppSettings() async {
+    settingsOpenCount += 1;
+  }
+
+  @override
+  Future<void> playLatest() async {}
+
+  @override
+  Future<RecorderPermissions> requestPermissions() async {
+    permissionRequestCount += 1;
+    return RecorderPermissions(
+      microphoneGranted: false,
+      notificationsGranted: true,
+      microphoneCanAskAgain: canAskAgain,
+    );
+  }
+
+  @override
+  Future<void> start() async {}
+
+  @override
+  Future<void> stop() async {}
 
   @override
   Stream<RecorderStatus> watchStatus() => const Stream.empty();

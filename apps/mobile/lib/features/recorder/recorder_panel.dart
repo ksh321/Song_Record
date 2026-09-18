@@ -118,7 +118,7 @@ class _RecorderPanelState extends State<RecorderPanel>
       setState(() => _permissions = permissions);
 
       if (!permissions.microphoneGranted) {
-        _showError('마이크 권한이 필요합니다. 권한을 허용한 뒤 다시 시도하세요.');
+        _showError('마이크 권한이 필요합니다. 아래 버튼으로 다시 요청하세요.');
         return;
       }
 
@@ -130,6 +130,15 @@ class _RecorderPanelState extends State<RecorderPanel>
     } on Object catch (error) {
       _startGraceDeadline = null;
       unawaited(_refreshStatus());
+      _showError(error.toString());
+    }
+  }
+
+  Future<void> _openAppSettings() async {
+    _clearOperationError();
+    try {
+      await widget.gateway.openAppSettings();
+    } on Object catch (error) {
       _showError(error.toString());
     }
   }
@@ -251,6 +260,21 @@ class _RecorderPanelState extends State<RecorderPanel>
                 '${_status.errorCode ?? 'RECORDER_ERROR'}: '
                 '${_status.errorMessage}',
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+            if (_permissions != null &&
+                !_permissions!.microphoneGranted) ...[
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _permissions!.microphoneCanAskAgain
+                    ? _start
+                    : _openAppSettings,
+                icon: const Icon(Icons.mic_none),
+                label: Text(
+                  _permissions!.microphoneCanAskAgain
+                      ? '마이크 권한 다시 요청'
+                      : '앱 권한 설정 열기',
+                ),
               ),
             ],
             const SizedBox(height: 16),

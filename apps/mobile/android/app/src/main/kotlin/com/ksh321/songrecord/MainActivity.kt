@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.Settings
+import android.net.Uri
 import android.media.MediaPlayer
 import java.io.File
 import androidx.core.content.ContextCompat
@@ -32,6 +34,7 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "getStatus" -> result.success(RecorderService.currentState())
                 "getDeviceInfo" -> result.success(deviceInfo())
+                "openAppSettings" -> openAppSettings(result)
                 "requestPermissions" -> requestRecorderPermissions(result)
                 "start" -> startRecorder(result)
                 "stop" -> stopRecorder(result)
@@ -79,7 +82,22 @@ class MainActivity : FlutterActivity() {
         }
 
         pendingPermissionResult = result
+        if (missing.contains(Manifest.permission.RECORD_AUDIO)) {
+            getSharedPreferences(PERMISSION_PREFERENCES, MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_MICROPHONE_REQUESTED, true)
+                .apply()
+        }
         requestPermissions(missing.toTypedArray(), RECORDER_PERMISSION_REQUEST)
+    }
+
+    private fun openAppSettings(result: MethodChannel.Result) {
+        val intent = Intent(
+            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            Uri.parse("package:$packageName"),
+        )
+        startActivity(intent)
+        result.success(null)
     }
 
     private fun startRecorder(result: MethodChannel.Result) {
@@ -163,13 +181,25 @@ class MainActivity : FlutterActivity() {
         "sdkInt" to Build.VERSION.SDK_INT,
     )
 
-    private fun permissionState() = mapOf(
-        "microphoneGranted" to hasPermission(Manifest.permission.RECORD_AUDIO),
+    private fun permissionState(): Map<String, Any> {
+        val microphoneGranted = hasPermission(Manifest.permission.RECORD_AUDIO)
+        val microphoneRequested = getSharedPreferences(
+            PERMISSION_PREFERENCES,
+            MODE_PRIVATE,
+        ).getBoolean(KEY_MICROPHONE_REQUESTED, false)
+        val microphoneCanAskAgain = microphoneGranted ||
+            !microphoneRequested ||
+            shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
+
+        return mapOf(
+        "microphoneGranted" to microphoneGranted,
+        "microphoneCanAskAgain" to microphoneCanAskAgain,
         "notificationsGranted" to (
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
                 hasPermission(Manifest.permission.POST_NOTIFICATIONS)
             ),
-    )
+        )
+    }
 
     companion object {
         private const val RECORDER_COMMAND_CHANNEL =
@@ -177,5 +207,7 @@ class MainActivity : FlutterActivity() {
         private const val RECORDER_EVENT_CHANNEL =
             "com.ksh321.songrecord/recorder_events"
         private const val RECORDER_PERMISSION_REQUEST = 2102
+        private const val PERMISSION_PREFERENCES = "recorder_permissions"
+        private const val KEY_MICROPHONE_REQUESTED = "microphone_requested"
     }
 }

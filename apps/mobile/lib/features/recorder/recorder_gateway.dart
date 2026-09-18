@@ -35,17 +35,20 @@ class RecorderPermissions {
   const RecorderPermissions({
     required this.microphoneGranted,
     required this.notificationsGranted,
+    this.microphoneCanAskAgain = true,
   });
 
   factory RecorderPermissions.fromMap(Map<Object?, Object?> map) {
     return RecorderPermissions(
       microphoneGranted: map['microphoneGranted'] == true,
       notificationsGranted: map['notificationsGranted'] == true,
+      microphoneCanAskAgain: map['microphoneCanAskAgain'] != false,
     );
   }
 
   final bool microphoneGranted;
   final bool notificationsGranted;
+  final bool microphoneCanAskAgain;
 }
 
 class RecorderStatus {
@@ -152,6 +155,8 @@ abstract interface class RecorderGateway {
 
   Future<RecorderDeviceInfo> getDeviceInfo();
 
+  Future<void> openAppSettings();
+
   Future<RecorderPermissions> requestPermissions();
 
   Future<void> start();
@@ -195,6 +200,10 @@ class MethodChannelRecorderGateway implements RecorderGateway {
     );
     return RecorderDeviceInfo.fromMap(response ?? const {});
   }
+
+  @override
+  Future<void> openAppSettings() =>
+      _commands.invokeMethod<void>('openAppSettings');
 
   @override
   Future<RecorderPermissions> requestPermissions() async {

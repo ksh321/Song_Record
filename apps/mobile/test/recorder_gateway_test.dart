@@ -2,6 +2,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 
 void main() {
+  test('마이크 권한 재요청 가능 상태를 변환한다', () {
+    final denied = RecorderPermissions.fromMap(const {
+      'microphoneGranted': false,
+      'notificationsGranted': true,
+      'microphoneCanAskAgain': true,
+    });
+    final blocked = RecorderPermissions.fromMap(const {
+      'microphoneGranted': false,
+      'notificationsGranted': true,
+      'microphoneCanAskAgain': false,
+    });
+
+    expect(denied.microphoneCanAskAgain, isTrue);
+    expect(blocked.microphoneCanAskAgain, isFalse);
+  });
+
   test('실기 검증용 Android 기기 정보를 변환한다', () {
     final info = RecorderDeviceInfo.fromMap(const {
       'manufacturer': 'samsung',
