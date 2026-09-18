@@ -91,9 +91,9 @@ void main() {
 
     await tester.tap(find.text('녹음 시작'));
     await tester.pump();
-    expect(find.text('앱 권한 설정 열기'), findsOneWidget);
+    expect(find.text('마이크 권한 설정 열기'), findsOneWidget);
 
-    await tester.tap(find.text('앱 권한 설정 열기'));
+    await tester.tap(find.text('마이크 권한 설정 열기'));
     await tester.pump();
     expect(gateway.settingsOpenCount, 1);
 

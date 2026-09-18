@@ -273,7 +273,7 @@ class _RecorderPanelState extends State<RecorderPanel>
                 label: Text(
                   _permissions!.microphoneCanAskAgain
                       ? '마이크 권한 다시 요청'
-                      : '앱 권한 설정 열기',
+                      : '마이크 권한 설정 열기',
                 ),
               ),
             ],

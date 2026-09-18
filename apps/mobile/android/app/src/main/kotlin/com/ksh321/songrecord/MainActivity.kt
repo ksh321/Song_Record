@@ -1,6 +1,7 @@
 package com.ksh321.songrecord
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -92,11 +93,18 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun openAppSettings(result: MethodChannel.Result) {
-        val intent = Intent(
+        val packageUri = Uri.parse("package:$packageName")
+        val permissionsIntent = Intent(APP_PERMISSIONS_SETTINGS_ACTION, packageUri)
+        val fallbackIntent = Intent(
             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-            Uri.parse("package:$packageName"),
+            packageUri,
         )
-        startActivity(intent)
+
+        try {
+            startActivity(permissionsIntent)
+        } catch (_: ActivityNotFoundException) {
+            startActivity(fallbackIntent)
+        }
         result.success(null)
     }
 
@@ -209,5 +217,7 @@ class MainActivity : FlutterActivity() {
         private const val RECORDER_PERMISSION_REQUEST = 2102
         private const val PERMISSION_PREFERENCES = "recorder_permissions"
         private const val KEY_MICROPHONE_REQUESTED = "microphone_requested"
+        private const val APP_PERMISSIONS_SETTINGS_ACTION =
+            "android.settings.APP_PERMISSIONS_SETTINGS"
     }
 }
