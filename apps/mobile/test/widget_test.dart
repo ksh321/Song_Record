@@ -349,9 +349,6 @@ class _FakeRecorderGateway implements RecorderGateway {
   Future<void> openAppSettings() async {}
 
   @override
-  Future<void> openAppSettings() async {}
-
-  @override
   Future<void> playLatest() async {}
 
   @override
@@ -385,6 +382,9 @@ class _PollingRecorderGateway implements RecorderGateway {
         androidVersion: '1',
         sdkInt: 1,
       );
+
+  @override
+  Future<void> openAppSettings() async {}
 
   @override
   Future<void> playLatest() async {}
