@@ -406,3 +406,20 @@ P03-06~08 녹음 스냅샷·기본값·공통 정렬 및 선택 규칙을 구현
 - 기존 sorting 및 RET-01~04 fixture를 양쪽 테스트가 함께 읽어 동일한 순서와 후보 결과를 검증한다.
 - 자세한 규칙과 검증 범위는 [P03-06~08 검증 문서](verification/P03-06-08-domain-rules.md)에 기록했다.
 - 다음 작업: P04 로컬 데이터베이스 스키마와 마이그레이션을 구현한다.
+
+
+### 3.5 — 2026-09-18
+
+P04-01~03 계정·곡·녹음 서버 스키마와 실제 MySQL 검증을 구현했다.
+
+- Flyway V2에 User·AuthIdentity·AuthSession·Device·UserEntitlement를 추가했다.
+- 이메일은 중복을 허용하고 `(provider, provider_user_id)`만 유일하게 만들어 같은 로그인 신원이 두 사용자에게 연결되지 않게 했다.
+- Song·SongSource와 `reserved_tj_number` 저장 생성 열을 추가했다.
+- ACTIVE·TRASHED·PURGE_PENDING 곡은 계정 안에서 같은 TJ 번호를 중복 예약할 수 없고, PURGED 뒤에는 새 UUID로 다시 등록할 수 있다.
+- Recording·RecordingFileSpec·RecordingAsset·RecordingUpload를 추가하고 모든 개인 관계에 사용자 소유자 복합 외래키를 적용했다.
+- DRAFT에서 SAVED로 바꿀 때 필수 스냅샷과 파일 명세가 있어야 하며, SAVED 파일 명세는 PURGED 전까지 수정·삭제할 수 없다.
+- 대표 녹음은 같은 계정의 같은 곡 녹음만 참조하도록 3열 복합 외래키로 제한했다.
+- 업로드 활성 슬롯 2개와 같은 녹음의 활성 시도 1개를 생성 열·유일 인덱스로 강제했다.
+- CI가 실제 MySQL에서 V1까지만 설치한 뒤 보존 확인 행을 추가하고, V2로 증분 업그레이드하여 데이터 보존과 제약 거절 사례를 검사한다.
+- 자세한 검증 범위는 [P04-01~03 검증 문서](verification/P04-01-03-core-schema.md)에 기록했다.
+- 다음 작업: P04-04 목록·분류 스키마부터 P04-07 차트·보조 스키마까지 구현한다.

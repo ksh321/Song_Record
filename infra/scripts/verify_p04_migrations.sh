@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+infra_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="$(cd "$infra_dir/.." && pwd)"
+api_jar="$repo_root/services/api/build/libs/api-0.0.1-SNAPSHOT.jar"
+api_log="$(mktemp)"
+api_pid=""
+
+cleanup() {
+  if [[ -n "$api_pid" ]] && kill -0 "$api_pid" 2>/dev/null; then
+    kill "$api_pid"
+    wait "$api_pid" 2>/dev/null || true
+  fi
+  rm -f "$api_log"
+}
+trap cleanup EXIT
+
+: "${DB_PASSWORD:?DB_PASSWORD is required}"
+: "${MYSQL_DATABASE:?MYSQL_DATABASE is required}"
+: "${MYSQL_USER:?MYSQL_USER is required}"
+
+run_sql() {
+  docker compose exec -T mysql sh -lc \
+    'MYSQL_PWD="$MYSQL_PASSWORD" mysql --protocol=tcp -h127.0.0.1 -u"$MYSQL_USER" "$MYSQL_DATABASE" --batch --skip-column-names' \
+    <<<"$1"
+}
+
+start_api() {
+  local flyway_target="$1"
+  : >"$api_log"
+  if [[ -n "$flyway_target" ]]; then
+    SPRING_FLYWAY_TARGET="$flyway_target" \
+    SPRING_PROFILES_ACTIVE=dev \
+    DB_HOST=127.0.0.1 \
+    DB_PORT="${MYSQL_PORT:-3306}" \
+    DB_NAME="$MYSQL_DATABASE" \
+    DB_USER="$MYSQL_USER" \
+    DB_PASSWORD="$DB_PASSWORD" \
+      java -jar "$api_jar" >"$api_log" 2>&1 &
+  else
+    SPRING_PROFILES_ACTIVE=dev \
+    DB_HOST=127.0.0.1 \
+    DB_PORT="${MYSQL_PORT:-3306}" \
+    DB_NAME="$MYSQL_DATABASE" \
+    DB_USER="$MYSQL_USER" \
+    DB_PASSWORD="$DB_PASSWORD" \
+      java -jar "$api_jar" >"$api_log" 2>&1 &
+  fi
+  api_pid=$!
+
+  for attempt in {1..60}; do
+    if curl --fail --silent http://127.0.0.1:8080/actuator/health >/dev/null; then
+      return 0
+    fi
+    if ! kill -0 "$api_pid" 2>/dev/null; then
+      echo "API stopped before becoming healthy."
+      cat "$api_log"
+      exit 1
+    fi
+    sleep 1
+  done
+
+  echo "API did not become healthy in time."
+  cat "$api_log"
+  exit 1
+}
+
+stop_api() {
+  if [[ -n "$api_pid" ]] && kill -0 "$api_pid" 2>/dev/null; then
+    kill "$api_pid"
+    wait "$api_pid" 2>/dev/null || true
+  fi
+  api_pid=""
+}
+
+if [[ ! -f "$api_jar" ]]; then
+  echo "Missing API boot jar: $api_jar"
+  exit 1
+fi
+
+cd "$infra_dir"
+
+start_api "1"
+run_sql "INSERT INTO app_schema_metadata (schema_key,schema_value) VALUES ('upgrade_sentinel','kept');"
+stop_api
+
+start_api ""
+stop_api
+
+bash "$infra_dir/scripts/verify_p04_core_schema.sh"

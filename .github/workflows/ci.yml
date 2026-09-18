@@ -80,9 +80,9 @@ jobs:
         run: ./gradlew clean build --no-daemon
 
   mysql:
-    name: MySQL Compose smoke test
+    name: MySQL migrations and constraints
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: infra
@@ -90,6 +90,17 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+          cache-dependency-path: |
+            services/api/*.gradle*
+            services/api/gradle.lockfile
+            services/api/gradle/wrapper/gradle-wrapper.properties
 
       - name: Create CI-only environment
         run: |
@@ -115,6 +126,22 @@ jobs:
           done
           echo "MySQL did not accept the CI verification query in time."
           exit 1
+
+      - name: Allow Gradle Wrapper execution
+        working-directory: services/api
+        run: chmod +x gradlew
+
+      - name: Build API boot jar
+        working-directory: services/api
+        run: ./gradlew bootJar --no-daemon
+
+      - name: Verify Flyway upgrade and P04 constraints
+        env:
+          DB_PASSWORD: ci_song_record_password
+          MYSQL_DATABASE: song_record
+          MYSQL_USER: song_record
+          MYSQL_PORT: "3306"
+        run: bash scripts/verify_p04_migrations.sh
 
       - name: Show logs on failure
         if: failure()
