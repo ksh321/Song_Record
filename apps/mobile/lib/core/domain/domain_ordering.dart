@@ -53,9 +53,9 @@ final class RecordingSelection {
   final RecordingId? lowestTier;
 
   Set<RecordingId> get uniqueIds => {
-    if (representative != null) representative!,
-    if (latest != null) latest!,
-    if (lowestTier != null) lowestTier!,
+    ?representative,
+    ?latest,
+    ?lowestTier,
   };
 }
 
