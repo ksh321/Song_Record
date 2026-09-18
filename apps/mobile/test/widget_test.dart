@@ -143,6 +143,38 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('복구된 녹음 파일과 검증 정보를 표시한다', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RecorderPanel(
+            gateway: const _FakeRecorderGateway(
+              status: RecorderStatus(
+                phase: RecorderPhase.completed,
+                recordingId: 'recovered-recording',
+                outputPath: '/data/recordings/recovered-recording.m4a',
+                elapsedMs: 4200,
+                durationMs: 4200,
+                sizeBytes: 12345,
+                sha256: 'abc123',
+                recovered: true,
+                recoveryState: 'recovered',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('이전 실행에서 완료된 녹음 파일을 복구했습니다.'), findsOneWidget);
+    expect(find.text('확인된 길이: 00:04'), findsOneWidget);
+    expect(find.text('SHA-256: abc123'), findsOneWidget);
+    expect(find.text('녹음 파일 재생 확인'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('6분 제한 자동 종료 결과를 표시한다', (tester) async {
     await tester.pumpWidget(
       MaterialApp(

@@ -20,6 +20,10 @@ void main() {
       'phase': 'completed',
       'outputPath': '/data/recordings/recording-1.m4a',
       'sizeBytes': 12345,
+      'durationMs': 4200,
+      'sha256': 'abc123',
+      'recovered': true,
+      'recoveryState': 'recovered',
       'actualMime': 'audio/mp4a-latm',
       'actualSampleRate': 48000,
       'actualChannels': 1,
@@ -27,6 +31,10 @@ void main() {
     });
 
     expect(status.phase, RecorderPhase.completed);
+    expect(status.durationMs, 4200);
+    expect(status.sha256, 'abc123');
+    expect(status.recovered, isTrue);
+    expect(status.recoveryState, 'recovered');
     expect(status.actualMime, 'audio/mp4a-latm');
     expect(status.actualSampleRate, 48000);
     expect(status.actualChannels, 1);
@@ -67,6 +75,24 @@ void main() {
     expect(status.phase, RecorderPhase.completed);
     expect(status.stopReason, 'time_limit');
     expect(status.isRecording, isFalse);
+  });
+
+
+
+  test('복구하지 못한 중단 파일 상태를 변환한다', () {
+    final status = RecorderStatus.fromMap(const {
+      'phase': 'error',
+      'recordingId': 'interrupted-recording',
+      'recovered': true,
+      'recoveryState': 'interrupted',
+      'errorCode': 'RECORDER_RECOVERY_INCOMPLETE',
+    });
+
+    expect(status.phase, RecorderPhase.error);
+    expect(status.recordingId, 'interrupted-recording');
+    expect(status.recovered, isTrue);
+    expect(status.recoveryState, 'interrupted');
+    expect(status.errorCode, 'RECORDER_RECOVERY_INCOMPLETE');
   });
 
   test('알 수 없는 상태는 오류로 처리한다', () {

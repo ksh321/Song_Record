@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.media.MediaRecorder
@@ -17,6 +18,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
 import java.io.File
+import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArraySet
 
@@ -24,6 +26,7 @@ class RecorderService : Service() {
     private var recorder: MediaRecorder? = null
     private var recordingId: String? = null
     private var outputFile: File? = null
+    private var journalEntry: RecorderJournalEntry? = null
     private var startedAtElapsedMs = 0L
     private var startedAtWallClockMs = 0L
     private var stopping = false
@@ -79,8 +82,23 @@ class RecorderService : Service() {
         startAsForeground(buildNotification("녹음 준비 중", false))
 
         val id = UUID.randomUUID().toString()
-        val directory = File(filesDir, "recordings").apply { mkdirs() }
-        val file = File(directory, "$id.m4a")
+        val recordingsDirectory = File(filesDir, "recordings").apply { mkdirs() }
+        val pendingDirectory = File(recordingsDirectory, ".pending").apply { mkdirs() }
+        val pendingFile = File(pendingDirectory, "$id.m4a")
+        val finalFile = File(recordingsDirectory, "$id.m4a")
+        val entry = RecorderJournalEntry(
+            recordingId = id,
+            accountScope = RecorderRecoveryJournal.PROTOTYPE_ACCOUNT_SCOPE,
+            pendingPath = pendingFile.absolutePath,
+            finalPath = finalFile.absolutePath,
+            phase = RecorderRecoveryJournal.PHASE_PREPARING,
+            startedAtWallClockMs = System.currentTimeMillis(),
+        )
+        recordingId = id
+        outputFile = pendingFile
+        journalEntry = entry
+        startedAtWallClockMs = entry.startedAtWallClockMs
+        RecorderRecoveryJournal(this).write(entry)
 
         var newRecorder: MediaRecorder? = null
         try {
@@ -98,23 +116,24 @@ class RecorderService : Service() {
                 setAudioEncodingBitRate(AUDIO_BIT_RATE)
                 setAudioSamplingRate(AUDIO_SAMPLE_RATE)
                 setAudioChannels(AUDIO_CHANNELS)
-                setOutputFile(file.absolutePath)
+                setOutputFile(pendingFile.absolutePath)
                 prepare()
                 start()
             }
 
             recorder = candidate
-            recordingId = id
-            outputFile = file
             startedAtElapsedMs = SystemClock.elapsedRealtime()
-            startedAtWallClockMs = System.currentTimeMillis()
+            val recordingEntry = entry.copy(phase = RecorderRecoveryJournal.PHASE_RECORDING)
+            journalEntry = recordingEntry
+            RecorderRecoveryJournal(this).write(recordingEntry)
             publish(recordingState(0L))
             notifyProgress(0L)
             handler.post(ticker)
         } catch (error: Exception) {
             runCatching { newRecorder?.release() }
             recorder = null
-            file.delete()
+            pendingFile.delete()
+            persistFailure("RECORDER_START_FAILED", error, null)
             publishError("RECORDER_START_FAILED", error)
             stopForegroundCompat()
             stopSelf()
@@ -134,42 +153,87 @@ class RecorderService : Service() {
         handler.removeCallbacks(ticker)
         val elapsedMs = currentElapsedMs()
         publish(recordingState(elapsedMs, "stopping", stopReason))
+        updateJournal(
+            phase = RecorderRecoveryJournal.PHASE_FINALIZING,
+            elapsedMs = elapsedMs,
+            stopReason = stopReason,
+        )
 
         try {
             activeRecorder.stop()
             runCatching { activeRecorder.release() }
             recorder = null
 
-            val file = outputFile
-            val inspection = file?.let(::inspectAudio)
-            publish(
-                mapOf(
-                    "phase" to "completed",
-                    "recordingId" to recordingId,
-                    "outputPath" to file?.absolutePath,
-                    "elapsedMs" to elapsedMs,
-                    "sizeBytes" to (file?.length() ?: 0L),
-                    "container" to "M4A",
-                    "codec" to "AAC-LC",
-                    "bitRate" to AUDIO_BIT_RATE,
-                    "sampleRate" to AUDIO_SAMPLE_RATE,
-                    "channels" to AUDIO_CHANNELS,
-                    "actualMime" to inspection?.mime,
-                    "actualSampleRate" to inspection?.sampleRate,
-                    "actualChannels" to inspection?.channels,
-                    "actualAacProfile" to inspection?.aacProfile,
-                    "stopReason" to stopReason,
-                ),
+            val pendingFile = outputFile
+                ?: throw IOException("임시 녹음 파일 경로가 없습니다.")
+            val inspection = RecorderFileTools.inspect(pendingFile)
+                ?: throw IOException("완성된 오디오 트랙을 확인할 수 없습니다.")
+            val verifiedEntry = requireNotNull(journalEntry).copy(
+                phase = RecorderRecoveryJournal.PHASE_VERIFIED,
+                elapsedMs = elapsedMs,
+                stopReason = stopReason,
+                sizeBytes = pendingFile.length(),
+                durationMs = inspection.durationMs,
+                sha256 = RecorderFileTools.sha256(pendingFile),
+                actualMime = inspection.mime,
+                actualSampleRate = inspection.sampleRate,
+                actualChannels = inspection.channels,
+                actualAacProfile = inspection.aacProfile,
             )
-        } catch (error: RuntimeException) {
+            journalEntry = verifiedEntry
+            RecorderRecoveryJournal(this).write(verifiedEntry)
+
+            val finalFile = RecorderFileTools.moveToFinal(
+                pendingFile,
+                File(verifiedEntry.finalPath),
+            )
+            outputFile = finalFile
+            val completedEntry = verifiedEntry.copy(
+                phase = RecorderRecoveryJournal.PHASE_COMPLETED,
+                sizeBytes = finalFile.length(),
+            )
+            journalEntry = completedEntry
+            RecorderRecoveryJournal(this).write(completedEntry)
+            publish(RecorderRecovery.completedState(completedEntry, recovered = false))
+        } catch (error: Exception) {
             runCatching { activeRecorder.release() }
             recorder = null
-            outputFile?.delete()
+            persistFailure("RECORDER_STOP_FAILED", error, stopReason)
             publishError("RECORDER_STOP_FAILED", error, stopReason)
         } finally {
             stopForegroundCompat()
             stopSelf()
         }
+    }
+
+    private fun updateJournal(
+        phase: String,
+        elapsedMs: Long,
+        stopReason: String?,
+    ) {
+        val updated = journalEntry?.copy(
+            phase = phase,
+            elapsedMs = elapsedMs,
+            stopReason = stopReason,
+        ) ?: return
+        journalEntry = updated
+        RecorderRecoveryJournal(this).write(updated)
+    }
+
+    private fun persistFailure(
+        code: String,
+        error: Exception,
+        stopReason: String?,
+    ) {
+        val failed = journalEntry?.copy(
+            phase = RecorderRecoveryJournal.PHASE_FAILED,
+            elapsedMs = if (startedAtElapsedMs == 0L) 0L else currentElapsedMs(),
+            stopReason = stopReason,
+            errorCode = code,
+            errorMessage = error.message ?: error.javaClass.simpleName,
+        ) ?: return
+        journalEntry = failed
+        RecorderRecoveryJournal(this).write(failed)
     }
 
     private fun recordingState(
@@ -189,6 +253,7 @@ class RecorderService : Service() {
         "bitRate" to AUDIO_BIT_RATE,
         "sampleRate" to AUDIO_SAMPLE_RATE,
         "channels" to AUDIO_CHANNELS,
+        "accountScope" to RecorderRecoveryJournal.PROTOTYPE_ACCOUNT_SCOPE,
     )
 
     private fun publishError(code: String, error: Exception, stopReason: String? = null) {
@@ -200,6 +265,7 @@ class RecorderService : Service() {
                 "errorCode" to code,
                 "errorMessage" to (error.message ?: error.javaClass.simpleName),
                 "stopReason" to stopReason,
+                "recoveryState" to "interrupted",
             ),
         )
     }
@@ -288,38 +354,6 @@ class RecorderService : Service() {
         )
     }
 
-    private fun inspectAudio(file: File): AudioInspection? {
-        val extractor = MediaExtractor()
-        return try {
-            extractor.setDataSource(file.absolutePath)
-            (0 until extractor.trackCount).firstNotNullOfOrNull { index ->
-                val format = extractor.getTrackFormat(index)
-                val mime = format.getString(MediaFormat.KEY_MIME)
-                if (mime?.startsWith("audio/") != true) return@firstNotNullOfOrNull null
-                AudioInspection(
-                    mime = mime,
-                    sampleRate = format.integerOrNull(MediaFormat.KEY_SAMPLE_RATE),
-                    channels = format.integerOrNull(MediaFormat.KEY_CHANNEL_COUNT),
-                    aacProfile = format.integerOrNull(MediaFormat.KEY_AAC_PROFILE),
-                )
-            }
-        } catch (_: Exception) {
-            null
-        } finally {
-            extractor.release()
-        }
-    }
-
-    private fun MediaFormat.integerOrNull(key: String): Int? =
-        if (containsKey(key)) getInteger(key) else null
-
-    private data class AudioInspection(
-        val mime: String,
-        val sampleRate: Int?,
-        val channels: Int?,
-        val aacProfile: Int?,
-    )
-
     private fun notifyProgress(elapsedMs: Long) {
         val totalSeconds = (elapsedMs / 1_000L).coerceAtMost(MAX_DURATION_SECONDS)
         val progress = "%02d:%02d / 06:00".format(
@@ -401,6 +435,14 @@ class RecorderService : Service() {
 
         @Volatile
         private var lastState: Map<String, Any?> = mapOf("phase" to "idle")
+
+        @Synchronized
+        fun restoreState(context: Context): Map<String, Any?> {
+            if (lastState["phase"] == "idle") {
+                publish(RecorderRecovery.restore(context.applicationContext))
+            }
+            return lastState
+        }
 
         fun currentState(): Map<String, Any?> = lastState
 

@@ -23,6 +23,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        RecorderService.restoreState(this)
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,

@@ -193,12 +193,22 @@ class _RecorderPanelState extends State<RecorderPanel>
             if (_status.phase == RecorderPhase.completed &&
                 _status.stopReason == 'time_limit')
               const Text('6분 제한에 도달해 자동 종료되었습니다.'),
+            if (_status.phase == RecorderPhase.completed && _status.recovered)
+              const Text('이전 실행에서 완료된 녹음 파일을 복구했습니다.'),
+            if (_status.recoveryState == 'interrupted')
+              const Text(
+                '중단된 녹음 기록을 찾았지만 파일을 자동 복구하지 못했습니다.',
+              ),
             if (_status.recordingId != null)
               SelectableText('녹음 ID: ${_status.recordingId}'),
             if (_status.outputPath != null)
               SelectableText('파일: ${_status.outputPath}'),
             if (_status.sizeBytes != null)
               Text('파일 크기: ${_status.sizeBytes} bytes'),
+            if (_status.durationMs != null)
+              Text('확인된 길이: ${_formatDuration(_status.durationMs!)}'),
+            if (_status.sha256 != null)
+              SelectableText('SHA-256: ${_status.sha256}'),
             if (_status.actualMime != null)
               Text('실제 코덱: ${_status.actualMime}'),
             if (_status.actualSampleRate != null)
@@ -256,6 +266,13 @@ class _RecorderPanelState extends State<RecorderPanel>
         ),
       ),
     );
+  }
+
+  String _formatDuration(int milliseconds) {
+    final duration = Duration(milliseconds: milliseconds);
+    final minutes = duration.inMinutes.toString().padLeft(2, '0');
+    final seconds = (duration.inSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   String _phaseLabel(RecorderPhase phase) => switch (phase) {

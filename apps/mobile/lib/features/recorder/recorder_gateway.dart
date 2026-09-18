@@ -33,6 +33,10 @@ class RecorderStatus {
     this.limitWarning = RecorderLimitWarning.none,
     this.stopReason,
     this.sizeBytes,
+    this.durationMs,
+    this.sha256,
+    this.recovered = false,
+    this.recoveryState,
     this.actualMime,
     this.actualSampleRate,
     this.actualChannels,
@@ -64,6 +68,10 @@ class RecorderStatus {
       limitWarning: warning,
       stopReason: map['stopReason']?.toString(),
       sizeBytes: (map['sizeBytes'] as num?)?.toInt(),
+      durationMs: (map['durationMs'] as num?)?.toInt(),
+      sha256: map['sha256']?.toString(),
+      recovered: map['recovered'] == true,
+      recoveryState: map['recoveryState']?.toString(),
       actualMime: map['actualMime']?.toString(),
       actualSampleRate: (map['actualSampleRate'] as num?)?.toInt(),
       actualChannels: (map['actualChannels'] as num?)?.toInt(),
@@ -81,6 +89,10 @@ class RecorderStatus {
   final RecorderLimitWarning limitWarning;
   final String? stopReason;
   final int? sizeBytes;
+  final int? durationMs;
+  final String? sha256;
+  final bool recovered;
+  final String? recoveryState;
   final String? actualMime;
   final int? actualSampleRate;
   final int? actualChannels;
