@@ -79,7 +79,7 @@ class RecorderService : Service() {
         }
 
         publish(mapOf("phase" to "starting"))
-        startAsForeground(buildNotification("녹음 준비 중", false))
+        startAsForeground(buildNotification("00:00 / 06:00", true))
 
         val id = UUID.randomUUID().toString()
         val recordingsDirectory = File(filesDir, "recordings").apply { mkdirs() }
