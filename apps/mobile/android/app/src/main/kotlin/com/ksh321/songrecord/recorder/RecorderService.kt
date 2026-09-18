@@ -64,7 +64,6 @@ class RecorderService : Service() {
 
     override fun onDestroy() {
         if (recorder != null) requestStop(STOP_REASON_SERVICE_DESTROYED)
-        cancelLockScreenControl()
         super.onDestroy()
     }
 
@@ -111,14 +110,12 @@ class RecorderService : Service() {
             startedAtWallClockMs = System.currentTimeMillis()
             publish(recordingState(0L))
             notifyProgress(0L)
-            showLockScreenControl()
             handler.post(ticker)
         } catch (error: Exception) {
             runCatching { newRecorder?.release() }
             recorder = null
             file.delete()
             publishError("RECORDER_START_FAILED", error)
-            cancelLockScreenControl()
             stopForegroundCompat()
             stopSelf()
         }
@@ -128,7 +125,6 @@ class RecorderService : Service() {
         if (stopping) return
 
         val activeRecorder = recorder ?: run {
-            cancelLockScreenControl()
             stopForegroundCompat()
             stopSelf()
             return
@@ -171,7 +167,6 @@ class RecorderService : Service() {
             outputFile?.delete()
             publishError("RECORDER_STOP_FAILED", error, stopReason)
         } finally {
-            cancelLockScreenControl()
             stopForegroundCompat()
             stopSelf()
         }
@@ -279,63 +274,6 @@ class RecorderService : Service() {
             }
         }
         return builder.build()
-    }
-
-    /**
-     * Samsung may move the foreground-service/live-update notification out of the
-     * normal lock-screen card area. Keep a separate, ordinary alerting notification
-     * so the recording state and stop action remain available while the phone is locked.
-     */
-    private fun showLockScreenControl() {
-        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, CHANNEL_ID)
-        } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(this)
-        }
-        builder
-            .setContentTitle("녹음 중")
-            .setContentText("최대 06:00 · 아래 버튼으로 녹음을 종료할 수 있습니다.")
-            .setSmallIcon(applicationInfo.icon)
-            .setCategory(Notification.CATEGORY_REMINDER)
-            .setVisibility(Notification.VISIBILITY_PUBLIC)
-            .setPriority(Notification.PRIORITY_HIGH)
-            .setOnlyAlertOnce(true)
-            .setAutoCancel(false)
-            .setShowWhen(true)
-            .setWhen(
-                if (startedAtWallClockMs > 0L) startedAtWallClockMs
-                else System.currentTimeMillis(),
-            )
-            .setUsesChronometer(true)
-            .setStyle(
-                Notification.BigTextStyle().bigText(
-                    "녹음이 진행 중입니다. 잠금 화면의 녹음 종료 버튼으로 바로 종료할 수 있습니다.",
-                ),
-            )
-            .addAction(
-                Notification.Action.Builder(
-                    applicationInfo.icon,
-                    "녹음 종료",
-                    stopPendingIntent(LOCK_SCREEN_STOP_REQUEST_CODE),
-                ).build(),
-            )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            builder.setChronometerCountDown(false)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            builder.setTimeoutAfter(MAX_DURATION_MS + LOCK_SCREEN_TIMEOUT_GRACE_MS)
-        } else {
-            @Suppress("DEPRECATION")
-            builder.setDefaults(0).setSound(null).setVibrate(longArrayOf())
-        }
-        getSystemService(NotificationManager::class.java)
-            .notify(LOCK_SCREEN_NOTIFICATION_ID, builder.build())
-    }
-
-    private fun cancelLockScreenControl() {
-        getSystemService(NotificationManager::class.java)
-            .cancel(LOCK_SCREEN_NOTIFICATION_ID)
     }
 
     private fun stopPendingIntent(requestCode: Int): PendingIntent {
@@ -449,10 +387,7 @@ class RecorderService : Service() {
         private const val CHANNEL_ID = "song_record_recording_lockscreen_v3"
         private const val PROMOTED_ONGOING_EXTRA = "android.requestPromotedOngoing"
         private const val NOTIFICATION_ID = 2102
-        private const val LOCK_SCREEN_NOTIFICATION_ID = 2103
         private const val FOREGROUND_STOP_REQUEST_CODE = 1
-        private const val LOCK_SCREEN_STOP_REQUEST_CODE = 2
-        private const val LOCK_SCREEN_TIMEOUT_GRACE_MS = 60_000L
         private const val AUDIO_BIT_RATE = 96_000
         private const val AUDIO_SAMPLE_RATE = 48_000
         private const val AUDIO_CHANNELS = 1
