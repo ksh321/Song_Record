@@ -134,7 +134,7 @@ class P03DomainRulesTests {
         return value == null ? null : value.toString();
     }
 
-    private static String nullableString(JSONObject object, String key) {
+    private static String nullableString(JSONObject object, String key) throws Exception {
         return object.isNull(key) ? null : object.getString(key);
     }
 }
