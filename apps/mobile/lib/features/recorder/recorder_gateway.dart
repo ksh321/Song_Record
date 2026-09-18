@@ -6,6 +6,8 @@ enum RecorderPhase { idle, starting, recording, stopping, completed, error }
 
 enum RecorderLimitWarning { none, thirtySeconds, tenSeconds }
 
+enum RecorderLocalState { none, capturing, inputPending, saved, interrupted, corrupt }
+
 class RecorderPermissions {
   const RecorderPermissions({
     required this.microphoneGranted,
@@ -43,6 +45,8 @@ class RecorderStatus {
     this.actualAacProfile,
     this.errorCode,
     this.errorMessage,
+    this.localState = RecorderLocalState.none,
+    this.interruptionReason,
   });
 
   const RecorderStatus.idle() : this(phase: RecorderPhase.idle);
@@ -57,6 +61,14 @@ class RecorderStatus {
       'thirty_seconds' => RecorderLimitWarning.thirtySeconds,
       'ten_seconds' => RecorderLimitWarning.tenSeconds,
       _ => RecorderLimitWarning.none,
+    };
+    final localState = switch (map['localState']?.toString()) {
+      'CAPTURING' => RecorderLocalState.capturing,
+      'INPUT_PENDING' => RecorderLocalState.inputPending,
+      'SAVED' => RecorderLocalState.saved,
+      'INTERRUPTED' => RecorderLocalState.interrupted,
+      'CORRUPT' => RecorderLocalState.corrupt,
+      _ => RecorderLocalState.none,
     };
 
     return RecorderStatus(
@@ -78,6 +90,8 @@ class RecorderStatus {
       actualAacProfile: (map['actualAacProfile'] as num?)?.toInt(),
       errorCode: map['errorCode']?.toString(),
       errorMessage: map['errorMessage']?.toString(),
+      localState: localState,
+      interruptionReason: map['interruptionReason']?.toString(),
     );
   }
 
@@ -99,6 +113,8 @@ class RecorderStatus {
   final int? actualAacProfile;
   final String? errorCode;
   final String? errorMessage;
+  final RecorderLocalState localState;
+  final String? interruptionReason;
 
   bool get isRecording =>
       phase == RecorderPhase.starting ||

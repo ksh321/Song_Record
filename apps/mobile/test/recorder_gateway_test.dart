@@ -95,6 +95,27 @@ void main() {
     expect(status.errorCode, 'RECORDER_RECOVERY_INCOMPLETE');
   });
 
+  test('로컬 녹음 분류와 중단 원인을 변환한다', () {
+    final capturing = RecorderStatus.fromMap(const {
+      'phase': 'recording',
+      'localState': 'CAPTURING',
+    });
+    final interrupted = RecorderStatus.fromMap(const {
+      'phase': 'error',
+      'localState': 'INTERRUPTED',
+      'interruptionReason': 'other_app',
+    });
+    final corrupt = RecorderStatus.fromMap(const {
+      'phase': 'error',
+      'localState': 'CORRUPT',
+    });
+
+    expect(capturing.localState, RecorderLocalState.capturing);
+    expect(interrupted.localState, RecorderLocalState.interrupted);
+    expect(interrupted.interruptionReason, 'other_app');
+    expect(corrupt.localState, RecorderLocalState.corrupt);
+  });
+
   test('알 수 없는 상태는 오류로 처리한다', () {
     final status = RecorderStatus.fromMap(const {'phase': 'unexpected'});
 

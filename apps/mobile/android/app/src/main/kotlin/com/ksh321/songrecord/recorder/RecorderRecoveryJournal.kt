@@ -26,6 +26,8 @@ internal data class RecorderJournalEntry(
     val actualAacProfile: Int? = null,
     val errorCode: String? = null,
     val errorMessage: String? = null,
+    val localState: String = "INPUT_PENDING",
+    val interruptionReason: String? = null,
 )
 
 internal data class RecorderAudioInspection(
@@ -66,6 +68,9 @@ internal class RecorderRecoveryJournal(context: Context) {
             actualAacProfile = preferences.intOrNull(KEY_ACTUAL_AAC_PROFILE),
             errorCode = preferences.getString(KEY_ERROR_CODE, null),
             errorMessage = preferences.getString(KEY_ERROR_MESSAGE, null),
+            localState = preferences.getString(KEY_LOCAL_STATE, LOCAL_STATE_INPUT_PENDING)
+                ?: LOCAL_STATE_INPUT_PENDING,
+            interruptionReason = preferences.getString(KEY_INTERRUPTION_REASON, null),
         )
     }
 
@@ -90,6 +95,8 @@ internal class RecorderRecoveryJournal(context: Context) {
             .putNullableInt(KEY_ACTUAL_AAC_PROFILE, entry.actualAacProfile)
             .putNullableString(KEY_ERROR_CODE, entry.errorCode)
             .putNullableString(KEY_ERROR_MESSAGE, entry.errorMessage)
+            .putString(KEY_LOCAL_STATE, entry.localState)
+            .putNullableString(KEY_INTERRUPTION_REASON, entry.interruptionReason)
             .commit()
     }
 
@@ -121,6 +128,11 @@ internal class RecorderRecoveryJournal(context: Context) {
         const val PHASE_VERIFIED = "verified"
         const val PHASE_COMPLETED = "completed"
         const val PHASE_FAILED = "failed"
+        const val LOCAL_STATE_CAPTURING = "CAPTURING"
+        const val LOCAL_STATE_INPUT_PENDING = "INPUT_PENDING"
+        const val LOCAL_STATE_SAVED = "SAVED"
+        const val LOCAL_STATE_INTERRUPTED = "INTERRUPTED"
+        const val LOCAL_STATE_CORRUPT = "CORRUPT"
         const val PROTOTYPE_ACCOUNT_SCOPE = "prototype_device"
 
         private const val SCHEMA_VERSION = 1
@@ -143,6 +155,8 @@ internal class RecorderRecoveryJournal(context: Context) {
         private const val KEY_ACTUAL_AAC_PROFILE = "actual_aac_profile"
         private const val KEY_ERROR_CODE = "error_code"
         private const val KEY_ERROR_MESSAGE = "error_message"
+        private const val KEY_LOCAL_STATE = "local_state"
+        private const val KEY_INTERRUPTION_REASON = "interruption_reason"
     }
 }
 
@@ -217,16 +231,21 @@ internal object RecorderRecovery {
             finalFile.isFile -> finalFile
             pendingFile.isFile -> pendingFile
             else -> return errorState(
-                entry,
-                "RECORDER_RECOVERY_FILE_MISSING",
-                "복구 기록에 해당하는 녹음 파일을 찾을 수 없습니다.",
+                entry = entry,
+                code = entry.errorCode ?: "RECORDER_RECOVERY_FILE_MISSING",
+                message = entry.errorMessage
+                    ?: "프로세스가 종료되어 녹음 파일을 찾을 수 없습니다.",
+                localState = RecorderRecoveryJournal.LOCAL_STATE_INTERRUPTED,
+                interruptionReason = entry.interruptionReason ?: "process_terminated",
             )
         }
         val inspection = RecorderFileTools.inspect(candidate)
             ?: return errorState(
-                entry,
-                "RECORDER_RECOVERY_INCOMPLETE",
-                "녹음 파일이 완전히 마무리되지 않아 자동 복구하지 못했습니다.",
+                entry = entry,
+                code = "RECORDER_FILE_CORRUPT",
+                message = "녹음 파일을 재생 가능한 M4A로 확인하지 못했습니다.",
+                localState = RecorderRecoveryJournal.LOCAL_STATE_CORRUPT,
+                interruptionReason = entry.interruptionReason ?: "process_terminated",
             )
 
         return try {
@@ -243,14 +262,20 @@ internal object RecorderRecovery {
                 actualAacProfile = inspection.aacProfile,
                 errorCode = null,
                 errorMessage = null,
+                localState = RecorderRecoveryJournal.LOCAL_STATE_INPUT_PENDING,
+                interruptionReason = if (
+                    entry.phase == RecorderRecoveryJournal.PHASE_COMPLETED
+                ) null else "process_terminated",
             )
             journal.write(recoveredEntry)
             completedState(recoveredEntry, recovered = true)
         } catch (error: Exception) {
             errorState(
-                entry,
-                "RECORDER_RECOVERY_MOVE_FAILED",
-                error.message ?: error.javaClass.simpleName,
+                entry = entry,
+                code = "RECORDER_WRITE_FAILED",
+                message = "복구된 녹음 파일을 최종 위치에 저장하지 못했습니다.",
+                localState = RecorderRecoveryJournal.LOCAL_STATE_INTERRUPTED,
+                interruptionReason = "write_failed",
             )
         }
     }
@@ -271,6 +296,8 @@ internal object RecorderRecovery {
         "actualChannels" to entry.actualChannels,
         "actualAacProfile" to entry.actualAacProfile,
         "stopReason" to entry.stopReason,
+        "localState" to entry.localState,
+        "interruptionReason" to entry.interruptionReason,
         "recovered" to recovered,
         "recoveryState" to if (recovered) "recovered" else "not_needed",
         "accountScope" to entry.accountScope,
@@ -285,6 +312,8 @@ internal object RecorderRecovery {
         entry: RecorderJournalEntry,
         code: String,
         message: String,
+        localState: String,
+        interruptionReason: String,
     ): Map<String, Any?> = mapOf(
         "phase" to "error",
         "recordingId" to entry.recordingId,
@@ -296,6 +325,8 @@ internal object RecorderRecovery {
         "elapsedMs" to entry.elapsedMs,
         "errorCode" to code,
         "errorMessage" to message,
+        "localState" to localState,
+        "interruptionReason" to interruptionReason,
         "recovered" to true,
         "recoveryState" to "interrupted",
         "accountScope" to entry.accountScope,

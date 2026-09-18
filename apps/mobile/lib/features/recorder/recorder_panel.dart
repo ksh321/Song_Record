@@ -168,6 +168,7 @@ class _RecorderPanelState extends State<RecorderPanel>
     final minutes = elapsed.inMinutes.toString().padLeft(2, '0');
     final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
     final limitMessage = _limitMessage(_status);
+    final classificationMessage = _classificationMessage(_status);
 
     return Card(
       child: Padding(
@@ -181,6 +182,8 @@ class _RecorderPanelState extends State<RecorderPanel>
             const Text('AAC-LC · 96kbps · 48kHz · 모노 · M4A'),
             const SizedBox(height: 12),
             Text('상태: ${_phaseLabel(_status.phase)}'),
+            if (_status.localState != RecorderLocalState.none)
+              Text('로컬 상태: ${_localStateLabel(_status.localState)}'),
             Text('경과 시간: $minutes:$seconds'),
             if (limitMessage != null)
               Text(
@@ -195,10 +198,8 @@ class _RecorderPanelState extends State<RecorderPanel>
               const Text('6분 제한에 도달해 자동 종료되었습니다.'),
             if (_status.phase == RecorderPhase.completed && _status.recovered)
               const Text('이전 실행에서 완료된 녹음 파일을 복구했습니다.'),
-            if (_status.recoveryState == 'interrupted')
-              const Text(
-                '중단된 녹음 기록을 찾았지만 파일을 자동 복구하지 못했습니다.',
-              ),
+            if (classificationMessage != null)
+              Text(classificationMessage),
             if (_status.recordingId != null)
               SelectableText('녹음 ID: ${_status.recordingId}'),
             if (_status.outputPath != null)
@@ -283,6 +284,35 @@ class _RecorderPanelState extends State<RecorderPanel>
     RecorderPhase.completed => '파일 생성 완료',
     RecorderPhase.error => '오류',
   };
+
+  String _localStateLabel(RecorderLocalState state) => switch (state) {
+    RecorderLocalState.none => '분류 전',
+    RecorderLocalState.capturing => '녹음 중',
+    RecorderLocalState.inputPending => '곡 정보 입력 대기',
+    RecorderLocalState.saved => '로컬 저장 완료',
+    RecorderLocalState.interrupted => '녹음 중단',
+    RecorderLocalState.corrupt => '재생 불가',
+  };
+
+  String? _classificationMessage(RecorderStatus status) {
+    if (status.localState == RecorderLocalState.inputPending) {
+      return status.recovered
+          ? '복구된 파일의 검증이 끝났습니다. 곡 정보 입력을 기다리고 있습니다.'
+          : '녹음 파일 검증이 끝났습니다. 곡 정보 입력을 기다리고 있습니다.';
+    }
+    if (status.localState == RecorderLocalState.corrupt) {
+      return '파일 검증에 실패해 재생할 수 없는 녹음으로 분류했습니다.';
+    }
+    if (status.localState != RecorderLocalState.interrupted) return null;
+    return switch (status.interruptionReason) {
+      'phone_or_communication' => '통화 또는 음성 통신 때문에 녹음이 시작되지 않았습니다.',
+      'other_app' => '다른 앱이 마이크를 사용 중이어서 녹음이 시작되지 않았습니다.',
+      'storage_low' => '저장 공간이 부족해 녹음을 시작하지 못했습니다.',
+      'write_failed' => '녹음 파일을 저장하지 못했습니다.',
+      'process_terminated' => '앱 작업이 중단되어 녹음을 완료하지 못했습니다.',
+      _ => '녹음이 중단되어 파일을 완료하지 못했습니다.',
+    };
+  }
 
   String? _limitMessage(RecorderStatus status) {
     if (status.phase != RecorderPhase.recording ||

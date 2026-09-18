@@ -175,6 +175,55 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('녹음 실패 분류와 사용자 안내를 표시한다', (tester) async {
+    const cases = [
+      (
+        RecorderStatus(
+          phase: RecorderPhase.error,
+          localState: RecorderLocalState.interrupted,
+          interruptionReason: 'other_app',
+        ),
+        '로컬 상태: 녹음 중단',
+        '다른 앱이 마이크를 사용 중이어서 녹음이 시작되지 않았습니다.',
+      ),
+      (
+        RecorderStatus(
+          phase: RecorderPhase.error,
+          localState: RecorderLocalState.corrupt,
+        ),
+        '로컬 상태: 재생 불가',
+        '파일 검증에 실패해 재생할 수 없는 녹음으로 분류했습니다.',
+      ),
+      (
+        RecorderStatus(
+          phase: RecorderPhase.completed,
+          localState: RecorderLocalState.inputPending,
+        ),
+        '로컬 상태: 곡 정보 입력 대기',
+        '녹음 파일 검증이 끝났습니다. 곡 정보 입력을 기다리고 있습니다.',
+      ),
+    ];
+
+    for (final (status, label, message) in cases) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: RecorderPanel(
+              key: ValueKey(label),
+              gateway: _FakeRecorderGateway(status: status),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text(label), findsOneWidget);
+      expect(find.text(message), findsOneWidget);
+    }
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('6분 제한 자동 종료 결과를 표시한다', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
