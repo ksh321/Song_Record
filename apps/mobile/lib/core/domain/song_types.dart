@@ -23,6 +23,13 @@ final class MusicalKey {
 
   final KeyMode mode;
   final int shift;
+
+  @override
+  bool operator ==(Object other) =>
+      other is MusicalKey && mode == other.mode && shift == other.shift;
+
+  @override
+  int get hashCode => Object.hash(mode, shift);
 }
 
 String formatVersionCode(VersionCode version) => switch (version) {
