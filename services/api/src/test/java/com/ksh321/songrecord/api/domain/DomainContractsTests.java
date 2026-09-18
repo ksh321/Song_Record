@@ -6,8 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
+import org.json.JSONObject;
 
 class DomainContractsTests {
     @Test
@@ -37,31 +37,20 @@ class DomainContractsTests {
     @Test
     void inputFixtureCasesUseUnicodeCodePointsAndNormalizedNewlines() throws Exception {
         var json = Files.readString(Path.of("../../fixtures/contracts/input.json"), StandardCharsets.UTF_8);
-        var casePattern = Pattern.compile(
-                "\\\"id\\\"\\s*:\\s*\\\"([^\\\"]+)\\\".*?\\\"field\\\"\\s*:\\s*\\\"([^\\\"]+)\\\".*?"
-                        + "\\\"value\\\"\\s*:\\s*\\\"((?:\\\\.|[^\\\"])*)\\\".*?\\\"expected\\\"\\s*:\\s*\\{.*?"
-                        + "\\\"actual\\\"\\s*:\\s*(\\d+).*?\\\"valid\\\"\\s*:\\s*(true|false)",
-                Pattern.DOTALL);
-        var matcher = casePattern.matcher(json);
-        var count = 0;
-        while (matcher.find()) {
-            var field = InputContracts.Field.valueOf(matcher.group(2).toUpperCase());
-            var value = unescapeJsonString(matcher.group(3));
+        var cases = new JSONObject(json).getJSONArray("cases");
+        for (var index = 0; index < cases.length(); index++) {
+            var testCase = cases.getJSONObject(index);
+            var input = testCase.getJSONObject("input");
+            var expected = testCase.getJSONObject("expected");
+            var field = InputContracts.Field.valueOf(input.getString("field").toUpperCase());
+            var value = input.getString("value");
             var result = InputContracts.validate(field, value);
-            assertThat(result.actual()).as(matcher.group(1)).isEqualTo(Integer.parseInt(matcher.group(4)));
-            assertThat(result.valid()).as(matcher.group(1)).isEqualTo(Boolean.parseBoolean(matcher.group(5)));
-            count++;
+            assertThat(result.actual()).as(testCase.getString("id")).isEqualTo(expected.getInt("actual"));
+            assertThat(result.valid()).as(testCase.getString("id")).isEqualTo(expected.getBoolean("valid"));
         }
-        assertThat(count).isEqualTo(11);
+        assertThat(cases.length()).isEqualTo(11);
         assertThat(InputContracts.validate(InputContracts.Field.NOTE, "a\r\nb\rc").normalized())
                 .isEqualTo("a\nb\nc");
     }
 
-    private static String unescapeJsonString(String value) {
-        return value.replace("\\r", "\r")
-                .replace("\\n", "\n")
-                .replace("\\t", "\t")
-                .replace("\\\"", "\"")
-                .replace("\\\\", "\\");
-    }
 }
