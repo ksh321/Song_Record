@@ -45,10 +45,11 @@ Windows의 독립 MySQL 8.4.11을 127.0.0.1:33316에서 사용했다. 사용자 
 | 잘못된 기존 값이 있는 V2 업그레이드 | 제약 오류로 거절. 합성 행을 명시적으로 보정한 뒤 재검증 성공 |
 | 셸 구문·Git 공백 검사 | 통과 |
 | Spring Boot test·bootJar | 환경 차단. Gradle compileJava 중 의존성 JAR의 toRealPath에서 AccessDeniedException |
-| 이번 변경의 GitHub Actions | 미실행. 커밋·push하지 않음 |
-| Flutter·실기·화면 검증 | 이번 변경에서 미실행. 앱 코드는 변경하지 않음 |
+| 이번 변경의 GitHub Actions | [602dab5의 실행 결과](https://github.com/ksh321/Song_Record/actions/runs/35579131995): 서버 전체 빌드·테스트와 MySQL 변경·제약·재시작 검사 성공 |
+| Flutter | GitHub CI 분석·테스트·Android APK 빌드 통과. 앱 코드는 변경하지 않음 |
+| 실기·화면 검증 | 이번 변경에서 미실행 |
 
-Gradle 초기 연결 문제는 작업용 임시 디렉터리 지정으로 해소했으나, 이후 의존성 JAR 접근 오류는 재현됐다. 따라서 전체 Spring Boot 빌드 통과로 기록하지 않는다. 별도 Java 실행에서 실제 Flyway migrate·validate와 MySQL 검증은 정상 수행됐다.
+로컬 Gradle 초기 연결 문제는 작업용 임시 디렉터리 지정으로 해소했으나, 이후 의존성 JAR 접근 오류는 재현됐다. 별도 Java 실행에서 실제 Flyway migrate·validate와 MySQL 검증은 정상 수행됐다. 이후 GitHub main 반영 후 원격 CI에서 전체 Spring Boot 빌드·테스트도 성공했으므로 로컬 환경 차단과 코드 검증 결과를 구분한다.
 
 ## 재실행 방법
 
@@ -58,4 +59,4 @@ CI는 `P04_DISPOSABLE_DB=1`인 임시 DB에서 `infra/scripts/verify_p04_migrati
 
 기본 마이그레이션 사용자는 TRIGGER 외에 루틴 생성을 위한 CREATE ROUTINE·ALTER ROUTINE·EXECUTE 권한이 필요하며, 항목을 쓰는 업무 계정에는 `p04_playlist_item_identity` 실행 권한이 필요하다. CI의 DB 전용 계정은 DB 범위 권한을 사용한다. 운영 권한은 P24에서 분리한다.
 
-P04-04 구현과 로컬 DB 검증을 마쳤다. 전체 빌드·새 CI는 검증 대기이며 다음 기능 작업은 P04-05 보관과 용량 스키마다. V/X 전체 제품 검증을 통과한 것으로 집계하지 않는다.
+P04-04 구현·GitHub 반영·로컬 및 CI DB 검증·원격 서버 빌드 검증을 마쳤다. 다음 기능 작업은 P04-05 보관과 용량 스키마다. 사용자 개발 DB의 실제 변경은 아직 수행하지 않았으며 V/X 전체 제품 검증을 통과한 것으로 집계하지 않는다.

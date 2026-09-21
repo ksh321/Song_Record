@@ -17,6 +17,8 @@ P01-04에서는 Docker Compose로 로컬 MySQL을 실행한다. 앱은 DB에 직
 
 ## 1. 비밀값 준비
 
+처음 환경을 만들 때만 아래 복사를 실행한다. 이미 `.env`가 있으면 복사하지 말고 기존 설정을 유지한다. 이미 초기화된 DB는 `.env`의 비밀번호만 바꿔도 자동으로 변경되지 않는다.
+
 PowerShell에서 저장소의 `infra` 폴더로 이동한 뒤 실행한다.
 
 ```powershell
@@ -111,6 +113,8 @@ P01-04에서는 연결과 영속성까지만 확인한다. Flyway 초기 마이�
 
 ## P01-08 CI
 
-GitHub Actions의 `MySQL Compose smoke test` 작업은 실제 개발 비밀번호 대신 CI 안에서만 사용하는 임시값으로 `.env`를 만든다. Compose 설정 검사, MySQL healthy 대기, `SELECT 1` 실행 후 컨테이너와 CI용 named volume을 제거한다.
+최초 P01-08은 연결 확인 검사였으며, 현재 `MySQL migrations and constraints` 작업으로 확장됐다. 실제 개발 비밀번호 대신 CI 안에서만 사용하는 임시값으로 `.env`를 만들고, Compose 설정과 MySQL 접속을 확인한다.
 
-이 검사는 MySQL 이미지와 Compose 구성이 새 환경에서 실행되는지 확인한다. Spring Boot의 JPA·Flyway 연결 검증은 기존 P01-04·P01-05 기록을 유지하며, 전체 서버 연결 통합 테스트는 후속 기능 단계에서 확장한다.
+현재 검사는 실제 Spring Boot 서버를 켜서 Flyway V1 → V2 → V3·V4 증분 변경, 기존 데이터 보존, 기존 22개·확장 63개 DB 판정, 재기동 시 이력 검증을 수행한다. 완료 후 CI 전용 컨테이너와 저장공간만 제거한다. 사용자 PC의 개발 DB에는 적용하지 않는다.
+
+`P04_DISPOSABLE_DB=1`은 시험용 DB임을 명시하는 안전 확인값이다. 검증 스크립트를 실제 기록이 들어 있는 DB에서 실행하지 않는다. 기존 개발 DB를 변경하기 전에는 백업과 기존 값의 적합성부터 확인한다. 쉬운 설명은 [DB 작업 안내](../docs/database-guide.md), 실행 증거와 제한은 [P04 검증 보고서](../docs/verification/P04-04-playlists-classifications.md)를 참고한다.

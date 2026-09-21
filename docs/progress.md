@@ -1,6 +1,6 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 3.6
+- 기록 버전: 3.7
 - 작성일: 2026-09-21
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
@@ -9,7 +9,7 @@
 
 ## 1. 현재 상태
 
-2026-09-21 현재 P03-01~08 구현 및 P04-01~03 기존 CI 성공을 확인했다. P04 재검토에서 선택 키·활성 슬롯의 NULL 우회, 객체 generation 타입, SAVED/파일 명세 경쟁을 수정하는 V3와 P04-04 목록·태그·고정 컨디션 V4를 추가했다. 실제 MySQL 기존 22개·확장 63개 판정, Flyway 증분 업그레이드·빈 DB 설치·재검증을 통과했다. Spring Boot 전체 빌드는 실행 환경의 의존성 JAR 접근 오류로 차단됐고 새 GitHub CI는 미실행이다. 현재 로컬 변경은 커밋·push 전이다. [검토와 실행 증거](verification/P04-04-playlists-classifications.md)
+2026-09-21 현재 P04-01~03 재검토와 P04-04 구현을 GitHub main의 [602dab5](https://github.com/ksh321/Song_Record/commit/602dab5eee80de8161ebc589ee8ee303d93bdbcb)에 반영했다. V3는 선택 키·활성 슬롯의 NULL 우회, 객체 generation 타입, SAVED/파일 명세 경쟁을 수정하며 V4는 목록·태그·고정 컨디션을 추가한다. 로컬 실제 MySQL 기존 22개·확장 63개 판정, Flyway 증분 업그레이드·빈 DB 설치·재검증을 통과했다. [새 GitHub CI](https://github.com/ksh321/Song_Record/actions/runs/35579131995)의 세 작업이 모두 성공했다: Spring Boot 전체 빌드·테스트, MySQL 변경·제약·재시작 검사, Flutter 분석·테스트·Android APK 빌드. 사용자 개발 DB에는 V3·V4를 아직 적용하지 않았다. [검토와 실행 증거](verification/P04-04-playlists-classifications.md)
 
 다음 기능 작업은 **P04-05 보관과 용량 스키마**다. P02 실기 완료 요약과 세부 표의 미실행 표시는 일치 여부를 확인해야 하며, P03 전체 Unicode 정규화 호환성 검증도 후속 연결 전에 남아 있다.
 
@@ -442,3 +442,11 @@ P04-01~03 계정·곡·녹음 서버 스키마와 실제 MySQL 검증을 구현�
 - 현재 상태: P04-04 구현·로컬 DB 검증 완료, Spring Boot 전체 빌드·새 CI 검증 대기. Gradle의 의존성 JAR 접근 오류로 빌드가 차단됐으며 GitHub push는 하지 않았다.
 - 근거와 재실행 방법: [P04 재검토 및 P04-04 검증](verification/P04-04-playlists-classifications.md).
 - 다음 기능 작업: P04-05 보관과 용량 스키마. 원본 설계 자료·실제 사용자 DB·Flutter 코드는 변경하지 않았다.
+
+### 3.7 — 2026-09-21
+
+- 수정 코드 11개 파일을 GitHub main의 `602dab5`에 반영했다. 변경 이유·검증·미적용 범위를 커밋 설명과 검증 보고서에 기록했다.
+- 로컬 전체 빌드는 파일 접근 환경 문제로 차단됐지만, 해당 커밋의 GitHub CI 세 작업은 모두 성공했다. Spring Boot 빌드·테스트, 실제 MySQL 변경·제약·재시작 검사, Flutter 분석·테스트·Android APK 빌드를 확인했다.
+- 비개발자용 [DB 작업 안내](database-guide.md)를 추가하고 개발 환경 안내의 기존 설정 보존·시험 DB 구분·현행 CI 설명을 보강했다.
+- 로컬 `.git` 내부 쓰기 제한 때문에 연결된 GitHub 기능으로 원격 커밋을 반영했다. 로컬 작업 파일은 보존했으며 로컬 Git 이력은 아직 동기화되지 않았다.
+- 기존 개발 DB의 V3·V4 실제 적용은 백업·현재 데이터 점검 후 별도로 수행한다. GitHub 반영만으로 사용자 DB가 변경되지는 않는다.
