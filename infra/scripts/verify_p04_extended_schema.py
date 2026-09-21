@@ -23,7 +23,8 @@ def query(statement, error=None):
                    'MYSQL_PWD="$MYSQL_PASSWORD" mysql --protocol=tcp -h127.0.0.1 '
                    '-u"$MYSQL_USER" "$MYSQL_DATABASE" --default-character-set=utf8mb4 '
                    '--batch --skip-column-names']
-    result = subprocess.run(command, input=statement, text=True, encoding='utf-8',
+    # Match the project's UTC database; host Windows time zone must not affect DATETIME defaults.
+    result = subprocess.run(command, input="SET time_zone='+00:00';\n" + statement, text=True, encoding='utf-8',
                             capture_output=True, timeout=30)
     if error:
         assert result.returncode and f'ERROR {error} ' in result.stderr, (statement, result.stderr)
