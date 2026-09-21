@@ -137,6 +137,7 @@ jobs:
 
       - name: Verify Flyway upgrade and P04 constraints
         env:
+          P04_DISPOSABLE_DB: "1"
           DB_PASSWORD: ci_song_record_password
           MYSQL_DATABASE: song_record
           MYSQL_USER: song_record

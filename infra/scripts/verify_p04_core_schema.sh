@@ -5,6 +5,12 @@ verification_log="$(mktemp)"
 trap 'rm -f "$verification_log"' EXIT
 
 run_sql() {
+  if [[ -n "${MYSQL_TEST_CLIENT:-}" ]]; then
+    "$MYSQL_TEST_CLIENT" --no-defaults --protocol=tcp -h127.0.0.1 \
+      -P"${MYSQL_PORT:-33316}" -u"${MYSQL_USER:-root}" "$MYSQL_DATABASE" \
+      --default-character-set=utf8mb4 --batch --skip-column-names <<<"$1"
+    return
+  fi
   docker compose exec -T mysql sh -lc \
     'MYSQL_PWD="$MYSQL_PASSWORD" mysql --protocol=tcp -h127.0.0.1 -u"$MYSQL_USER" "$MYSQL_DATABASE" --batch --skip-column-names' \
     <<<"$1"
@@ -15,6 +21,11 @@ expect_rejected() {
   local statement="$2"
   if run_sql "$statement" >"$verification_log" 2>&1; then
     echo "Expected rejection but SQL succeeded: $label"
+    exit 1
+  fi
+  if ! grep -Eq 'ERROR (1062|1452|3819|1644) ' "$verification_log"; then
+    echo "Unexpected database error (not a constraint rejection): $label"
+    cat "$verification_log"
     exit 1
   fi
   echo "Rejected as expected: $label"

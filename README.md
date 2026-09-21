@@ -1,6 +1,9 @@
 # Song_Record
 노래방 노래 검색, 녹음, 노래의 다양한 정보 기록 관리 앱
 
+2026-09-21: P04-01~03 재검토 수정과 P04-04 플레이리스트·분류 스키마를 추가했다.
+[수정 내용과 검증 결과](docs/verification/P04-04-playlists-classifications.md) · [비개발자를 위한 DB 작업 안내](docs/database-guide.md)
+
 ## 기준 파일
 
 | 자료 | 파일명 | 버전 | SHA-256 | 구현할 때의 역할 |
