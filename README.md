@@ -1,8 +1,8 @@
 # Song_Record
 노래방 노래 검색, 녹음, 노래의 다양한 정보 기록 관리 앱
 
-2026-09-21: P04-06 동기화·삭제·작업 대기열 스키마와 로컬 검증을 추가했다. 커밋·push 및 새 CI 확인은 대기 중이다. 실제 사용자 DB 적용과 API·작업 실행기 연결은 별도 단계다.
-[P04-06 변경과 검증](docs/verification/P04-06-sync-deletion-jobs.md) · [P04-05 보관·용량](docs/verification/P04-05-retention-storage.md) · [비개발자를 위한 DB 작업 안내](docs/database-guide.md)
+2026-09-21: P04-06은 GitHub 전체 CI를 통과했다. 이어 P04-07 공용 인기 차트·개인 임시 사본 구조를 V7로 추가했다. P04-07의 커밋·push와 새 CI 확인은 대기 중이며 실제 사용자 DB와 API에는 미적용이다.
+[P04-07 변경과 검증](docs/verification/P04-07-charts-snapshots.md) · [P04-06 완료 기록](docs/verification/P04-06-sync-deletion-jobs.md) · [비개발자를 위한 DB 작업 안내](docs/database-guide.md)
 
 ## 기준 파일
 
