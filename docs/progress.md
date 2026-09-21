@@ -9,7 +9,7 @@
 
 ## 1. 현재 상태
 
-2026-09-21 현재 P04-05 보관·용량 스키마를 V5로 구현했다. SongCloudSelection·PinSlot·CloudHold·CloudCleanup·StorageUsage·GlobalStorageUsage를 추가했으며 역할·고정·물리 파일·용량을 분리했다. 실제 MySQL에서 기존 P04 확장 63개, V4→V5 업그레이드 72개, 빈 DB 설치 70개 판정을 통과했고 Flyway 재실행·체크섬 검증도 성공했다. 이번 변경의 GitHub 반영·새 CI는 확인 중이며 사용자 개발 DB에는 적용하지 않았다. [P04-05 검증 보고서](verification/P04-05-retention-storage.md)
+2026-09-21 현재 P04-05 보관·용량 스키마를 V5로 구현하고 GitHub main의 [9d73f72](https://github.com/ksh321/Song_Record/commit/9d73f723bdf907e56e9255f0dc06b9c17096a59b)에 반영했다. SongCloudSelection·PinSlot·CloudHold·CloudCleanup·StorageUsage·GlobalStorageUsage를 추가했으며 역할·고정·물리 파일·용량을 분리했다. 실제 MySQL에서 기존 P04 확장 63개, V4→V5 업그레이드 72개, 빈 DB 설치 70개 판정을 통과했고 Flyway 재실행·체크섬 검증도 성공했다. [새 CI](https://github.com/ksh321/Song_Record/actions/runs/35588779189)의 세 작업이 모두 성공했다: 서버 빌드·테스트, DB 검사(기존 22개·확장 63개·P04-05 72개·재시작), Flutter 분석·테스트·Android APK 빌드. 사용자 개발 DB에는 적용하지 않았다. [P04-05 검증 보고서](verification/P04-05-retention-storage.md)
 
 다음 기능 작업은 **P04-06 동기화와 삭제 스키마**다. P02 실기 완료 요약과 세부 표의 미실행 표시는 일치 여부를 확인해야 하며, P03 전체 Unicode 정규화 호환성 검증도 후속 연결 전에 남아 있다. 실제 업로드·용량 승인·파일 삭제는 P12·P13에서 연결한다.
 
@@ -459,5 +459,5 @@ P04-01~03 계정·곡·녹음 서버 스키마와 실제 MySQL 검증을 구현�
 - 기존 파일·업로드 상태로 개인·전체 사용량을 초기 집계한다. 휴지통·DELETING 600바이트와 활성 예약 77바이트를 보존하고 FAILED·COMMITTED 예약은 제외하는 합성 업그레이드를 확인했다.
 - 실제 MySQL 8.4.11에서 기존 확장 63개, 업그레이드 72개, 빈 DB 설치 70개 판정이 통과했다. 새 72개에는 실제 두 연결의 10번째 자리 경쟁과 오래된 RR 스냅샷 검사가 포함된다. 같은 DB의 Flyway 재검증도 성공했다.
 - 시험 접속의 시간대를 UTC로 고정했다. 로컬 MySQL의 Windows 시간대에 따라 날짜 비교가 달라지는 문제를 제거했다.
-- GitHub 반영·이번 CI 결과 확인 중. 사용자 개발 DB·원본 문서·Flutter 코드는 변경하지 않았다.
+- GitHub main의 `9d73f72`에 반영했다. [이번 CI](https://github.com/ksh321/Song_Record/actions/runs/35588779189)의 세 작업이 모두 성공했다. 서버 전체 빌드·테스트, 실제 DB 22개·63개·72개 판정·재시작, Flutter 분석·테스트·Android APK 빌드를 확인했다. 사용자 개발 DB·원본 문서·Flutter 코드는 변경하지 않았다.
 - 근거·재실행·후속 경계: [P04-05 검증 보고서](verification/P04-05-retention-storage.md). 다음 기능 작업은 P04-06이다.

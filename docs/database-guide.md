@@ -59,9 +59,9 @@ P04-04에서는 같은 곡을 서로 다른 플레이리스트에 넣을 수 있
 4. **개발 DB 적용:** 최신 코드를 받은 뒤 Docker의 MySQL을 켜고 Spring Boot를 `dev` 프로필로 시작한다. Flyway가 남은 변경을 실행한다.
 5. **결과 확인:** 서버가 정상 시작했고 Flyway 이력에 V1~V5가 성공으로 기록됐는지, 기존 곡·녹음이 유지되는지 확인한다.
 
-이번 개발 작업에서는 별도 MySQL 8.4.11을 만들어 기존 검사 22개와 확장 검사 63개를 실행했다. 기존 데이터가 있는 업그레이드, 빈 DB 설치, 재실행 시 이력 검증도 확인했다. 사용자 PC의 기존 개발 DB에는 이번 V3·V4를 적용하지 않았다.
+이번 P04-05 작업에서는 별도 MySQL 8.4.11에서 기존 확장 검사 63개, 데이터가 있는 DB의 업그레이드 검사 72개, 빈 DB 설치 검사 70개를 통과했다. 재실행 시 이력 검증도 확인했다. GitHub에서도 기존 22개·63개와 새 72개 검사를 통과했다. 사용자 PC의 기존 개발 DB에는 이번 V5를 적용하지 않았다.
 
-변경 코드는 GitHub main의 [602dab5](https://github.com/ksh321/Song_Record/commit/602dab5eee80de8161ebc589ee8ee303d93bdbcb)에 반영했다. 로컬 전체 Spring Boot 빌드는 작업 환경의 파일 접근 오류로 막혔지만, [GitHub 자동 검사](https://github.com/ksh321/Song_Record/actions/runs/35579131995)에서는 서버 전체 빌드·테스트와 DB 검사를 통과했다. DB 검사 통과와 전체 앱 완성은 다른 의미다. 최신 검증 상태는 [진행 기록](progress.md)과 [P04 검증 보고서](verification/P04-04-playlists-classifications.md)를 확인한다.
+변경 코드는 GitHub main의 [9d73f72](https://github.com/ksh321/Song_Record/commit/9d73f723bdf907e56e9255f0dc06b9c17096a59b)에 반영했다. [GitHub 자동 검사](https://github.com/ksh321/Song_Record/actions/runs/35588779189)에서 서버 전체 빌드·테스트와 DB 검사를 통과했다. DB 검사 통과와 전체 앱 완성은 다른 의미다. 최신 검증 상태는 [진행 기록](progress.md)과 [P04-05 검증 보고서](verification/P04-05-retention-storage.md)를 확인한다.
 
 ## 오류가 나면
 

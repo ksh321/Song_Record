@@ -33,7 +33,7 @@ CloudCleanup은 생성 시 현재 계정·녹음·세대·체크섬·revision이
 - 새 검사는 다른 계정·곡 참조, 역할 중복 허용, 고정 10번째 자리 경쟁, 오래된 REPEATABLE READ 스냅샷의 교차 중복 우회, 교체·취소·한도 축소, 보존 사유 중복, 정리 객체 식별·확인·재시도·이력, 음수·BIGINT·단일 전체 행을 다룬다.
 - 업그레이드 전 합성 데이터는 휴지통 STORED 100바이트 + DELETING 500바이트, VERIFYING 77바이트, FAILED 99바이트, COMMITTED 100바이트다. V5 뒤 used=600, reserved=77을 기대한다.
 - 첫 로컬 실행에서 시험용 MySQL의 Windows 시간대와 UTC 입력 차이가 드러났다. 공통 검사 접속을 UTC로 고정해 프로젝트의 Docker DB 설정과 맞췄다.
-- 최신 실행 결과와 원격 CI는 [진행 기록](../progress.md)에 기록한다. 실제 기기·음성 파일 업로드·객체 삭제는 이번에 검증하지 않았다.
+- GitHub main 코드 커밋은 [9d73f72](https://github.com/ksh321/Song_Record/commit/9d73f723bdf907e56e9255f0dc06b9c17096a59b)이다. [CI 실행](https://github.com/ksh321/Song_Record/actions/runs/35588779189)의 세 작업이 모두 성공했다. 서버 전체 빌드·테스트, MySQL 기존 22개·확장 63개·신규 72개 판정과 실제 서버 재시작, Flutter 분석·테스트·Android APK 빌드를 확인했다. 전체 최신 상태는 [진행 기록](../progress.md)을 따른다. 실제 기기·음성 파일 업로드·객체 삭제는 이번에 검증하지 않았다.
 
 ## 재실행과 후속 구현 경계
 
