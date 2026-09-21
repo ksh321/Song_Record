@@ -41,6 +41,12 @@ jobs:
       - name: Resolve locked dependencies
         run: flutter pub get --enforce-lockfile
 
+      - name: Verify Drift generated code and schema snapshot
+        run: |
+          dart run build_runner build
+          dart run drift_dev make-migrations --no-test
+          git diff --exit-code -- lib/core/database/account_database.g.dart drift_schemas
+
       - name: Analyze
         run: flutter analyze
 

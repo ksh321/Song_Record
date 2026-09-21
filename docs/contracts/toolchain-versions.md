@@ -1,6 +1,6 @@
 # 구현 기술 버전 기준 및 고정 대상
-- 문서 버전: 1.9
-- 확인일: 2026-09-17
+- 문서 버전: 2.0
+- 확인일: 2026-09-21
 - 결정: [D01 A안](../decisions/D01-implementation-stack.md)
 - 상태: 기술 기준 확정 / P01-02~P01-08 완료
 
@@ -20,7 +20,7 @@
 | 서버 Gradle Wrapper | 9.7.1 (Initializr 실제 생성값) | [Spring Boot 4.1.1 시스템 요구사항](https://docs.spring.io/spring-boot/system-requirements.html)의 Gradle 9.x 지원 범위 |
 | Spring Data JPA / Hibernate / MySQL JDBC / Flyway | Spring Boot 4.1.1 BOM 관리 버전 | [관리 의존성](https://docs.spring.io/spring-boot/appendix/dependency-versions/coordinates.html). 임의 개별 버전 덮어쓰기 금지 |
 | MySQL | 8.4.11, 8.4 LTS 계열 · `mysql:8.4.11@sha256:85b9bf2e29cf836ecb8c2a15a935d4ba0c606631dff1dd79531a11983c638f2a` | 계획 기준 8.4.12 공식 Docker 이미지를 조회할 수 없어 실제 제공된 같은 LTS 계열 이미지를 digest로 고정 |
-| SQLite 네이티브 패키지·코드 생성 보조 도구 | Drift 구성 후 P01에서 해결된 버전 고정 | SQLite 런타임 버전도 기록 |
+| SQLite 네이티브 패키지·코드 생성 보조 도구 | P04-08: sqlite3 3.5.2 / build_runner 2.16.1 / Drift·drift_dev 2.35.0 | pubspec.lock 고정. 로컬 시험 SQLite 3.51.1, 기본 번들·Android 런타임은 CI/실기 확인 대기 |
 | Android AGP / Kotlin / Gradle / SDK | AGP 9.1.0 / Kotlin 2.4.0 / Gradle Wrapper 9.3.1 / Android SDK 36 계열 | Flutter 3.47.4 생성 템플릿과 실제 프로젝트 파일 기준 |
 | R2 연동 SDK | 서버 구현 시 선택·고정 | 비공개 저장소 정책 유지 |
 | 녹음 플러그인 | P02 실기 결과 후 결정 | D01 완료와 별도 |
@@ -125,3 +125,11 @@ CI도 로컬과 같은 Flutter 3.47.4, Java 21, Gradle Wrapper 9.7.1, digest 고
 - GitHub Actions 실행: [CI #2](https://github.com/ksh321/Song_Record/actions/runs/35195006942).
 - 결과: Flutter analyze/test, Spring Boot clean build, MySQL Compose 및 SELECT 1 모두 성공.
 - MySQL 초기화 구간에서는 임시 서버의 health 응답과 실제 사용자 DB 준비 시점이 다를 수 있어, 검증 쿼리를 최대 60초 동안 재시도한다.
+
+## P04-08 로컬 저장 구성
+
+- Drift / drift_dev 2.35.0, sqlite3 3.5.2, build_runner 2.16.1, path 1.9.1, path_provider 2.1.6, crypto 3.0.7을 앱 `pubspec.lock`에 기록했다.
+- Drift 생성 코드와 `drift_schemas/account/drift_schema_v1.json`을 함께 관리한다. CI는 잠금 파일로 설치하고 코드 재생성·현재 스키마와 보존본의 일치를 검사한다.
+- 저장소는 sqlite3 패키지의 기본 네이티브 바이너리 구성을 유지한다. 별도 sqlite3_flutter_libs나 운영용 시스템 SQLite override는 추가하지 않았다.
+- 로컬 원본 경로의 도구 캐시 접근 제한과 기본 네이티브 바이너리 다운로드 실패로 분리된 시험 복사본을 사용했다. 이 복사본에만 공식 hook 설정 `source: system`, `name_windows: winsqlite3`를 적용했고 Windows 내장 SQLite 3.51.1에서 분석·테스트를 수행했다.
+- 기본 번들 바이너리 및 Android 조합의 검증 완료를 뜻하지 않는다. P04-08 업로드 후 기본 설정의 CI, 후속 기기 검증으로 확인한다. [상세 환경·검증](../verification/P04-08-account-local-storage.md)

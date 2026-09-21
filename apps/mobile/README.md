@@ -144,3 +144,25 @@ flutter run --flavor dev -t lib/main.dart
 ```
 
 마이크·알림 권한을 허용하고 5~10초 녹음한 뒤 종료한다. 화면에 실제 MIME, 48000Hz, 채널 1이 표시되는지 확인하고 `녹음 파일 재생 확인`을 누른다. 6분 자동 종료와 사전 경고는 P02-04 이후 범위다. 전체 실기 절차는 [검증 문서](../../docs/verification/P02-01-03-recorder.md)를 따른다.
+
+## P04-08 계정별 로컬 저장 기반
+
+`lib/core/database`는 D01의 Drift/SQLite 구현이다. 앱 세션에서 `AccountStoreManager` 하나를 소유하고 인증 완료된 UUID로 `openAccount`를 호출한다. UI/저장소는 반환된 `AccountStore`를 사용하며 저수준 DB/파일 경로를 직접 열지 않는다. 로그아웃/계정 전환 호출 즉시 이전 세션은 무효화되지만 DB와 음성 파일은 보존한다. UUID 전달만으로 인증이 되는 것은 아니다.
+
+앱 전용 지원 폴더 아래 `song_record/<dev|staging|prod>/accounts/<user UUID>/`에 `account.sqlite`, `audio`, `pending`, `imports`를 둔다. `account.sqlite`의 소유자/환경을 재확인하고, 파일 경로는 정해진 계정 상대 경로만 허용한다. 서버 object key/URL은 로컬 파일 경로가 아니다. 이 구조는 앱 내부 접근 분리이며 암호화는 아니다.
+
+```powershell
+cd C:\Users\shoon111111\Documents\GitHub\Song_Record\apps\mobile
+flutter pub get --enforce-lockfile
+dart run build_runner build
+dart run drift_dev make-migrations --no-test
+flutter analyze
+flutter test --reporter expanded
+flutter build apk --debug --flavor dev -t lib/main.dart
+```
+
+생성된 `account_database.g.dart`는 직접 고치지 않는다. 공개한 v1 스키마 보존본은 후속 버전으로 덮어쓰지 않는다. 구조 변경에는 `schemaVersion` 증가, 명시적 보존 마이그레이션, 이전 데이터 테스트가 필요하다. 버전 불일치나 계정 불일치에 DB 삭제/초기화로 복구하지 않는다. CI가 생성 코드와 스키마 일치를 검사한다.
+
+현재 P04-08은 로그인·UI·P02 네이티브 녹음과 미연결이다. 기존 `prototype_device` journal과 음성을 새 계정 폴더로 자동 이전하지 않는다. P06 인증 연결, P10 동기화/ACK/충돌 처리, P18 네이티브 journal/파일 복구, P22 실제 ZIP 가져오기에서 이 기반을 확장한다. 아직 일반 화면 기능 완성을 의미하지 않는다.
+
+2026-09-21 로컬 검증: 별도 Windows 시험 폴더, SQLite 3.51.1에서 analyze 문제 없음·전체 테스트 57개 통과/링크 권한 검사 1개 보류. 원본 설정과 다른 시험용 SQLite 사용 범위 및 GitHub 대기 상태는 [P04-08 보고서](../../docs/verification/P04-08-account-local-storage.md)를 따른다.

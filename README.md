@@ -1,8 +1,8 @@
 # Song_Record
 노래방 노래 검색, 녹음, 노래의 다양한 정보 기록 관리 앱
 
-2026-09-21: P04-06은 GitHub 전체 CI를 통과했다. 이어 P04-07 공용 인기 차트·개인 임시 사본 구조를 V7로 추가했다. P04-07의 커밋·push와 새 CI 확인은 대기 중이며 실제 사용자 DB와 API에는 미적용이다.
-[P04-07 변경과 검증](docs/verification/P04-07-charts-snapshots.md) · [P04-06 완료 기록](docs/verification/P04-06-sync-deletion-jobs.md) · [비개발자를 위한 DB 작업 안내](docs/database-guide.md)
+2026-09-21: P04-07은 `7212fec`와 GitHub 전체 CI 성공을 확인했다. 이어 P04-08 계정별 Drift/SQLite 저장 기반을 추가했다. 로컬 Flutter 분석과 테스트 57개 통과·Windows 링크 검사 1개 보류. P04-08 커밋·push 및 기본 SQLite 바이너리/Android CI 검증은 대기 중이다. 아직 로그인·녹음 화면에는 연결하지 않았고 실제 사용자 DB와 기존 녹음은 변경하지 않았다.
+[P04-08 변경과 검증](docs/verification/P04-08-account-local-storage.md) · [P04-07 완료 기록](docs/verification/P04-07-charts-snapshots.md) · [비개발자를 위한 DB 작업 안내](docs/database-guide.md)
 
 ## 기준 파일
 
