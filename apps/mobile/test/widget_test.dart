@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/app/song_record_app.dart';
 import 'package:song_record/config/app_config.dart';
+import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 import 'package:song_record/features/recorder/recorder_panel.dart';
 import 'package:song_record/network/health_client.dart';
@@ -12,15 +13,80 @@ void main() {
     apiBaseUrl: Uri.parse('http://127.0.0.1:8080'),
   );
 
+  testWidgets('실제 앱에 초기 블루와 어두운 배경을 적용한다', (tester) async {
+    await tester.pumpWidget(
+      SongRecordApp(
+        config: config,
+        recorderGateway: const _FakeRecorderGateway(),
+        healthLoader: () async =>
+            const HealthResponse(status: 'UP', rawBody: '{"status":"UP"}'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final theme = Theme.of(tester.element(find.byType(RecorderPanel)));
+    expect(theme.brightness, Brightness.dark);
+    expect(theme.scaffoldBackgroundColor, AppColors.background);
+    expect(theme.colorScheme.primary, AppAccent.blue.background);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('강조색을 바꿔도 실제 녹음 시작·종료 버튼은 빨강을 유지한다', (tester) async {
+    for (final accent in AppAccent.values) {
+      for (final phase in [RecorderPhase.idle, RecorderPhase.recording]) {
+        await tester.pumpWidget(
+          SongRecordApp(
+            config: config,
+            accent: accent,
+            recorderGateway: _FakeRecorderGateway(
+              status: RecorderStatus(phase: phase),
+            ),
+            healthLoader: () async =>
+                const HealthResponse(status: 'UP', rawBody: '{"status":"UP"}'),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('녹음 시작'));
+        final start = tester.widget<FilledButton>(
+          find.ancestor(
+            of: find.text('녹음 시작'),
+            matching: find.byWidgetPredicate(
+              (widget) => widget is FilledButton,
+            ),
+          ),
+        );
+        final stop = tester.widget<OutlinedButton>(
+          find.ancestor(
+            of: find.text('녹음 종료'),
+            matching: find.byWidgetPredicate(
+              (widget) => widget is OutlinedButton,
+            ),
+          ),
+        );
+        if (phase == RecorderPhase.idle) {
+          expect(start.onPressed, isNotNull);
+          expect(
+            start.style!.backgroundColor!.resolve({}),
+            AppColors.recording,
+          );
+          expect(stop.onPressed, isNull);
+        } else {
+          expect(start.onPressed, isNull);
+          expect(stop.onPressed, isNotNull);
+          expect(stop.style!.foregroundColor!.resolve({}), AppColors.recording);
+        }
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    }
+  });
+
   testWidgets('서버 health 성공 응답을 표시한다', (tester) async {
     await tester.pumpWidget(
       SongRecordApp(
         config: config,
         recorderGateway: const _FakeRecorderGateway(),
-        healthLoader: () async => const HealthResponse(
-          status: 'UP',
-          rawBody: '{"status":"UP"}',
-        ),
+        healthLoader: () async =>
+            const HealthResponse(status: 'UP', rawBody: '{"status":"UP"}'),
       ),
     );
     await tester.pumpAndSettle();
@@ -66,10 +132,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('마이크 권한 다시 요청'), findsOneWidget);
-    expect(
-      find.text('마이크 권한이 필요합니다. 아래 버튼으로 다시 요청하세요.'),
-      findsOneWidget,
-    );
+    expect(find.text('마이크 권한이 필요합니다. 아래 버튼으로 다시 요청하세요.'), findsOneWidget);
 
     await tester.tap(find.text('마이크 권한 다시 요청'));
     await tester.pump();
@@ -138,10 +201,8 @@ void main() {
             elapsedMs: 5000,
           ),
         ),
-        healthLoader: () async => const HealthResponse(
-          status: 'UP',
-          rawBody: '{"status":"UP"}',
-        ),
+        healthLoader: () async =>
+            const HealthResponse(status: 'UP', rawBody: '{"status":"UP"}'),
       ),
     );
     await tester.pumpAndSettle();
@@ -159,9 +220,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: RecorderPanel(gateway: gateway),
-        ),
+        home: Scaffold(body: RecorderPanel(gateway: gateway)),
       ),
     );
     await tester.pumpAndSettle();
@@ -209,10 +268,7 @@ void main() {
       await tester.pump();
 
       final seconds = status.remainingMs! ~/ 1000;
-      expect(
-        find.text('녹음 종료 임박: $seconds초 후 자동 종료됩니다.'),
-        findsOneWidget,
-      );
+      expect(find.text('녹음 종료 임박: $seconds초 후 자동 종료됩니다.'), findsOneWidget);
     }
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -375,13 +431,12 @@ class _PollingRecorderGateway implements RecorderGateway {
   Future<RecorderStatus> getCurrentStatus() async => _status;
 
   @override
-  Future<RecorderDeviceInfo> getDeviceInfo() async =>
-      const RecorderDeviceInfo(
-        manufacturer: 'test',
-        model: 'poll-device',
-        androidVersion: '1',
-        sdkInt: 1,
-      );
+  Future<RecorderDeviceInfo> getDeviceInfo() async => const RecorderDeviceInfo(
+    manufacturer: 'test',
+    model: 'poll-device',
+    androidVersion: '1',
+    sdkInt: 1,
+  );
 
   @override
   Future<void> openAppSettings() async {}
@@ -426,13 +481,12 @@ class _DeniedPermissionGateway implements RecorderGateway {
       const RecorderStatus.idle();
 
   @override
-  Future<RecorderDeviceInfo> getDeviceInfo() async =>
-      const RecorderDeviceInfo(
-        manufacturer: 'test',
-        model: 'permission-device',
-        androidVersion: '1',
-        sdkInt: 1,
-      );
+  Future<RecorderDeviceInfo> getDeviceInfo() async => const RecorderDeviceInfo(
+    manufacturer: 'test',
+    model: 'permission-device',
+    androidVersion: '1',
+    sdkInt: 1,
+  );
 
   @override
   Future<void> openAppSettings() async {

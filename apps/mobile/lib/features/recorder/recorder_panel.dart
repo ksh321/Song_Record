@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 
 class RecorderPanel extends StatefulWidget {
@@ -85,7 +86,8 @@ class _RecorderPanelState extends State<RecorderPanel>
 
   void _handleStatus(RecorderStatus status) {
     final deadline = _startGraceDeadline;
-    final isStaleIdle = status.phase == RecorderPhase.idle &&
+    final isStaleIdle =
+        status.phase == RecorderPhase.idle &&
         deadline != null &&
         DateTime.now().isBefore(deadline);
 
@@ -225,8 +227,7 @@ class _RecorderPanelState extends State<RecorderPanel>
               const Text('6분 제한에 도달해 자동 종료되었습니다.'),
             if (_status.phase == RecorderPhase.completed && _status.recovered)
               const Text('이전 실행에서 완료된 녹음 파일을 복구했습니다.'),
-            if (classificationMessage != null)
-              Text(classificationMessage),
+            if (classificationMessage != null) Text(classificationMessage),
             if (_status.recordingId != null)
               SelectableText('녹음 ID: ${_status.recordingId}'),
             if (_status.outputPath != null)
@@ -262,8 +263,7 @@ class _RecorderPanelState extends State<RecorderPanel>
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ],
-            if (_permissions != null &&
-                !_permissions!.microphoneGranted) ...[
+            if (_permissions != null && !_permissions!.microphoneGranted) ...[
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: _permissions!.microphoneCanAskAgain
@@ -283,6 +283,7 @@ class _RecorderPanelState extends State<RecorderPanel>
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: _status.isRecording ? null : _start,
+                    style: AppTheme.recordingFilledButtonStyle,
                     icon: const Icon(Icons.mic),
                     label: const Text('녹음 시작'),
                   ),
@@ -291,6 +292,7 @@ class _RecorderPanelState extends State<RecorderPanel>
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: _status.isRecording ? _stop : null,
+                    style: AppTheme.recordingOutlinedButtonStyle,
                     icon: const Icon(Icons.stop),
                     label: const Text('녹음 종료'),
                   ),
@@ -363,7 +365,8 @@ class _RecorderPanelState extends State<RecorderPanel>
     }
 
     final fallbackRemainingMs = 360000 - status.elapsedMs;
-    final remainingMs = status.remainingMs ??
+    final remainingMs =
+        status.remainingMs ??
         (fallbackRemainingMs < 0 ? 0 : fallbackRemainingMs);
     final remainingSeconds = (remainingMs + 999) ~/ 1000;
     return '녹음 종료 임박: $remainingSeconds초 후 자동 종료됩니다.';

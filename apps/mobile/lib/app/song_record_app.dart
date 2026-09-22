@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:song_record/config/app_config.dart';
+import 'package:song_record/core/theme/app_theme.dart';
+import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/features/health/health_screen.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 import 'package:song_record/network/health_client.dart';
@@ -10,12 +12,14 @@ class SongRecordApp extends StatelessWidget {
     required this.config,
     this.healthLoader,
     this.recorderGateway = const MethodChannelRecorderGateway(),
+    this.accent = AppAccent.initial,
     super.key,
   });
 
   final AppConfig config;
   final HealthLoader? healthLoader;
   final RecorderGateway recorderGateway;
+  final AppAccent accent;
 
   @override
   Widget build(BuildContext context) {
@@ -33,10 +37,7 @@ class SongRecordApp extends StatelessWidget {
           recorderGateway: recorderGateway,
         ),
       },
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6750A4)),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.dark(accent: accent),
     );
   }
 }

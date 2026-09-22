@@ -166,3 +166,18 @@ flutter build apk --debug --flavor dev -t lib/main.dart
 현재 P04-08은 로그인·UI·P02 네이티브 녹음과 미연결이다. 기존 `prototype_device` journal과 음성을 새 계정 폴더로 자동 이전하지 않는다. P06 인증 연결, P10 동기화/ACK/충돌 처리, P18 네이티브 journal/파일 복구, P22 실제 ZIP 가져오기에서 이 기반을 확장한다. 아직 일반 화면 기능 완성을 의미하지 않는다.
 
 2026-09-21 로컬 검증: 별도 Windows 시험 폴더, SQLite 3.51.1에서 analyze 문제 없음·전체 테스트 57개 통과/링크 권한 검사 1개 보류. 원본 설정과 다른 시험용 SQLite 사용 범위 및 GitHub 대기 상태는 [P04-08 보고서](../../docs/verification/P04-08-account-local-storage.md)를 따른다.
+
+
+## P05-01 공통 테마
+
+`lib/core/theme/app_tokens.dart`는 `docs/reference/ui_reference_palette.json`의 색상·글자·치수를 정의한다. `AppTheme.dark()`의 초기 강조색은 블루다. 다른 강조색은 `SongRecordApp(accent: AppAccent.white, ...)`처럼 주입할 수 있으며 사용자 설정의 영속 저장은 아직 연결하지 않았다. 녹음 시작·종료 스타일은 선택한 강조색과 무관하다.
+
+실제 앱의 기본 진입점은 계속 `lib/main.dart`다. 기존 flavor와 `API_BASE_URL` 실행 인자를 그대로 사용한다. 개발용 테마 미리보기는 서버나 마이크를 사용하지 않는다.
+
+```powershell
+flutter run --debug --flavor dev -t tool/preview_theme.dart
+```
+
+미리보기에서 8개 강조색을 눌러 주요 버튼의 글자와 배경, 흰색 선택의 검정 글자, 녹음 빨강과 키 배지의 고정 색을 확인한다. 이 도구는 실제 녹음이나 데이터 저장을 하지 않는다. 확인 후 원래 앱은 기존 실행 설정에서 `lib/main.dart`로 다시 실행한다.
+
+코드 분석과 테스트, Android 실기·CI 확인 상태는 [P05-01 보고서](../../docs/verification/P05-01-theme-tokens.md)를 따른다.
