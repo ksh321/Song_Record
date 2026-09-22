@@ -23,7 +23,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final theme = Theme.of(tester.element(find.byType(RecorderPanel)));
+    final theme = Theme.of(tester.element(find.byType(NavigationBar)));
     expect(theme.brightness, Brightness.dark);
     expect(theme.scaffoldBackgroundColor, AppColors.background);
     expect(theme.colorScheme.primary, AppAccent.blue.background);
@@ -45,6 +45,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        await _openRecordingTab(tester);
         await tester.ensureVisible(find.text('녹음 시작'));
         final start = tester.widget<FilledButton>(
           find.ancestor(
@@ -91,6 +92,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _openHealth(tester);
     expect(find.text('서버 연결 성공: UP'), findsOneWidget);
     expect(find.text('응답: {"status":"UP"}'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -110,6 +112,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _openHealth(tester);
     expect(find.text('서버 연결 실패'), findsOneWidget);
     expect(find.text('테스트 연결 실패'), findsOneWidget);
     expect(find.text('다시 확인'), findsOneWidget);
@@ -207,6 +210,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await _openRecordingTab(tester);
     expect(find.text('상태: 녹음 중'), findsOneWidget);
     expect(find.text('경과 시간: 00:05'), findsOneWidget);
     expect(find.text('녹음 ID: test-recording'), findsOneWidget);
@@ -379,6 +383,18 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
   });
+}
+
+Future<void> _openRecordingTab(WidgetTester tester) async {
+  await tester.tap(find.byKey(const ValueKey('tab-recording')));
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openHealth(WidgetTester tester) async {
+  await tester.tap(find.byTooltip('설정'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('서버 연결 확인'));
+  await tester.pumpAndSettle();
 }
 
 class _FakeRecorderGateway implements RecorderGateway {

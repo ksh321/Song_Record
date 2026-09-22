@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:song_record/config/app_config.dart';
-import 'package:song_record/features/recorder/recorder_gateway.dart';
-import 'package:song_record/features/recorder/recorder_panel.dart';
 import 'package:song_record/network/health_client.dart';
 
 class HealthScreen extends StatefulWidget {
   const HealthScreen({
     required this.config,
     required this.healthLoader,
-    required this.recorderGateway,
     super.key,
   });
 
   final AppConfig config;
   final HealthLoader healthLoader;
-  final RecorderGateway recorderGateway;
 
   @override
   State<HealthScreen> createState() => _HealthScreenState();
@@ -62,16 +58,11 @@ class _HealthScreenState extends State<HealthScreen> {
     final response = _response;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('노래 기록')),
+      appBar: AppBar(title: const Text('서버 연결 확인')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
-            Text(
-              '서버 연결 확인',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 12),
             Text('환경: ${widget.config.environment.name}'),
             Text('API: ${widget.config.apiBaseUrl}'),
             const SizedBox(height: 24),
@@ -101,18 +92,13 @@ class _HealthScreenState extends State<HealthScreen> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
-              Text(
-                _errorMessage ?? '알 수 없는 오류',
-                textAlign: TextAlign.center,
-              ),
+              Text(_errorMessage ?? '알 수 없는 오류', textAlign: TextAlign.center),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () => _checkHealth(showLoading: true),
                 child: const Text('다시 확인'),
               ),
             ],
-            const SizedBox(height: 24),
-            RecorderPanel(gateway: widget.recorderGateway),
             const SizedBox(height: 24),
             const Text(
               '앱은 MySQL에 직접 접속하지 않고 Spring Boot API만 호출합니다.',

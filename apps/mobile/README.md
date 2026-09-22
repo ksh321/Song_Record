@@ -1,6 +1,6 @@
 # Flutter Android 앱
 
-P01-02 실행 가능한 Flutter 골격이다.
+Flutter Android 앱이다. 현재 기본 화면은 P05-02의 5개 탭 탐색 골격이다.
 
 ## 확정 설정
 
@@ -64,7 +64,7 @@ flutter run -d <device-id> --flavor dev --dart-define=APP_ENV=dev --dart-define=
 
 ## P01-06 Spring Boot health 연결
 
-개발 앱은 `GET /actuator/health`를 호출하고 응답 상태와 원문 JSON을 화면에 표시한다. 앱에는 MySQL 주소·계정·비밀번호를 넣지 않는다. Flutter는 Spring Boot API만 호출하고 Spring Boot가 MySQL에 연결한다.
+개발 앱의 **상단 설정 → 개발 도구 → 서버 연결 확인**에서 `GET /actuator/health`를 호출하고 응답 상태와 원문 JSON을 화면에 표시한다. 시작 화면이나 탭 이동에서는 이 요청을 보내지 않는다. 앱에는 MySQL 주소·계정·비밀번호를 넣지 않는다. Flutter는 Spring Boot API만 호출하고 Spring Boot가 MySQL에 연결한다.
 
 ### API 주소 규칙
 
@@ -89,7 +89,7 @@ cd C:\Users\shoon111111\Documents\GitHub\Song_Record\apps\mobile
 flutter run -d R5CW618VA1M --flavor dev --dart-define=APP_ENV=dev --dart-define=API_BASE_URL=http://127.0.0.1:8080
 ```
 
-앱 화면에 `서버 연결 성공: UP`과 `응답: {"status":"UP"}`이 나오면 실제 기기 연결 성공이다. 실패하면 Spring Boot 실행 상태, USB 디버깅 승인, `adb reverse --list`의 `tcp:8080 tcp:8080`을 확인하고 앱의 `다시 확인`을 누른다.
+상단 설정에서 서버 연결 확인을 열어 `서버 연결 성공: UP`과 응답 JSON이 나오면 실제 기기 연결 성공이다. 실패하면 Spring Boot 실행 상태, USB 디버깅 승인, `adb reverse --list`의 `tcp:8080 tcp:8080`을 확인하고 앱의 `다시 확인`을 누른다. 로컬 서버를 8081 등 다른 포트로 실행한다면 기존 서버 포트·USB 매핑·`API_BASE_URL`을 같은 값으로 유지한다.
 
 USB를 뽑거나 매핑을 지우려면 다음 명령을 사용한다.
 
@@ -137,7 +137,7 @@ flutter test
 
 ## P02-01~03 Android 녹음 시제품
 
-개발 화면 아래쪽의 `녹음 시제품`은 Flutter `RecorderGateway`를 통해 Android 네이티브 `RecorderService`를 제어한다. 녹음은 화면에서 사용자가 버튼을 누른 경우에만 시작하며, 앱 내부 `files/recordings`에 AAC 96kbps·48kHz·모노 M4A를 저장한다.
+**하단 녹음 탭**의 `녹음 시제품`은 Flutter `RecorderGateway`를 통해 Android 네이티브 `RecorderService`를 제어한다. 녹음은 화면에서 사용자가 버튼을 누른 경우에만 시작하며, 앱 내부 `files/recordings`에 AAC 96kbps·48kHz·모노 M4A를 저장한다.
 
 ```powershell
 flutter run --flavor dev -t lib/main.dart
@@ -181,3 +181,28 @@ flutter run --debug --flavor dev -t tool/preview_theme.dart
 미리보기에서 8개 강조색을 눌러 주요 버튼의 글자와 배경, 흰색 선택의 검정 글자, 녹음 빨강과 키 배지의 고정 색을 확인한다. 이 도구는 실제 녹음이나 데이터 저장을 하지 않는다. 확인 후 원래 앱은 기존 실행 설정에서 `lib/main.dart`로 다시 실행한다.
 
 코드 분석과 테스트, Android 실기·CI 확인 상태는 [P05-01 보고서](../../docs/verification/P05-01-theme-tokens.md)를 따른다.
+
+## P05-02 앱 탐색 골격
+
+시작은 내 곡이며 하단 탭 순서는 **내 곡 · 인기 차트 · 녹음 · 플레이리스트 · 검색**이다.
+오른쪽 상단 설정은 별도 화면으로 열고, 뒤로 가면 열었던 탭으로 돌아온다.
+설정은 여섯 번째 탭이나 기존 탭의 대체 항목이 아니다.
+
+녹음 탭에 기존 `RecorderPanel` 하나를 두며 첫 방문 뒤에는 다른 탭이나 설정을 다녀와도
+그 상태를 유지한다. 탭 이동으로 녹음 시작·종료·권한 요청을 실행하지 않는다.
+서버 진단은 dev 설정에서만 열 수 있고, staging/prod에는 메뉴와 진단 라우트를 등록하지 않는다.
+
+내 곡·차트·플레이리스트·검색과 설정의 실제 데이터 기능은 아직 연결 전이므로 준비 안내를 표시한다.
+샘플 곡·가짜 검색 결과·용량 숫자를 실제 데이터처럼 표시하지 않는다.
+탭별 상세 이동 스택과 선택 문맥 복원은 P05-03에서 이어간다.
+
+```powershell
+flutter analyze
+flutter test
+flutter run --debug --flavor dev --dart-define=APP_ENV=dev -t lib/main.dart
+```
+
+Android Studio를 사용한다면 Dart entrypoint를 `lib/main.dart`로 지정하고 기존 flavor·환경·API 주소 인자를 유지한다.
+테마 미리보기 `tool/preview_theme.dart`에서는 새 탭을 검사할 수 없다.
+탭 이동 자체는 서버 실행 없이 확인할 수 있다. 분석·테스트·실기 확인 상태는
+[P05-02 보고서](../../docs/verification/P05-02-app-navigation.md)를 따른다.
