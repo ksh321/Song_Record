@@ -194,7 +194,7 @@ flutter run --debug --flavor dev -t tool/preview_theme.dart
 
 내 곡·차트·플레이리스트·검색과 설정의 실제 데이터 기능은 아직 연결 전이므로 준비 안내를 표시한다.
 샘플 곡·가짜 검색 결과·용량 숫자를 실제 데이터처럼 표시하지 않는다.
-탭별 상세 이동 스택과 선택 문맥 복원은 P05-03에서 이어간다.
+P05-03은 탭별 상세 이동 스택과 선택 문맥을 유지하는 기반을 제공한다. 실제 데이터 화면 연결은 후속 단계다.
 
 ```powershell
 flutter analyze
@@ -206,3 +206,28 @@ Android Studio를 사용한다면 Dart entrypoint를 `lib/main.dart`로 지정�
 테마 미리보기 `tool/preview_theme.dart`에서는 새 탭을 검사할 수 없다.
 탭 이동 자체는 서버 실행 없이 확인할 수 있다. 분석·테스트·실기 확인 상태는
 [P05-02 보고서](../../docs/verification/P05-02-app-navigation.md)를 따른다.
+
+
+## P05-03 뒤로가기 문맥
+
+각 탭은 첫 방문 뒤 자체 Navigator를 유지한다. 상세에서 다른 탭으로 이동했다가 돌아오면
+같은 상세가 남고, 뒤로가기는 그 탭의 실제 이전 화면으로 돌아간다. 설정은 루트에 열리므로
+닫으면 열었던 상세나 선택기로 복귀한다. 탭 루트에서는 플랫폼 기본 뒤로가기 동작을 따른다.
+
+탭 내부 화면은 `TabNavigation.of(context).openPage<T>(title: ..., builder: ...)`로 연다.
+선택기는 `Navigator.of(context).pop(result)`로 확정 결과를 반환하고, 취소는 결과를 반환하지 않는다.
+호출자는 mounted 및 취소 여부를 확인한 후 `selectPlaylist(id)`로 선택을 반영한다.
+실제 목록은 고유한 PageStorageKey를 사용한다. 이 상태는 앱 골격 수명 동안만 유지되며
+계정 데이터 저장이나 앱 강제 종료 후 복원 기능이 아니다.
+
+탐색 실기 검사용 샘플은 독립 실행한다. 실제 DB·서버·녹음은 사용하지 않는다.
+
+```powershell
+flutter run --debug --flavor dev -t tool/preview_navigation.dart
+```
+
+내 곡 목록을 스크롤해 항목 상세를 열고, 다른 탭에서도 별도 상세를 연다.
+각 탭을 왕복하면 각각의 상세가 유지되고 뒤로가면 원래 스크롤 위치로 돌아와야 한다.
+상세의 플레이리스트 선택에서 샘플 A를 확정한 뒤 재진입·취소해도 A가 유지돼야 한다.
+선택기에서 설정을 열었다 닫아도 선택기로 복귀해야 한다. 실제 앱 확인은 `lib/main.dart`로
+복귀해 기존 실행 인자를 사용한다. [P05-03 보고서](../../docs/verification/P05-03-navigation-context.md) 참조.

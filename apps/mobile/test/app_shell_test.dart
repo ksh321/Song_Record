@@ -97,6 +97,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
     expect(gateway.startCalls, 1);
+    await _selectTab(tester, '녹음');
+    expect(tester.state(find.byType(RecorderPanel)), same(recorderState));
+    expect(gateway.stopCalls, 0);
 
     await _selectTab(tester, '검색');
     gateway.reportElapsed(12000);

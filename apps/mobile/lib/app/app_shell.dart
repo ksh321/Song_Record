@@ -4,11 +4,16 @@ import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 import 'package:song_record/features/recorder/recorder_panel.dart';
 import 'package:song_record/routing/app_routes.dart';
+import 'package:song_record/routing/tab_navigation.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({required this.recorderGateway, super.key});
+  const AppShell({required this.recorderGateway, this.tabBuilder, super.key});
 
   final RecorderGateway recorderGateway;
+
+  /// Allows a separate preview/test to exercise future tab bodies.
+  /// Production uses the existing placeholders and single recorder panel.
+  final Widget Function(BuildContext context, AppTab tab)? tabBuilder;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -17,12 +22,18 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   AppTab _selectedTab = AppTab.songs;
   final Set<AppTab> _visitedTabs = {AppTab.songs};
+  final _tabKeys = {
+    for (final tab in AppTab.values) tab: GlobalKey<TabNavigatorState>(),
+  };
   bool _settingsOpen = false;
 
   void _selectTab(int index) {
     final tab = AppTab.values[index];
-    if (tab == _selectedTab) return;
     FocusManager.instance.primaryFocus?.unfocus();
+    if (tab == _selectedTab) {
+      _tabKeys[tab]?.currentState?.popToRoot();
+      return;
+    }
     setState(() {
       _selectedTab = tab;
       _visitedTabs.add(tab);
@@ -32,51 +43,43 @@ class _AppShellState extends State<AppShell> {
   Future<void> _openSettings() async {
     if (_settingsOpen) return;
     FocusManager.instance.primaryFocus?.unfocus();
-    setState(() => _settingsOpen = true);
+    _settingsOpen = true;
     try {
       await Navigator.of(context).pushNamed<void>(AppRoutes.settings);
     } finally {
-      if (mounted) setState(() => _settingsOpen = false);
+      _settingsOpen = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_selectedTab.label),
-        actions: [
-          IconButton(
-            key: const ValueKey('open-settings'),
-            tooltip: '설정',
-            onPressed: _settingsOpen ? null : _openSettings,
-            icon: const Icon(Icons.settings_outlined),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-        ],
-      ),
-      body: SafeArea(
-        top: false,
-        bottom: false,
-        child: IndexedStack(
-          index: _selectedTab.index,
-          sizing: StackFit.expand,
-          children: [
-            for (final tab in AppTab.values)
-              ExcludeFocus(
-                key: ValueKey(tab),
-                excluding: tab != _selectedTab,
-                child: TickerMode(
-                  enabled: tab == _selectedTab,
-                  // Open once on first visit. In particular, startup does not
-                  // create the recorder or request microphone permissions.
-                  child: _visitedTabs.contains(tab)
-                      ? _buildTab(tab)
-                      : const SizedBox.shrink(),
-                ),
+      body: IndexedStack(
+        index: _selectedTab.index,
+        sizing: StackFit.expand,
+        children: [
+          for (final tab in AppTab.values)
+            ExcludeFocus(
+              key: ValueKey(tab),
+              excluding: tab != _selectedTab,
+              child: TickerMode(
+                enabled: tab == _selectedTab,
+                // Open once on first visit. In particular, startup does not
+                // create the recorder or request microphone permissions.
+                child: _visitedTabs.contains(tab)
+                    ? TabNavigator(
+                        key: _tabKeys[tab],
+                        tab: tab,
+                        active: tab == _selectedTab,
+                        openSettings: _openSettings,
+                        rootBuilder: (context) =>
+                            widget.tabBuilder?.call(context, tab) ??
+                            _buildTab(tab),
+                      )
+                    : const SizedBox.shrink(),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
       bottomNavigationBar: DecoratedBox(
         decoration: const BoxDecoration(
