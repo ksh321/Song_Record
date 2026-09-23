@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:song_record/app/app_tab.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
+import 'package:song_record/core/widgets/content_state.dart';
+import 'package:song_record/core/widgets/song_discovery_sheet.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 import 'package:song_record/features/recorder/recorder_panel.dart';
 import 'package:song_record/routing/app_routes.dart';
@@ -48,6 +50,21 @@ class _AppShellState extends State<AppShell> {
       await Navigator.of(context).pushNamed<void>(AppRoutes.settings);
     } finally {
       _settingsOpen = false;
+    }
+  }
+
+  Future<void> _findSong() async {
+    final result = await showSongDiscoverySheet(context: context);
+    if (!mounted || result == null) {
+      return;
+    }
+    switch (result.destination) {
+      case SongDiscoveryDestination.charts:
+        _selectTab(AppTab.charts.index);
+      case SongDiscoveryDestination.search:
+        _selectTab(AppTab.search.index);
+      case SongDiscoveryDestination.mySongs:
+        break; // Only offered by callers with a playlist context.
     }
   }
 
@@ -116,20 +133,13 @@ class _AppShellState extends State<AppShell> {
           // settings. The native service remains the recording state owner.
           RecorderPanel(gateway: widget.recorderGateway)
         else ...[
-          const SizedBox(height: AppSpacing.lg),
-          Icon(tab.icon, size: 48, color: AppColors.muted),
-          const SizedBox(height: AppSpacing.lg),
-          Text(
-            tab.introduction,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.titleLarge,
+          ContentState(
+            phase: ContentPhase.waiting,
+            title: tab.introduction,
+            message: '기능을 준비하고 있어요.',
           ),
-          const SizedBox(height: AppSpacing.md),
-          const Text(
-            '기능을 준비하고 있어요.',
-            textAlign: TextAlign.center,
-            style: AppTypography.supporting,
-          ),
+          if (tab == AppTab.songs)
+            FilledButton(onPressed: _findSong, child: const Text('새 곡 찾기')),
         ],
       ],
     );

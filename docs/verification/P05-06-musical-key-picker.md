@@ -1,7 +1,9 @@
 # P05-06 키 선택기
 
 기준 커밋: `566ae21013841b6591d3e0c57cb9bb394857e5f5`.
-상태: **구현 및 사용자 Flutter 분석·테스트·Android 샘플 실기 검증 완료 / 커밋·push·새 CI 확인 대기**.
+상태: **구현·사용자 검증·main 반영·해당 커밋 CI 완료**.
+반영 커밋: `ff82c93f54a114332898dd65808229fdbe8aba47`.
+[CI 35846248525](https://github.com/ksh321/Song_Record/actions/runs/35846248525)의 Flutter/Android, Spring Boot, MySQL 세 작업 모두 성공했다.
 
 ## 설계와 동작
 
@@ -43,7 +45,7 @@ UI_REFERENCE의 키 선택 항목과 HTML의 선택 시트 동작을 따른다.
 사용자 노트북에서 수정 패치 적용 후 Flutter 분석 및 키 선택기·전체 테스트가 모두
 통과했다는 보고를 받았다. 이어서 SM A546S의 미리보기 실기 확인도 이상 없음으로
 보고받았다. 실행은 사용자가 수행했으며, 작성 환경에서 직접 재실행한 결과는 아니다.
-새 커밋의 GitHub CI 결과는 아직 확인하지 않았다.
+2026-09-23에 해당 커밋의 push CI 세 작업 성공을 확인했다.
 
 초기 패치의 오류 두 건을 수정했다. `const Semantics`의 잘못된 const를 제거했고,
 접근성 증감 동작에 `increasedValue`·`decreasedValue`를 추가했다. −12/+12 끝에서는
