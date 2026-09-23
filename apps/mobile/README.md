@@ -231,3 +231,34 @@ flutter run --debug --flavor dev -t tool/preview_navigation.dart
 상세의 플레이리스트 선택에서 샘플 A를 확정한 뒤 재진입·취소해도 A가 유지돼야 한다.
 선택기에서 설정을 열었다 닫아도 선택기로 복귀해야 한다. 실제 앱 확인은 `lib/main.dart`로
 복귀해 기존 실행 인자를 사용한다. [P05-03 보고서](../../docs/verification/P05-03-navigation-context.md) 참조.
+
+
+## P05-04 곡·녹음 행과 요약
+
+`lib/core/widgets/`에 다음 재사용 구성요소를 둔다. 표시 데이터와 콜백을 주입하며
+위젯이 DB나 API를 호출하거나 대표 녹음을 임의로 선정하지 않는다.
+
+| 구성요소 | 입력과 동작 |
+|---|---|
+| SongRow.registered | 등록곡, 버전·티어·키, 이미 추가됨 비활성 상태 |
+| SongRow.candidate | 검색/차트/플레이리스트 후보, 출처·순위의 문맥별 표시 |
+| RecordingRow | 녹음 스냅샷, 길이·티어·실제 파일 상태, 상세 진입 |
+| SongSummary | 곡 정보와 아쉬운 점, 곡 수정 진입 |
+| RecordingRolesCard | 기존 RecordingSelection과 녹음 데이터, 역할 세 개와 중복 없는 대상 개수 |
+
+표시용 데이터는 `music_view_data.dart`를 사용한다. 실제 파일 상태는 호출자가 확인해 공급한다.
+파일 상태를 모르면 unknown을 사용하며 보관 대상으로 선정됐다는 이유로 stored로 표시하지 않는다.
+녹음 날짜는 스냅샷의 저장 시각·오프셋을 사용한다. 후보 번호는 숫자 문자열을 유지한다.
+플레이리스트 미등록 후보에 금영을 전달하면 거절한다. 원본 제목 속 버전 문구는 그대로 보인다.
+계정 소유권·생명주기 검증은 호출자의 도메인/서비스 계층에서 완료해야 한다.
+
+별도 미리보기 실행:
+
+```powershell
+flutter run --debug --flavor dev -t tool/preview_music_components.dart
+```
+
+기본 `lib/main.dart`에서는 이 샘플 목록이 나오지 않는다. 미리보기는 DB·서버·실제 녹음을 사용하지
+않는다. 8개 강조색과 큰 글꼴 2배를 전환하며 긴 제목, 파일 상태, 역할 중복을 확인한다.
+버튼은 미리보기 안내만 표시한다. 실제 목록/편집·재생·대표 선택 기능은 후속 단계에서 연결한다.
+검증 상태는 [P05-04 보고서](../../docs/verification/P05-04-music-components.md)를 따른다.
