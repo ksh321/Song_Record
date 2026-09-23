@@ -17,20 +17,28 @@ void main() {
 
   testWidgets('새 곡 찾기의 검색과 차트 선택은 해당 탭으로 이동한다', (tester) async {
     final gateway = _ShellRecorderGateway();
-    await tester.pumpWidget(SongRecordApp(
-      config: config(AppEnvironment.dev), recorderGateway: gateway,
-    ));
+    await tester.pumpWidget(
+      SongRecordApp(
+        config: config(AppEnvironment.dev),
+        recorderGateway: gateway,
+      ),
+    );
     await tester.pumpAndSettle();
     for (final choice in ['검색', '인기 차트']) {
       await _selectTab(tester, '내 곡');
       await tester.tap(find.text('새 곡 찾기'));
       await tester.pumpAndSettle();
-      await tester.tap(find.descendant(
-        of: find.byType(BottomSheet), matching: find.text(choice),
-      ));
+      await tester.tap(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text(choice),
+        ),
+      );
       await tester.pumpAndSettle();
-      expect(tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
-          choice == '검색' ? 4 : 1);
+      expect(
+        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+        choice == '검색' ? 4 : 1,
+      );
     }
     expect(gateway.permissionCalls, 0);
     expect(gateway.startCalls, 0);

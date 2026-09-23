@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
+import 'package:song_record/core/widgets/sheet_safe_area.dart';
 
 enum SongDiscoveryDestination { charts, search, mySongs }
 
@@ -30,10 +31,14 @@ Future<SongDiscoveryResult?> showSongDiscoverySheet({
     barrierColor: AppColors.sheetScrim,
     barrierLabel: '새 곡 찾기 취소',
     shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(AppDimensions.sheetTopRadius)),
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(AppDimensions.sheetTopRadius),
+      ),
     ),
     clipBehavior: Clip.antiAlias,
-    constraints: BoxConstraints(maxHeight: media.size.height * AppDimensions.sheetMaxHeightFactor),
+    constraints: BoxConstraints(
+      maxHeight: media.size.height * AppDimensions.sheetMaxHeightFactor,
+    ),
     sheetAnimationStyle: media.disableAnimations || media.accessibleNavigation
         ? AnimationStyle.noAnimation
         : const AnimationStyle(
@@ -42,10 +47,11 @@ Future<SongDiscoveryResult?> showSongDiscoverySheet({
           ),
     builder: (sheetContext) {
       void choose(SongDiscoveryDestination destination) {
-        Navigator.of(sheetContext).pop(SongDiscoveryResult(destination, playlistId));
+        Navigator.of(sheetContext)
+            .pop(SongDiscoveryResult(destination, playlistId));
       }
 
-      return SafeArea(
+      return SheetSafeArea(
         top: false,
         child: SingleChildScrollView(
           padding: AppDimensions.sheetPadding,
@@ -53,7 +59,10 @@ Future<SongDiscoveryResult?> showSongDiscoverySheet({
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Semantics(header: true, child: const Text('새 곡 찾기', style: AppTypography.sheetTitle)),
+              Semantics(
+                header: true,
+                child: const Text('새 곡 찾기', style: AppTypography.sheetTitle),
+              ),
               if (playlistTitle != null) ...[
                 const SizedBox(height: AppSpacing.sm),
                 Text(playlistTitle, style: AppTypography.supporting),
@@ -91,7 +100,10 @@ Future<SongDiscoveryResult?> showSongDiscoverySheet({
                 ),
               ],
               const SizedBox(height: AppSpacing.sm),
-              TextButton(onPressed: () => Navigator.of(sheetContext).pop(), child: const Text('취소')),
+              TextButton(
+                onPressed: () => Navigator.of(sheetContext).pop(),
+                child: const Text('취소'),
+              ),
             ],
           ),
         ),
@@ -101,7 +113,12 @@ Future<SongDiscoveryResult?> showSongDiscoverySheet({
 }
 
 class _DiscoveryCard extends StatelessWidget {
-  const _DiscoveryCard({required this.title, required this.description, required this.icon, required this.onTap});
+  const _DiscoveryCard({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.onTap,
+  });
 
   final String title;
   final String description;
@@ -119,7 +136,9 @@ class _DiscoveryCard extends StatelessWidget {
     child: InkWell(
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: AppDimensions.choiceCardMinHeight),
+        constraints: const BoxConstraints(
+          minHeight: AppDimensions.choiceCardMinHeight,
+        ),
         child: Padding(
           padding: AppDimensions.choiceCardPadding,
           child: Column(
@@ -128,11 +147,19 @@ class _DiscoveryCard extends StatelessWidget {
             children: [
               Icon(icon, size: 23, color: AppColors.muted),
               const SizedBox(height: AppSpacing.md),
-              Text(title, style: AppTypography.sheetOption.copyWith(fontWeight: FontWeight.w700)),
+              Text(
+                title,
+                style: AppTypography.sheetOption.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: AppSpacing.sm),
               Text(description, style: AppTypography.supporting),
               const SizedBox(height: AppSpacing.sm),
-              const Align(alignment: Alignment.centerRight, child: Icon(Icons.chevron_right, size: 14)),
+              const Align(
+                alignment: Alignment.centerRight,
+                child: Icon(Icons.chevron_right, size: 14),
+              ),
             ],
           ),
         ),

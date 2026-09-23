@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:song_record/core/theme/accessible_page_transitions.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 
 abstract final class AppTheme {
@@ -56,6 +57,12 @@ abstract final class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          for (final entry in const PageTransitionsTheme().builders.entries)
+            entry.key: AccessiblePageTransitions(entry.value),
+        },
+      ),
       brightness: Brightness.dark,
       colorScheme: scheme,
       scaffoldBackgroundColor: AppColors.background,

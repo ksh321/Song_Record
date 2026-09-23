@@ -103,6 +103,10 @@ class _AppShellState extends State<AppShell> {
           border: Border(top: BorderSide(color: AppColors.line)),
         ),
         child: NavigationBar(
+          animationDuration: MediaQuery.of(context).disableAnimations ||
+                  MediaQuery.of(context).accessibleNavigation
+              ? Duration.zero
+              : null,
           selectedIndex: _selectedTab.index,
           onDestinationSelected: _selectTab,
           labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,

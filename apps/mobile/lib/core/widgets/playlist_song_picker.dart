@@ -63,7 +63,8 @@ class _PlaylistSongPickerState extends State<PlaylistSongPicker> {
     super.dispose();
   }
 
-  bool _included(SongId id) => widget.includedSongIds.contains(id) || _added.contains(id);
+  bool _included(SongId id) =>
+      widget.includedSongIds.contains(id) || _added.contains(id);
 
   Future<void> _add(SongId id) async {
     if (_busy != null || _included(id) || widget.phase != SongListPhase.ready) {
@@ -98,59 +99,81 @@ class _PlaylistSongPickerState extends State<PlaylistSongPicker> {
   @override
   Widget build(BuildContext context) {
     final query = trimContractWhitespace(_query.text).toLowerCase();
-    final visible = widget.songs.where((song) =>
-      song.title.toLowerCase().contains(query) || song.artist.toLowerCase().contains(query),
-    ).toList();
+    final visible = widget.songs
+        .where(
+          (song) =>
+              song.title.toLowerCase().contains(query) ||
+              song.artist.toLowerCase().contains(query),
+        )
+        .toList();
     final failed = _failed;
     return CustomScrollView(
       key: PageStorageKey('playlist-picker-${widget.playlistId}'),
       slivers: [
         SliverPadding(
           padding: const EdgeInsets.all(AppSpacing.lg),
-          sliver: SliverList.list(children: [
-            Text(widget.playlistTitle, style: AppTypography.sheetTitle),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              controller: _query,
-              decoration: const InputDecoration(labelText: '곡명 또는 가수 검색', prefixIcon: Icon(Icons.search)),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            const Text('이 목록에 추가된 곡은 다시 담을 수 없어요.', style: AppTypography.supporting),
-            if (_busy != null)
-              const ContentState(phase: ContentPhase.loading, title: '곡을 추가하고 있어요.'),
-            if (failed != null)
-              ContentState(
-                phase: ContentPhase.error,
-                title: '곡을 추가하지 못했어요.',
-                message: '연결 상태를 확인한 뒤 다시 시도해 주세요.',
-                onRetry: widget.phase == SongListPhase.ready &&
-                    !_included(failed) && widget.songs.any((song) => song.id == failed)
-                    ? () => _add(failed) : null,
+          sliver: SliverList.list(
+            children: [
+              Text(widget.playlistTitle, style: AppTypography.sheetTitle),
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                controller: _query,
+                decoration: const InputDecoration(
+                  labelText: '곡명 또는 가수 검색',
+                  prefixIcon: Icon(Icons.search),
+                ),
+                onChanged: (_) => setState(() {}),
               ),
-            if (widget.phase != SongListPhase.ready)
-              ContentState(
-                phase: switch (widget.phase) {
-                  SongListPhase.loading => ContentPhase.loading,
-                  SongListPhase.error => ContentPhase.error,
-                  _ => ContentPhase.waiting,
-                },
-                title: switch (widget.phase) {
-                  SongListPhase.loading => '내 곡을 불러오고 있어요.',
-                  SongListPhase.error => '내 곡을 불러오지 못했어요.',
-                  _ => '내 곡 목록을 준비하고 있어요.',
-                },
-                onRetry: widget.phase == SongListPhase.error ? widget.onRetry : null,
-              )
-            else if (visible.isEmpty)
-              ContentState(
-                phase: ContentPhase.empty,
-                title: query.isEmpty ? '등록된 내 곡이 없습니다' : '검색 결과가 없어요.',
-                message: query.isEmpty ? '새 곡 찾기에서 원하는 곡을 찾아보세요.' : '곡명이나 가수를 다시 확인해 주세요.',
-              )
-            else
-              Text('${visible.length}곡', style: AppTypography.supporting),
-          ]),
+              const SizedBox(height: AppSpacing.md),
+              const Text(
+                '이 목록에 추가된 곡은 다시 담을 수 없어요.',
+                style: AppTypography.supporting,
+              ),
+              if (_busy != null)
+                const ContentState(
+                  phase: ContentPhase.loading,
+                  title: '곡을 추가하고 있어요.',
+                ),
+              if (failed != null)
+                ContentState(
+                  phase: ContentPhase.error,
+                  title: '곡을 추가하지 못했어요.',
+                  message: '연결 상태를 확인한 뒤 다시 시도해 주세요.',
+                  onRetry:
+                      widget.phase == SongListPhase.ready &&
+                          !_included(failed) &&
+                          widget.songs.any((song) => song.id == failed)
+                      ? () => _add(failed)
+                      : null,
+                ),
+              if (widget.phase != SongListPhase.ready)
+                ContentState(
+                  phase: switch (widget.phase) {
+                    SongListPhase.loading => ContentPhase.loading,
+                    SongListPhase.error => ContentPhase.error,
+                    _ => ContentPhase.waiting,
+                  },
+                  title: switch (widget.phase) {
+                    SongListPhase.loading => '내 곡을 불러오고 있어요.',
+                    SongListPhase.error => '내 곡을 불러오지 못했어요.',
+                    _ => '내 곡 목록을 준비하고 있어요.',
+                  },
+                  onRetry: widget.phase == SongListPhase.error
+                      ? widget.onRetry
+                      : null,
+                )
+              else if (visible.isEmpty)
+                ContentState(
+                  phase: ContentPhase.empty,
+                  title: query.isEmpty ? '등록된 내 곡이 없습니다' : '검색 결과가 없어요.',
+                  message: query.isEmpty
+                      ? '새 곡 찾기에서 원하는 곡을 찾아보세요.'
+                      : '곡명이나 가수를 다시 확인해 주세요.',
+                )
+              else
+                Text('${visible.length}곡', style: AppTypography.supporting),
+            ],
+          ),
         ),
         if (widget.phase == SongListPhase.ready)
           SliverPadding(
@@ -173,11 +196,19 @@ class _PlaylistSongPickerState extends State<PlaylistSongPicker> {
           ),
         SliverPadding(
           padding: const EdgeInsets.all(AppSpacing.lg),
-          sliver: SliverList.list(children: [
-            OutlinedButton(onPressed: _busy == null ? widget.onDiscover : null, child: const Text('새 곡 찾기')),
-            const SizedBox(height: AppSpacing.sm),
-            FilledButton(onPressed: _busy == null ? widget.onDone : null, child: const Text('완료')),
-          ]),
+          sliver: SliverList.list(
+            children: [
+              OutlinedButton(
+                onPressed: _busy == null ? widget.onDiscover : null,
+                child: const Text('새 곡 찾기'),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              FilledButton(
+                onPressed: _busy == null ? widget.onDone : null,
+                child: const Text('완료'),
+              ),
+            ],
+          ),
         ),
       ],
     );

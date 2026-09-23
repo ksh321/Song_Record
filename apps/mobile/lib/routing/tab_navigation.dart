@@ -129,7 +129,13 @@ class _TabPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        toolbarHeight: (MediaQuery.textScalerOf(context)
+                    .scale(AppTypography.songDetailTitleSize) * 1.4 + 16)
+            .clamp(kToolbarHeight, double.infinity).toDouble(),
+        title: Tooltip(
+          message: title,
+          child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
         automaticallyImplyLeading: false,
         leading: showBack
             ? IconButton(

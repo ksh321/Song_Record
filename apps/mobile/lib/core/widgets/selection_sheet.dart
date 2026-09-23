@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
+import 'package:song_record/core/widgets/sheet_safe_area.dart';
 
 /// A null route result means cancellation. A result containing null means
 /// an explicit choice of an unset value (for example, a tier).
@@ -53,7 +54,7 @@ Future<SelectionResult<T>?> showSelectionSheet<T>({
             duration: AppDimensions.sheetAnimationDuration,
             reverseDuration: AppDimensions.sheetAnimationDuration,
           ),
-    builder: (sheetContext) => SafeArea(
+    builder: (sheetContext) => SheetSafeArea(
       top: false,
       child: SingleChildScrollView(
         padding: AppDimensions.sheetPadding,

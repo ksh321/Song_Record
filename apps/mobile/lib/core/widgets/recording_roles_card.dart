@@ -7,7 +7,7 @@ import 'package:song_record/core/widgets/music_view_data.dart';
 
 class RecordingRolesCard extends StatelessWidget {
   RecordingRolesCard({
-    required SongId songId,
+    required this.songId,
     required this.selection,
     required Map<RecordingId, RecordingViewData> recordings,
     this.onChooseRepresentative,
@@ -24,6 +24,7 @@ class RecordingRolesCard extends StatelessWidget {
     }
   }
 
+  final SongId songId;
   final RecordingSelection selection;
   final Map<RecordingId, RecordingViewData> recordings;
   final VoidCallback? onChooseRepresentative;
@@ -71,11 +72,17 @@ class RecordingRolesCard extends StatelessWidget {
             ),
             const Divider(),
             // Only this explanation collapses; all three role rows stay visible.
-            const ExpansionTile(
-              title: Text('자동 보관 기준', style: AppTypography.supporting),
+            ExpansionTile(
+              key: PageStorageKey('recording-retention-${songId.value}'),
+              expansionAnimationStyle:
+                  MediaQuery.of(context).disableAnimations ||
+                      MediaQuery.of(context).accessibleNavigation
+                  ? AnimationStyle.noAnimation
+                  : null,
+              title: const Text('자동 보관 기준', style: AppTypography.supporting),
               tilePadding: EdgeInsets.zero,
-              childrenPadding: EdgeInsets.only(bottom: AppSpacing.sm),
-              children: [
+              childrenPadding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              children: const [
                 Text(
                   '대표·최신·최저 티어 녹음을 자동 보관해요. 같은 녹음이 여러 역할을 맡으면 한 번만 세어요. '
                   '보관 대상으로 선정되어도 파일이 서버에 있다는 뜻은 아니에요. '

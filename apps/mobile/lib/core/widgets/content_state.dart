@@ -51,15 +51,26 @@ class ContentState extends StatelessWidget {
                 color: AppColors.muted,
               ),
             const SizedBox(height: AppSpacing.lg),
-            Text(title, textAlign: TextAlign.center, style: AppTypography.songTitle),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: AppTypography.songTitle,
+            ),
             if (message != null) ...[
               const SizedBox(height: AppSpacing.sm),
-              Text(message!, textAlign: TextAlign.center, style: AppTypography.supporting),
+              Text(
+                message!,
+                textAlign: TextAlign.center,
+                style: AppTypography.supporting,
+              ),
             ],
             if (onRetry != null) ...[
               const SizedBox(height: AppSpacing.md),
               Center(
-                child: OutlinedButton(onPressed: onRetry, child: const Text('다시 시도')),
+                child: OutlinedButton(
+                  onPressed: onRetry,
+                  child: const Text('다시 시도'),
+                ),
               ),
             ],
           ],

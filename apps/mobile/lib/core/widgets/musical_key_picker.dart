@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:song_record/core/domain/song_types.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/selection_sheet.dart';
+import 'package:song_record/core/widgets/sheet_safe_area.dart';
 
 /// The song's representative key is optional. A cancelled sheet returns null;
 /// an explicit "미정으로 두기" returns a SelectionResult containing null.
@@ -133,7 +134,10 @@ class _KeySheetState extends State<_KeySheet> {
   @override
   Widget build(BuildContext context) {
     final chosen = MusicalKey(mode: _mode, shift: _shift);
-    return SafeArea(
+    final itemHeight = (MediaQuery.textScalerOf(context)
+                .scale(AppTypography.keyWheelSelectedSize) + 16)
+        .clamp(AppDimensions.keyWheelItemHeight, double.infinity).toDouble();
+    return SheetSafeArea(
       top: false,
       child: SingleChildScrollView(
         padding: AppDimensions.sheetPadding,
@@ -198,13 +202,13 @@ class _KeySheetState extends State<_KeySheet> {
                   : null,
               explicitChildNodes: true,
               child: SizedBox(
-                height: AppDimensions.keyWheelHeight,
+                height: itemHeight * 5,
                 child: Stack(
                   children: [
                     ListWheelScrollView(
                       key: const ValueKey('semitone-wheel'),
                       controller: _wheel,
-                      itemExtent: AppDimensions.keyWheelItemHeight,
+                      itemExtent: itemHeight,
                       physics: const FixedExtentScrollPhysics(),
                       diameterRatio: 10,
                       perspective: 0.001,
@@ -251,7 +255,7 @@ class _KeySheetState extends State<_KeySheet> {
                     IgnorePointer(
                       child: Center(
                         child: Container(
-                          height: AppDimensions.keyWheelItemHeight,
+                          height: itemHeight,
                           decoration: const BoxDecoration(
                             border: Border(
                               top: BorderSide(color: AppColors.sheetBorder),
