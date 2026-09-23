@@ -262,3 +262,17 @@ flutter run --debug --flavor dev -t tool/preview_music_components.dart
 않는다. 8개 강조색과 큰 글꼴 2배를 전환하며 긴 제목, 파일 상태, 역할 중복을 확인한다.
 버튼은 미리보기 안내만 표시한다. 실제 목록/편집·재생·대표 선택 기능은 후속 단계에서 연결한다.
 검증 상태는 [P05-04 보고서](../../docs/verification/P05-04-music-components.md)를 따른다.
+
+
+## P05-05 공통 선택창
+
+SortSheet.songs / recordings, TierPicker.song / recording, VersionPicker.show를 사용한다.
+각 함수는 SelectionResult<T>?를 반환한다. null은 취소, 결과 객체의 null 값은 명시적 미정 선택이다.
+호출자는 result != null인 경우에만 값을 반영한다. 실제 정렬·저장 책임은 호출자에게 있다.
+
+```powershell
+flutter run --debug --flavor dev -t tool/preview_selection_sheets.dart
+```
+
+샘플 화면은 선택 상태만 메모리에 반영하며 기본 앱·DB를 변경하지 않는다.
+[검증 문서](../../docs/verification/P05-05-selection-sheets.md)의 항목으로 검사한다.
