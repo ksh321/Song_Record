@@ -1,7 +1,9 @@
 # P05-05 공통 선택 시트
 
 기준 커밋: `4d23c8d5c3896789d6204e6396a9f1ee981730a6`.
-상태: **구현·샘플 실기 확인 / 테스트 최종 종료·커밋·새 CI 확인 대기**.
+상태: **구현·사용자 테스트 및 샘플 실기·push·해당 커밋 CI 완료**.
+반영 커밋: `566ae21013841b6591d3e0c57cb9bb394857e5f5`.
+[CI 35840793086](https://github.com/ksh321/Song_Record/actions/runs/35840793086)의 Spring Boot, MySQL, Flutter 분석·테스트·Android 빌드 세 작업이 모두 성공했다.
 
 ## 범위와 근거
 
@@ -57,12 +59,12 @@ flutter run -d R5CW618VA1M --debug --flavor dev -t tool/preview_selection_sheets
 
 ### 사용자 결과
 
-- 수정 전 공통 시트 분석은 No issues found. 전체 테스트 출력은 +84까지 확인했다.
-  최종 All tests passed 문구와 종료 상태는 아직 전달받지 않아 전체 종료 성공으로 단정하지 않는다.
+- 사용자 노트북에서 `flutter analyze`가 No issues found, `flutter test`가
+  `All tests passed!`로 끝났다고 보고했다(총 84개 통과).
 - 샘플을 추가하고 스위치를 제거한 미리보기는 사용자가 정상 작동함을 보고했다.
 - 최근 추가순: 바람 → 노을 → 가을, 곡명순: 가을 → 노을 → 바람.
   초기 티어순: 가을 A → 바람 B → 노을 미정. 바람을 S로 바꾸면 맨 위로 이동한다.
-- 수정본 분석의 별도 출력과 해당 커밋 CI는 확인 대기다.
+- 수정된 샘플과 문서를 포함한 10개 파일이 main에 반영됐고 해당 커밋의 세 CI 작업이 성공했다.
 
 ## 구현 경계
 

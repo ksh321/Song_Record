@@ -13,9 +13,6 @@ final class MusicalKey {
     if (shift < -12 || shift > 12) {
       throw RangeError.range(shift, -12, 12, 'shift');
     }
-    if (mode == KeyMode.original && shift != 0) {
-      throw ArgumentError.value(shift, 'shift', '원키의 이동값은 0이어야 합니다.');
-    }
     return MusicalKey._(mode, shift);
   }
 
