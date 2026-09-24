@@ -18,7 +18,7 @@
 
 Google 서버 증명은 ID token(JWT), aud는 위 Web/server client ID다.
 Android client ID를 서버 aud 허용 목록에 추가하지 않는다.
-카카오 증명 형식과 실제 서버 검증은 P06-03에서 구현한다.
+카카오 증명은 SDK access token이다. P06-03에서 공식 access_token_info 조회로 검증한다.
 Google SDK/카카오 SDK 앱 로그인 실연결은 P06-06이며 현재 로그인 성공을 검증한 상태는 아니다.
 카카오 활성화와 Android 등록 내용은 실로그인 시 최종 검증한다.
 
@@ -43,3 +43,7 @@ $env:GOOGLE_SERVER_CLIENT_ID = "660802266773-jcpijgltjgupkt0s78qraah6ki9iju0c.ap
 
 실서비스 연결 시 `dev,google-auth` 또는 해당 환경 profile과 함께 사용한다.
 기존 bootstrap/health 검증은 설정 없이도 계속 실행된다.
+
+P06-03: `kakao-auth` profile과 `KAKAO_APP_ID=1586938`을 사용한다.
+`bootstrap,kakao-auth`는 검증기만, `dev,kakao-auth`는 DB 계정 조회도 활성화한다.
+카카오 Native App Key를 서버 앱 ID 환경변수에 넣지 않는다. 이 검증에는 Admin Key가 필요 없다.

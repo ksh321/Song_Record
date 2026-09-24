@@ -1,7 +1,7 @@
 # P06-02 Google 증명 검증
 
 기준 main: `2454e255516f08dbac0f23ddd33373980415809f`.
-상태: 내부 어댑터 구현, Java 21 컴파일 및 신규 JUnit 25개 통과. 전체 Gradle 빌드/사용자 CI 대기.
+상태: 사용자 Windows 전체 빌드 성공 보고 및 main `f00c9aff403c4803e90c54f8bca4171c1f5d8e9f`의 CI `35941093595` 성공 확인. P06-02 완료.
 P05-08은 사용자 실기 6항목 정상 및 위 커밋의 CI 35863481019 성공으로 완료 확인했다.
 
 ## 동작
@@ -40,7 +40,7 @@ mock으로 서명 성공을 가정하지 않고 로컬 RSA 키로 서명한 JWT�
 전체 프로젝트 Gradle은 이 작성 환경에서 Boot 플러그인 resolve 실패로 실행하지 못했다.
 Nimbus POM/JAR를 사용한 독립 Gradle 9.7.1 프로젝트에서 lock을 생성했고,
 전이 필수 의존성이 없음을 확인해 그 한 줄만 기존 lockfile에 추가했다. 기존 버전은 바꾸지 않았다.
-Windows에서 아래 전체 빌드와 이후 CI 성공을 확인해야 단계 완료로 확정한다.
+이후 사용자 Windows 전체 빌드 및 CI 성공을 확인했다. 재검증 명령:
 
 ```powershell
 cd "C:\Users\ksh\Documents\GitHub\Song_Record\services\api"
