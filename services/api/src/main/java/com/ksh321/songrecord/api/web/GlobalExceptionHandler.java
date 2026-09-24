@@ -66,6 +66,13 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    ResponseEntity<ApiErrorResponse> handleUnreadable(HttpServletRequest request) {
+        // Never return/log the parser message: a malformed body can contain a credential.
+        return ResponseEntity.badRequest().body(error("VALIDATION_FAILED",
+                "요청 값이 올바르지 않습니다.", false, RequestContext.requestId(request), Map.of()));
+    }
+
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiErrorResponse> handleUnexpected(
             Exception exception,

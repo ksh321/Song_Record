@@ -24,6 +24,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["kakaoScheme"] = "kakao-unconfigured"
     }
 
     flavorDimensions += "environment"
@@ -31,6 +32,7 @@ android {
         create("dev") {
             dimension = "environment"
             applicationIdSuffix = ".dev"
+            manifestPlaceholders["kakaoScheme"] = "kakao710c5008600b80c7d0cb8010e8f031d6"
             resValue("string", "app_name", "노래기록 DEV")
         }
         create("staging") {
