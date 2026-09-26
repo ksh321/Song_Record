@@ -19,7 +19,7 @@ import static org.mockito.Mockito.*;
 @EnabledIfEnvironmentVariable(named="P07_MYSQL_CI", matches="true")
 class MySqlIdempotencyTests {
     JdbcTemplate admin,jdbc;String database;
-    IdempotentMutations service;AccountAccess.Account account;
+    IdempotentMutations service;AccountAccess.Account account;AccountAccess access;
     AtomicInteger calls=new AtomicInteger();String key=UUID.randomUUID().toString();
     @BeforeEach void setup() throws Exception {
         String password=System.getenv("P07_MYSQL_PASSWORD");
@@ -34,7 +34,7 @@ class MySqlIdempotencyTests {
         jdbc.execute("CREATE TABLE mutation_effect(id INT PRIMARY KEY,value_count INT NOT NULL) ENGINE=InnoDB");
         jdbc.update("INSERT INTO mutation_effect VALUES(1,0)");
         var user=UUID.randomUUID();jdbc.update("INSERT INTO app_user VALUES(?)",ByteBuffer.allocate(16).putLong(user.getMostSignificantBits()).putLong(user.getLeastSignificantBits()).array());
-        var access=mock(AccountAccess.class);account=mock(AccountAccess.Account.class);
+        access=mock(AccountAccess.class);account=mock(AccountAccess.Account.class);
         when(access.revalidate(account)).thenReturn(new SessionService.Principal(user,UUID.randomUUID(),UUID.randomUUID()));
         service=new IdempotentMutations(jdbc,access,new DataSourceTransactionManager(jdbc.getDataSource()),Clock.systemUTC());
     }
@@ -60,5 +60,41 @@ class MySqlIdempotencyTests {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT value_count FROM mutation_effect",Integer.class)).isZero();
         run("{}");assertThat(jdbc.queryForObject("SELECT value_count FROM mutation_effect",Integer.class)).isEqualTo(1);
+    }
+
+    @Test void concurrentRevisionEditsOnRealPlaylistReturnOneConflictAndReplayWinner() throws Exception {
+        String migration=Files.readString(Path.of("src/main/resources/db/migration/V4__playlists_and_classifications.sql"));
+        int start=migration.indexOf("CREATE TABLE playlist (");
+        jdbc.execute(migration.substring(start,migration.indexOf(';',start)));
+        var id=UUID.randomUUID();var owner=access.revalidate(account).userId();
+        byte[] idBytes=ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();
+        byte[] ownerBytes=ByteBuffer.allocate(16).putLong(owner.getMostSignificantBits()).putLong(owner.getLeastSignificantBits()).array();
+        jdbc.update("INSERT INTO playlist(id,user_id,name) VALUES(?,?,'before')",idBytes,ownerBytes);
+        var revisions=new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,new DataSourceTransactionManager(jdbc.getDataSource()),Clock.systemUTC());
+        var json=new tools.jackson.databind.json.JsonMapper();
+        java.util.function.BiFunction<String,String,IdempotentMutations.Reply> rename=(op,name)->
+            service.execute(account,op,"PATCH","/v1/playlists/"+id,json.writeValueAsString(java.util.Map.of("name",name,"base_revision",1)),()->
+                new IdempotentMutations.Reply(200,json.writeValueAsString(revisions.change(account,
+                    com.ksh321.songrecord.api.revision.RevisionChanges.Resource.PLAYLIST,id.toString(),1L,current->{
+                        calls.incrementAndGet();jdbc.update("UPDATE playlist SET name=? WHERE user_id=? AND id=?",name,ownerBytes,idBytes);
+                    }))));
+        String opA=UUID.randomUUID().toString(),opB=UUID.randomUUID().toString();
+        try(var pool=Executors.newFixedThreadPool(2)) {
+            var startGate=new CountDownLatch(1);
+            java.util.function.BiFunction<String,String,Callable<Integer>> request=(op,name)->()->{
+                startGate.await();try{return rename.apply(op,name).status();}catch(ApiException e){
+                    assertThat(e.code()).isEqualTo("REVISION_CONFLICT");
+                    assertThat(e.details().get("current_revision")).isEqualTo(2L);return e.status().value();
+                }
+            };
+            var a=pool.submit(request.apply(opA,"a"));var b=pool.submit(request.apply(opB,"b"));startGate.countDown();
+            int resultA=a.get(20,TimeUnit.SECONDS),resultB=b.get(20,TimeUnit.SECONDS);
+            assertThat(java.util.List.of(resultA,resultB)).containsExactlyInAnyOrder(200,409);
+            assertThat(calls.get()).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(2);
+            var replay=rename.apply(resultA==200?opA:opB,resultA==200?"a":"b");
+            assertThat(replay.status()).isEqualTo(200);assertThat(calls.get()).isEqualTo(1);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(1);
+        }
     }
 }
