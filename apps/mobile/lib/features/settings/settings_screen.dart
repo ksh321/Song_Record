@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
+
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/routing/app_routes.dart';
 
+import '../auth/identity_link.dart';
+import '../auth/identity_link_screen.dart';
+
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({required this.showDevelopmentTools, super.key});
+  const SettingsScreen({
+    required this.showDevelopmentTools,
+    this.identityLink,
+    super.key,
+  });
 
   final bool showDevelopmentTools;
+  final IdentityLinkFlow? identityLink;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +34,21 @@ class SettingsScreen extends StatelessWidget {
           children: [
             Text('나에게 맞는 노래 기록', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: AppSpacing.md),
-            const Text('설정 기능을 준비하고 있어요.'),
+            if (identityLink != null)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.link),
+                  title: const Text('로그인 계정 연결'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      builder: (_) => IdentityLinkScreen(flow: identityLink!),
+                    ),
+                  ),
+                ),
+              )
+            else
+              const Text('설정 기능을 준비하고 있어요.'),
             if (showDevelopmentTools) ...[
               const SizedBox(height: AppSpacing.lg),
               const Divider(),

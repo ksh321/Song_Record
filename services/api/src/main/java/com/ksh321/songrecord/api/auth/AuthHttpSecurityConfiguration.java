@@ -19,9 +19,10 @@ public class AuthHttpSecurityConfiguration {
                 .csrf(csrf->csrf.disable())
                 .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .requestCache(c->c.disable())
-                .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.POST,"/v1/auth/social","/v1/auth/refresh").permitAll()
+                .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.POST,"/v1/auth/social","/v1/auth/refresh",
+                        "/v1/auth/identities/reauth-challenges","/v1/auth/identities/link-challenges","/v1/auth/identities/link").permitAll()
                         // /me verifies the bearer and device through SessionService before returning anything.
-                        .requestMatchers(HttpMethod.GET,"/v1/auth/me").permitAll().anyRequest().denyAll());
+                        .requestMatchers(HttpMethod.GET,"/v1/auth/me","/v1/auth/identities").permitAll().anyRequest().denyAll());
         return http.build();
     }
 }

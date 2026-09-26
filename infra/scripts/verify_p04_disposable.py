@@ -5,7 +5,7 @@ Focused P04-09 check: add --scope tj-race (fresh V7 DB, no repeat of the regress
 Requires Docker Desktop (Linux containers), Java 21 and Git for Windows.
 Build services/api with gradlew.bat bootJar first. No third-party Python packages.
 
-This wrapper runs the repository's V1 -> V8 migration/constraint checks.
+This wrapper runs the repository's V1 -> V9 migration/constraint checks.
 It does not declare all of P04-09 complete or verify Android process recreation.
 The source checkout, infra/.env and the development database are not written.
 Only this run's generated Compose project/volume is removed on exit.
@@ -39,7 +39,7 @@ SCRIPTS = (
     'verify_p04_migrations.sh', 'verify_p04_core_schema.sh',
     'verify_p04_extended_schema.py', 'verify_p04_retention_schema.py',
     'verify_p04_sync_schema.py', 'verify_p04_snapshot_schema.py',
-    'verify_p06_session_schema.py',
+    'verify_p06_session_schema.py', 'verify_p06_link_schema.py',
 )
 SUCCESS_LINE = 'P04-01~07 upgrade, constraints and restart verification passed.'
 TJ_SCRIPTS = ('verify_p04_migrations.sh', 'verify_p04_extended_schema.py',

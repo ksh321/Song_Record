@@ -139,6 +139,13 @@ versions="$(run_sql "SELECT GROUP_CONCAT(version ORDER BY installed_rank) FROM f
 [[ "$versions" == "1,2,3,4,5,6,7,8" ]] || { echo "Unexpected Flyway versions: $versions"; exit 1; }
 python3 "$infra_dir/scripts/verify_p06_session_schema.py"
 
+python3 "$infra_dir/scripts/verify_p06_link_schema.py" --seed-upgrade
+start_api "9"
+stop_api
+versions="$(run_sql "SELECT GROUP_CONCAT(version ORDER BY installed_rank) FROM flyway_schema_history WHERE success=1;")"
+[[ "$versions" == "1,2,3,4,5,6,7,8,9" ]] || { echo "Unexpected Flyway versions: $versions"; exit 1; }
+python3 "$infra_dir/scripts/verify_p06_link_schema.py"
+
 # Re-start against the same data: Flyway must validate existing checksums.
 start_api ""
 stop_api

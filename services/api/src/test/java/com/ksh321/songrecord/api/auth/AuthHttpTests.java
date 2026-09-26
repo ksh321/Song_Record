@@ -21,11 +21,12 @@ class AuthHttpTests {
     AnnotationConfigWebApplicationContext context;
     MockMvc mvc;
     @Configuration @EnableWebMvc @EnableWebSecurity
-    @Import({AuthHttpSecurityConfiguration.class,SecurityConfig.class,SocialAuthController.class,GlobalExceptionHandler.class})
+    @Import({AuthHttpSecurityConfiguration.class,SecurityConfig.class,SocialAuthController.class,IdentityLinkController.class,GlobalExceptionHandler.class})
     static class Config {
         @Bean GoogleProofVerifier google(){return mock(GoogleProofVerifier.class);}
         @Bean KakaoProofVerifier kakao(){return mock(KakaoProofVerifier.class);}
         @Bean AccountRegistrationService accounts(){return mock(AccountRegistrationService.class);}
+        @Bean IdentityLinkService links(){return mock(IdentityLinkService.class);}
         @Bean SessionService sessions(){return mock(SessionService.class);}
     }
     @BeforeEach void setup() {
@@ -69,5 +70,27 @@ class AuthHttpTests {
                 .andReturn().getResponse();
         assertThat(response.getStatus()).isEqualTo(401);
         verifyNoInteractions(context.getBean(AccountRegistrationService.class));
+    }
+
+    @Test void linkRoutesRequireBearerAndUnknownOperationsStayDenied() throws Exception {
+        assertThat(mvc.perform(get("/v1/auth/identities")).andReturn().getResponse().getStatus()).isEqualTo(401);
+        for(String route:java.util.List.of("reauth-challenges","link-challenges","link")) {
+            var response=mvc.perform(post("/v1/auth/identities/"+route).contentType("application/json").content("{}"))
+                    .andReturn().getResponse();
+            assertThat(response.getStatus()).isEqualTo(401);
+        }
+        verifyNoInteractions(context.getBean(IdentityLinkService.class));
+        assertThat(mvc.perform(post("/v1/auth/identities/anything")).andReturn().getResponse().getStatus()).isEqualTo(403);
+    }
+    @Test void linkResponseIsNoStoreAndHasNoSessionCookie() throws Exception {
+        var device=UUID.randomUUID();var service=context.getBean(IdentityLinkService.class);
+        when(service.begin("access",device,"GOOGLE","KAKAO")).thenReturn(new IdentityLinkService.Challenge("challenge","nonce","expiry"));
+        var response=mvc.perform(post("/v1/auth/identities/reauth-challenges")
+            .header("Authorization","Bearer access").header("X-Device-Id",device.toString())
+            .contentType("application/json").content("{\"provider\":\"GOOGLE\",\"targetProvider\":\"KAKAO\"}"))
+            .andReturn().getResponse();
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");
+        assertThat(response.getHeader("Set-Cookie")).isNull();
     }
 }

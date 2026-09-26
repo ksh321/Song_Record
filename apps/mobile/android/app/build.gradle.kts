@@ -63,3 +63,10 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+// Match the versions already used by google_sign_in_android 7.2.17.
+dependencies {
+    implementation("androidx.credentials:credentials:1.6.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.2.0")
+}

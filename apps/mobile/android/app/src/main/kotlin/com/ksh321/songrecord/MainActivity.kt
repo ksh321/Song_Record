@@ -17,6 +17,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private val identityLinkBridge by lazy { IdentityLinkBridge(this) }
     private var pendingPermissionResult: MethodChannel.Result? = null
     private var recorderEventSink: EventChannel.EventSink? = null
     private var mediaPlayer: MediaPlayer? = null
@@ -26,6 +27,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/identity_link")
+            .setMethodCallHandler(identityLinkBridge::handle)
         RecorderService.restoreState(this)
 
         MethodChannel(
@@ -173,6 +176,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        identityLinkBridge.close()
         RecorderService.removeListener(recorderListener)
         recorderEventSink = null
         pendingPermissionResult = null

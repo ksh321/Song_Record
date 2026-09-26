@@ -4,6 +4,7 @@ import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 
 import 'auth_session.dart';
+import 'identity_link.dart';
 
 class LoginGate extends StatefulWidget {
   const LoginGate({required this.controller, required this.config, super.key});
@@ -48,6 +49,15 @@ class _LoginGateState extends State<LoginGate> with WidgetsBindingObserver {
         return SongRecordApp(
           key: ValueKey(auth.session!.userId),
           config: widget.config,
+          identityLink:
+              auth.api is IdentityLinkApi &&
+                  auth.proofs is IdentityLinkProofSource
+              ? IdentityLinkFlow(
+                  auth,
+                  auth.api as IdentityLinkApi,
+                  auth.proofs as IdentityLinkProofSource,
+                )
+              : null,
         );
       }
       return MaterialApp(

@@ -9,6 +9,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 
 import 'auth_session.dart';
+import 'identity_link.dart';
 
 class SecureSessionVault implements SessionVault {
   SecureSessionVault(String scope)
@@ -23,7 +24,7 @@ class SecureSessionVault implements SessionVault {
   Future<void> clear() => storage.delete(key: key);
 }
 
-class HttpAuthApi implements AuthApi {
+class HttpAuthApi implements AuthApi, IdentityLinkApi {
   HttpAuthApi(this.base, {this.allowLocalHttp = false}) {
     if (base.scheme != 'https' &&
         !(allowLocalHttp &&
@@ -74,10 +75,28 @@ class HttpAuthApi implements AuthApi {
           bytes.addAll(chunk);
         }
         if (response.statusCode != 200) {
+          String? code;
+          try {
+            final decoded = jsonDecode(utf8.decode(bytes));
+            final error = decoded is Map ? decoded['error'] : null;
+            if (error is Map && error['code'] is String) {
+              code = error['code'] as String;
+            }
+          } on FormatException {
+            // Preserve HTTP status even when a proxy returns a non-JSON error.
+          }
+          const linkErrors = {
+            'IDENTITY_IN_USE': '다른 노래기록 계정에서 사용 중이에요. 계정은 자동으로 합쳐지지 않아요.',
+            'IDENTITY_ALREADY_LINKED': '이미 연결된 로그인 수단이에요. 새로고침해 주세요.',
+            'REAUTH_IDENTITY_MISMATCH': '현재 계정에 연결된 계정으로 다시 인증해 주세요.',
+            'LINK_CHALLENGE_EXPIRED': '연결 요청이 만료됐거나 사용됐어요. 처음부터 다시 시도해 주세요.',
+            'AUTH_INVALID_PROOF': '인증 정보를 확인하지 못했어요. 처음부터 다시 시도해 주세요.',
+          };
           throw AuthFailure(
-            response.statusCode == 401
-                ? '다시 로그인해 주세요.'
-                : '로그인 서버 요청에 실패했어요. 잠시 후 다시 시도해 주세요.',
+            linkErrors[code] ??
+                (response.statusCode == 401
+                    ? '다시 로그인해 주세요.'
+                    : '로그인 서버 요청에 실패했어요. 잠시 후 다시 시도해 주세요.'),
             status: response.statusCode,
           );
         }
@@ -90,6 +109,48 @@ class HttpAuthApi implements AuthApi {
     } finally {
       client.close(force: true);
     }
+  }
+
+  @override
+  Future<List<String>> identities(AuthSession session) async {
+    final data = await _request('/v1/auth/identities', session: session);
+    return (data['identities'] as List)
+        .map((item) => (item as Map)['provider'] as String)
+        .toSet()
+        .toList();
+  }
+
+  @override
+  Future<LinkChallenge> beginLink(
+    AuthSession session,
+    String provider,
+    String target,
+  ) async => LinkChallenge.fromJson(
+    await _request(
+      '/v1/auth/identities/reauth-challenges',
+      session: session,
+      body: {'provider': provider, 'targetProvider': target},
+    ),
+  );
+  @override
+  Future<LinkChallenge> reauthenticate(
+    AuthSession session,
+    String id,
+    String proof,
+  ) async => LinkChallenge.fromJson(
+    await _request(
+      '/v1/auth/identities/link-challenges',
+      session: session,
+      body: {'challengeId': id, 'proof': proof},
+    ),
+  );
+  @override
+  Future<void> finishLink(AuthSession session, String id, String proof) async {
+    await _request(
+      '/v1/auth/identities/link',
+      session: session,
+      body: {'challengeId': id, 'proof': proof},
+    );
   }
 
   @override
@@ -116,7 +177,8 @@ class HttpAuthApi implements AuthApi {
       (await _request('/v1/auth/me', session: session))['userId'] as String;
 }
 
-class SdkSocialProofSource implements SocialProofSource {
+class SdkSocialProofSource
+    implements SocialProofSource, IdentityLinkProofSource {
   SdkSocialProofSource({required this.googleClientId, required this.kakaoKey});
   final String googleClientId, kakaoKey;
   Future<void>? _kakaoInitialization;
@@ -132,6 +194,41 @@ class SdkSocialProofSource implements SocialProofSource {
           error.reason == kakao.ClientErrorCause.cancelled ||
       error is kakao.KakaoAuthException &&
           error.error == kakao.AuthErrorCause.accessDenied;
+  @override
+  Future<String> linkProof(String provider, String nonce) async {
+    try {
+      if (provider == 'GOOGLE') {
+        final token = await const MethodChannel('song_record/identity_link')
+            .invokeMethod<String>('googleProof', {
+              'clientId': googleClientId,
+              'nonce': nonce,
+            });
+        if (token == null) throw const AuthFailure('Google 인증 정보를 받지 못했어요.');
+        return token;
+      }
+      if (provider != 'KAKAO') throw const AuthFailure('지원하지 않는 로그인 방식이에요.');
+      await (_kakaoInitialization ??= _initializeKakao());
+      final token = await kakao.UserApi.instance.loginWithKakaoAccount(
+        nonce: nonce,
+        prompts: [kakao.Prompt.login],
+      );
+      if (token.idToken == null) {
+        throw const AuthFailure('카카오 OpenID Connect 설정을 확인해 주세요.');
+      }
+      return token.idToken!;
+    } on AuthFailure {
+      rethrow;
+    } catch (e) {
+      if (_isKakaoCancellation(e) ||
+          e is PlatformException && e.code == 'CANCELED') {
+        throw LoginCancelled();
+      }
+      throw const AuthFailure('계정 인증에 실패했어요. 처음부터 다시 시도해 주세요.');
+    } finally {
+      await _kakaoTokens.clear();
+    }
+  }
+
   static Future<void>? _googleInitialization;
   @override
   Future<String> proof(String provider) async {
