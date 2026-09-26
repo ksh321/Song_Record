@@ -97,4 +97,57 @@ class MySqlIdempotencyTests {
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(1);
         }
     }
+
+    com.ksh321.songrecord.api.sync.AccountChanges syncService() throws Exception {
+        String migration=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));
+        for(String table:java.util.List.of("user_sync_state","change_log")) {
+            int start=migration.indexOf("CREATE TABLE "+table+" (");
+            jdbc.execute(migration.substring(start,migration.indexOf(';',start)));
+        }
+        jdbc.update("INSERT INTO user_sync_state(user_id) SELECT id FROM app_user");
+        return new com.ksh321.songrecord.api.sync.AccountChanges(jdbc,access,new DataSourceTransactionManager(jdbc.getDataSource()),Clock.systemUTC());
+    }
+    com.ksh321.songrecord.api.sync.AccountChanges.Change change(long revision) {
+        return new com.ksh321.songrecord.api.sync.AccountChanges.Change(
+            com.ksh321.songrecord.api.sync.AccountChanges.Entity.SONG,UUID.randomUUID(),revision,
+            com.ksh321.songrecord.api.sync.AccountChanges.Operation.UPSERT,"{\"revision\":"+revision+"}");
+    }
+    @Test void accountSequenceLockOrdersCommitsOnMySql() throws Exception {
+        var sync=syncService();
+        var firstInside=new CountDownLatch(1);var releaseFirst=new CountDownLatch(1);
+        var secondInside=new CountDownLatch(1);var releaseSecond=new CountDownLatch(1);var secondStarted=new CountDownLatch(1);
+        try(var pool=Executors.newFixedThreadPool(2)) {
+            Callable<Long> firstTask=()->new org.springframework.transaction.support.TransactionTemplate(new DataSourceTransactionManager(jdbc.getDataSource())).execute(s->
+                sync.write(account,()->{firstInside.countDown();gate(releaseFirst);return new com.ksh321.songrecord.api.sync.AccountChanges.Batch<>(1,java.util.List.of(change(1)));}).lastChangeSeq());
+            var first=pool.submit(firstTask);
+            try {
+                assertThat(firstInside.await(5,TimeUnit.SECONDS)).isTrue();
+                var second=pool.submit(()->{secondStarted.countDown();return new org.springframework.transaction.support.TransactionTemplate(new DataSourceTransactionManager(jdbc.getDataSource())).execute(s->
+                    sync.write(account,()->{secondInside.countDown();gate(releaseSecond);return new com.ksh321.songrecord.api.sync.AccountChanges.Batch<>(2,java.util.List.of(change(2)));}).lastChangeSeq());});
+                assertThat(secondStarted.await(5,TimeUnit.SECONDS)).isTrue();assertThat(secondInside.await(200,TimeUnit.MILLISECONDS)).isFalse();
+                assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isZero();
+                releaseFirst.countDown();assertThat(first.get(5,TimeUnit.SECONDS)).isEqualTo(1);
+                assertThat(secondInside.await(5,TimeUnit.SECONDS)).isTrue();
+                assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isEqualTo(1);
+                assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(1);
+                releaseSecond.countDown();assertThat(second.get(5,TimeUnit.SECONDS)).isEqualTo(2);
+                assertThat(jdbc.queryForList("SELECT change_seq FROM change_log WHERE change_seq>1",Long.class)).containsExactly(2L);
+            } finally {releaseFirst.countDown();releaseSecond.countDown();}
+        }
+    }
+    @Test void failedChangeLogRollsBackBusinessAndReceiptOnMySql() throws Exception {
+        var sync=syncService();jdbc.execute("ALTER TABLE change_log ADD CONSTRAINT injected CHECK(revision=1)");
+        assertThatThrownBy(()->service.execute(account,key,"POST","/v1/songs","{}",()->{
+            sync.write(account,()->{effect();return new com.ksh321.songrecord.api.sync.AccountChanges.Batch<>(1,java.util.List.of(change(2)));});
+            return new IdempotentMutations.Reply(201,"{}");
+        })).isInstanceOf(org.springframework.dao.DataAccessException.class);
+        assertThat(jdbc.queryForObject("SELECT value_count FROM mutation_effect",Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isZero();
+    }
+    static void gate(CountDownLatch latch) {
+        try{if(!latch.await(8,TimeUnit.SECONDS))throw new IllegalStateException("Test gate timeout");}
+        catch(InterruptedException e){Thread.currentThread().interrupt();throw new IllegalStateException(e);}
+    }
 }
