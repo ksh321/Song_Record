@@ -1,0 +1,23 @@
+name: API contract
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Create isolated contract validator
+        run: |
+          python3 -m venv .contract-venv
+          .contract-venv/bin/python -m pip install -r infra/scripts/requirements-api-contract.txt
+      - name: Validate OpenAPI and positive/negative wire examples
+        run: .contract-venv/bin/python infra/scripts/verify_api_contract.py

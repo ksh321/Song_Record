@@ -1,0 +1,97 @@
+{
+  "authSession": {
+    "userId": "00000000-0000-4000-8000-000000000001",
+    "deviceId": "00000000-0000-4000-8000-000000000002",
+    "accessToken": "synthetic-access-only",
+    "refreshToken": "synthetic-refresh-only",
+    "accessExpiresAt": "2026-09-26T11:15:00Z",
+    "refreshExpiresAt": "2026-10-26T11:00:00Z"
+  },
+  "loginRequest": {
+    "provider": "GOOGLE",
+    "proof": "synthetic-proof-only",
+    "deviceName": "Android"
+  },
+  "refreshRequest": {
+    "refreshToken": "synthetic-refresh-only",
+    "deviceId": "00000000-0000-4000-8000-000000000002"
+  },
+  "linkBegin": {
+    "provider": "GOOGLE",
+    "targetProvider": "KAKAO"
+  },
+  "linkProof": {
+    "challengeId": "00000000-0000-4000-8000-000000000001",
+    "proof": "synthetic-proof-only"
+  },
+  "linkChallenge": {
+    "challengeId": "00000000-0000-4000-8000-000000000001",
+    "nonce": "synthetic-nonce-only",
+    "expiresAt": "2026-09-26T11:05:00Z"
+  },
+  "error": {
+    "error": {
+      "code": "REVISION_CONFLICT",
+      "message": "최신 값을 확인해 주세요.",
+      "retryable": false,
+      "request_id": "contract-test-001",
+      "details": {
+        "current_revision": 2,
+        "current": {}
+      }
+    }
+  },
+  "enums": {
+    "VersionCode": [
+      "NORMAL",
+      "MR",
+      "LIVE"
+    ],
+    "KeyMode": [
+      "ORIGINAL",
+      "MALE",
+      "FEMALE"
+    ],
+    "SongTier": [
+      "S",
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "RecordingTier": [
+      "S",
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "MetadataState": [
+      "DRAFT",
+      "SAVED"
+    ],
+    "CloudState": [
+      "NONE",
+      "QUEUED",
+      "UPLOADING",
+      "VERIFYING",
+      "STORED",
+      "DELETING"
+    ],
+    "BlockedReason": [
+      "FILE_MISSING",
+      "QUOTA",
+      "PIN_LIMIT",
+      "BUDGET",
+      "AUTH",
+      "NETWORK",
+      "FILE_INVALID"
+    ],
+    "LifecycleState": [
+      "ACTIVE",
+      "TRASHED",
+      "PURGE_PENDING",
+      "PURGED"
+    ]
+  }
+}

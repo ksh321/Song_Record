@@ -1,0 +1,1805 @@
+openapi: 3.1.1
+info:
+  title: Song Record API
+  version: 0.7.1
+  description: P07-01 공통 계약. implemented=기존 인증 API, planned=후속 구현 목표. 문서의 planned 경로는 현재 서버에서 제공되지 않는다. 인증 DTO는
+    호환성을 위해 camelCase, 업무 DTO는 snake_case를 사용한다. 문자열 길이는 정규화 후 Unicode code point 수이며 메모는 CRLF/CR을 LF로 통일한다.
+servers:
+- url: /v1
+security:
+- BearerAuth: []
+paths:
+  /auth/social:
+    post:
+      operationId: socialLogin
+      summary: socialLogin
+      description: GOOGLE ID token / KAKAO access token 검증 후 200. 로그인마다 서버가 기기 ID를 발급한다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+            Pragma:
+              schema:
+                type: string
+                const: no-cache
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+  /auth/refresh:
+    post:
+      operationId: refreshSession
+      summary: refreshSession
+      description: 기기 귀속 refresh proof로 토큰 회전. 이전 토큰 재사용 금지. Bearer access token 불필요.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+            Pragma:
+              schema:
+                type: string
+                const: no-cache
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+  /auth/logout:
+    post:
+      operationId: logoutSession
+      summary: logoutSession
+      description: 현재 기기에 귀속된 세션만 폐기. 같은 proof 재시도 가능. 다른 세션과 로컬 자료 유지.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResult'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+            Pragma:
+              schema:
+                type: string
+                const: no-cache
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+  /auth/me:
+    get:
+      operationId: getCurrentSession
+      summary: getCurrentSession
+      description: 현재 구현된 인증 계약.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Principal'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+            Pragma:
+              schema:
+                type: string
+                const: no-cache
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /auth/identities:
+    get:
+      operationId: listIdentities
+      summary: listIdentities
+      description: 현재 구현된 인증 계약.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityList'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+            Pragma:
+              schema:
+                type: string
+                const: no-cache
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /auth/identities/reauth-challenges:
+    post:
+      operationId: beginIdentityReauthentication
+      summary: beginIdentityReauthentication
+      description: 현재 구현된 인증 계약.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkChallenge'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+            Pragma:
+              schema:
+                type: string
+                const: no-cache
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkBegin'
+  /auth/identities/link-challenges:
+    post:
+      operationId: verifyExistingIdentity
+      summary: verifyExistingIdentity
+      description: 현재 구현된 인증 계약.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkChallenge'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+            Pragma:
+              schema:
+                type: string
+                const: no-cache
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkProof'
+  /auth/identities/link:
+    post:
+      operationId: linkIdentity
+      summary: linkIdentity
+      description: 현재 구현된 인증 계약.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkResult'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+            Pragma:
+              schema:
+                type: string
+                const: no-cache
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LinkProof'
+  /auth/identities/{identityId}/unlink:
+    post:
+      operationId: unlinkIdentity
+      summary: unlinkIdentity
+      description: '현재 구현: Bearer + X-Device-Id, 본문 없음(앱은 {} 전송). 마지막 수단은 LAST_IDENTITY_REQUIRED. 설계서의 재인증/base_revision
+        요청은 아직 미구현이며 docs/contracts/P07-01-api-contract.md의 차이 목록에 기록한다.'
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - name: identityId
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnlinkResult'
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+            Pragma:
+              schema:
+                type: string
+                const: no-cache
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+  /songs:
+    get:
+      operationId: listSongs
+      summary: listSongs
+      description: 후속 목록 계약. limit/cursor와 결과 envelope 확정. 기능별 필터·정렬 매개변수는 P07-08/P08/P09에서 추가한다. 서버가 기기 파일의 존재를
+        추정하지 않는다.
+      x-implementation-status: planned
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SongPage'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+    post:
+      operationId: createSong
+      summary: createSong
+      description: 후속 단계 구현 대상.
+      x-implementation-status: planned
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SongCreateResult'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+        '200':
+          description: 동일 TJ 번호 또는 동일 생성 UUID의 기존 곡. 편집값으로 덮어쓰지 않는다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SongCreateResult'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SongCreate'
+  /songs/{id}:
+    get:
+      operationId: getSong
+      summary: getSong
+      description: 후속 단계 구현 대상.
+      x-implementation-status: planned
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Song'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+    patch:
+      operationId: patchSong
+      summary: patchSong
+      description: 후속 단계 구현 대상.
+      x-implementation-status: planned
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Song'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SongPatch'
+  /recordings:
+    get:
+      operationId: listRecordings
+      summary: listRecordings
+      description: 후속 목록 계약. limit/cursor와 결과 envelope 확정. 기능별 필터·정렬 매개변수는 P07-08/P08/P09에서 추가한다. 서버가 기기 파일의 존재를
+        추정하지 않는다.
+      x-implementation-status: planned
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordingPage'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+    post:
+      operationId: createRecording
+      summary: createRecording
+      description: 후속 단계 구현 대상.
+      x-implementation-status: planned
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recording'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordingCreate'
+  /recordings/{id}:
+    get:
+      operationId: getRecording
+      summary: getRecording
+      description: 후속 단계 구현 대상.
+      x-implementation-status: planned
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recording'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+    patch:
+      operationId: patchRecording
+      summary: patchRecording
+      description: 후속 단계 구현 대상.
+      x-implementation-status: planned
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recording'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordingPatch'
+  /songs/{id}/representative:
+    put:
+      operationId: setRepresentative
+      summary: setRepresentative
+      description: 후속 단계 구현 대상.
+      x-implementation-status: planned
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Song'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepresentativePut'
+  /recordings/{id}/tier:
+    patch:
+      operationId: setRecordingTier
+      summary: setRecordingTier
+      description: 후속 단계 구현 대상.
+      x-implementation-status: planned
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recording'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TierPatch'
+  /recordings/{id}/song:
+    patch:
+      operationId: relinkRecording
+      summary: relinkRecording
+      description: 후속 단계 구현 대상.
+      x-implementation-status: planned
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recording'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SongLinkPatch'
+  /operations/{id}:
+    get:
+      operationId: getOperation
+      summary: getOperation
+      description: 후속 단계 구현 대상.
+      x-implementation-status: planned
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Operation'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque session token
+  parameters:
+    DeviceId:
+      name: X-Device-Id
+      in: header
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: 로그인 응답에서 받은 현재 계정의 등록 기기 UUID.
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        $ref: '#/components/schemas/Uuid'
+      description: 업무 변경 op_id. 같은 키·동일 정규화 본문은 결과 재사용. 다른 본문은 409 IDEMPOTENCY_CONFLICT.
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        $ref: '#/components/schemas/OpaqueCursor'
+    RequestId:
+      name: X-Request-Id
+      in: header
+      schema:
+        $ref: '#/components/schemas/RequestId'
+      description: 생략하거나 유효하지 않으면 서버가 새 추적 ID를 발급한다.
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+      pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
+    UtcInstant:
+      type: string
+      format: date-time
+      pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$
+      description: UTC 시각. 최대 밀리초 정밀도. 초 단위 인증 응답도 허용한다.
+    CalendarDate:
+      type: string
+      format: date
+      description: Asia/Seoul 날짜 필터. 종료일은 그 다음 날 00:00 미만으로 변환한다.
+    Revision:
+      type: integer
+      format: int64
+      minimum: 1
+      maximum: 9223372036854775807
+    ChangeSeq:
+      type: integer
+      format: int64
+      minimum: 0
+      maximum: 9223372036854775807
+      description: 0은 변경이 없는 초기 커서 기준에만 허용한다.
+    Provider:
+      type: string
+      enum:
+      - GOOGLE
+      - KAKAO
+    VersionCode:
+      type: string
+      enum:
+      - NORMAL
+      - MR
+      - LIVE
+    KeyMode:
+      type: string
+      enum:
+      - ORIGINAL
+      - MALE
+      - FEMALE
+    SongTier:
+      type: string
+      enum:
+      - S
+      - A
+      - B
+      - C
+      - D
+    RecordingTier:
+      type: string
+      enum:
+      - S
+      - A
+      - B
+      - C
+      - D
+    MetadataState:
+      type: string
+      enum:
+      - DRAFT
+      - SAVED
+    LifecycleState:
+      type: string
+      enum:
+      - ACTIVE
+      - TRASHED
+      - PURGE_PENDING
+      - PURGED
+    CloudState:
+      type: string
+      enum:
+      - NONE
+      - QUEUED
+      - UPLOADING
+      - VERIFYING
+      - STORED
+      - DELETING
+    BlockedReason:
+      type: string
+      enum:
+      - FILE_MISSING
+      - QUOTA
+      - PIN_LIMIT
+      - BUDGET
+      - AUTH
+      - NETWORK
+      - FILE_INVALID
+    ConditionCode:
+      type: string
+      enum:
+      - VERY_GOOD
+      - GOOD
+      - NORMAL
+      - BAD
+    Title:
+      type: string
+      minLength: 1
+      maxLength: 200
+    Artist:
+      type: string
+      minLength: 1
+      maxLength: 200
+    Note:
+      type: string
+      maxLength: 2000
+    TagName:
+      type: string
+      minLength: 1
+      maxLength: 50
+    PlaylistName:
+      type: string
+      minLength: 1
+      maxLength: 100
+    TjNumber:
+      type: string
+      pattern: ^[0-9]{1,20}$
+      description: 숫자 문자열. 선행 0 유지. 정수 변환 금지.
+    KeyShift:
+      type: integer
+      minimum: -12
+      maximum: 12
+    TagIds:
+      type: array
+      items:
+        $ref: '#/components/schemas/Uuid'
+      uniqueItems: true
+    OpaqueCursor:
+      type: string
+      minLength: 1
+      description: 내용을 해석하거나 직접 구성하지 않는다. 계정·필터·정렬·조회 세대가 바뀌면 폐기한다.
+    AuthProof:
+      type: string
+      minLength: 1
+      maxLength: 16384
+      writeOnly: true
+      description: 로그인 GOOGLE=ID token, KAKAO=access token. 연결 proof는 공급자 OIDC ID token이며 challenge nonce에 귀속한다.
+    AuthToken:
+      type: string
+      minLength: 1
+      description: 불투명 앱 세션 토큰. 저장/로그/내보내기에서 비밀로 취급한다.
+    RequestId:
+      type: string
+      pattern: ^[A-Za-z0-9._-]{8,64}$
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        provider:
+          $ref: '#/components/schemas/Provider'
+        proof:
+          $ref: '#/components/schemas/AuthProof'
+        deviceName:
+          type: string
+          minLength: 1
+          maxLength: 200
+      required:
+      - provider
+      - proof
+      - deviceName
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        refreshToken:
+          $ref: '#/components/schemas/AuthToken'
+        deviceId:
+          $ref: '#/components/schemas/Uuid'
+      required:
+      - refreshToken
+      - deviceId
+    AuthSession:
+      type: object
+      additionalProperties: false
+      properties:
+        userId:
+          $ref: '#/components/schemas/Uuid'
+        deviceId:
+          $ref: '#/components/schemas/Uuid'
+        accessToken:
+          $ref: '#/components/schemas/AuthToken'
+        refreshToken:
+          $ref: '#/components/schemas/AuthToken'
+        accessExpiresAt:
+          $ref: '#/components/schemas/UtcInstant'
+        refreshExpiresAt:
+          $ref: '#/components/schemas/UtcInstant'
+      required:
+      - userId
+      - deviceId
+      - accessToken
+      - refreshToken
+      - accessExpiresAt
+      - refreshExpiresAt
+    Principal:
+      type: object
+      additionalProperties: false
+      properties:
+        userId:
+          $ref: '#/components/schemas/Uuid'
+        deviceId:
+          $ref: '#/components/schemas/Uuid'
+        sessionId:
+          $ref: '#/components/schemas/Uuid'
+      required:
+      - userId
+      - deviceId
+      - sessionId
+    LinkBegin:
+      type: object
+      additionalProperties: false
+      properties:
+        provider:
+          $ref: '#/components/schemas/Provider'
+        targetProvider:
+          $ref: '#/components/schemas/Provider'
+      required:
+      - provider
+      - targetProvider
+      description: provider와 targetProvider는 달라야 한다. 현재 연결된 provider로 재인증한다.
+    LinkProof:
+      type: object
+      additionalProperties: false
+      properties:
+        challengeId:
+          $ref: '#/components/schemas/Uuid'
+        proof:
+          $ref: '#/components/schemas/AuthProof'
+      required:
+      - challengeId
+      - proof
+    LinkChallenge:
+      type: object
+      additionalProperties: false
+      properties:
+        challengeId:
+          $ref: '#/components/schemas/Uuid'
+        nonce:
+          type: string
+          minLength: 1
+        expiresAt:
+          $ref: '#/components/schemas/UtcInstant'
+      required:
+      - challengeId
+      - nonce
+      - expiresAt
+    Identity:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        provider:
+          $ref: '#/components/schemas/Provider'
+      required:
+      - id
+      - provider
+    IdentityList:
+      type: object
+      additionalProperties: false
+      properties:
+        identities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Identity'
+      required:
+      - identities
+    LogoutResult:
+      type: object
+      additionalProperties: false
+      properties:
+        loggedOut:
+          type: boolean
+          const: true
+      required:
+      - loggedOut
+    LinkResult:
+      type: object
+      additionalProperties: false
+      properties:
+        linked:
+          type: boolean
+          const: true
+      required:
+      - linked
+    UnlinkResult:
+      type: object
+      additionalProperties: false
+      properties:
+        unlinked:
+          type: boolean
+          const: true
+      required:
+      - unlinked
+    ApiError:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          pattern: ^[A-Z][A-Z0-9_]*$
+        message:
+          type: string
+          minLength: 1
+        retryable:
+          type: boolean
+        request_id:
+          $ref: '#/components/schemas/RequestId'
+        details:
+          type: object
+          additionalProperties: true
+          description: 허용된 구조화 값만. 토큰·파일 URL·타 계정 정보·메모 원문 금지.
+      required:
+      - code
+      - message
+      - retryable
+      - request_id
+      - details
+    ApiErrorResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          $ref: '#/components/schemas/ApiError'
+      required:
+      - error
+    RevisionConflictDetails:
+      type: object
+      additionalProperties: false
+      properties:
+        current_revision:
+          $ref: '#/components/schemas/Revision'
+        current:
+          type: object
+          additionalProperties: true
+          description: 소유권 확인을 통과한 현재 리소스 값만 제공한다.
+      required:
+      - current_revision
+      - current
+    AsyncAccepted:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        status_url:
+          type: string
+          pattern: ^/v1/operations/[0-9a-f-]{36}$
+      required:
+      - operation_id
+      - status_url
+      description: 202는 작업 접수이며 작업 완료 또는 서버 파일 보관 완료가 아니다.
+    Operation:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        state:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - SUCCEEDED
+          - FAILED
+        retryable:
+          type: boolean
+        error:
+          anyOf:
+          - $ref: '#/components/schemas/ApiError'
+          - type: 'null'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+      required:
+      - operation_id
+      - state
+      - retryable
+      - error
+      - updated_at
+      description: 공개 작업 상태. 내부 Job 상태/lease를 그대로 노출하지 않는다.
+    CloudInfo:
+      type: object
+      additionalProperties: false
+      properties:
+        state:
+          $ref: '#/components/schemas/CloudState'
+        blocked_reason:
+          anyOf:
+          - $ref: '#/components/schemas/BlockedReason'
+          - type: 'null'
+        stored:
+          type: boolean
+        desired_reasons:
+          type: array
+          items:
+            type: string
+            enum:
+            - REPRESENTATIVE
+            - LATEST
+            - LOWEST_TIER
+            - PINNED
+          uniqueItems: true
+      required:
+      - state
+      - blocked_reason
+      - stored
+      - desired_reasons
+      description: 실제 서버 사본 유무는 stored와 state로 판단. 메타정보 저장 성공으로 추정하지 않는다.
+    FileSpecification:
+      type: object
+      additionalProperties: false
+      properties:
+        size_bytes:
+          type: integer
+          format: int64
+          minimum: 1
+        duration_ms:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 360000
+        sha256:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+      required:
+      - size_bytes
+      - duration_ms
+      - sha256
+    Song:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        revision:
+          $ref: '#/components/schemas/Revision'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        source_type:
+          type: string
+          enum:
+          - TJ
+          - MANUAL
+        tj_number:
+          anyOf:
+          - $ref: '#/components/schemas/TjNumber'
+          - type: 'null'
+        title:
+          $ref: '#/components/schemas/Title'
+        artist:
+          $ref: '#/components/schemas/Artist'
+        version_code:
+          $ref: '#/components/schemas/VersionCode'
+        tier:
+          anyOf:
+          - $ref: '#/components/schemas/SongTier'
+          - type: 'null'
+        note:
+          anyOf:
+          - $ref: '#/components/schemas/Note'
+          - type: 'null'
+        lifecycle_state:
+          $ref: '#/components/schemas/LifecycleState'
+      required:
+      - id
+      - revision
+      - updated_at
+      - source_type
+      - tj_number
+      - title
+      - artist
+      - version_code
+      - tier
+      - note
+      - lifecycle_state
+    SongPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        base_revision:
+          $ref: '#/components/schemas/Revision'
+        title:
+          $ref: '#/components/schemas/Title'
+        artist:
+          $ref: '#/components/schemas/Artist'
+        version_code:
+          $ref: '#/components/schemas/VersionCode'
+        tier:
+          anyOf:
+          - $ref: '#/components/schemas/SongTier'
+          - type: 'null'
+        note:
+          anyOf:
+          - $ref: '#/components/schemas/Note'
+          - type: 'null'
+      required:
+      - base_revision
+      description: 누락=유지, nullable 필드의 null=해제. source_type/tj_number/id/user_id 변경 금지. 인증으로 소유자를 결정한다.
+    SongCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        source_type:
+          type: string
+          enum:
+          - TJ
+          - MANUAL
+        source_token:
+          type: string
+          minLength: 1
+        title:
+          $ref: '#/components/schemas/Title'
+        artist:
+          $ref: '#/components/schemas/Artist'
+        manual_reason:
+          type: string
+          enum:
+          - TJ_NOT_FOUND
+        version_code:
+          $ref: '#/components/schemas/VersionCode'
+        tier:
+          anyOf:
+          - $ref: '#/components/schemas/SongTier'
+          - type: 'null'
+        note:
+          anyOf:
+          - $ref: '#/components/schemas/Note'
+          - type: 'null'
+      required:
+      - id
+      - source_type
+      - version_code
+      oneOf:
+      - properties:
+          source_type:
+            const: TJ
+        required:
+        - source_token
+        not:
+          required:
+          - manual_reason
+      - properties:
+          source_type:
+            const: MANUAL
+        required:
+        - title
+        - artist
+        - manual_reason
+        not:
+          required:
+          - source_token
+      description: TJ 원본은 서버가 source_token으로 검증한다. 기존 번호와 충돌하면 입력값으로 덮어쓰지 않는다.
+    SongCreateResult:
+      type: object
+      additionalProperties: false
+      properties:
+        created:
+          type: boolean
+        canonical_song_id:
+          $ref: '#/components/schemas/Uuid'
+        song:
+          $ref: '#/components/schemas/Song'
+      required:
+      - created
+      - canonical_song_id
+      - song
+    Recording:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        revision:
+          $ref: '#/components/schemas/Revision'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        metadata_state:
+          $ref: '#/components/schemas/MetadataState'
+        song_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        title_snapshot:
+          anyOf:
+          - $ref: '#/components/schemas/Title'
+          - type: 'null'
+        artist_snapshot:
+          anyOf:
+          - $ref: '#/components/schemas/Artist'
+          - type: 'null'
+        key_mode:
+          anyOf:
+          - $ref: '#/components/schemas/KeyMode'
+          - type: 'null'
+        key_shift:
+          anyOf:
+          - $ref: '#/components/schemas/KeyShift'
+          - type: 'null'
+        version_code:
+          anyOf:
+          - $ref: '#/components/schemas/VersionCode'
+          - type: 'null'
+        tier:
+          anyOf:
+          - $ref: '#/components/schemas/RecordingTier'
+          - type: 'null'
+        condition_code:
+          anyOf:
+          - $ref: '#/components/schemas/ConditionCode'
+          - type: 'null'
+        tag_ids:
+          $ref: '#/components/schemas/TagIds'
+        note:
+          anyOf:
+          - $ref: '#/components/schemas/Note'
+          - type: 'null'
+        recorded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        timezone_id:
+          type: string
+          minLength: 1
+          description: 유효한 IANA 시간대 ID를 서버에서 검증한다.
+        timezone_offset_minutes:
+          type: integer
+          minimum: -1080
+          maximum: 1080
+        lifecycle_state:
+          $ref: '#/components/schemas/LifecycleState'
+        cloud:
+          $ref: '#/components/schemas/CloudInfo'
+      required:
+      - id
+      - revision
+      - updated_at
+      - metadata_state
+      - song_id
+      - title_snapshot
+      - artist_snapshot
+      - key_mode
+      - key_shift
+      - version_code
+      - tier
+      - condition_code
+      - tag_ids
+      - note
+      - recorded_at
+      - timezone_id
+      - timezone_offset_minutes
+      - lifecycle_state
+      - cloud
+    RecordingPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        base_revision:
+          $ref: '#/components/schemas/Revision'
+        metadata_state:
+          $ref: '#/components/schemas/MetadataState'
+        title_snapshot:
+          anyOf:
+          - $ref: '#/components/schemas/Title'
+          - type: 'null'
+        artist_snapshot:
+          anyOf:
+          - $ref: '#/components/schemas/Artist'
+          - type: 'null'
+        key_mode:
+          anyOf:
+          - $ref: '#/components/schemas/KeyMode'
+          - type: 'null'
+        key_shift:
+          anyOf:
+          - $ref: '#/components/schemas/KeyShift'
+          - type: 'null'
+        version_code:
+          anyOf:
+          - $ref: '#/components/schemas/VersionCode'
+          - type: 'null'
+        condition_code:
+          anyOf:
+          - $ref: '#/components/schemas/ConditionCode'
+          - type: 'null'
+        tag_ids:
+          $ref: '#/components/schemas/TagIds'
+        note:
+          anyOf:
+          - $ref: '#/components/schemas/Note'
+          - type: 'null'
+        recorded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        timezone_id:
+          type: string
+          minLength: 1
+          description: 유효한 IANA 시간대 ID를 서버에서 검증한다.
+        timezone_offset_minutes:
+          type: integer
+          minimum: -1080
+          maximum: 1080
+      required:
+      - base_revision
+      description: tag_ids 누락=유지, []=전체 해제, null=오류. SAVED 전환의 필수 입력은 서버가 기존 값과 합쳐 검사한다. song/tier 변경은 전용 API를 사용한다.
+    RecordingCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        metadata_state:
+          $ref: '#/components/schemas/MetadataState'
+        song_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        title_snapshot:
+          anyOf:
+          - $ref: '#/components/schemas/Title'
+          - type: 'null'
+        artist_snapshot:
+          anyOf:
+          - $ref: '#/components/schemas/Artist'
+          - type: 'null'
+        key_mode:
+          anyOf:
+          - $ref: '#/components/schemas/KeyMode'
+          - type: 'null'
+        key_shift:
+          anyOf:
+          - $ref: '#/components/schemas/KeyShift'
+          - type: 'null'
+        version_code:
+          anyOf:
+          - $ref: '#/components/schemas/VersionCode'
+          - type: 'null'
+        condition_code:
+          anyOf:
+          - $ref: '#/components/schemas/ConditionCode'
+          - type: 'null'
+        tag_ids:
+          $ref: '#/components/schemas/TagIds'
+        note:
+          anyOf:
+          - $ref: '#/components/schemas/Note'
+          - type: 'null'
+        recorded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        timezone_id:
+          type: string
+          minLength: 1
+          description: 유효한 IANA 시간대 ID를 서버에서 검증한다.
+        timezone_offset_minutes:
+          type: integer
+          minimum: -1080
+          maximum: 1080
+        file:
+          $ref: '#/components/schemas/FileSpecification'
+      required:
+      - id
+      - metadata_state
+      - recorded_at
+      - timezone_id
+      - timezone_offset_minutes
+      - file
+      allOf:
+      - if:
+          properties:
+            metadata_state:
+              const: SAVED
+        then:
+          required:
+          - title_snapshot
+          - artist_snapshot
+          - key_mode
+          - key_shift
+          - version_code
+          properties:
+            title_snapshot:
+              $ref: '#/components/schemas/Title'
+            artist_snapshot:
+              $ref: '#/components/schemas/Artist'
+            key_mode:
+              $ref: '#/components/schemas/KeyMode'
+            key_shift:
+              $ref: '#/components/schemas/KeyShift'
+            version_code:
+              $ref: '#/components/schemas/VersionCode'
+      - if:
+          required:
+          - key_mode
+          properties:
+            key_mode:
+              const: ORIGINAL
+        then:
+          required:
+          - key_shift
+          properties:
+            key_shift:
+              const: 0
+      description: DRAFT는 입력 미정 null/누락 허용. SAVED는 제목·가수·키·버전 필수. 관계 없는 녹음도 허용. 녹음 생성은 음성 업로드가 아니다.
+    TierPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        base_revision:
+          $ref: '#/components/schemas/Revision'
+        tier:
+          anyOf:
+          - $ref: '#/components/schemas/RecordingTier'
+          - type: 'null'
+      required:
+      - base_revision
+      - tier
+    SongLinkPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        base_revision:
+          $ref: '#/components/schemas/Revision'
+        song_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+      required:
+      - base_revision
+      - song_id
+    RepresentativePut:
+      type: object
+      additionalProperties: false
+      properties:
+        base_revision:
+          $ref: '#/components/schemas/Revision'
+        recording_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+      required:
+      - base_revision
+      - recording_id
+    SongPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Song'
+        next_cursor:
+          anyOf:
+          - $ref: '#/components/schemas/OpaqueCursor'
+          - type: 'null'
+      required:
+      - items
+      - next_cursor
+      description: 끝 페이지의 next_cursor는 명시적 null. 부분 동기화/기기 파일 UNKNOWN으로 정확하지 않은 전체 개수를 만들지 않는다.
+    RecordingPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Recording'
+        next_cursor:
+          anyOf:
+          - $ref: '#/components/schemas/OpaqueCursor'
+          - type: 'null'
+      required:
+      - items
+      - next_cursor
+      description: 끝 페이지의 next_cursor는 명시적 null. 부분 동기화/기기 파일 UNKNOWN으로 정확하지 않은 전체 개수를 만들지 않는다.
+    EmptyCommand:
+      type: object
+      additionalProperties: false
+      properties:
+        base_revision:
+          $ref: '#/components/schemas/Revision'
+      required:
+      - base_revision
+  responses:
+    Error400:
+      description: 공통 오류 응답.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Error401:
+      description: 공통 오류 응답.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Error403:
+      description: 공통 오류 응답.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Error404:
+      description: 리소스가 없거나 현재 계정 소유가 아님. 두 경우를 구분하지 않는다.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Error409:
+      description: 상태·revision·멱등 키 충돌.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Error410:
+      description: 공통 오류 응답.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Error422:
+      description: 공통 오류 응답.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Error429:
+      description: 요청 제한. Retry-After에 따라 재시도한다.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+      headers:
+        Retry-After:
+          schema:
+            type: string
+          description: 초 또는 HTTP 날짜
+    Error500:
+      description: 공통 오류 응답.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Error503:
+      description: 공통 오류 응답.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'

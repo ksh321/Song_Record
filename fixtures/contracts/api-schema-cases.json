@@ -1,0 +1,289 @@
+[
+  {
+    "schema": "SongPatch",
+    "value": {
+      "base_revision": 1
+    },
+    "valid": true
+  },
+  {
+    "schema": "SongPatch",
+    "value": {
+      "base_revision": 1,
+      "tier": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "SongPatch",
+    "value": {
+      "base_revision": 1,
+      "title": null
+    },
+    "valid": false
+  },
+  {
+    "schema": "SongPatch",
+    "value": {
+      "tier": "A"
+    },
+    "valid": false
+  },
+  {
+    "schema": "SongPatch",
+    "value": {
+      "base_revision": 0
+    },
+    "valid": false
+  },
+  {
+    "schema": "SongPatch",
+    "value": {
+      "base_revision": 1,
+      "user_id": "00000000-0000-4000-8000-000000000001"
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "condition_code": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "tag_ids": []
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "tag_ids": null
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "tag_ids": [
+        "00000000-0000-4000-8000-000000000001",
+        "00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "condition_code": [
+        "GOOD",
+        "BAD"
+      ]
+    },
+    "valid": false
+  },
+  {
+    "schema": "VersionCode",
+    "value": "NORMAL",
+    "valid": true
+  },
+  {
+    "schema": "VersionCode",
+    "value": "LIVE",
+    "valid": true
+  },
+  {
+    "schema": "VersionCode",
+    "value": "live",
+    "valid": false
+  },
+  {
+    "schema": "VersionCode",
+    "value": "UNKNOWN",
+    "valid": false
+  },
+  {
+    "schema": "VersionCode",
+    "value": null,
+    "valid": false
+  },
+  {
+    "schema": "Uuid",
+    "value": "00000000-0000-4000-8000-000000000001",
+    "valid": true
+  },
+  {
+    "schema": "Uuid",
+    "value": "00000000-0000-4000-8000-000000000001",
+    "valid": true
+  },
+  {
+    "schema": "Uuid",
+    "value": "not-uuid",
+    "valid": false
+  },
+  {
+    "schema": "Uuid",
+    "value": "ABCDEFAB-1234-4000-8000-123456789abc",
+    "valid": false
+  },
+  {
+    "schema": "UtcInstant",
+    "value": "2026-09-26T11:00:00Z",
+    "valid": true
+  },
+  {
+    "schema": "UtcInstant",
+    "value": "2026-09-26T11:00:00.123Z",
+    "valid": true
+  },
+  {
+    "schema": "UtcInstant",
+    "value": "2026-09-26T20:00:00+09:00",
+    "valid": false
+  },
+  {
+    "schema": "UtcInstant",
+    "value": "2026-02-30T11:00:00Z",
+    "valid": false
+  },
+  {
+    "schema": "SongPage",
+    "value": {
+      "items": [],
+      "next_cursor": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "SongPage",
+    "value": {
+      "items": []
+    },
+    "valid": false
+  },
+  {
+    "schema": "AsyncAccepted",
+    "value": {
+      "operation_id": "00000000-0000-4000-8000-000000000001",
+      "status_url": "/v1/operations/00000000-0000-4000-8000-000000000001"
+    },
+    "valid": true
+  },
+  {
+    "schema": "AsyncAccepted",
+    "value": {
+      "operation_id": "00000000-0000-4000-8000-000000000001"
+    },
+    "valid": false
+  },
+  {
+    "schema": "Title",
+    "value": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "valid": true
+  },
+  {
+    "schema": "Title",
+    "value": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "valid": false
+  },
+  {
+    "schema": "TjNumber",
+    "value": "00123",
+    "valid": true
+  },
+  {
+    "schema": "TjNumber",
+    "value": 123,
+    "valid": false
+  },
+  {
+    "schema": "RecordingCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "DRAFT",
+      "recorded_at": "2026-09-26T11:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "file": {
+        "size_bytes": 1234,
+        "duration_ms": 5000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "SAVED",
+      "recorded_at": "2026-09-26T11:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "file": {
+        "size_bytes": 1234,
+        "duration_ms": 5000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "SAVED",
+      "recorded_at": "2026-09-26T11:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "file": {
+        "size_bytes": 1234,
+        "duration_ms": 5000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "title_snapshot": "Practice",
+      "artist_snapshot": "Artist",
+      "key_mode": "ORIGINAL",
+      "key_shift": 0,
+      "version_code": "NORMAL"
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "SAVED",
+      "recorded_at": "2026-09-26T11:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "file": {
+        "size_bytes": 1234,
+        "duration_ms": 5000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "title_snapshot": "Practice",
+      "artist_snapshot": "Artist",
+      "key_mode": "ORIGINAL",
+      "key_shift": 1,
+      "version_code": "NORMAL"
+    },
+    "valid": false
+  }
+]
