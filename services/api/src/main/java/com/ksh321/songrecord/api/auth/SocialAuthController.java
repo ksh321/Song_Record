@@ -55,8 +55,7 @@ public class SocialAuthController {
     public ResponseEntity<SessionService.Principal> me(
             @RequestHeader(value="Authorization",required=false) String authorization,
             @RequestHeader(value="X-Device-Id",required=false) String device) {
-        if(authorization==null || !authorization.startsWith("Bearer "))throw unauthorized();
-        return ok(sessions.authenticate(authorization.substring(7),parseUuid(device)));
+        return ok(new AccountAccess(sessions).authenticate(authorization,device).principal());
     }
     private static LoginResponse response(UUID user,UUID device,SessionService.Tokens tokens) {
         return new LoginResponse(user.toString(),device.toString(),tokens.accessToken(),tokens.refreshToken(),
