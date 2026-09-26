@@ -1,3 +1,4 @@
+import 'account_actions.dart';
 import 'auth_session.dart';
 
 class LinkChallenge {
@@ -37,6 +38,20 @@ class IdentityLinkFlow {
   bool _busy = false;
   Future<List<String>> load() async =>
       api.identities(await auth.validSession());
+  bool get canUnlink => api is AccountActionsApi;
+  Future<void> unlink(String provider) async {
+    if (_busy || !canUnlink) throw const AuthFailure('잠시 후 다시 시도해 주세요.');
+    _busy = true;
+    try {
+      await (api as AccountActionsApi).unlinkProvider(
+        await auth.validSession(),
+        provider,
+      );
+    } finally {
+      _busy = false;
+    }
+  }
+
   Future<void> link(String existing, String target) async {
     if (_busy) throw const AuthFailure('계정 연결을 진행 중이에요.');
     _busy = true;

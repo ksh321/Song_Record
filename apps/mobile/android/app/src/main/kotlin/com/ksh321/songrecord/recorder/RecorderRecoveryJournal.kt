@@ -40,7 +40,7 @@ internal data class RecorderAudioInspection(
 
 internal class RecorderRecoveryJournal(context: Context) {
     private val preferences = context.getSharedPreferences(
-        PREFERENCES_NAME,
+        RecorderAccount.journalName(),
         Context.MODE_PRIVATE,
     )
 
@@ -225,6 +225,9 @@ internal object RecorderRecovery {
     fun restore(context: Context): Map<String, Any?> {
         val journal = RecorderRecoveryJournal(context)
         val entry = journal.read() ?: return mapOf("phase" to "idle")
+        if (entry.accountScope != RecorderAccount.scope ||
+            !RecorderAccount.contains(context, entry.finalPath) ||
+            !RecorderAccount.contains(context, entry.pendingPath)) return mapOf("phase" to "idle")
         val finalFile = File(entry.finalPath)
         val pendingFile = File(entry.pendingPath)
         val candidate = when {

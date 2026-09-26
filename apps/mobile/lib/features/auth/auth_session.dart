@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'account_actions.dart';
+
 class AuthFailure implements Exception {
   const AuthFailure(this.message, {this.status = 0});
   final String message;
@@ -71,6 +73,8 @@ class AuthController extends ChangeNotifier {
     required this.proofs,
     required this.openAccount,
     required this.closeAccount,
+    this.prepareLogout,
+    this.exportRecovery,
     DateTime Function()? now,
   }) : now = now ?? DateTime.now;
   final AuthApi api;
@@ -79,6 +83,9 @@ class AuthController extends ChangeNotifier {
   final Future<void> Function(String) openAccount;
   final Future<void> Function() closeAccount;
   final DateTime Function() now;
+  final Future<void> Function()? prepareLogout;
+  final Future<bool> Function()? exportRecovery;
+  bool _loggingOut = false;
   AuthSession? session;
   AuthPhase phase = AuthPhase.loading;
   String? message;
@@ -100,6 +107,11 @@ class AuthController extends ChangeNotifier {
         return;
       }
       final saved = jsonDecode(raw) as Map<String, dynamic>;
+      if (saved['signedOut'] == true) {
+        await vault.clear();
+        phase = AuthPhase.signedOut;
+        return;
+      }
       if (saved['refreshPending'] == true) {
         await _requireLogin('로그인 갱신이 중단됐어요. 다시 로그인해 주세요.');
         return;
@@ -155,7 +167,48 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  Future<void> signOut() async {
+    if (busy) throw const AuthFailure('진행 중인 작업이 끝난 뒤 다시 시도해 주세요.');
+    if (api is! AccountActionsApi) {
+      throw const AuthFailure('로그아웃을 지원하지 않는 실행 모드예요.');
+    }
+    busy = true;
+    _loggingOut = true;
+    notifyListeners();
+    try {
+      await prepareLogout?.call();
+      final rotating = _refreshing;
+      if (rotating != null) {
+        try {
+          await rotating;
+        } on AuthFailure {
+          /* Login was already invalidated. */
+        }
+      }
+      final current = session;
+      if (current != null) {
+        // Do not claim server logout when the network request failed.
+        await (api as AccountActionsApi).logout(current);
+      }
+      await vault.write(jsonEncode({'signedOut': true}));
+      await closeAccount();
+      session = null;
+      phase = AuthPhase.signedOut;
+      message = '로그아웃했어요. 이 기기의 기록은 원래 계정에 보관돼요.';
+      try {
+        await vault.clear();
+      } catch (_) {
+        /* Persistent tombstone prevents restore. */
+      }
+    } finally {
+      _loggingOut = false;
+      busy = false;
+      notifyListeners();
+    }
+  }
+
   Future<AuthSession> validSession() async {
+    if (_loggingOut) throw const AuthFailure('로그아웃 중이에요.');
     final current = session;
     if (current == null) {
       throw const AuthFailure('다시 로그인해 주세요.', status: 401);

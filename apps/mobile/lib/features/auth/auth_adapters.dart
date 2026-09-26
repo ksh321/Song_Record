@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 
+import 'account_actions.dart';
 import 'auth_session.dart';
 import 'identity_link.dart';
 
@@ -24,7 +25,7 @@ class SecureSessionVault implements SessionVault {
   Future<void> clear() => storage.delete(key: key);
 }
 
-class HttpAuthApi implements AuthApi, IdentityLinkApi {
+class HttpAuthApi implements AuthApi, IdentityLinkApi, AccountActionsApi {
   HttpAuthApi(this.base, {this.allowLocalHttp = false}) {
     if (base.scheme != 'https' &&
         !(allowLocalHttp &&
@@ -86,6 +87,8 @@ class HttpAuthApi implements AuthApi, IdentityLinkApi {
             // Preserve HTTP status even when a proxy returns a non-JSON error.
           }
           const linkErrors = {
+            'LAST_IDENTITY_REQUIRED': '마지막 로그인 수단은 해제할 수 없어요.',
+            'IDENTITY_NOT_FOUND': '연결 상태가 바뀌었어요. 새로고침해 주세요.',
             'IDENTITY_IN_USE': '다른 노래기록 계정에서 사용 중이에요. 계정은 자동으로 합쳐지지 않아요.',
             'IDENTITY_ALREADY_LINKED': '이미 연결된 로그인 수단이에요. 새로고침해 주세요.',
             'REAUTH_IDENTITY_MISMATCH': '현재 계정에 연결된 계정으로 다시 인증해 주세요.',
@@ -109,6 +112,34 @@ class HttpAuthApi implements AuthApi, IdentityLinkApi {
     } finally {
       client.close(force: true);
     }
+  }
+
+  @override
+  Future<void> logout(AuthSession session) async {
+    await _request(
+      '/v1/auth/logout',
+      body: {
+        'refreshToken': session.refreshToken,
+        'deviceId': session.deviceId,
+      },
+    );
+  }
+
+  @override
+  Future<void> unlinkProvider(AuthSession session, String provider) async {
+    final data = await _request('/v1/auth/identities', session: session);
+    final matches = (data['identities'] as List)
+        .where((item) => (item as Map)['provider'] == provider)
+        .toList();
+    if (matches.length != 1) {
+      throw const AuthFailure('연결 상태가 바뀌었어요. 새로고침해 주세요.');
+    }
+    final id = (matches.single as Map)['id'] as String;
+    await _request(
+      '/v1/auth/identities/${Uri.encodeComponent(id)}/unlink',
+      session: session,
+      body: const {},
+    );
   }
 
   @override

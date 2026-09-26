@@ -17,6 +17,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private val accountBridge by lazy { AccountBridge(this) { mediaPlayer?.release(); mediaPlayer = null } }
     private val identityLinkBridge by lazy { IdentityLinkBridge(this) }
     private var pendingPermissionResult: MethodChannel.Result? = null
     private var recorderEventSink: EventChannel.EventSink? = null
@@ -29,7 +30,8 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/identity_link")
             .setMethodCallHandler(identityLinkBridge::handle)
-        RecorderService.restoreState(this)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/account")
+            .setMethodCallHandler(accountBridge::handle)
 
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -112,6 +114,11 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun startRecorder(result: MethodChannel.Result) {
+        if (com.ksh321.songrecord.recorder.RecorderAccount.scope == null || com.ksh321.songrecord.recorder.RecorderAccount.exporting) {
+            result.error("ACCOUNT_UNAVAILABLE", "로그인 및 백업 상태를 확인해 주세요.", null)
+            return
+        }
+        if (RecorderService.isCapturing()) { result.success(null); return }
         if (!hasPermission(Manifest.permission.RECORD_AUDIO)) {
             result.error("MICROPHONE_PERMISSION_DENIED", "마이크 권한이 필요합니다.", null)
             return
@@ -119,8 +126,15 @@ class MainActivity : FlutterActivity() {
 
         val intent = Intent(this, RecorderService::class.java)
             .setAction(RecorderService.ACTION_START)
-        ContextCompat.startForegroundService(this, intent)
-        result.success(null)
+        intent.putExtra("accountScope", com.ksh321.songrecord.recorder.RecorderAccount.scope)
+        RecorderService.reserveStart()
+        try {
+            ContextCompat.startForegroundService(this, intent)
+            result.success(null)
+        } catch (_: Exception) {
+            RecorderService.resetAccountState(this)
+            result.error("RECORDER_START_FAILED", "녹음을 시작하지 못했어요.", null)
+        }
     }
 
     private fun stopRecorder(result: MethodChannel.Result) {
@@ -136,7 +150,7 @@ class MainActivity : FlutterActivity() {
 
     private fun playLatest(result: MethodChannel.Result) {
         val path = RecorderService.currentState()["outputPath"]?.toString()
-        if (path.isNullOrBlank() || !File(path).isFile) {
+        if (path.isNullOrBlank() || !com.ksh321.songrecord.recorder.RecorderAccount.contains(this, path) || !File(path).isFile) {
             result.error("RECORDING_NOT_FOUND", "재생할 녹음 파일이 없습니다.", null)
             return
         }
@@ -175,7 +189,15 @@ class MainActivity : FlutterActivity() {
         mediaPlayer = null
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        accountBridge.onResult(requestCode, resultCode, data)
+    }
+
     override fun onDestroy() {
+        accountBridge.close()
+        mediaPlayer?.release()
+        mediaPlayer = null
         identityLinkBridge.close()
         RecorderService.removeListener(recorderListener)
         recorderEventSink = null

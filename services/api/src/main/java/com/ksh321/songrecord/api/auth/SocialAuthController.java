@@ -46,6 +46,11 @@ public class SocialAuthController {
         var owner=sessions.authenticate(tokens.accessToken(),device);
         return ok(response(owner.userId(),device,tokens));
     }
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(@RequestBody RefreshRequest request) {
+        sessions.logout(request.refreshToken(),parseUuid(request.deviceId()));
+        return ok(Map.of("loggedOut",true));
+    }
     @GetMapping("/me")
     public ResponseEntity<SessionService.Principal> me(
             @RequestHeader(value="Authorization",required=false) String authorization,

@@ -107,6 +107,28 @@ void main() {
     await root.delete(recursive: true);
   });
 
+  test(
+    'recovery snapshot retains pending edits and excludes other accounts',
+    () async {
+      final a = await manager.openAccount(userA);
+      await a.saveEdit(edit(100, title: 'private-a'));
+      await fileFixture(a);
+      final snapshot =
+          jsonDecode(await a.recoveryData()) as Map<String, dynamic>;
+      expect(snapshot['source_user_id'], userA);
+      expect(snapshot['environment'], 'dev');
+      final tables = snapshot['tables'] as Map<String, dynamic>;
+      expect(tables['local_mutations'], hasLength(1));
+      expect(tables['local_recording_files'], hasLength(1));
+      expect(await a.pendingMutations(), hasLength(1));
+      final b = await manager.openAccount(userB);
+      expect(await b.recoveryData(), isNot(contains('private-a')));
+      await expectLater(a.recoveryData(), throwsStateError);
+      final restored = await manager.openAccount(userA);
+      expect(await restored.recoveryData(), contains('private-a'));
+    },
+  );
+
   test('fresh database has unknown cursor, not fabricated zero', () async {
     final a = await manager.openAccount(userA);
     expect(await a.readCursor(), isNull);

@@ -71,6 +71,12 @@ public final class AccountRegistrationService {
             userId = identity.orElseThrow().userId();
             // Serializes device registration and blocks registration after deletion starts.
             String state = jdbc.queryForObject("SELECT status FROM app_user WHERE id = ? FOR UPDATE", String.class, bytes(userId));
+            // An unlink may have committed after the initial identity lookup.
+            var currentIdentity = identities.find(verified);
+            if (currentIdentity.isEmpty() || !currentIdentity.orElseThrow().userId().equals(userId)) {
+                throw new ApiException(HttpStatus.CONFLICT, "AUTH_IDENTITY_CHANGED",
+                        "로그인 수단이 변경됐어요. 다시 로그인해 주세요.", true, Map.of());
+            }
             if (!"ACTIVE".equals(state)) {
                 throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_UNAVAILABLE",
                         "현재 로그인할 수 없는 계정입니다.", false, Map.of());

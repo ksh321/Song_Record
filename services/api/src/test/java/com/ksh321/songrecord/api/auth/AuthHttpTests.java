@@ -93,4 +93,25 @@ class AuthHttpTests {
         assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");
         assertThat(response.getHeader("Set-Cookie")).isNull();
     }
+
+    @Test void unlinkRequiresBearerAndDispatchesWithNoStore() throws Exception {
+        var id=UUID.randomUUID();var device=UUID.randomUUID();
+        assertThat(mvc.perform(post("/v1/auth/identities/"+id+"/unlink")).andReturn().getResponse().getStatus()).isEqualTo(401);
+        var response=mvc.perform(post("/v1/auth/identities/"+id+"/unlink")
+                .header("Authorization","Bearer access").header("X-Device-Id",device.toString()))
+                .andReturn().getResponse();
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");
+        verify(context.getBean(IdentityLinkService.class)).unlink("access",device,id);
+    }
+    @Test void logoutDispatchesRefreshProofWithoutCookie() throws Exception {
+        var device=UUID.randomUUID();
+        var response=mvc.perform(post("/v1/auth/logout").contentType("application/json")
+                .content("{\"refreshToken\":\"synthetic\",\"deviceId\":\""+device+"\"}"))
+                .andReturn().getResponse();
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");
+        assertThat(response.getContentAsString()).doesNotContain("synthetic");
+        verify(context.getBean(SessionService.class)).logout("synthetic",device);
+    }
 }

@@ -89,6 +89,25 @@ public final class SessionService {
         return result.tokens();
     }
 
+    /** Idempotent revocation using a device-bound refresh proof, including after access expiry.
+     * A consumed refresh proof may revoke only its original session, never another session. */
+    public void logout(String refreshToken, UUID deviceId) {
+        ownTransaction();
+        checkToken(refreshToken,"sr_r_");
+        if(deviceId==null) throw invalid();
+        tx.executeWithoutResult(status -> {
+            var matches=jdbc.query("SELECT s.user_id,s.device_id,s.id FROM auth_refresh_token t JOIN auth_session s ON s.id=t.session_id WHERE t.token_hash=?",
+                    (rs,row)->new Principal(uuid(rs.getBytes(1)),uuid(rs.getBytes(2)),uuid(rs.getBytes(3))),hash(refreshToken));
+            if(matches.size()!=1 || !deviceId.equals(matches.getFirst().deviceId())) throw invalid();
+            var p=matches.getFirst();
+            jdbc.queryForList("SELECT id FROM app_user WHERE id=? FOR UPDATE",bytes(p.userId()));
+            jdbc.queryForList("SELECT id FROM device WHERE id=? FOR UPDATE",bytes(p.deviceId()));
+            jdbc.queryForList("SELECT id FROM auth_session WHERE id=? FOR UPDATE",bytes(p.sessionId()));
+            var at=now();
+            jdbc.update("UPDATE auth_session SET revoked_at=COALESCE(revoked_at,?),updated_at=? WHERE id=?",at,at,bytes(p.sessionId()));
+        });
+    }
+
     public Principal authenticate(String accessToken, UUID deviceId) {
         checkToken(accessToken,"sr_a_");
         if(deviceId==null) throw invalid();

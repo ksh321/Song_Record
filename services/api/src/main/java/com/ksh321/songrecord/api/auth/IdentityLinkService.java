@@ -83,6 +83,19 @@ public final class IdentityLinkService {
         if(failure!=null) throw error(failure,"IDENTITY_IN_USE".equals(failure)
                 ?"다른 노래기록 계정에서 사용 중인 로그인 수단이에요. 계정은 자동으로 합쳐지지 않아요.":"이미 연결된 로그인 수단이에요.");
     }
+    /** Serialize link/unlink on the same account row so two removals cannot orphan it. */
+    public void unlink(String access, UUID device, UUID identityId) {
+        tx.executeWithoutResult(s -> {
+            var owner=lock(access,device);
+            if(identityId==null || count("SELECT COUNT(*) FROM auth_identity WHERE id=? AND user_id=?",bytes(identityId),bytes(owner.userId()))!=1)
+                throw new ApiException(HttpStatus.NOT_FOUND,"IDENTITY_NOT_FOUND","연결된 로그인 수단을 찾지 못했어요.",false,Map.of());
+            if(count("SELECT COUNT(*) FROM auth_identity WHERE user_id=?",bytes(owner.userId()))<=1)
+                throw error("LAST_IDENTITY_REQUIRED","마지막 로그인 수단은 해제할 수 없어요.");
+            jdbc.update("DELETE FROM auth_identity WHERE id=? AND user_id=?",bytes(identityId),bytes(owner.userId()));
+            // Cancel pending authorization flows based on the former identity set.
+            jdbc.update("DELETE FROM auth_link_challenge WHERE session_id IN (SELECT id FROM auth_session WHERE user_id=?)",bytes(owner.userId()));
+        });
+    }
     private SessionService.Principal lock(String access, UUID device) {
         var p=sessions.authenticate(access,device);
         jdbc.queryForList("SELECT id FROM app_user WHERE id=? FOR UPDATE",bytes(p.userId()));

@@ -3,18 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/routing/app_routes.dart';
 
+import '../auth/auth_session.dart';
 import '../auth/identity_link.dart';
 import '../auth/identity_link_screen.dart';
+import '../auth/logout_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
     required this.showDevelopmentTools,
     this.identityLink,
+    this.authController,
     super.key,
   });
 
   final bool showDevelopmentTools;
   final IdentityLinkFlow? identityLink;
+  final AuthController? authController;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +53,19 @@ class SettingsScreen extends StatelessWidget {
               )
             else
               const Text('설정 기능을 준비하고 있어요.'),
+            if (authController != null)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.logout),
+                  title: const Text('로그아웃'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      builder: (_) => LogoutScreen(auth: authController!),
+                    ),
+                  ),
+                ),
+              ),
             if (showDevelopmentTools) ...[
               const SizedBox(height: AppSpacing.lg),
               const Divider(),

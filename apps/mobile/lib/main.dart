@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_store.dart';
 import 'package:song_record/features/auth/auth_adapters.dart';
@@ -36,6 +37,8 @@ Future<void> main() async {
       resetForVerification) {
     await vault.clear(); // No local database or audio deletion; not server-side logout.
   }
+  AccountStore? activeStore;
+  const accountChannel = MethodChannel('song_record/account');
   final controller = AuthController(
     api: HttpAuthApi(
       config.apiBaseUrl,
@@ -44,9 +47,38 @@ Future<void> main() async {
     vault: vault,
     proofs: SdkSocialProofSource(googleClientId: google, kakaoKey: kakao),
     openAccount: (id) async {
-      await stores.openAccount(id);
+      final store = await stores.openAccount(id);
+      try {
+        await accountChannel.invokeMethod<void>('setAccount', {
+          'userId': id,
+          'environment': config.environment.name,
+        });
+        activeStore = store;
+      } catch (_) {
+        activeStore = null;
+        await stores.logout();
+        rethrow;
+      }
     },
-    closeAccount: stores.logout,
+    closeAccount: () async {
+      await accountChannel.invokeMethod<void>(
+        'setAccount',
+        const <String, Object?>{'userId': null},
+      );
+      activeStore = null;
+      await stores.logout();
+    },
+    prepareLogout: () => accountChannel.invokeMethod<void>('prepareLogout'),
+    exportRecovery: () async {
+      final store = activeStore;
+      if (store == null) throw const AuthFailure('로그인이 필요해요.');
+      await accountChannel.invokeMethod<void>('prepareLogout');
+      final data = await store.recoveryData();
+      return await accountChannel.invokeMethod<bool>('exportRecovery', {
+            'data': data,
+          }) ??
+          false;
+    },
   );
   runApp(LoginGate(controller: controller, config: config));
 }

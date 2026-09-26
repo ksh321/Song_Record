@@ -350,7 +350,9 @@ class _RecorderPanelState extends State<RecorderPanel>
     if (status.localState != RecorderLocalState.interrupted) return null;
     return switch (status.interruptionReason) {
       'phone_or_communication' => '통화 또는 음성 통신 때문에 녹음이 시작되지 않았습니다.',
-      'other_app' => '다른 앱이 마이크를 사용 중이어서 녹음이 시작되지 않았습니다.',
+      'other_app' => '마이크 입력을 시작하지 못했습니다. 다른 앱의 사용 여부는 확인되지 않았습니다.',
+      'permission_denied' => '앱의 마이크 권한을 확인해 주세요.',
+      'recorder_start_failed' => '녹음 시작에 실패했습니다. 아래 오류 정보를 확인해 주세요.',
       'storage_low' => '저장 공간이 부족해 녹음을 시작하지 못했습니다.',
       'write_failed' => '녹음 파일을 저장하지 못했습니다.',
       'process_terminated' => '앱 작업이 중단되어 녹음을 완료하지 못했습니다.',

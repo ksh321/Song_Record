@@ -49,6 +49,7 @@ class _LoginGateState extends State<LoginGate> with WidgetsBindingObserver {
         return SongRecordApp(
           key: ValueKey(auth.session!.userId),
           config: widget.config,
+          authController: auth,
           identityLink:
               auth.api is IdentityLinkApi &&
                   auth.proofs is IdentityLinkProofSource

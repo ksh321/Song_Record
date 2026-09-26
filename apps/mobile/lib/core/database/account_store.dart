@@ -136,6 +136,33 @@ final class AccountStore {
 
   Future<T> _run<T>(Future<T> Function() action) => _manager._run(this, action);
 
+  Future<String> recoveryData() => _run(
+    () => _database.transaction(() async {
+      final tables = <String, Object?>{};
+      for (final table in [
+        'local_account',
+        'metadata_copies',
+        'local_mutations',
+        'local_recording_files',
+        'recording_journals',
+        'import_jobs',
+        'import_items',
+        'sync_cursors',
+      ]) {
+        final rows = await _database.customSelect('SELECT * FROM $table').get();
+        tables[table] = rows.map((row) => row.data).toList();
+      }
+      return jsonEncode({
+        'format': 'song-record-local-recovery',
+        'version': 1,
+        'source_user_id': userId,
+        'environment': _paths.environment.name,
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+        'tables': tables,
+      });
+    }),
+  );
+
   Future<MetadataCopy?> readMetadata(
     LocalEntity entity,
     String entityId,

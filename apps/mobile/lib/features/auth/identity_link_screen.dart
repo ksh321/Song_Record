@@ -95,6 +95,51 @@ class _IdentityLinkScreenState extends State<IdentityLinkScreen> {
     }
   }
 
+  Future<void> _unlink(String provider) async {
+    if (_busy) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${name(provider)} 연결 해제'),
+        scrollable: true,
+        content: const Text(
+          '이 로그인 수단을 해제할까요? 남아 있는 로그인 수단으로 같은 기록을 이용할 수 있어요. 현재 세션과 기록은 유지돼요.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('연결 해제'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      _busy = true;
+      _message = null;
+    });
+    try {
+      await widget.flow.unlink(provider);
+      final providers = await widget.flow.load();
+      if (mounted) {
+        setState(() {
+          _providers = providers;
+          _message = '${name(provider)} 연결을 해제했어요.';
+        });
+      }
+    } on AuthFailure catch (e) {
+      if (mounted) setState(() => _message = e.message);
+    } catch (_) {
+      if (mounted) setState(() => _message = '해제 결과를 확인하지 못했어요. 새로고침해 주세요.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => PopScope(
     canPop: !_busy,
@@ -120,10 +165,19 @@ class _IdentityLinkScreenState extends State<IdentityLinkScreen> {
                       _providers!.contains(provider) ? '연결됨' : '연결되지 않음',
                     ),
                     trailing: _providers!.contains(provider)
-                        ? const Icon(
-                            Icons.check_circle_outline,
-                            semanticLabel: '연결됨',
-                          )
+                        ? (widget.flow.canUnlink
+                              ? TextButton(
+                                  onPressed: _busy || _providers!.length <= 1
+                                      ? null
+                                      : () => _unlink(provider),
+                                  child: Text(
+                                    _providers!.length <= 1 ? '마지막 수단' : '해제',
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.check_circle_outline,
+                                  semanticLabel: '연결됨',
+                                ))
                         : TextButton(
                             onPressed: _busy ? null : () => _link(provider),
                             child: const Text('연결'),

@@ -25,6 +25,12 @@ public class IdentityLinkController {
             @RequestHeader(value="X-Device-Id",required=false) String device,@RequestBody Proof request){
         links.link(token(auth),id(device),id(request.challengeId()),request.proof());return ok(Map.of("linked",true));
     }
+    @PostMapping("/{identityId}/unlink") public ResponseEntity<?> unlink(
+            @RequestHeader(value="Authorization",required=false) String auth,
+            @RequestHeader(value="X-Device-Id",required=false) String device,
+            @PathVariable String identityId) {
+        links.unlink(token(auth),id(device),id(identityId));return ok(Map.of("unlinked",true));
+    }
     private static String token(String value){if(value==null || !value.startsWith("Bearer "))throw invalid();return value.substring(7);}
     private static UUID id(String value){try{var id=UUID.fromString(value);if(!id.toString().equals(value))throw invalid();return id;}catch(IllegalArgumentException|NullPointerException e){throw invalid();}}
     private static com.ksh321.songrecord.api.web.ApiException invalid(){return new com.ksh321.songrecord.api.web.ApiException(org.springframework.http.HttpStatus.UNAUTHORIZED,"AUTH_INVALID_SESSION","다시 로그인해 주세요.",false,Map.of());}

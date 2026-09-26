@@ -19,6 +19,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.SystemClock
 import android.os.StatFs
+import android.util.Log
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -66,7 +67,11 @@ class RecorderService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> startRecording()
+            ACTION_START -> {
+                if (intent.getStringExtra("accountScope") == RecorderAccount.scope && RecorderAccount.scope != null && !RecorderAccount.exporting) {
+                    startRecording()
+                } else { stopSelf() }
+            }
             ACTION_STOP -> requestStop(
                 intent.getStringExtra(EXTRA_STOP_REASON) ?: STOP_REASON_APP_BUTTON,
             )
@@ -90,11 +95,18 @@ class RecorderService : Service() {
         }
 
         publish(mapOf("phase" to "starting"))
-        startAsForeground(buildNotification("00:00 / 06:00", true))
 
         var pendingFile: File? = null
         var newRecorder: MediaRecorder? = null
+        var stage = "foreground"
+        // A new failure must not overwrite the previous recording's journal.
+        journalEntry = null
+        recordingId = null
+        outputFile = null
+        startedAtElapsedMs = 0L
         try {
+            startAsForeground(buildNotification("00:00 / 06:00", true))
+            stage = "audio_mode"
             detectInputBlockReason()?.let { reason ->
                 throw RecorderClassifiedException(
                     code = "RECORDER_INPUT_BLOCKED",
@@ -108,17 +120,19 @@ class RecorderService : Service() {
                 )
             }
 
+            stage = "account_path"
             val id = UUID.randomUUID().toString()
-            val recordingsDirectory = File(filesDir, "recordings")
+            val recordingsDirectory = RecorderAccount.directory(this)
+            stage = "storage"
             ensureRecordingStorage(recordingsDirectory)
-            val pendingDirectory = File(recordingsDirectory, ".pending")
+            val pendingDirectory = RecorderPaths.child(filesDir, "recordings/accounts/${RecorderAccount.requireScope()}/.pending")
             ensureRecordingStorage(pendingDirectory)
             val candidatePendingFile = File(pendingDirectory, "$id.m4a")
             pendingFile = candidatePendingFile
             val finalFile = File(recordingsDirectory, "$id.m4a")
             val entry = RecorderJournalEntry(
                 recordingId = id,
-                accountScope = RecorderRecoveryJournal.PROTOTYPE_ACCOUNT_SCOPE,
+                accountScope = RecorderAccount.requireScope(),
                 pendingPath = candidatePendingFile.absolutePath,
                 finalPath = finalFile.absolutePath,
                 phase = RecorderRecoveryJournal.PHASE_PREPARING,
@@ -129,8 +143,10 @@ class RecorderService : Service() {
             outputFile = pendingFile
             journalEntry = entry
             startedAtWallClockMs = entry.startedAtWallClockMs
+            stage = "journal_prepare"
             RecorderRecoveryJournal(this).write(entry)
 
+            stage = "recorder_create"
             val candidate = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 MediaRecorder(this)
             } else {
@@ -138,26 +154,19 @@ class RecorderService : Service() {
                 MediaRecorder()
             }
             newRecorder = candidate
-            try {
-                candidate.apply {
-                    setAudioSource(MediaRecorder.AudioSource.MIC)
-                    setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                    setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                    setAudioEncodingBitRate(AUDIO_BIT_RATE)
-                    setAudioSamplingRate(AUDIO_SAMPLE_RATE)
-                    setAudioChannels(AUDIO_CHANNELS)
-                    setOutputFile(candidatePendingFile.absolutePath)
-                    prepare()
-                    start()
-                }
-            } catch (error: Exception) {
-                throw RecorderClassifiedException(
-                    code = "RECORDER_INPUT_BLOCKED",
-                    localState = RecorderRecoveryJournal.LOCAL_STATE_INTERRUPTED,
-                    interruptionReason = INTERRUPTION_OTHER_APP,
-                    message = "마이크 입력을 시작하지 못했습니다. 통화나 다른 녹음 앱을 종료한 뒤 다시 시도하세요.",
-                    cause = error,
-                )
+            stage = "recorder_configure"
+            candidate.apply {
+                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                setAudioEncodingBitRate(AUDIO_BIT_RATE)
+                setAudioSamplingRate(AUDIO_SAMPLE_RATE)
+                setAudioChannels(AUDIO_CHANNELS)
+                setOutputFile(candidatePendingFile.absolutePath)
+                stage = "recorder_prepare"
+                prepare()
+                stage = "recorder_start"
+                start()
             }
 
             recorder = candidate
@@ -168,24 +177,27 @@ class RecorderService : Service() {
                 interruptionReason = null,
             )
             journalEntry = recordingEntry
+            stage = "journal_recording"
             RecorderRecoveryJournal(this).write(recordingEntry)
             publish(recordingState(0L))
             notifyProgress(0L)
             handler.post(ticker)
         } catch (failure: RecorderClassifiedException) {
+            Log.e("SongRecordRecorder", "stage=$stage code=${failure.code} type=${failure.javaClass.simpleName} cause=${failure.cause?.javaClass?.simpleName ?: "none"}")
             runCatching { newRecorder?.release() }
             recorder = null
             pendingFile?.delete()
-            persistFailure(
+            val message = "${failure.message} [진단: $stage / ${failure.javaClass.simpleName}]"
+            runCatching { persistFailure(
                 failure.code,
-                failure.message,
+                message,
                 null,
                 failure.localState,
                 failure.interruptionReason,
-            )
+            ) }
             publishFailure(
                 failure.code,
-                failure.message,
+                message,
                 failure.localState,
                 failure.interruptionReason,
             )
@@ -195,20 +207,31 @@ class RecorderService : Service() {
             runCatching { newRecorder?.release() }
             recorder = null
             pendingFile?.delete()
-            val message = "녹음을 시작하지 못했습니다. 마이크를 사용하는 다른 앱을 확인하세요."
-            persistFailure(
-                "RECORDER_INPUT_BLOCKED",
-                message,
-                null,
-                RecorderRecoveryJournal.LOCAL_STATE_INTERRUPTED,
-                INTERRUPTION_OTHER_APP,
-            )
-            publishFailure(
-                "RECORDER_INPUT_BLOCKED",
-                message,
-                RecorderRecoveryJournal.LOCAL_STATE_INTERRUPTED,
-                INTERRUPTION_OTHER_APP,
-            )
+            val type = error.javaClass.simpleName
+            val reason = when {
+                error is SecurityException -> "permission_denied"
+                stage in setOf("account_path", "storage", "journal_prepare", "journal_recording") -> INTERRUPTION_WRITE_FAILED
+                else -> "recorder_start_failed"
+            }
+            val code = when (reason) {
+                "permission_denied" -> "RECORDER_PERMISSION_DENIED"
+                INTERRUPTION_WRITE_FAILED -> "RECORDER_WRITE_FAILED"
+                else -> "RECORDER_START_FAILED"
+            }
+            val explanation = when (reason) {
+                "permission_denied" -> "녹음 권한을 확인해 주세요."
+                INTERRUPTION_WRITE_FAILED -> "녹음 저장소를 준비하지 못했어요."
+                else -> "녹음을 시작하지 못했어요."
+            }
+            val message = "$explanation [진단: $stage / $type]"
+            // No token, user ID, file path, raw exception message or stack trace.
+            Log.e("SongRecordRecorder", "stage=$stage code=$code type=$type cause=${error.cause?.javaClass?.simpleName ?: "none"}")
+            runCatching {
+                persistFailure(code, message, null,
+                    RecorderRecoveryJournal.LOCAL_STATE_INTERRUPTED, reason)
+            }
+            publishFailure(code, message,
+                RecorderRecoveryJournal.LOCAL_STATE_INTERRUPTED, reason)
             stopForegroundCompat()
             stopSelf()
         }
@@ -384,7 +407,7 @@ class RecorderService : Service() {
         "bitRate" to AUDIO_BIT_RATE,
         "sampleRate" to AUDIO_SAMPLE_RATE,
         "channels" to AUDIO_CHANNELS,
-        "accountScope" to RecorderRecoveryJournal.PROTOTYPE_ACCOUNT_SCOPE,
+        "accountScope" to RecorderAccount.scope,
         "localState" to RecorderRecoveryJournal.LOCAL_STATE_CAPTURING,
     )
 
@@ -637,8 +660,16 @@ class RecorderService : Service() {
         @Volatile
         private var lastState: Map<String, Any?> = mapOf("phase" to "idle")
 
+        fun isCapturing(): Boolean = lastState["phase"] in setOf("starting", "recording", "stopping")
+        fun reserveStart() { publish(mapOf("phase" to "starting")) }
+        fun resetAccountState(context: Context) {
+            publish(mapOf("phase" to "idle"))
+            if (RecorderAccount.scope != null) restoreState(context)
+        }
+
         @Synchronized
         fun restoreState(context: Context): Map<String, Any?> {
+            if (RecorderAccount.scope == null) return mapOf("phase" to "idle")
             if (lastState["phase"] == "idle") {
                 publish(RecorderRecovery.restore(context.applicationContext))
             }

@@ -117,4 +117,71 @@ class IdentityLinkTests {
         }
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM auth_identity WHERE provider='KAKAO'",Integer.class)).isEqualTo(1);
     }
+
+    UUID identity(String provider) {
+        return UUID.fromString(links.identities(tokens.accessToken(),account.deviceId()).stream()
+                .filter(i->i.provider().equals(provider)).findFirst().orElseThrow().id());
+    }
+    @Test void cannotRemoveLastIdentity() {
+        rejects("LAST_IDENTITY_REQUIRED",()->links.unlink(tokens.accessToken(),account.deviceId(),identity("GOOGLE")));
+        assertThat(links.identities(tokens.accessToken(),account.deviceId())).hasSize(1);
+    }
+    @Test void unlinkRetainsAccountSessionAndRemainingLogin() {
+        finish(reauth(),"k1");
+        links.unlink(tokens.accessToken(),account.deviceId(),identity("GOOGLE"));
+        assertThat(sessions.authenticate(tokens.accessToken(),account.deviceId()).userId()).isEqualTo(account.userId());
+        assertThat(registration.register(new VerifiedProviderIdentity("KAKAO","k1"),null,"other").userId()).isEqualTo(account.userId());
+        assertThat(links.identities(tokens.accessToken(),account.deviceId())).extracting(IdentityLinkService.Identity::provider).containsExactly("KAKAO");
+    }
+    @Test void cannotUnlinkAnotherUserIdentity() {
+        var other=registration.register(new VerifiedProviderIdentity("KAKAO","other"),null,"other");
+        var otherTokens=sessions.issue(other);
+        UUID id=UUID.fromString(links.identities(otherTokens.accessToken(),other.deviceId()).getFirst().id());
+        rejects("IDENTITY_NOT_FOUND",()->links.unlink(tokens.accessToken(),account.deviceId(),id));
+    }
+    @Test void unlinkCancelsOutstandingChallenges() {
+        finish(reauth(),"k1");
+        links.unlink(tokens.accessToken(),account.deviceId(),identity("KAKAO"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM auth_link_challenge",Integer.class)).isZero();
+    }
+    @Test void simultaneousUnlinksLeaveExactlyOneMethod() throws Exception {
+        finish(reauth(),"k1");
+        var google=identity("GOOGLE");var kakao=identity("KAKAO");var gate=new CountDownLatch(1);
+        try(var pool=Executors.newFixedThreadPool(2)) {
+            var results=new ArrayList<Future<Boolean>>();
+            for(var id:List.of(google,kakao)) results.add(pool.submit(()->{
+                gate.await();
+                try {links.unlink(tokens.accessToken(),account.deviceId(),id);return true;}
+                catch(ApiException e){assertThat(e.code()).isEqualTo("LAST_IDENTITY_REQUIRED");return false;}
+            }));
+            gate.countDown();
+            int successes=0;for(var result:results)if(result.get(10,TimeUnit.SECONDS))successes++;
+            assertThat(successes).isEqualTo(1);
+            assertThat(links.identities(tokens.accessToken(),account.deviceId())).hasSize(1);
+        }
+    }
+    @Test void logoutRevokesAccessAndRefreshButNotOtherDevice() {
+        var other=registration.register(new VerifiedProviderIdentity("GOOGLE","g1"),null,"second");
+        var otherTokens=sessions.issue(other);
+        sessions.logout(tokens.refreshToken(),account.deviceId());
+        rejects("AUTH_INVALID_SESSION",()->sessions.authenticate(tokens.accessToken(),account.deviceId()));
+        rejects("AUTH_INVALID_SESSION",()->sessions.refresh(tokens.refreshToken(),account.deviceId()));
+        assertThat(sessions.authenticate(otherTokens.accessToken(),other.deviceId()).userId()).isEqualTo(account.userId());
+    }
+    @Test void logoutIsIdempotentAndWorksAfterAccessExpires() {
+        clock.instant=clock.instant.plusSeconds(1000);
+        sessions.logout(tokens.refreshToken(),account.deviceId());
+        sessions.logout(tokens.refreshToken(),account.deviceId());
+        rejects("AUTH_INVALID_SESSION",()->sessions.refresh(tokens.refreshToken(),account.deviceId()));
+    }
+    @Test void logoutRequiresCorrectDevice() {
+        rejects("AUTH_INVALID_SESSION",()->sessions.logout(tokens.refreshToken(),UUID.randomUUID()));
+        assertThat(sessions.authenticate(tokens.accessToken(),account.deviceId())).isNotNull();
+    }
+    @Test void logoutWithConsumedProofRevokesRotatedTokens() {
+        var rotated=sessions.refresh(tokens.refreshToken(),account.deviceId());
+        sessions.logout(tokens.refreshToken(),account.deviceId());
+        rejects("AUTH_INVALID_SESSION",()->sessions.authenticate(rotated.accessToken(),account.deviceId()));
+        rejects("AUTH_INVALID_SESSION",()->sessions.refresh(rotated.refreshToken(),account.deviceId()));
+    }
 }
