@@ -125,11 +125,19 @@ versions="$(run_sql "SELECT GROUP_CONCAT(version ORDER BY installed_rank) FROM f
 python3 "$infra_dir/scripts/verify_p04_sync_schema.py"
 
 python3 "$infra_dir/scripts/verify_p04_snapshot_schema.py" --seed-upgrade
-start_api ""
+start_api "7"
 stop_api
 versions="$(run_sql "SELECT GROUP_CONCAT(version ORDER BY installed_rank) FROM flyway_schema_history WHERE success=1;")"
 [[ "$versions" == "1,2,3,4,5,6,7" ]] || { echo "Unexpected Flyway versions: $versions"; exit 1; }
 python3 "$infra_dir/scripts/verify_p04_snapshot_schema.py"
+
+# Keep historical checks pinned, then test the populated V7 -> V8 upgrade.
+python3 "$infra_dir/scripts/verify_p06_session_schema.py" --seed-upgrade
+start_api "8"
+stop_api
+versions="$(run_sql "SELECT GROUP_CONCAT(version ORDER BY installed_rank) FROM flyway_schema_history WHERE success=1;")"
+[[ "$versions" == "1,2,3,4,5,6,7,8" ]] || { echo "Unexpected Flyway versions: $versions"; exit 1; }
+python3 "$infra_dir/scripts/verify_p06_session_schema.py"
 
 # Re-start against the same data: Flyway must validate existing checksums.
 start_api ""
