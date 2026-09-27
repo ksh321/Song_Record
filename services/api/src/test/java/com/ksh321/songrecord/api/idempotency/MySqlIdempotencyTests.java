@@ -304,7 +304,8 @@ class MySqlIdempotencyTests {
         int trigger=core.indexOf("CREATE TRIGGER trg_song_source_before_insert");jdbc.execute(core.substring(trigger,core.indexOf("$$",trigger)));
         String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));int from=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(from,sync.indexOf(';',from)));
         when(access.authenticate("Bearer test","device")).thenReturn(account);
-        when(account.principal()).thenReturn(access.revalidate(account));
+        var principal = access.revalidate(account);
+        when(account.principal()).thenReturn(principal);
         var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
         var candidates=new com.ksh321.songrecord.api.songs.TjCandidates(token->new com.ksh321.songrecord.api.songs.CandidateVerifier.Verified("FIXTURE",com.ksh321.songrecord.api.songs.CandidateVerifier.Brand.TJ,token,"original","artist",clock.instant(),clock.instant().plusSeconds(3600)),clock);
         var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock);
