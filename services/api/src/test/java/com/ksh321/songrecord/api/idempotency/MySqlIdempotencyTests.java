@@ -317,7 +317,14 @@ class MySqlIdempotencyTests {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(1);
         jdbc.execute("ALTER TABLE song_source ADD CONSTRAINT injected_source CHECK(source_ref <> 'FIXTURE:990002')");
         String next="{\"id\":\""+UUID.randomUUID()+"\",\"source_type\":\"TJ\",\"source_token\":\"990002\"}";
-        assertThatThrownBy(()->creation.create("Bearer test","device",UUID.randomUUID().toString(),next)).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        assertThatThrownBy(()->creation.create("Bearer test","device",UUID.randomUUID().toString(),next))
+                .hasRootCauseInstanceOf(java.sql.SQLException.class)
+                .satisfies(error -> {
+                    Throwable cause = error;
+                    while (cause.getCause() != null) cause = cause.getCause();
+                    assertThat(((java.sql.SQLException) cause).getErrorCode()).isEqualTo(3819);
+                    assertThat(cause.getMessage()).contains("injected_source");
+                });
         for(String table:java.util.List.of("song","song_source","change_log","mutation_receipt"))assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isEqualTo(1);
     }
