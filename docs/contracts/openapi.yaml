@@ -388,7 +388,7 @@ paths:
     get:
       operationId: listSongs
       summary: listSongs
-      description: 후속 목록 계약. limit/cursor와 결과 envelope 확정. 기능별 필터·정렬 매개변수는 P07-08/P08/P09에서 추가한다. 서버가 기기 파일의 존재를
+      description: 후속 목록 계약. limit/cursor와 결과 envelope 확정. 공통 커서 검증은 P07-08, 기능별 필터·정렬 매개변수와 실제 API는 P08/P09에서 연결한다. 서버가 기기 파일의 존재를
         추정하지 않는다.
       x-implementation-status: planned
       parameters:
@@ -531,7 +531,7 @@ paths:
     get:
       operationId: listRecordings
       summary: listRecordings
-      description: 후속 목록 계약. limit/cursor와 결과 envelope 확정. 기능별 필터·정렬 매개변수는 P07-08/P08/P09에서 추가한다. 서버가 기기 파일의 존재를
+      description: 후속 목록 계약. limit/cursor와 결과 envelope 확정. 공통 커서 검증은 P07-08, 기능별 필터·정렬 매개변수와 실제 API는 P08/P09에서 연결한다. 서버가 기기 파일의 존재를
         추정하지 않는다.
       x-implementation-status: planned
       parameters:
@@ -988,7 +988,8 @@ components:
     OpaqueCursor:
       type: string
       minLength: 1
-      description: 내용을 해석하거나 직접 구성하지 않는다. 계정·필터·정렬·조회 세대가 바뀌면 폐기한다.
+      maxLength: 8192
+      description: 내용을 해석하거나 직접 구성하지 않는다. 계정·조회 종류·필터·정렬·키 규격·limit에 결합한다. 불일치나 변조는 400 INVALID_CURSOR, 조회 세대 변경 또는 만료는 409 LIST_CURSOR_EXPIRED로 첫 페이지 재조회를 요구한다. 목록 커서 수명은 발급 후 30분이며 동기화 스냅샷을 뜻하지 않는다.
     AuthProof:
       type: string
       minLength: 1

@@ -229,4 +229,33 @@ class MySqlIdempotencyTests {
             } finally {release.countDown();}
         }
     }
+    @Test void mysqlPageCountAndRowsShareReadViewThenOldCursorIsRejected() throws Exception {
+        syncService();
+        var user=access.revalidate(account).userId();
+        jdbc.execute("CREATE TABLE page_item(id BINARY(16) PRIMARY KEY,user_id BINARY(16),rank_no INT) ENGINE=InnoDB");
+        for(int i=1;i<=3;i++) jdbc.update("INSERT INTO page_item VALUES(?,?,1)",
+                com.ksh321.songrecord.api.pagination.PageTestSource.bytes(new UUID(0,i)),com.ksh321.songrecord.api.pagination.PageTestSource.bytes(user));
+        var manager=new DataSourceTransactionManager(jdbc.getDataSource());
+        var codec=new com.ksh321.songrecord.api.pagination.PageCursor(new byte[32],Clock.systemUTC(),java.time.Duration.ofMinutes(5));
+        var pages=new com.ksh321.songrecord.api.pagination.KeysetPages(jdbc,access,manager,codec);
+        var query=new com.ksh321.songrecord.api.pagination.PageCursor.Query("test/items","RANK_DESC","1","{}",2);
+        var source=new com.ksh321.songrecord.api.pagination.PageTestSource();
+        // The other connection commits after COUNT, before the first page SELECT.
+        try(var pool=Executors.newSingleThreadExecutor()) {
+            source.afterCount=()->{
+                try {pool.submit(()->new org.springframework.transaction.support.TransactionTemplate(manager).executeWithoutResult(status->{
+                    jdbc.update("INSERT INTO page_item VALUES(?,?,2)",com.ksh321.songrecord.api.pagination.PageTestSource.bytes(new UUID(0,4)),com.ksh321.songrecord.api.pagination.PageTestSource.bytes(user));
+                    jdbc.update("UPDATE user_sync_state SET last_change_seq=last_change_seq+1 WHERE user_id=?",com.ksh321.songrecord.api.pagination.PageTestSource.bytes(user));
+                })).get(5,TimeUnit.SECONDS);} catch(Exception e){throw new IllegalStateException(e);}
+            };
+            var first=pages.query(account,query,null,source);
+            assertThat(first.count()).isEqualTo(3);assertThat(first.items()).containsExactly(new UUID(0,1),new UUID(0,2));
+            source.afterCount=()->{};
+            assertThatThrownBy(()->pages.query(account,query,first.next_cursor(),source))
+                .isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo("LIST_CURSOR_EXPIRED"));
+            var fresh=pages.query(account,query,null,source);assertThat(fresh.count()).isEqualTo(4);
+            assertThat(fresh.items()).containsExactly(new UUID(0,4),new UUID(0,1));
+        }
+    }
+
 }
