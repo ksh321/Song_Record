@@ -31,6 +31,7 @@ class MySqlIdempotencyTests {
         String migration=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));
         int start=migration.indexOf("CREATE TABLE mutation_receipt (");
         jdbc.execute(migration.substring(start,migration.indexOf(';',start)));
+        installTrigger("trg_receipt_before_update");
         jdbc.execute("CREATE TABLE mutation_effect(id INT PRIMARY KEY,value_count INT NOT NULL) ENGINE=InnoDB");
         jdbc.update("INSERT INTO mutation_effect VALUES(1,0)");
         var user=UUID.randomUUID();jdbc.update("INSERT INTO app_user VALUES(?)",ByteBuffer.allocate(16).putLong(user.getMostSignificantBits()).putLong(user.getLeastSignificantBits()).array());
@@ -149,5 +150,44 @@ class MySqlIdempotencyTests {
     static void gate(CountDownLatch latch) {
         try{if(!latch.await(8,TimeUnit.SECONDS))throw new IllegalStateException("Test gate timeout");}
         catch(InterruptedException e){Thread.currentThread().interrupt();throw new IllegalStateException(e);}
+    }
+
+    void installTrigger(String name) throws Exception {
+        String migration=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));
+        int start=migration.indexOf("CREATE TRIGGER "+name+" ");
+        jdbc.execute(migration.substring(start,migration.indexOf("$$",start)));
+    }
+    com.ksh321.songrecord.api.jobs.JobQueue jobQueue(java.time.Clock clock) throws Exception {
+        String migration=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));
+        int start=migration.indexOf("CREATE TABLE job (");jdbc.execute(migration.substring(start,migration.indexOf(';',start)));
+        installTrigger("trg_job_before_update");
+        return new com.ksh321.songrecord.api.jobs.JobQueue(jdbc,access,new DataSourceTransactionManager(jdbc.getDataSource()),clock,java.time.Duration.ofSeconds(10),3);
+    }
+    @Test void mysqlJobClaimRecoveryAndFencedCompletionWithRealTrigger() throws Exception {
+        var time=new java.util.concurrent.atomic.AtomicReference<>(java.time.Instant.now());
+        var clock=new java.time.Clock(){public java.time.ZoneId getZone(){return java.time.ZoneOffset.UTC;}public java.time.Clock withZone(java.time.ZoneId z){return this;}public java.time.Instant instant(){return time.get();}};
+        var queue=jobQueue(clock);var manager=new DataSourceTransactionManager(jdbc.getDataSource());
+        var aggregate=UUID.randomUUID();var operation=UUID.randomUUID();var type=com.ksh321.songrecord.api.jobs.JobQueue.Type.UPLOAD_VERIFY;
+        var firstId=new org.springframework.transaction.support.TransactionTemplate(manager).execute(s->queue.enqueue(account,type,aggregate,operation,"{}"));
+        var secondId=new org.springframework.transaction.support.TransactionTemplate(manager).execute(s->queue.enqueue(account,type,aggregate,operation,"{}"));assertThat(secondId).isEqualTo(firstId);
+        try(var pool=Executors.newFixedThreadPool(2)) {
+            var gate=new CountDownLatch(1);Callable<java.util.Optional<com.ksh321.songrecord.api.jobs.JobQueue.Lease>> call=()->{gate.await();return queue.claim(type);};
+            var a=pool.submit(call);var b=pool.submit(call);gate.countDown();var x=a.get(10,TimeUnit.SECONDS);var y=b.get(10,TimeUnit.SECONDS);
+            assertThat(x.isPresent()).isNotEqualTo(y.isPresent());var old=x.isPresent()?x.get():y.get();
+            time.set(time.get().plusSeconds(10));var next=queue.claim(type).orElseThrow();
+            assertThat(queue.complete(old,()->effect())).isFalse();assertThat(queue.renew(old)).isFalse();
+            assertThat(queue.complete(next,()->effect())).isTrue();assertThat(queue.complete(next,()->effect())).isFalse();
+            assertThat(jdbc.queryForObject("SELECT value_count FROM mutation_effect",Integer.class)).isEqualTo(1);
+        }
+    }
+    @Test void receiptTriggerStaysImmutableAndJobRegistrationRollsBackWithDomain() throws Exception {
+        run("{}");
+        assertThatThrownBy(()->jdbc.update("UPDATE mutation_receipt SET response_status=202")).isInstanceOf(org.springframework.dao.DataAccessException.class);
+        var queue=jobQueue(Clock.systemUTC());
+        assertThatThrownBy(()->service.execute(account,UUID.randomUUID().toString(),"POST","/v1/songs","{}",()->{
+            effect();queue.enqueue(account,com.ksh321.songrecord.api.jobs.JobQueue.Type.ASSET_DELETE,UUID.randomUUID(),UUID.randomUUID(),"{}");throw new IllegalStateException();
+        })).isInstanceOf(IllegalStateException.class);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT value_count FROM mutation_effect",Integer.class)).isEqualTo(1);
     }
 }

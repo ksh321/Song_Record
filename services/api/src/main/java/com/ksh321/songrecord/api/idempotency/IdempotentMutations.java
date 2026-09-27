@@ -48,8 +48,11 @@ public final class IdempotentMutations {
                             bytes(owner.userId()), bytes(op), hash, now, now.plusDays(90));
                 } catch (DuplicateKeyException e) { throw new ExistingReceipt(); }
                 Reply reply = Objects.requireNonNull(mutation.get());
-                jdbc.update("UPDATE mutation_receipt SET response_status=?,response_body=? WHERE user_id=? AND op_id=?",
-                        reply.status(), reply.body(), bytes(owner.userId()), bytes(op));
+                // Replace only OUR uncommitted reservation. Committed receipts are never changed.
+                // InnoDB keeps the key lock until commit; the V6 immutable-update trigger stays intact.
+                jdbc.update("DELETE FROM mutation_receipt WHERE user_id=? AND op_id=?",bytes(owner.userId()),bytes(op));
+                jdbc.update("INSERT INTO mutation_receipt(user_id,op_id,request_hash,response_status,response_body,created_at,expires_at) VALUES(?,?,?,?,?,?,?)",
+                        bytes(owner.userId()),bytes(op),hash,reply.status(),reply.body(),now,now.plusDays(90));
                 return reply;
             });
         } catch (ExistingReceipt e) {
