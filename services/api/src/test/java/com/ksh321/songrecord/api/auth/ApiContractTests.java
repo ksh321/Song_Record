@@ -29,9 +29,9 @@ class ApiContractTests {
     @SuppressWarnings("unchecked")
     static Map<String, Object> map(Object value) { return (Map<String, Object>) value; }
 
-    @Test void implementedPathsExactlyMatchAuthControllers() {
+    @Test void implementedPathsExactlyMatchControllers() {
         var actual = new TreeSet<String>();
-        for (var type : List.of(SocialAuthController.class, IdentityLinkController.class)) {
+        for (var type : List.of(SocialAuthController.class, IdentityLinkController.class, com.ksh321.songrecord.api.songs.SongController.class)) {
             var base = AnnotatedElementUtils.findMergedAnnotation(type, RequestMapping.class);
             for (var method : type.getDeclaredMethods()) {
                 var mapping = AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping.class);

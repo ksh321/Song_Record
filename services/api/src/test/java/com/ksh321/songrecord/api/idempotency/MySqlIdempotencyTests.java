@@ -298,4 +298,27 @@ class MySqlIdempotencyTests {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM deletion_ledger",Integer.class)).isEqualTo(1);
     }
 
+    @Test void mysqlSongCreationUsesRealSourceConstraintsAndAtomicChangeLog() throws Exception {
+        var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
+        for(String table:java.util.List.of("song","song_source")){int from=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(from,core.indexOf(';',from)));}
+        int trigger=core.indexOf("CREATE TRIGGER trg_song_source_before_insert");jdbc.execute(core.substring(trigger,core.indexOf("$$",trigger)));
+        String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));int from=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(from,sync.indexOf(';',from)));
+        when(access.authenticate("Bearer test","device")).thenReturn(account);
+        when(account.principal()).thenReturn(access.revalidate(account));
+        var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
+        var candidates=new com.ksh321.songrecord.api.songs.TjCandidates(token->new com.ksh321.songrecord.api.songs.CandidateVerifier.Verified("FIXTURE",com.ksh321.songrecord.api.songs.CandidateVerifier.Brand.TJ,token,"original","artist",clock.instant(),clock.instant().plusSeconds(3600)),clock);
+        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock);
+        String body="{\"id\":\""+UUID.randomUUID()+"\",\"source_type\":\"TJ\",\"source_token\":\"990001\",\"title\":\"edited\"}";
+        var first=creation.create("Bearer test","device",key,body);assertThat(first.status()).isEqualTo(201);
+        assertThat(creation.create("Bearer test","device",key,body)).isEqualTo(first);
+        assertThat(jdbc.queryForObject("SELECT source_title FROM song_source",String.class)).isEqualTo("original");
+        assertThat(jdbc.queryForObject("SELECT title FROM song",String.class)).isEqualTo("edited");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(1);
+        jdbc.execute("ALTER TABLE song_source ADD CONSTRAINT injected_source CHECK(source_ref <> 'FIXTURE:990002')");
+        String next="{\"id\":\""+UUID.randomUUID()+"\",\"source_type\":\"TJ\",\"source_token\":\"990002\"}";
+        assertThatThrownBy(()->creation.create("Bearer test","device",UUID.randomUUID().toString(),next)).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        for(String table:java.util.List.of("song","song_source","change_log","mutation_receipt"))assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isEqualTo(1);
+    }
+
 }
