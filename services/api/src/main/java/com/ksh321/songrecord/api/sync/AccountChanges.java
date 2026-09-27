@@ -1,6 +1,7 @@
 package com.ksh321.songrecord.api.sync;
 
 import com.ksh321.songrecord.api.auth.AccountAccess;
+import com.ksh321.songrecord.api.locking.LockOrder;
 import com.ksh321.songrecord.api.idempotency.CanonicalRequest;
 import java.nio.ByteBuffer;
 import java.time.*;
@@ -47,6 +48,7 @@ public final class AccountChanges {
             throw new IllegalStateException("Change tracking requires the mutation database transaction");
         return joined.execute(status->{
             var owner=access.revalidate(account);
+            LockOrder.before(LockOrder.Rank.USER_SYNC,owner.userId().toString());
             var rows=jdbc.query("SELECT last_change_seq FROM user_sync_state WHERE user_id=? FOR UPDATE",
                     (rs,row)->rs.getLong(1),bytes(owner.userId()));
             if(rows.size()!=1)throw new IllegalStateException("Account sync state is missing");

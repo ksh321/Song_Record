@@ -86,4 +86,21 @@ class JobTests {
             var a=pool.submit(action);var b=pool.submit(action);gate.countDown();assertThat(a.get(10,TimeUnit.SECONDS)).isNotEqualTo(b.get(10,TimeUnit.SECONDS));
         }
     }
+
+    @Test void lostLeaseDuringDomainEffectsRollsBackBeforeNewOwnerCompletes() throws Exception {
+        enqueue();var old=queue.claim(Type.UPLOAD_VERIFY).orElseThrow();
+        var inside=new CountDownLatch(1);var release=new CountDownLatch(1);
+        try(var pool=Executors.newSingleThreadExecutor()) {
+            var oldCompletion=pool.submit(()->queue.complete(old,()->{
+                com.ksh321.songrecord.api.locking.LockOrder.before(com.ksh321.songrecord.api.locking.LockOrder.Rank.AGGREGATE,"effect");
+                f.effect();inside.countDown();try{if(!release.await(8,TimeUnit.SECONDS))throw new IllegalStateException();}catch(InterruptedException e){throw new IllegalStateException(e);}
+            }));
+            try {
+                assertThat(inside.await(5,TimeUnit.SECONDS)).isTrue();f.clock.instant=f.clock.instant.plusSeconds(10);
+                var next=queue.claim(Type.UPLOAD_VERIFY).orElseThrow(); // Must not wait for a job lock held by completion.
+                release.countDown();assertThatThrownBy(()->oldCompletion.get(5,TimeUnit.SECONDS)).isInstanceOf(ExecutionException.class);
+                assertThat(f.count()).isZero();assertThat(queue.complete(next,()->f.effect())).isTrue();assertThat(f.count()).isEqualTo(1);
+            } finally {release.countDown();}
+        }
+    }
 }

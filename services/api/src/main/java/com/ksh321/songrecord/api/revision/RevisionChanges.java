@@ -1,6 +1,7 @@
 package com.ksh321.songrecord.api.revision;
 
 import com.ksh321.songrecord.api.auth.AccountAccess;
+import com.ksh321.songrecord.api.locking.LockOrder;
 import com.ksh321.songrecord.api.web.ApiException;
 import java.nio.ByteBuffer;
 import java.sql.*;
@@ -59,6 +60,7 @@ public final class RevisionChanges {
         });
     }
     private Map<String,Object> read(Resource resource,UUID owner,UUID id) {
+        LockOrder.before(LockOrder.Rank.AGGREGATE,owner+"/"+resource.ordinal()+"/"+id);
         var rows=jdbc.query("SELECT id,revision,updated_at,"+resource.columns+" FROM "+resource.table+" WHERE user_id=? AND id=? FOR UPDATE",
                 (rs,row)->snapshot(rs),bytes(owner),bytes(id));
         if(rows.isEmpty())throw notFound();

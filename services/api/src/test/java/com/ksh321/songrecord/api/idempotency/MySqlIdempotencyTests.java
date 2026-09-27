@@ -190,4 +190,43 @@ class MySqlIdempotencyTests {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT value_count FROM mutation_effect",Integer.class)).isEqualTo(1);
     }
+
+    @Test void globalBeforeSyncWorksAndReverseOrderRollsBackOnMySql() throws Exception {
+        var sync=syncService();
+        String migration=Files.readString(Path.of("src/main/resources/db/migration/V5__retention_and_storage.sql"));
+        int start=migration.indexOf("CREATE TABLE global_storage_usage (");jdbc.execute(migration.substring(start,migration.indexOf(';',start)));
+        jdbc.update("INSERT INTO global_storage_usage(id) VALUES(1)");
+        var manager=new DataSourceTransactionManager(jdbc.getDataSource());
+        var locks=new com.ksh321.songrecord.api.locking.StorageLocks(jdbc,access,manager);
+        new org.springframework.transaction.support.TransactionTemplate(manager).executeWithoutResult(s->{
+            locks.global();sync.write(account,()->new com.ksh321.songrecord.api.sync.AccountChanges.Batch<>(1,java.util.List.of(change(1))));
+        });
+        assertThatThrownBy(()->new org.springframework.transaction.support.TransactionTemplate(manager).execute(s->sync.write(account,()->{
+            effect();locks.global();return new com.ksh321.songrecord.api.sync.AccountChanges.Batch<>(2,java.util.List.of(change(2)));
+        }))).isInstanceOf(IllegalStateException.class);
+        assertThat(jdbc.queryForObject("SELECT value_count FROM mutation_effect",Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isEqualTo(1);
+    }
+    @Test void mysqlLeaseCanTransferDuringEffectsAndStaleEffectsRollback() throws Exception {
+        var time=new java.util.concurrent.atomic.AtomicReference<>(java.time.Instant.now());
+        var clock=new java.time.Clock(){public java.time.ZoneId getZone(){return java.time.ZoneOffset.UTC;}public java.time.Clock withZone(java.time.ZoneId z){return this;}public java.time.Instant instant(){return time.get();}};
+        var queue=jobQueue(clock);var manager=new DataSourceTransactionManager(jdbc.getDataSource());
+        var type=com.ksh321.songrecord.api.jobs.JobQueue.Type.UPLOAD_VERIFY;
+        new org.springframework.transaction.support.TransactionTemplate(manager).executeWithoutResult(s->queue.enqueue(account,type,UUID.randomUUID(),UUID.randomUUID(),"{}"));
+        var old=queue.claim(type).orElseThrow();var inside=new CountDownLatch(1);var release=new CountDownLatch(1);
+        try(var pool=Executors.newSingleThreadExecutor()) {
+            var completion=pool.submit(()->queue.complete(old,()->{
+                com.ksh321.songrecord.api.locking.LockOrder.before(com.ksh321.songrecord.api.locking.LockOrder.Rank.AGGREGATE,"effect");
+                effect();inside.countDown();gate(release);
+            }));
+            try {
+                assertThat(inside.await(5,TimeUnit.SECONDS)).isTrue();time.set(time.get().plusSeconds(10));
+                var next=queue.claim(type).orElseThrow();release.countDown();
+                assertThatThrownBy(()->completion.get(5,TimeUnit.SECONDS)).isInstanceOf(ExecutionException.class);
+                assertThat(jdbc.queryForObject("SELECT value_count FROM mutation_effect",Integer.class)).isZero();
+                assertThat(queue.complete(next,()->effect())).isTrue();
+                assertThat(jdbc.queryForObject("SELECT value_count FROM mutation_effect",Integer.class)).isEqualTo(1);
+            } finally {release.countDown();}
+        }
+    }
 }

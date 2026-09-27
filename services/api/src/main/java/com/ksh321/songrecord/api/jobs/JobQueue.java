@@ -1,6 +1,7 @@
 package com.ksh321.songrecord.api.jobs;
 
 import com.ksh321.songrecord.api.auth.AccountAccess;
+import com.ksh321.songrecord.api.locking.LockOrder;
 import com.ksh321.songrecord.api.idempotency.CanonicalRequest;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -44,6 +45,7 @@ public final class JobQueue {
         String canonical=CanonicalRequest.canonical(payload);
         if(!canonical.startsWith("{"))throw new IllegalArgumentException("Job payload must be an object");
         byte[] dedupe=digest((user==null?"GLOBAL":user.toString())+"/"+type+"/"+aggregate+"/"+operation);
+        LockOrder.before(LockOrder.Rank.JOB,HexFormat.of().formatHex(dedupe));
         UUID id=UUID.randomUUID();var now=now();
         try {
             jdbc.update("INSERT INTO job(id,user_id,type,aggregate_id,dedupe_key,payload,state,attempt_count,run_after,revision,created_at,updated_at) VALUES(?,?,?,?,?,?,'QUEUED',0,?,1,?,?)",
@@ -64,6 +66,7 @@ public final class JobQueue {
                     (rs,n)->new Lease(uuid(rs.getBytes(1)),UUID.randomUUID(),uuid(rs.getBytes(2)),type,uuid(rs.getBytes(3)),rs.getString(4),rs.getInt(5)+1),type.name(),now,now);
             if(rows.isEmpty())return Optional.empty();
             var lease=rows.getFirst();
+            LockOrder.before(LockOrder.Rank.JOB,lease.id().toString());
             if(lease.attempt()>maxAttempts) {
                 jdbc.update("UPDATE job SET state='FAILED',lease_token=NULL,claimed_at=NULL,lease_until=NULL,last_error='ATTEMPTS_EXHAUSTED',finished_at=?,updated_at=?,revision=revision+1 WHERE id=?",now,now,bytes(lease.id()));
                 return Optional.empty();
@@ -74,13 +77,16 @@ public final class JobQueue {
         });
     }
     public boolean renew(Lease lease) {
-        requireBoundary();return Boolean.TRUE.equals(tx.execute(s->{var now=now();return jdbc.update("UPDATE job SET lease_until=?,updated_at=?,revision=revision+1 WHERE id=? AND state='RUNNING' AND lease_token=? AND lease_until>?",now.plus(leaseDuration),now,bytes(lease.id()),bytes(lease.token()),now)==1;}));
+        requireBoundary();return Boolean.TRUE.equals(tx.execute(s->{LockOrder.before(LockOrder.Rank.JOB,lease.id().toString());var now=now();return jdbc.update("UPDATE job SET lease_until=?,updated_at=?,revision=revision+1 WHERE id=? AND state='RUNNING' AND lease_token=? AND lease_until>?",now.plus(leaseDuration),now,bytes(lease.id()),bytes(lease.token()),now)==1;}));
     }
-    /** Apply DB effects and completion atomically; stale owners never enter the callback. */
+    /** Apply transactional DB effects, then fence completion. A lease lost during effects rolls them back. */
     public boolean complete(Lease lease,Runnable databaseEffects) {
         requireBoundary();return Boolean.TRUE.equals(tx.execute(s->{
-            if(!owns(lease))return false;
+            // Initial read does not lock the job before lower-ranked domain rows.
+            if(jdbc.query("SELECT id FROM job WHERE id=? AND state='RUNNING' AND lease_token=? AND lease_until>?",
+                    (rs,n)->1,bytes(lease.id()),bytes(lease.token()),now()).isEmpty())return false;
             databaseEffects.run();
+            LockOrder.before(LockOrder.Rank.JOB,lease.id().toString());
             var now=now();
             int updated=jdbc.update("UPDATE job SET state='SUCCEEDED',lease_token=NULL,claimed_at=NULL,lease_until=NULL,last_error=NULL,finished_at=?,updated_at=?,revision=revision+1 WHERE id=? AND state='RUNNING' AND lease_token=? AND lease_until>?",now,now,bytes(lease.id()),bytes(lease.token()),now);
             if(updated!=1)throw new IllegalStateException("Job lease expired during completion");
@@ -97,6 +103,7 @@ public final class JobQueue {
         }));
     }
     private boolean owns(Lease lease) {
+        LockOrder.before(LockOrder.Rank.JOB,lease.id().toString());
         return !jdbc.query("SELECT id FROM job WHERE id=? AND state='RUNNING' AND lease_token=? AND lease_until>? FOR UPDATE",(rs,n)->1,bytes(lease.id()),bytes(lease.token()),now()).isEmpty();
     }
     private void requireTransaction(){if(!TransactionSynchronizationManager.isActualTransactionActive() || !TransactionSynchronizationManager.hasResource(Objects.requireNonNull(jdbc.getDataSource())))throw new IllegalStateException("Enqueue requires the domain transaction");}
