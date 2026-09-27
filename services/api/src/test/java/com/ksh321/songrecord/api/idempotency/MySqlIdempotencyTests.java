@@ -258,4 +258,44 @@ class MySqlIdempotencyTests {
         }
     }
 
+    @Test void mysqlExpiredReceiptUuidRetryAndPermanentTombstone() throws Exception {
+        syncService();
+        String migration=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));
+        int start=migration.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(migration.substring(start,migration.indexOf(';',start)));
+        jdbc.execute("CREATE TABLE song(id BINARY(16) PRIMARY KEY,user_id BINARY(16),revision BIGINT,lifecycle_state VARCHAR(32),title VARCHAR(200)) ENGINE=InnoDB");
+        var owner=access.revalidate(account).userId();var id=UUID.randomUUID();
+        var manager=new DataSourceTransactionManager(jdbc.getDataSource());
+        var guard=new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager);
+        java.util.function.Supplier<IdempotentMutations.Reply> command=()->{
+            var result=guard.create(account,com.ksh321.songrecord.api.revision.CreationGuard.Resource.SONG,id,()->{
+                jdbc.update("INSERT INTO song VALUES(?,?,1,'ACTIVE','initial')",com.ksh321.songrecord.api.pagination.PageTestSource.bytes(id),com.ksh321.songrecord.api.pagination.PageTestSource.bytes(owner));return 1;
+            });
+            return new IdempotentMutations.Reply(result.created()?201:200,"{\"created\":"+result.created()+",\"revision\":"+(result.created()?1:result.existing().revision())+"}");
+        };
+        var first=service.execute(account,key,"POST","/v1/songs","{}",command);
+        assertThat(service.execute(account,key,"POST","/v1/songs","{}",command)).isEqualTo(first);
+        jdbc.update("UPDATE song SET title='newer',revision=7 WHERE id=?",com.ksh321.songrecord.api.pagination.PageTestSource.bytes(id));
+        var later=java.time.Instant.now().plus(java.time.Duration.ofDays(91));
+        jdbc.update("DELETE FROM mutation_receipt WHERE expires_at<=?",java.time.LocalDateTime.ofInstant(later,java.time.ZoneOffset.UTC));
+        service=new IdempotentMutations(jdbc,access,manager,Clock.fixed(later,java.time.ZoneOffset.UTC));
+        // Distinct request keys must still serialize on account/UUID after receipts are gone.
+        try(var pool=Executors.newFixedThreadPool(2)) {
+            var gate=new CountDownLatch(1);
+            var a=pool.submit(()->{gate.await();return service.execute(account,key,"POST","/v1/songs","{}",command);});
+            var b=pool.submit(()->{gate.await();return service.execute(account,UUID.randomUUID().toString(),"POST","/v1/songs","{}",command);});
+            gate.countDown();assertThat(a.get(10,TimeUnit.SECONDS).status()).isEqualTo(200);assertThat(b.get(10,TimeUnit.SECONDS).status()).isEqualTo(200);
+        }
+        assertThat(jdbc.queryForObject("SELECT title FROM song",String.class)).isEqualTo("newer");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM song",Integer.class)).isEqualTo(1);
+        jdbc.update("INSERT INTO deletion_ledger(id,user_id,entity_type,entity_id,revision) VALUES(?,?,'SONG',?,8)",
+                com.ksh321.songrecord.api.pagination.PageTestSource.bytes(UUID.randomUUID()),com.ksh321.songrecord.api.pagination.PageTestSource.bytes(owner),com.ksh321.songrecord.api.pagination.PageTestSource.bytes(id));
+        jdbc.update("DELETE FROM song WHERE id=?",com.ksh321.songrecord.api.pagination.PageTestSource.bytes(id));
+        jdbc.update("DELETE FROM mutation_receipt WHERE expires_at<=?",java.time.LocalDateTime.ofInstant(later.plus(java.time.Duration.ofDays(91)),java.time.ZoneOffset.UTC));
+        assertThatThrownBy(()->service.execute(account,key,"POST","/v1/songs","{}",command))
+                .isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo("RESOURCE_PURGED"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM song",Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM deletion_ledger",Integer.class)).isEqualTo(1);
+    }
+
 }

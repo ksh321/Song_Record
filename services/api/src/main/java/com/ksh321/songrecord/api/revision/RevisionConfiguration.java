@@ -9,6 +9,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 @Configuration(proxyBeanMethods=false)
 @Profile("!bootstrap")
 public class RevisionConfiguration {
+    @Bean CreationGuard creationGuard(JdbcTemplate jdbc,AccountAccess access,PlatformTransactionManager manager) {
+        return new CreationGuard(jdbc,access,manager);
+    }
     @Bean RevisionChanges revisionChanges(JdbcTemplate jdbc,AccountAccess access,PlatformTransactionManager manager) {
         return new RevisionChanges(jdbc,access,manager,Clock.systemUTC());
     }
