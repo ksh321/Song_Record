@@ -16,12 +16,13 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration(proxyBeanMethods=false)
 @Profile("!bootstrap")
 public class RecordingConfiguration {
+    @Bean RecordingListing recordingListing(AccountAccess access,com.ksh321.songrecord.api.pagination.KeysetPages pages){return new RecordingListing(access,pages);}
     @Bean RecordingSaving recordingSaving(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,com.ksh321.songrecord.api.revision.RevisionChanges revisions,AccountChanges changes,RecordingDrafts drafts){return new RecordingSaving(jdbc,access,mutations,revisions,changes,drafts);}
     @Bean RecordingDrafts recordingDrafts(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,CreationGuard guard,AccountChanges changes){return new RecordingDrafts(jdbc,access,mutations,guard,changes,Clock.systemUTC());}
     @Bean @Order(3) SecurityFilterChain recordingSecurity(HttpSecurity http)throws Exception{
         http.securityMatcher("/v1/recordings","/v1/recordings/**").csrf(c->c.disable())
             .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).requestCache(c->c.disable())
-            .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.POST,"/v1/recordings").permitAll().requestMatchers(HttpMethod.PATCH,"/v1/recordings/*").permitAll().anyRequest().denyAll());
+            .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.GET,"/v1/recordings").permitAll().requestMatchers(HttpMethod.POST,"/v1/recordings").permitAll().requestMatchers(HttpMethod.PATCH,"/v1/recordings/*").permitAll().anyRequest().denyAll());
         return http.build();
     }
 }

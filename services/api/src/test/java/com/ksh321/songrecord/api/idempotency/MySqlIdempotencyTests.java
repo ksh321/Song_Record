@@ -435,9 +435,15 @@ class MySqlIdempotencyTests {
             var db=new JdbcTemplate(ds);UUID user=UUID.randomUUID(),song=UUID.randomUUID();
             db.update("INSERT INTO app_user(id) VALUES(?)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(user));
             db.update("INSERT INTO song(id,user_id,source_type,title,artist,version_code,note,revision) VALUES(?,?,'MANUAL','노래02','Artist','LIVE','keep',7)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(song),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(user));
+            UUID deviceId=UUID.randomUUID(),recordingId=UUID.randomUUID();
+            db.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'upgrade',UTC_TIMESTAMP(3))",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(deviceId),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(user));
+            db.update("INSERT INTO recording(id,user_id,origin_device_id,title_snapshot,note,recorded_at,timezone_id,timezone_offset_minutes) VALUES(?,?,?,'곡02','keep',UTC_TIMESTAMP(3),'UTC',0)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(recordingId),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(user),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(deviceId));
+            var beforeRecording=db.queryForMap("SELECT * FROM recording");
             var before=db.queryForMap("SELECT title,artist,note,version_code,revision,updated_at FROM song");
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();
-            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(2);flyway.validate();
+            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(4);flyway.validate();
+            assertThat(db.queryForObject("SELECT title_key FROM recording_query_key",byte[].class)).isEqualTo(com.ksh321.songrecord.api.domain.DomainOrdering.sortKeyBytes("곡02"));
+            assertThat(db.queryForMap("SELECT * FROM recording")).usingRecursiveComparison().isEqualTo(beforeRecording);
             assertThat(db.queryForObject("SELECT title_key FROM song_query_key",byte[].class)).isEqualTo(com.ksh321.songrecord.api.domain.DomainOrdering.sortKeyBytes("노래02"));
             assertThat(db.queryForMap("SELECT title,artist,note,version_code,revision,updated_at FROM song")).isEqualTo(before);
             assertThat(flyway.migrate().migrationsExecuted).isZero();
@@ -589,7 +595,7 @@ class MySqlIdempotencyTests {
         var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
         byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
         jdbc.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",device,owner);
-        var manager=new DataSourceTransactionManager(jdbc.getDataSource());var drafts=new com.ksh321.songrecord.api.recordings.RecordingDrafts(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,Clock.systemUTC());
+        var manager=new DataSourceTransactionManager(jdbc.getDataSource());installRecordingQueryKeys();var drafts=new com.ksh321.songrecord.api.recordings.RecordingDrafts(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,Clock.systemUTC());
         var json=new tools.jackson.databind.json.JsonMapper();UUID id=UUID.randomUUID();
         String body=json.writeValueAsString(java.util.Map.of("id",id.toString(),"metadata_state","DRAFT","recorded_at","2026-09-28T07:00:00.123Z","timezone_id","Asia/Seoul","timezone_offset_minutes",540));
         String aKey=UUID.randomUUID().toString(),bKey=UUID.randomUUID().toString();IdempotentMutations.Reply a,b;
@@ -620,7 +626,7 @@ class MySqlIdempotencyTests {
         var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
         byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
         jdbc.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",device,owner);
-        var manager=new DataSourceTransactionManager(jdbc.getDataSource());var drafts=new com.ksh321.songrecord.api.recordings.RecordingDrafts(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,Clock.systemUTC());
+        var manager=new DataSourceTransactionManager(jdbc.getDataSource());installRecordingQueryKeys();var drafts=new com.ksh321.songrecord.api.recordings.RecordingDrafts(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,Clock.systemUTC());
         var saving=new com.ksh321.songrecord.api.recordings.RecordingSaving(jdbc,access,service,new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,Clock.systemUTC()),changes,drafts);
         var json=new tools.jackson.databind.json.JsonMapper();UUID id=UUID.randomUUID();byte[] recording=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(id);
         String draft=json.writeValueAsString(java.util.Map.of("id",id.toString(),"metadata_state","DRAFT","recorded_at","2026-09-28T07:00:00Z","timezone_id","UTC","timezone_offset_minutes",0));
@@ -644,6 +650,23 @@ class MySqlIdempotencyTests {
         assertThatThrownBy(()->jdbc.update("UPDATE recording SET metadata_state='DRAFT' WHERE id=?",recording)).hasRootCauseInstanceOf(java.sql.SQLException.class).hasStackTraceContaining("cannot return to DRAFT");
         assertThatThrownBy(()->jdbc.update("UPDATE recording_file_spec SET size_bytes=1 WHERE recording_id=?",recording)).hasRootCauseInstanceOf(java.sql.SQLException.class).hasStackTraceContaining("immutable");
         assertThatThrownBy(()->jdbc.update("DELETE FROM recording_file_spec WHERE recording_id=?",recording)).hasRootCauseInstanceOf(java.sql.SQLException.class).hasStackTraceContaining("cannot be deleted");
+    }
+
+    void installRecordingQueryKeys() throws Exception {
+        String ddl=Files.readString(Path.of("src/main/resources/db/migration/V12__recording_query_keys.sql"));int start=ddl.indexOf("CREATE TABLE recording_query_key (");jdbc.execute(ddl.substring(start,ddl.indexOf(';',start)));
+    }
+
+    @Test void mysqlRecordingListingMatchesRulesOnFullyMigratedDatabase() throws Exception {
+        String name=database+"_lists";admin.execute("CREATE DATABASE "+name);
+        try {
+            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
+            var db=new JdbcTemplate(ds);var principal=access.revalidate(account);byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
+            db.update("INSERT INTO app_user(id) VALUES(?)",owner);db.update("INSERT INTO user_sync_state(user_id) VALUES(?)",owner);db.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",device,owner);
+            var pages=new com.ksh321.songrecord.api.pagination.KeysetPages(db,access,new DataSourceTransactionManager(ds),new com.ksh321.songrecord.api.pagination.PageCursor(new byte[32],Clock.systemUTC(),java.time.Duration.ofMinutes(30)));
+            com.ksh321.songrecord.api.recordings.RecordingListingDatabaseChecks.verify(db,pages,account,principal.userId(),principal.deviceId());
+            assertThat(flyway.migrate().migrationsExecuted).isZero();
+        }finally{admin.execute("DROP DATABASE "+name);}
     }
 
 }

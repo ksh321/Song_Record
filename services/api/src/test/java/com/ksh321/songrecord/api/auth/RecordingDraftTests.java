@@ -13,6 +13,7 @@ class RecordingDraftTests {
     @BeforeEach void open()throws Exception{
         setup.setup();for(String column:List.of("origin_device_id BINARY(16)","timezone_id VARCHAR(64)","timezone_offset_minutes SMALLINT","created_at TIMESTAMP(3)"))setup.f.jdbc.execute("ALTER TABLE recording ADD "+column);
         setup.f.jdbc.execute("ALTER TABLE recording ALTER COLUMN note VARCHAR(8000)");
+        setup.f.jdbc.execute("CREATE TABLE recording_query_key(recording_id BINARY(16) PRIMARY KEY,user_id BINARY(16),key_version VARCHAR(64),title_key VARBINARY(2048))");
     }
     @AfterEach void close()throws Exception{setup.close();}
     Map<String,Object> base(){var m=new LinkedHashMap<String,Object>();m.put("id",id.toString());m.put("metadata_state","DRAFT");m.put("recorded_at","2026-09-28T07:00:00.123Z");m.put("timezone_id","Asia/Seoul");m.put("timezone_offset_minutes",540);return m;}
@@ -49,7 +50,7 @@ class RecordingDraftTests {
         assertThat(setup.mvc.perform(post("/v1/recordings").contentType("application/json").content(json.writeValueAsString(base()))).andReturn().getResponse().getStatus()).isEqualTo(401);
         assertThat(create(base()).getStatus()).isEqualTo(201);
         for(String state:List.of("TRASHED","PURGE_PENDING","PURGED")){setup.f.jdbc.update("UPDATE recording SET lifecycle_state=?",state);assertThat(create(base()).getStatus()).isEqualTo(409);}
-        setup.f.jdbc.update("INSERT INTO deletion_ledger(user_id,entity_type,entity_id,revision) VALUES(?,'RECORDING',?,2)",bytes(setup.f.registration.userId()),bytes(id));setup.f.jdbc.update("DELETE FROM recording");
+        setup.f.jdbc.update("INSERT INTO deletion_ledger(user_id,entity_type,entity_id,revision) VALUES(?,'RECORDING',?,2)",bytes(setup.f.registration.userId()),bytes(id));setup.f.jdbc.update("DELETE FROM recording_query_key");setup.f.jdbc.update("DELETE FROM recording");
         assertThat(create(base()).getContentAsString()).contains("RESOURCE_PURGED");assertThat(setup.count("recording")).isZero();
     }
     @Test void logFailureRollsBackDraftAndReceiptAndAllowsSameKeyRetry()throws Exception{

@@ -37,6 +37,7 @@ public final class RecordingDrafts {
                     var now=LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
                     jdbc.update("INSERT INTO recording(id,user_id,origin_device_id,song_id,title_snapshot,artist_snapshot,version_code,key_mode,key_shift,note,recorded_at,timezone_id,timezone_offset_minutes,metadata_state,lifecycle_state,revision,link_revision,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT','ACTIVE',1,1,?,?)",
                         bytes(request.id),bytes(owner),bytes(principal.deviceId()),request.song==null?null:bytes(request.song),request.title,request.artist,request.version,request.keyMode,request.keyShift,request.note,LocalDateTime.ofInstant(request.time,ZoneOffset.UTC),request.zone,request.offset,now,now);
+                    RecordingQueryKeys.insert(jdbc,owner,request.id,request.title);
                     String payload=JSON.writeValueAsString(snapshot(owner,request.id));
                     return new AccountChanges.Batch<>(new IdempotentMutations.Reply(201,payload),List.of(new AccountChanges.Change(AccountChanges.Entity.RECORDING,request.id,1,AccountChanges.Operation.UPSERT,payload)));
                 }).value();

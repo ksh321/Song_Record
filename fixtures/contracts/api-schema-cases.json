@@ -702,5 +702,31 @@
       }
     },
     "valid": true
+  },
+  {
+    "schema": "RecordingPage",
+    "value": {
+      "items": [],
+      "count": 0,
+      "next_cursor": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingPage",
+    "value": {
+      "items": [],
+      "next_cursor": null
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingPage",
+    "value": {
+      "items": [],
+      "count": -1,
+      "next_cursor": null
+    },
+    "valid": false
   }
 ]

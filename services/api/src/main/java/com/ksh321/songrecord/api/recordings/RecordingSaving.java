@@ -35,6 +35,7 @@ public final class RecordingSaving {
                 jdbc.update("INSERT INTO recording_file_spec(recording_id,user_id,sha256,size_bytes,duration_ms,codec,sample_rate,channels,capture_integrity) VALUES(?,?,?,?,?,?,?,?,?)",bytes(recording),bytes(owner),f.get("sha256"),f.get("size_bytes"),f.get("duration_ms"),f.get("codec"),f.get("sample_rate"),f.get("channels"),f.get("capture_integrity"));
                 // Actual V2 trigger requires the specification to exist before this state change.
                 jdbc.update("UPDATE recording SET title_snapshot=?,artist_snapshot=?,version_code=?,key_mode=?,key_shift=?,note=?,metadata_state='SAVED' WHERE user_id=? AND id=?",merged.get("title_snapshot"),merged.get("artist_snapshot"),merged.get("version_code"),merged.get("key_mode"),merged.get("key_shift"),merged.get("note"),bytes(owner),bytes(recording));
+                RecordingQueryKeys.replace(jdbc,owner,recording,(String)merged.get("title_snapshot"));
             });
             var snapshot=new LinkedHashMap<>(drafts.snapshot(owner,recording));snapshot.put("file",request.file);
             String payload=JSON.writeValueAsString(snapshot);

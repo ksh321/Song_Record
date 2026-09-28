@@ -548,8 +548,8 @@ paths:
     get:
       operationId: listRecordings
       summary: listRecordings
-      description: P09-03a 필터·정렬 계약 확정. P09-03b에서 실제 DB 조회 연결 예정. ACTIVE 메타정보는 파일 존재와 무관하게 기본 포함하며 DRAFT/SAVED 필터를 별도 제공한다. 기간은 UTC from 포함·to 제외, 태그는 모두 일치, 최종 동률은 UUID 오름차순. 로컬 파일 유무는 서버에서 추정하지 않는다.
-      x-implementation-status: planned
+      description: P09-03b DB 목록 조회 구현. 필터 적용 후 정확한 count와 keyset 페이지를 같은 읽기 스냅샷에서 반환. ACTIVE 메타정보는 파일 존재와 무관하게 기본 포함하며 DRAFT/SAVED 필터를 별도 제공한다. 기간은 UTC from 포함·to 제외, 태그는 모두 일치, 최종 동률은 UUID 오름차순. 로컬 파일 유무는 서버에서 추정하지 않는다.
+      x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
@@ -2138,14 +2138,18 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Recording'
+        count:
+          type: integer
+          minimum: 0
         next_cursor:
           anyOf:
           - $ref: '#/components/schemas/OpaqueCursor'
           - type: 'null'
       required:
       - items
+      - count
       - next_cursor
-      description: 끝 페이지의 next_cursor는 명시적 null. 부분 동기화/기기 파일 UNKNOWN으로 정확하지 않은 전체 개수를 만들지 않는다.
+      description: count는 서버의 같은 읽기 스냅샷과 필터에 대한 전체 메타정보 수. 끝 페이지 next_cursor는 명시적 null. 로컬 파일 유무로 후처리하지 않는다.
     EmptyCommand:
       type: object
       additionalProperties: false
