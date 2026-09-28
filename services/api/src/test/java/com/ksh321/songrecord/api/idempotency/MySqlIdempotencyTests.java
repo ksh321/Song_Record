@@ -582,4 +582,32 @@ class MySqlIdempotencyTests {
         assertThat(jdbc.queryForList("SELECT last_change_seq FROM user_sync_state",Long.class)).containsExactlyInAnyOrder(1L,1L);
     }
 
+    @Test void mysqlDraftCreationWithoutFileSupportsConcurrentUuidAndRollback() throws Exception {
+        var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
+        for(String table:java.util.List.of("device","song","recording")){int start=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(start,core.indexOf(';',start)));}
+        String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));int start=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(start,sync.indexOf(';',start)));
+        var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
+        byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
+        jdbc.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",device,owner);
+        var manager=new DataSourceTransactionManager(jdbc.getDataSource());var drafts=new com.ksh321.songrecord.api.recordings.RecordingDrafts(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,Clock.systemUTC());
+        var json=new tools.jackson.databind.json.JsonMapper();UUID id=UUID.randomUUID();
+        String body=json.writeValueAsString(java.util.Map.of("id",id.toString(),"metadata_state","DRAFT","recorded_at","2026-09-28T07:00:00.123Z","timezone_id","Asia/Seoul","timezone_offset_minutes",540));
+        String aKey=UUID.randomUUID().toString(),bKey=UUID.randomUUID().toString();IdempotentMutations.Reply a,b;
+        try(var pool=Executors.newFixedThreadPool(2)){
+            var ready=new CountDownLatch(2);var go=new CountDownLatch(1);
+            var fa=pool.submit(()->{ready.countDown();go.await();return drafts.create("Bearer test","device",aKey,body);});
+            var fb=pool.submit(()->{ready.countDown();go.await();return drafts.create("Bearer test","device",bKey,body);});
+            try{assertThat(ready.await(5,TimeUnit.SECONDS)).isTrue();}finally{go.countDown();}a=fa.get(15,TimeUnit.SECONDS);b=fb.get(15,TimeUnit.SECONDS);
+        }
+        assertThat(java.util.List.of(a.status(),b.status())).containsExactlyInAnyOrder(200,201);
+        assertThat(drafts.create("Bearer test","device",aKey,body)).isEqualTo(a);assertThat(drafts.create("Bearer test","device",bKey,body)).isEqualTo(b);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM recording",Integer.class)).isEqualTo(1);assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT title_snapshot FROM recording",String.class)).isNull();assertThat(jdbc.queryForObject("SELECT version_code FROM recording",String.class)).isEqualTo("NORMAL");assertThat(jdbc.queryForObject("SELECT origin_device_id FROM recording",byte[].class)).isEqualTo(device);
+        jdbc.execute("CREATE TRIGGER reject_draft_log BEFORE INSERT ON change_log FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='injected draft failure'");
+        String next=body.replace(id.toString(),UUID.randomUUID().toString()),retry=UUID.randomUUID().toString();
+        assertThatThrownBy(()->drafts.create("Bearer test","device",retry,next)).hasRootCauseInstanceOf(java.sql.SQLException.class).hasStackTraceContaining("injected draft failure");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM recording",Integer.class)).isEqualTo(1);assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(2);assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isEqualTo(1);
+        jdbc.execute("DROP TRIGGER reject_draft_log");assertThat(drafts.create("Bearer test","device",retry,next).status()).isEqualTo(201);
+    }
+
 }

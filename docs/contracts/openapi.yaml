@@ -578,19 +578,25 @@ paths:
     post:
       operationId: createRecording
       summary: createRecording
-      description: 후속 단계 구현 대상.
-      x-implementation-status: planned
+      description: P09-01 DRAFT 메타정보 생성. 원본 기기는 인증 세션에서 결정. 같은 UUID 재요청은 기존 초안을 반환하며 입력을 덮어쓰지 않는다. 파일 업로드 및 SAVED 전환은 후속 단계.
+      x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
       - $ref: '#/components/parameters/IdempotencyKey'
       responses:
+        '200':
+          description: 기존 DRAFT 반환
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecordingDraft'
         '201':
           description: 성공
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Recording'
+                $ref: '#/components/schemas/RecordingDraft'
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -608,7 +614,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RecordingCreate'
+              $ref: '#/components/schemas/RecordingDraftCreate'
   /recordings/{id}:
     get:
       operationId: getRecording
@@ -1614,6 +1620,114 @@ components:
       required:
       - base_revision
       description: tag_ids 누락=유지, []=전체 해제, null=오류. SAVED 전환의 필수 입력은 서버가 기존 값과 합쳐 검사한다. song/tier 변경은 전용 API를 사용한다.
+    RecordingDraftCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        id: &id001
+          $ref: '#/components/schemas/Uuid'
+        metadata_state: &id002
+          type: string
+          const: DRAFT
+        song_id: &id003
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        title_snapshot:
+          type:
+          - string
+          - 'null'
+          maxLength: 200
+        artist_snapshot:
+          type:
+          - string
+          - 'null'
+          maxLength: 200
+        version_code: &id004
+          $ref: '#/components/schemas/VersionCode'
+        key_mode: &id005
+          anyOf:
+          - $ref: '#/components/schemas/KeyMode'
+          - type: 'null'
+        key_shift: &id006
+          anyOf:
+          - $ref: '#/components/schemas/KeyShift'
+          - type: 'null'
+        note:
+          anyOf:
+          - $ref: '#/components/schemas/Note'
+          - type: 'null'
+        recorded_at: &id007
+          $ref: '#/components/schemas/UtcInstant'
+        timezone_id: &id008
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 유효한 IANA 시간대 ID. recorded_at은 MySQL DATETIME 범위(1000~9999년)에서 검증.
+        timezone_offset_minutes: &id009
+          type: integer
+          minimum: -1080
+          maximum: 1080
+      required:
+      - id
+      - metadata_state
+      - recorded_at
+      - timezone_id
+      - timezone_offset_minutes
+      description: P09-01 DRAFT만 구현. 빈 제목/가수는 null, note null/누락은 빈 문자열, 버전 누락은 NORMAL.
+        키는 둘 다 null/누락 또는 유효한 쌍. 파일 명세·SAVED·태그·컨디션·티어는 후속 단계이며 현재 거절.
+    RecordingDraft:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        metadata_state: *id002
+        song_id: *id003
+        title_snapshot:
+          anyOf:
+          - $ref: '#/components/schemas/Title'
+          - type: 'null'
+        artist_snapshot:
+          anyOf:
+          - $ref: '#/components/schemas/Artist'
+          - type: 'null'
+        version_code: *id004
+        key_mode: *id005
+        key_shift: *id006
+        note:
+          $ref: '#/components/schemas/Note'
+        recorded_at: *id007
+        timezone_id: *id008
+        timezone_offset_minutes: *id009
+        origin_device_id:
+          $ref: '#/components/schemas/Uuid'
+        revision:
+          $ref: '#/components/schemas/Revision'
+        link_revision:
+          $ref: '#/components/schemas/Revision'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        lifecycle_state:
+          type: string
+          const: ACTIVE
+      required:
+      - id
+      - metadata_state
+      - song_id
+      - title_snapshot
+      - artist_snapshot
+      - version_code
+      - key_mode
+      - key_shift
+      - note
+      - recorded_at
+      - timezone_id
+      - timezone_offset_minutes
+      - origin_device_id
+      - revision
+      - link_revision
+      - updated_at
+      - lifecycle_state
     RecordingCreate:
       type: object
       additionalProperties: false

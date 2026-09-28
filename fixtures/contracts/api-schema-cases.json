@@ -392,5 +392,122 @@
       "note": "x"
     },
     "valid": false
+  },
+  {
+    "schema": "RecordingDraftCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "DRAFT",
+      "recorded_at": "2026-09-28T07:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingDraftCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "DRAFT",
+      "recorded_at": "2026-09-28T07:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "title_snapshot": "",
+      "artist_snapshot": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingDraftCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "SAVED",
+      "recorded_at": "2026-09-28T07:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingDraftCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "DRAFT",
+      "recorded_at": "2026-09-28T07:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "version_code": null
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingDraftCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "DRAFT",
+      "recorded_at": "2026-09-28T07:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "origin_device_id": "00000000-0000-4000-8000-000000000001"
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingDraftCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "DRAFT",
+      "recorded_at": "2026-09-28T07:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "file": {}
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingDraftCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "DRAFT",
+      "recorded_at": "2026-09-28T07:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 1081
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingDraftCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "DRAFT",
+      "recorded_at": "2026-09-28T07:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "key_shift": 13
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingDraft",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "origin_device_id": "00000000-0000-4000-8000-000000000002",
+      "metadata_state": "DRAFT",
+      "lifecycle_state": "ACTIVE",
+      "revision": 1,
+      "link_revision": 1,
+      "updated_at": "2026-09-28T07:00:00Z",
+      "recorded_at": "2026-09-28T07:00:00.123Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "song_id": null,
+      "title_snapshot": null,
+      "artist_snapshot": null,
+      "version_code": "NORMAL",
+      "key_mode": null,
+      "key_shift": null,
+      "note": ""
+    },
+    "valid": true
   }
 ]
