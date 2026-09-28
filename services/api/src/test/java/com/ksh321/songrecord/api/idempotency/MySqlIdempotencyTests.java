@@ -329,4 +329,44 @@ class MySqlIdempotencyTests {
         assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isEqualTo(1);
     }
 
+    @Test void mysqlConcurrentDifferentUuidsMapToOneSongAndPreserveEdits() throws Exception {
+        var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
+        for(String table:java.util.List.of("song","song_source")){int from=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(from,core.indexOf(';',from)));}
+        int trigger=core.indexOf("CREATE TRIGGER trg_song_source_before_insert");jdbc.execute(core.substring(trigger,core.indexOf("$$",trigger)));
+        String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));int from=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(from,sync.indexOf(';',from)));
+        var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
+        var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
+        var candidates=new com.ksh321.songrecord.api.songs.TjCandidates(token->new com.ksh321.songrecord.api.songs.CandidateVerifier.Verified("FIXTURE",com.ksh321.songrecord.api.songs.CandidateVerifier.Brand.TJ,"990001","original","artist",clock.instant(),clock.instant().plusSeconds(3600)),clock);
+        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock);
+        var json=new tools.jackson.databind.json.JsonMapper();
+        String firstBody="{\"id\":\""+UUID.randomUUID()+"\",\"source_type\":\"TJ\",\"source_token\":\"proof\",\"note\":\"first\"}";
+        String secondBody="{\"id\":\""+UUID.randomUUID()+"\",\"source_type\":\"TJ\",\"source_token\":\"proof\",\"note\":\"second\"}";
+        String aKey=UUID.randomUUID().toString(),bKey=UUID.randomUUID().toString();
+        IdempotentMutations.Reply a,b;
+        try(var pool=Executors.newFixedThreadPool(2)) {
+            var ready=new CountDownLatch(2);var go=new CountDownLatch(1);
+            var fa=pool.submit(()->{ready.countDown();go.await();return creation.create("Bearer test","device",aKey,firstBody);});
+            var fb=pool.submit(()->{ready.countDown();go.await();return creation.create("Bearer test","device",bKey,secondBody);});
+            try {assertThat(ready.await(5,TimeUnit.SECONDS)).isTrue();}finally{go.countDown();}
+            a=fa.get(15,TimeUnit.SECONDS);b=fb.get(15,TimeUnit.SECONDS);
+        }
+        assertThat(java.util.List.of(a.status(),b.status())).containsExactlyInAnyOrder(201,200);
+        String canonical=json.readTree(a.body()).get("canonical_song_id").asText();
+        assertThat(json.readTree(b.body()).get("canonical_song_id").asText()).isEqualTo(canonical);
+        assertThat(jdbc.queryForObject("SELECT note FROM song",String.class)).isEqualTo(a.status()==201?"first":"second");
+        for(String table:java.util.List.of("song","song_source","change_log"))assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(2);
+        assertThat(creation.create("Bearer test","device",aKey,firstBody)).isEqualTo(a);
+        assertThat(creation.create("Bearer test","device",bKey,secondBody)).isEqualTo(b);
+        jdbc.update("UPDATE song SET note='keep',version_code='LIVE',representative_key_mode='MALE',representative_key_shift=3,revision=7");
+        var before=jdbc.queryForMap("SELECT note,version_code,representative_key_mode,representative_key_shift,revision,updated_at FROM song");
+        var duplicate=creation.create("Bearer test","device",UUID.randomUUID().toString(),secondBody);
+        assertThat(duplicate.status()).isEqualTo(200);assertThat(json.readTree(duplicate.body()).get("song").get("revision").asLong()).isEqualTo(7);
+        assertThat(jdbc.queryForMap("SELECT note,version_code,representative_key_mode,representative_key_shift,revision,updated_at FROM song")).isEqualTo(before);
+        assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isEqualTo(1);
+        // DB uniqueness remains a second line of defence even for a writer bypassing the service.
+        assertThatThrownBy(()->jdbc.update("INSERT INTO song(id,user_id,source_type,tj_number,title,artist,note) VALUES(?,?,'TJ','990001','x','y','')",com.ksh321.songrecord.api.pagination.PageTestSource.bytes(UUID.randomUUID()),com.ksh321.songrecord.api.pagination.PageTestSource.bytes(principal.userId())))
+                .isInstanceOf(org.springframework.dao.DuplicateKeyException.class);
+    }
+
 }

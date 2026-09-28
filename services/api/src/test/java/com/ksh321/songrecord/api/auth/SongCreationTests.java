@@ -84,4 +84,47 @@ class SongCreationTests {
         id=UUID.randomUUID();postBody(f.key,body(""));f.jdbc.update("UPDATE song SET lifecycle_state='TRASHED'");
         assertThat(postBody(UUID.randomUUID().toString(),body("")).getContentAsString()).contains("SONG_RESTORE_REQUIRED");
     }
+    @Test void canonicalMappingPreservesAllExistingEditsAndDoesNotAdvanceSequence() throws Exception {
+        postBody(f.key,body(",\"note\":\"keep\",\"version_code\":\"LIVE\",\"tier\":\"S\""));
+        UUID canonical=id;
+        f.jdbc.update("UPDATE song SET representative_key_mode='MALE',representative_key_shift=3,revision=8 WHERE id=?",OwnershipTests.bytes(canonical));
+        var before=f.jdbc.queryForMap("SELECT title,artist,note,version_code,song_tier,representative_key_mode,representative_key_shift,revision,updated_at FROM song WHERE id=?",OwnershipTests.bytes(canonical));
+        id=UUID.randomUUID();var response=postBody(UUID.randomUUID().toString(),body(",\"note\":\"replace\",\"version_code\":\"MR\",\"tier\":\"D\""));
+        assertThat(response.getStatus()).isEqualTo(200);
+        var json=new tools.jackson.databind.json.JsonMapper().readTree(response.getContentAsString());
+        assertThat(json.get("canonical_song_id").asText()).isEqualTo(canonical.toString());
+        assertThat(json.get("song").get("revision").asLong()).isEqualTo(8);
+        assertThat(f.jdbc.queryForMap("SELECT title,artist,note,version_code,song_tier,representative_key_mode,representative_key_shift,revision,updated_at FROM song WHERE id=?",OwnershipTests.bytes(canonical))).isEqualTo(before);
+        assertThat(count("change_log")).isEqualTo(1);assertThat(count("song_source")).isEqualTo(1);
+        assertThat(f.jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state WHERE user_id=?",Long.class,OwnershipTests.bytes(f.registration.userId()))).isEqualTo(1);
+    }
+    @Test void reservedNumberStatesAndPurgedUuidTakePriority() throws Exception {
+        postBody(f.key,body(""));UUID canonical=id;id=UUID.randomUUID();
+        for(String state:List.of("TRASHED","PURGE_PENDING")) {
+            f.jdbc.update("UPDATE song SET lifecycle_state=? WHERE id=?",state,OwnershipTests.bytes(canonical));
+            var response=postBody(UUID.randomUUID().toString(),body(""));assertThat(response.getStatus()).isEqualTo(409);
+            assertThat(response.getContentAsString()).contains(state.equals("TRASHED")?"SONG_RESTORE_REQUIRED":"SONG_PURGE_PENDING");
+        }
+        f.jdbc.update("UPDATE song SET lifecycle_state='PURGED' WHERE id=?",OwnershipTests.bytes(canonical));
+        f.jdbc.update("INSERT INTO deletion_ledger VALUES(?,'SONG',?,NULL,2)",OwnershipTests.bytes(f.registration.userId()),OwnershipTests.bytes(canonical));
+        UUID replacement=id;assertThat(postBody(UUID.randomUUID().toString(),body("")).getStatus()).isEqualTo(201);
+        id=canonical;assertThat(postBody(UUID.randomUUID().toString(),body("")).getContentAsString()).contains("RESOURCE_PURGED");
+        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM song WHERE id=?",Integer.class,OwnershipTests.bytes(replacement))).isEqualTo(1);
+    }
+    @Test void sameUuidCannotSwitchToDifferentNumber() throws Exception {
+        postBody(f.key,body(""));var response=postBody(UUID.randomUUID().toString(),body("").replace("valid","second"));
+        assertThat(response.getStatus()).isEqualTo(409);assertThat(response.getContentAsString()).contains("SONG_ID_CONFLICT");
+        assertThat(f.jdbc.queryForObject("SELECT tj_number FROM song",String.class)).isEqualTo("990001");
+    }
+    @Test void sameTitleDifferentNumbersRemainTwoSongs() throws Exception {
+        postBody(f.key,body(""));id=UUID.randomUUID();assertThat(postBody(UUID.randomUUID().toString(),body("").replace("valid","second")).getStatus()).isEqualTo(201);
+        assertThat(count("song")).isEqualTo(2);assertThat(count("change_log")).isEqualTo(2);
+    }
+    @Test void sameNumberInOtherAccountNeverMapsAcrossOwners() throws Exception {
+        postBody(f.key,body(""));UUID otherId=UUID.randomUUID();
+        var tokens=f.sessions.issue(new AccountRegistrationService.Registration(f.other.principal().userId(),f.other.principal().deviceId(),false));
+        var response=mvc.perform(post("/v1/songs").header("Authorization","Bearer "+tokens.accessToken()).header("X-Device-Id",f.other.principal().deviceId()).header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content(body("").replace(id.toString(),otherId.toString()))).andReturn().getResponse();
+        assertThat(response.getStatus()).isEqualTo(201);assertThat(response.getContentAsString()).contains(otherId.toString()).doesNotContain(id.toString());assertThat(count("song")).isEqualTo(2);
+    }
+
 }
