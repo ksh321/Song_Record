@@ -610,4 +610,40 @@ class MySqlIdempotencyTests {
         jdbc.execute("DROP TRIGGER reject_draft_log");assertThat(drafts.create("Bearer test","device",retry,next).status()).isEqualTo(201);
     }
 
+    @Test void mysqlSavedTransitionTriggersRaceAndRollbackWithoutCloud() throws Exception {
+        var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
+        for(String table:java.util.List.of("device","song","recording","recording_file_spec")){int start=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(start,core.indexOf(';',start)));}
+        for(String trigger:java.util.List.of("trg_recording_before_insert","trg_recording_before_update","trg_recording_file_spec_before_update","trg_recording_file_spec_before_delete")){int start=core.indexOf("CREATE TRIGGER "+trigger);jdbc.execute(core.substring(start,core.indexOf("$$",start)));}
+        // RevisionChanges exposes V4 fields; no classification API is exercised here.
+        jdbc.execute("ALTER TABLE recording ADD condition_code VARCHAR(16), ADD condition_name_snapshot VARCHAR(50)");
+        String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));int start=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(start,sync.indexOf(';',start)));
+        var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
+        byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
+        jdbc.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",device,owner);
+        var manager=new DataSourceTransactionManager(jdbc.getDataSource());var drafts=new com.ksh321.songrecord.api.recordings.RecordingDrafts(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,Clock.systemUTC());
+        var saving=new com.ksh321.songrecord.api.recordings.RecordingSaving(jdbc,access,service,new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,Clock.systemUTC()),changes,drafts);
+        var json=new tools.jackson.databind.json.JsonMapper();UUID id=UUID.randomUUID();byte[] recording=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(id);
+        String draft=json.writeValueAsString(java.util.Map.of("id",id.toString(),"metadata_state","DRAFT","recorded_at","2026-09-28T07:00:00Z","timezone_id","UTC","timezone_offset_minutes",0));
+        assertThat(drafts.create("Bearer test","device",UUID.randomUUID().toString(),draft).status()).isEqualTo(201);
+        var file=java.util.Map.of("size_bytes",6291456,"duration_ms",361000,"sha256","a".repeat(64),"codec","AAC_LC","sample_rate",48000,"channels",1,"capture_integrity","VALIDATED");
+        String body=json.writeValueAsString(java.util.Map.of("base_revision",1,"metadata_state","SAVED","title_snapshot","title","artist_snapshot","artist","key_mode","ORIGINAL","key_shift",0,"file",file));
+        assertThatThrownBy(()->jdbc.update("UPDATE recording SET title_snapshot='t',artist_snapshot='a',key_mode='ORIGINAL',key_shift=0,metadata_state='SAVED' WHERE id=?",recording)).hasRootCauseInstanceOf(java.sql.SQLException.class).hasStackTraceContaining("file specification is required");
+        jdbc.execute("CREATE TRIGGER reject_saved_log BEFORE INSERT ON change_log FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='injected saved failure'");String aKey=UUID.randomUUID().toString();
+        assertThatThrownBy(()->saving.save("Bearer test","device",aKey,id.toString(),body)).hasRootCauseInstanceOf(java.sql.SQLException.class).hasStackTraceContaining("injected saved failure");
+        assertThat(jdbc.queryForObject("SELECT metadata_state FROM recording",String.class)).isEqualTo("DRAFT");assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM recording_file_spec",Integer.class)).isZero();assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(1);
+        jdbc.execute("DROP TRIGGER reject_saved_log");String bKey=UUID.randomUUID().toString();Object a,b;
+        try(var pool=Executors.newFixedThreadPool(2)){
+            var ready=new CountDownLatch(2);var go=new CountDownLatch(1);
+            var fa=pool.submit(()->{ready.countDown();go.await();try{return (Object)saving.save("Bearer test","device",aKey,id.toString(),body);}catch(ApiException e){return e;}});
+            var fb=pool.submit(()->{ready.countDown();go.await();try{return (Object)saving.save("Bearer test","device",bKey,id.toString(),body);}catch(ApiException e){return e;}});
+            try{assertThat(ready.await(5,TimeUnit.SECONDS)).isTrue();}finally{go.countDown();}a=fa.get(15,TimeUnit.SECONDS);b=fb.get(15,TimeUnit.SECONDS);
+        }
+        var winner=(IdempotentMutations.Reply)(a instanceof IdempotentMutations.Reply?a:b);var loser=(ApiException)(a instanceof ApiException?a:b);assertThat(winner.status()).isEqualTo(200);assertThat(loser.code()).isEqualTo("REVISION_CONFLICT");
+        assertThat(saving.save("Bearer test","device",a instanceof IdempotentMutations.Reply?aKey:bKey,id.toString(),body)).isEqualTo(winner);
+        assertThat(jdbc.queryForObject("SELECT revision FROM recording",Long.class)).isEqualTo(2);assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM recording_file_spec",Integer.class)).isEqualTo(1);assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(2);
+        assertThatThrownBy(()->jdbc.update("UPDATE recording SET metadata_state='DRAFT' WHERE id=?",recording)).hasRootCauseInstanceOf(java.sql.SQLException.class).hasStackTraceContaining("cannot return to DRAFT");
+        assertThatThrownBy(()->jdbc.update("UPDATE recording_file_spec SET size_bytes=1 WHERE recording_id=?",recording)).hasRootCauseInstanceOf(java.sql.SQLException.class).hasStackTraceContaining("immutable");
+        assertThatThrownBy(()->jdbc.update("DELETE FROM recording_file_spec WHERE recording_id=?",recording)).hasRootCauseInstanceOf(java.sql.SQLException.class).hasStackTraceContaining("cannot be deleted");
+    }
+
 }

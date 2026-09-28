@@ -651,8 +651,8 @@ paths:
     patch:
       operationId: patchRecording
       summary: patchRecording
-      description: 후속 단계 구현 대상.
-      x-implementation-status: planned
+      description: P09-02 DRAFT에서 SAVED 전환만 구현. 필수 입력과 완료 파일 신고 명세를 검사하며 서버 파일 존재는 요구하지 않는다.
+      x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
@@ -668,7 +668,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Recording'
+                $ref: '#/components/schemas/RecordingSaved'
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -686,7 +686,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RecordingPatch'
+              $ref: '#/components/schemas/RecordingSave'
   /songs/{id}/representative:
     put:
       operationId: setRepresentative
@@ -1620,6 +1620,143 @@ components:
       required:
       - base_revision
       description: tag_ids 누락=유지, []=전체 해제, null=오류. SAVED 전환의 필수 입력은 서버가 기존 값과 합쳐 검사한다. song/tier 변경은 전용 API를 사용한다.
+    CompletedRecordingFile:
+      type: object
+      additionalProperties: false
+      properties:
+        size_bytes:
+          type: integer
+          minimum: 1
+          maximum: 6291456
+        duration_ms:
+          type: integer
+          minimum: 1
+          maximum: 361000
+        sha256:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+        codec:
+          type: string
+          const: AAC_LC
+        sample_rate:
+          type: integer
+          const: 48000
+        channels:
+          type: integer
+          const: 1
+        capture_integrity:
+          type: string
+          enum:
+          - VALIDATED
+          - RECOVERED
+      required:
+      - size_bytes
+      - duration_ms
+      - sha256
+      - codec
+      - sample_rate
+      - channels
+      - capture_integrity
+      description: 앱에서 마무리·재생 검사한 완료 파일 신고 명세. 서버 사본 존재/해시 검증 완료를 뜻하지 않는다.
+    RecordingSave:
+      type: object
+      additionalProperties: false
+      properties:
+        base_revision:
+          $ref: '#/components/schemas/Revision'
+        metadata_state:
+          type: string
+          const: SAVED
+        title_snapshot:
+          $ref: '#/components/schemas/Title'
+        artist_snapshot:
+          $ref: '#/components/schemas/Artist'
+        version_code:
+          $ref: '#/components/schemas/VersionCode'
+        key_mode:
+          $ref: '#/components/schemas/KeyMode'
+        key_shift:
+          $ref: '#/components/schemas/KeyShift'
+        note:
+          anyOf:
+          - $ref: '#/components/schemas/Note'
+          - type: 'null'
+        file:
+          $ref: '#/components/schemas/CompletedRecordingFile'
+      required:
+      - base_revision
+      - metadata_state
+      - file
+      description: P09-02 DRAFT→SAVED 전용. 누락한 입력은 현재 초안과 병합해 필수값 검사. file은 7개 필드 모두 필요.
+        일반 수정은 P09-04.
+    RecordingSaved:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        metadata_state:
+          type: string
+          const: SAVED
+        song_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        title_snapshot:
+          $ref: '#/components/schemas/Title'
+        artist_snapshot:
+          $ref: '#/components/schemas/Artist'
+        version_code:
+          $ref: '#/components/schemas/VersionCode'
+        key_mode:
+          $ref: '#/components/schemas/KeyMode'
+        key_shift:
+          $ref: '#/components/schemas/KeyShift'
+        note:
+          $ref: '#/components/schemas/Note'
+        recorded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        timezone_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 유효한 IANA 시간대 ID. recorded_at은 MySQL DATETIME 범위(1000~9999년)에서 검증.
+        timezone_offset_minutes:
+          type: integer
+          minimum: -1080
+          maximum: 1080
+        origin_device_id:
+          $ref: '#/components/schemas/Uuid'
+        revision:
+          $ref: '#/components/schemas/Revision'
+        link_revision:
+          $ref: '#/components/schemas/Revision'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        lifecycle_state:
+          type: string
+          const: ACTIVE
+        file:
+          $ref: '#/components/schemas/CompletedRecordingFile'
+      required:
+      - id
+      - metadata_state
+      - song_id
+      - title_snapshot
+      - artist_snapshot
+      - version_code
+      - key_mode
+      - key_shift
+      - note
+      - recorded_at
+      - timezone_id
+      - timezone_offset_minutes
+      - origin_device_id
+      - revision
+      - link_revision
+      - updated_at
+      - lifecycle_state
+      - file
     RecordingDraftCreate:
       type: object
       additionalProperties: false

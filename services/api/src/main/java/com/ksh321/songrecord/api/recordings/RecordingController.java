@@ -9,7 +9,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/v1/recordings")
 public class RecordingController {
     private final RecordingDrafts drafts;
-    public RecordingController(RecordingDrafts drafts){this.drafts=drafts;}
+    private final RecordingSaving saving;
+    public RecordingController(RecordingDrafts drafts,RecordingSaving saving){this.drafts=drafts;this.saving=saving;}
+    @PatchMapping(path="/{id}",consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> save(@RequestHeader(value="Authorization",required=false) String auth,
+            @RequestHeader(value="X-Device-Id",required=false) String device,
+            @RequestHeader(value="Idempotency-Key",required=false) String op,@PathVariable("id") String id,@RequestBody String body){
+        var result=saving.save(auth,device,op,id,body);
+        return ResponseEntity.status(result.status()).header("Cache-Control","no-store").contentType(MediaType.APPLICATION_JSON).body(result.body());
+    }
     @PostMapping(consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> create(@RequestHeader(value="Authorization",required=false) String auth,
             @RequestHeader(value="X-Device-Id",required=false) String device,

@@ -509,5 +509,198 @@
       "note": ""
     },
     "valid": true
+  },
+  {
+    "schema": "RecordingSave",
+    "value": {
+      "base_revision": 1,
+      "metadata_state": "SAVED",
+      "file": {
+        "size_bytes": 6291456,
+        "duration_ms": 361000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "codec": "AAC_LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "capture_integrity": "RECOVERED"
+      }
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingSave",
+    "value": {
+      "base_revision": 1,
+      "metadata_state": "SAVED",
+      "file": {
+        "size_bytes": 6291457,
+        "duration_ms": 361000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "codec": "AAC_LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "capture_integrity": "RECOVERED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingSave",
+    "value": {
+      "base_revision": 1,
+      "metadata_state": "SAVED",
+      "file": {
+        "size_bytes": 6291456,
+        "duration_ms": 361001,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "codec": "AAC_LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "capture_integrity": "RECOVERED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingSave",
+    "value": {
+      "base_revision": 1,
+      "metadata_state": "SAVED",
+      "file": {
+        "size_bytes": 6291456,
+        "duration_ms": 0,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "codec": "AAC_LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "capture_integrity": "RECOVERED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingSave",
+    "value": {
+      "base_revision": 1,
+      "metadata_state": "SAVED",
+      "file": {
+        "size_bytes": 6291456,
+        "duration_ms": 361000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "codec": "AAC_LC",
+        "sample_rate": 44100,
+        "channels": 1,
+        "capture_integrity": "RECOVERED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingSave",
+    "value": {
+      "base_revision": 1,
+      "metadata_state": "SAVED",
+      "file": {
+        "size_bytes": 6291456,
+        "duration_ms": 361000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "codec": "AAC_LC",
+        "sample_rate": 48000,
+        "channels": 2,
+        "capture_integrity": "RECOVERED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingSave",
+    "value": {
+      "base_revision": 1,
+      "metadata_state": "SAVED",
+      "file": {
+        "size_bytes": 6291456,
+        "duration_ms": 361000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "codec": "MP3",
+        "sample_rate": 48000,
+        "channels": 1,
+        "capture_integrity": "RECOVERED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingSave",
+    "value": {
+      "base_revision": 1,
+      "metadata_state": "SAVED",
+      "file": {
+        "size_bytes": 6291456,
+        "duration_ms": 361000,
+        "sha256": "bad",
+        "codec": "AAC_LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "capture_integrity": "RECOVERED"
+      }
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingSave",
+    "value": {
+      "base_revision": 1,
+      "metadata_state": "SAVED",
+      "file": {
+        "size_bytes": 6291456,
+        "duration_ms": 361000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "codec": "AAC_LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "capture_integrity": "UNKNOWN"
+      }
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingSave",
+    "value": {
+      "base_revision": 1,
+      "metadata_state": "SAVED"
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingSaved",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "origin_device_id": "00000000-0000-4000-8000-000000000002",
+      "metadata_state": "SAVED",
+      "lifecycle_state": "ACTIVE",
+      "revision": 2,
+      "link_revision": 1,
+      "updated_at": "2026-09-28T07:00:00Z",
+      "recorded_at": "2026-09-28T07:00:00.123Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "song_id": null,
+      "title_snapshot": "title",
+      "artist_snapshot": "artist",
+      "version_code": "NORMAL",
+      "key_mode": "ORIGINAL",
+      "key_shift": 0,
+      "note": "",
+      "file": {
+        "size_bytes": 6291456,
+        "duration_ms": 361000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "codec": "AAC_LC",
+        "sample_rate": 48000,
+        "channels": 1,
+        "capture_integrity": "RECOVERED"
+      }
+    },
+    "valid": true
   }
 ]

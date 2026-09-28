@@ -49,7 +49,7 @@ public final class RecordingDrafts {
             return new IdempotentMutations.Reply(200,JSON.writeValueAsString(current));
         });}catch(DuplicateKeyException e){throw error(HttpStatus.CONFLICT,"RECORDING_ID_CONFLICT","녹음 식별자를 확인해 주세요.");}
     }
-    private Map<String,Object> snapshot(UUID owner,UUID id){
+    Map<String,Object> snapshot(UUID owner,UUID id){
         return jdbc.queryForObject("SELECT * FROM recording WHERE user_id=? AND id=?",(rs,n)->{
             var m=new LinkedHashMap<String,Object>();m.put("id",id.toString());m.put("origin_device_id",uuid(rs.getBytes("origin_device_id")));m.put("song_id",uuid(rs.getBytes("song_id")));
             m.put("revision",rs.getLong("revision"));m.put("link_revision",rs.getLong("link_revision"));
