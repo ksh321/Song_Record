@@ -681,7 +681,7 @@ paths:
     post:
       operationId: createRecording
       summary: createRecording
-      description: P09-01 DRAFT 메타정보 생성. 원본 기기는 인증 세션에서 결정. 같은 UUID 재요청은 기존 초안을 반환하며 입력을 덮어쓰지 않는다. 파일 업로드 및 SAVED 전환은 후속 단계.
+      description: P09-01 DRAFT 메타정보 생성. 원본 기기는 인증 세션에서 결정. 같은 UUID 재요청은 기존 초안을 반환하며 입력을 덮어쓰지 않는다. 용량·고정 한도·업로드 잠금과 독립적이며 SAVED 전환은 PATCH에서 수행한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -754,7 +754,7 @@ paths:
     patch:
       operationId: patchRecording
       summary: patchRecording
-      description: P09-04 부분 수정 및 기존 DRAFT→SAVED 전환. revision·멱등성을 검사하며 파일 업로드·용량과 독립적으로 수정한다.
+      description: P09-04 부분 수정 및 기존 DRAFT→SAVED 전환. revision·멱등성을 검사하며 용량 부족·고정 한도·업로드 잠금과 독립적으로 수정한다. SAVED는 유효한 완료 파일 명세를 요구하지만 서버 파일 보관 완료를 뜻하지 않는다. 파일 대기 상태와 사용량은 이 요청으로 변경하지 않는다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -1196,7 +1196,7 @@ paths:
     patch:
       operationId: renameCondition
       summary: renameCondition
-      description: revision을 검사하여 활성 컨디션 이름만 수정한다. 과거 recording_tag.name_snapshot은 변경하지
+      description: revision을 검사하여 활성 컨디션 이름만 수정한다. 과거 recording.condition_name_snapshot은 변경하지
         않는다. 이름 중복/보관 컨디션/버전 충돌은 409.
       x-implementation-status: implemented
       parameters:
@@ -1237,7 +1237,7 @@ paths:
     post:
       operationId: archiveCondition
       summary: archiveCondition
-      description: 컨디션를 물리 삭제하지 않고 archived_at을 기록한다. 기존 녹음 관계와 당시 이름은 유지하며 신규 선택은 차단한다.
+      description: 컨디션을 물리 삭제하지 않고 archived_at을 기록한다. 기존 녹음 관계와 당시 이름은 유지하며 신규 선택은 차단한다.
         이미 보관된 컨디션의 최초 보관 시각은 유지한다.
       x-implementation-status: implemented
       parameters:
