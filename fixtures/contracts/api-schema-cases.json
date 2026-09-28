@@ -964,5 +964,98 @@
       "link_revision": 2
     },
     "valid": false
+  },
+  {
+    "schema": "TagCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "연습"
+    },
+    "valid": true
+  },
+  {
+    "schema": "TagCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+    },
+    "valid": true
+  },
+  {
+    "schema": "TagCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "valid": false
+  },
+  {
+    "schema": "TagCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": null
+    },
+    "valid": false
+  },
+  {
+    "schema": "TagCreate",
+    "value": {
+      "name": "연습"
+    },
+    "valid": false
+  },
+  {
+    "schema": "TagPatch",
+    "value": {
+      "base_revision": 1,
+      "name": "수정"
+    },
+    "valid": true
+  },
+  {
+    "schema": "TagPatch",
+    "value": {
+      "base_revision": 0,
+      "name": "수정"
+    },
+    "valid": false
+  },
+  {
+    "schema": "TagArchive",
+    "value": {
+      "base_revision": 1
+    },
+    "valid": true
+  },
+  {
+    "schema": "TagArchive",
+    "value": {},
+    "valid": false
+  },
+  {
+    "schema": "TagArchive",
+    "value": {
+      "base_revision": 1,
+      "archived_at": null
+    },
+    "valid": false
+  },
+  {
+    "schema": "TagPage",
+    "value": {
+      "items": [],
+      "count": 0,
+      "next_cursor": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "TagPage",
+    "value": {
+      "items": [],
+      "count": -1,
+      "next_cursor": null
+    },
+    "valid": false
   }
 ]
