@@ -286,5 +286,63 @@
       "version_code": "NORMAL"
     },
     "valid": false
+  },
+  {
+    "schema": "SongPatch",
+    "value": {
+      "base_revision": 1,
+      "representative_key_mode": "MALE",
+      "representative_key_shift": -12
+    },
+    "valid": true
+  },
+  {
+    "schema": "SongPatch",
+    "value": {
+      "base_revision": 1,
+      "representative_key_mode": null,
+      "representative_key_shift": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "SongPatch",
+    "value": {
+      "base_revision": 1,
+      "representative_key_shift": 3
+    },
+    "valid": true
+  },
+  {
+    "schema": "SongPatch",
+    "value": {
+      "base_revision": 1,
+      "representative_key_shift": 13
+    },
+    "valid": false
+  },
+  {
+    "schema": "SongPatch",
+    "value": {
+      "base_revision": 1,
+      "representative_key_shift": 1.5
+    },
+    "valid": false
+  },
+  {
+    "schema": "SongPatch",
+    "value": {
+      "base_revision": 1,
+      "language": "ko"
+    },
+    "valid": false
+  },
+  {
+    "schema": "SongPatch",
+    "value": {
+      "base_revision": 1,
+      "representative_recording_id": null
+    },
+    "valid": false
   }
 ]

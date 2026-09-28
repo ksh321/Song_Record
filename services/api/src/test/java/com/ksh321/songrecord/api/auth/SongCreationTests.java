@@ -36,6 +36,7 @@ class SongCreationTests {
         f.jdbc.execute("ALTER TABLE recording ADD recorded_at TIMESTAMP(3)");
         context=new AnnotationConfigWebApplicationContext();context.setServletContext(new MockServletContext());context.getEnvironment().setActiveProfiles("dev");
         context.addBeanFactoryPostProcessor(b->{
+            b.registerSingleton("revisions",new com.ksh321.songrecord.api.revision.RevisionChanges(f.jdbc,f.access,f.manager,f.clock));
             b.registerSingleton("pages",new com.ksh321.songrecord.api.pagination.KeysetPages(f.jdbc,f.access,f.manager,new com.ksh321.songrecord.api.pagination.PageCursor(new byte[32],f.clock,Duration.ofMinutes(30))));
             b.registerSingleton("jdbc",f.jdbc);b.registerSingleton("access",f.access);b.registerSingleton("mutations",f.mutations);
             b.registerSingleton("guard",new CreationGuard(f.jdbc,f.access,f.manager));b.registerSingleton("changes",new AccountChanges(f.jdbc,f.access,f.manager,f.clock));

@@ -443,4 +443,54 @@ class MySqlIdempotencyTests {
             assertThat(flyway.migrate().migrationsExecuted).isZero();
         } finally {admin.execute("DROP DATABASE "+name);}
     }
+
+    @Test void mysqlSongEditRaceKeyRefreshAndRollbackPreservePastRecording() throws Exception {
+        var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
+        for(String table:java.util.List.of("device","song","recording")){
+            int start=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(start,core.indexOf(';',start)));
+        }
+        installSongQueryKeys();var principal=access.revalidate(account);
+        when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
+        byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
+        UUID song=UUID.randomUUID();byte[] songBytes=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(song);
+        jdbc.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",device,owner);
+        jdbc.update("INSERT INTO song(id,user_id,source_type,title,artist,version_code,note) VALUES(?,?,'MANUAL','before','artist','NORMAL','')",songBytes,owner);
+        com.ksh321.songrecord.api.songs.SongQueryKeys.insert(jdbc,principal.userId(),song,"before","artist");
+        jdbc.update("INSERT INTO recording(id,user_id,origin_device_id,song_id,title_snapshot,artist_snapshot,version_code,key_mode,key_shift,tier,note,recorded_at,timezone_id,timezone_offset_minutes,metadata_state) VALUES(?,?,?,?,'past','past artist','LIVE','FEMALE',-2,'D','keep',UTC_TIMESTAMP(3),'UTC',0,'SAVED')",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(UUID.randomUUID()),owner,device,songBytes);
+        var recordingBefore=jdbc.queryForMap("SELECT * FROM recording");var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
+        var editing=new com.ksh321.songrecord.api.songs.SongEditing(jdbc,access,service,new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,clock),changes);
+        String aKey=UUID.randomUUID().toString(),bKey=UUID.randomUUID().toString();
+        String aBody="{\"base_revision\":1,\"title\":\"alpha\"}",bBody="{\"base_revision\":1,\"title\":\"beta\"}";Object a,b;
+        try(var pool=Executors.newFixedThreadPool(2)){
+            var ready=new CountDownLatch(2);var go=new CountDownLatch(1);
+            var fa=pool.submit(()->{ready.countDown();go.await();try{return (Object)editing.patch("Bearer test","device",aKey,song.toString(),aBody);}catch(ApiException e){return e;}});
+            var fb=pool.submit(()->{ready.countDown();go.await();try{return (Object)editing.patch("Bearer test","device",bKey,song.toString(),bBody);}catch(ApiException e){return e;}});
+            try{assertThat(ready.await(5,TimeUnit.SECONDS)).isTrue();}finally{go.countDown();}
+            a=fa.get(15,TimeUnit.SECONDS);b=fb.get(15,TimeUnit.SECONDS);
+        }
+        var winner=(IdempotentMutations.Reply)(a instanceof IdempotentMutations.Reply?a:b);var loser=(ApiException)(a instanceof ApiException?a:b);
+        assertThat(winner.status()).isEqualTo(200);assertThat(loser.code()).isEqualTo("REVISION_CONFLICT");
+        assertThat(editing.patch("Bearer test","device",a instanceof IdempotentMutations.Reply?aKey:bKey,song.toString(),a instanceof IdempotentMutations.Reply?aBody:bBody)).isEqualTo(winner);
+        String title=jdbc.queryForObject("SELECT title FROM song",String.class);
+        assertThat(jdbc.queryForObject("SELECT title_key FROM song_query_key",byte[].class)).isEqualTo(com.ksh321.songrecord.api.domain.DomainOrdering.sortKeyBytes(title));
+        assertThat(jdbc.queryForObject("SELECT revision FROM song",Long.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(1);
+        var json=new tools.jackson.databind.json.JsonMapper();
+        assertThat(editing.patch("Bearer test","device",UUID.randomUUID().toString(),song.toString(),json.writeValueAsString(java.util.Map.of("base_revision",2,"note","😀".repeat(2000),"version_code","MR","tier","A","representative_key_mode","MALE","representative_key_shift",3))).status()).isEqualTo(200);
+        assertThat(jdbc.queryForObject("SELECT CHAR_LENGTH(note) FROM song",Integer.class)).isEqualTo(2000);
+        var before=jdbc.queryForMap("SELECT * FROM song");var beforeKey=jdbc.queryForMap("SELECT HEX(title_key) AS title_key,HEX(artist_key) AS artist_key FROM song_query_key");
+        jdbc.execute("ALTER TABLE song_query_key ADD CONSTRAINT reject_edit_key CHECK(title_search<>X'626c6f636b6564')");
+        String retryKey=UUID.randomUUID().toString(),retryBody="{\"base_revision\":3,\"title\":\"blocked\"}";
+        assertThatThrownBy(()->editing.patch("Bearer test","device",retryKey,song.toString(),retryBody)).hasRootCauseInstanceOf(java.sql.SQLException.class).hasStackTraceContaining("reject_edit_key");
+        assertThat(jdbc.queryForMap("SELECT * FROM song")).usingRecursiveComparison().isEqualTo(before);assertThat(jdbc.queryForMap("SELECT HEX(title_key) AS title_key,HEX(artist_key) AS artist_key FROM song_query_key")).isEqualTo(beforeKey);
+        jdbc.execute("ALTER TABLE song_query_key DROP CHECK reject_edit_key");
+        jdbc.execute("CREATE TRIGGER reject_song_edit_log BEFORE INSERT ON change_log FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='injected edit log failure'");
+        assertThatThrownBy(()->editing.patch("Bearer test","device",retryKey,song.toString(),retryBody)).hasRootCauseInstanceOf(java.sql.SQLException.class).hasStackTraceContaining("injected edit log failure");
+        assertThat(jdbc.queryForMap("SELECT * FROM song")).usingRecursiveComparison().isEqualTo(before);assertThat(jdbc.queryForMap("SELECT HEX(title_key) AS title_key,HEX(artist_key) AS artist_key FROM song_query_key")).isEqualTo(beforeKey);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(2);assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isEqualTo(2);
+        jdbc.execute("DROP TRIGGER reject_song_edit_log");
+        assertThat(editing.patch("Bearer test","device",retryKey,song.toString(),retryBody).status()).isEqualTo(200);
+        assertThat(jdbc.queryForObject("SELECT revision FROM song",Long.class)).isEqualTo(4);assertThat(jdbc.queryForMap("SELECT * FROM recording")).usingRecursiveComparison().isEqualTo(recordingBefore);
+    }
+
 }

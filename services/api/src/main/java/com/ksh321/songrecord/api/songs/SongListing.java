@@ -83,7 +83,7 @@ public final class SongListing {
     private static Map<String,Object> snapshot(ResultSet rs)throws SQLException{
         var map=new LinkedHashMap<String,Object>();map.put("id",uuid(rs.getBytes("id")).toString());map.put("revision",rs.getLong("revision"));
         for(String name:List.of("source_type","tj_number","title","artist","version_code","note","lifecycle_state"))map.put(name,rs.getString(name));
-        map.put("tier",rs.getString("song_tier"));
+        map.put("tier",rs.getString("song_tier"));map.put("representative_key_mode",rs.getString("representative_key_mode"));map.put("representative_key_shift",rs.getObject("representative_key_shift"));
         for(String name:List.of("updated_at","created_at","latest_recorded_at")){var value=instant(rs,name);map.put(name,value==null?null:value.toString());}
         return map;
     }

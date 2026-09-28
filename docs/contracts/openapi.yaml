@@ -508,8 +508,8 @@ paths:
     patch:
       operationId: patchSong
       summary: patchSong
-      description: 후속 단계 구현 대상.
-      x-implementation-status: planned
+      description: P08-06 구현. base_revision으로 충돌을 검사하고 곡·검색 키·변경 기록을 같은 트랜잭션에서 수정한다. 과거 녹음과 TJ 출처 원본은 유지한다.
+      x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
@@ -1345,6 +1345,14 @@ components:
           anyOf:
           - $ref: '#/components/schemas/UtcInstant'
           - type: 'null'
+        representative_key_mode:
+          anyOf:
+          - $ref: '#/components/schemas/KeyMode'
+          - type: 'null'
+        representative_key_shift:
+          anyOf:
+          - $ref: '#/components/schemas/KeyShift'
+          - type: 'null'
       required:
       - id
       - revision
@@ -1377,9 +1385,17 @@ components:
           anyOf:
           - $ref: '#/components/schemas/Note'
           - type: 'null'
+        representative_key_mode:
+          anyOf:
+          - $ref: '#/components/schemas/KeyMode'
+          - type: 'null'
+        representative_key_shift:
+          anyOf:
+          - $ref: '#/components/schemas/KeyShift'
+          - type: 'null'
       required:
       - base_revision
-      description: 누락=유지, nullable 필드의 null=해제. source_type/tj_number/id/user_id 변경 금지. 인증으로 소유자를 결정한다.
+      description: 누락=유지. note null은 빈 메모, tier null은 미정. 대표 키는 기존 값과 합친 뒤 두 필드가 함께 null이거나 유효한 모드와 -12~12 정수여야 하며 ORIGINAL은 0만 허용한다. source_type/tj_number/id/user_id/언어/대표 녹음 ID는 변경 금지. 새 요청으로 수락한 PATCH는 동일값·빈 수정이라도 revision을 1 증가시킨다.
     SongCreate:
       type: object
       additionalProperties: false

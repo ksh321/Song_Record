@@ -61,11 +61,11 @@ public final class SongCreation {
         return reply(200,false,song);
     }
     private Map<String,Object> snapshot(UUID owner,UUID id){
-        var rows=jdbc.query("SELECT id,revision,updated_at,source_type,tj_number,title,artist,version_code,song_tier,note,lifecycle_state FROM song WHERE user_id=? AND id=?",(rs,n)->{
+        var rows=jdbc.query("SELECT id,revision,updated_at,source_type,tj_number,title,artist,version_code,song_tier,note,lifecycle_state,representative_key_mode,representative_key_shift FROM song WHERE user_id=? AND id=?",(rs,n)->{
             var m=new LinkedHashMap<String,Object>();m.put("id",uuid(rs.getBytes("id")).toString());m.put("revision",rs.getLong("revision"));
             m.put("updated_at",rs.getTimestamp("updated_at").toLocalDateTime().toInstant(ZoneOffset.UTC).toString());
             for(String name:List.of("source_type","tj_number","title","artist","version_code","note","lifecycle_state"))m.put(name,rs.getString(name));
-            m.put("tier",rs.getString("song_tier"));return m;
+            m.put("tier",rs.getString("song_tier"));m.put("representative_key_mode",rs.getString("representative_key_mode"));m.put("representative_key_shift",rs.getObject("representative_key_shift"));return m;
         },bytes(owner),bytes(id));
         if(rows.size()!=1)throw new IllegalStateException("Song disappeared inside account transaction");return rows.getFirst();
     }

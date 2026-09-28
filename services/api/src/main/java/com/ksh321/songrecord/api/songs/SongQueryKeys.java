@@ -14,6 +14,11 @@ public final class SongQueryKeys {
         jdbc.update("INSERT INTO song_query_key(song_id,user_id,key_version,title_key,artist_key,title_search,artist_search) VALUES(?,?,?,?,?,?,?)",
                 bytes(song),bytes(owner),VERSION,DomainOrdering.sortKeyBytes(title),DomainOrdering.sortKeyBytes(artist),search(title),search(artist));
     }
+    /** Caller holds the song/account locks and the mutation transaction; readers see old or new keys atomically. */
+    public static void replace(JdbcTemplate jdbc, UUID owner, UUID song, String title, String artist) {
+        jdbc.update("DELETE FROM song_query_key WHERE user_id=? AND song_id=?",bytes(owner),bytes(song));
+        insert(jdbc,owner,song,title,artist);
+    }
     public static byte[] search(String text) { return DomainOrdering.normalizeText(text).getBytes(StandardCharsets.UTF_8); }
     public static byte[] bytes(UUID value) { return ByteBuffer.allocate(16).putLong(value.getMostSignificantBits()).putLong(value.getLeastSignificantBits()).array(); }
     public static UUID uuid(byte[] bytes) { var b=ByteBuffer.wrap(bytes); return new UUID(b.getLong(),b.getLong()); }

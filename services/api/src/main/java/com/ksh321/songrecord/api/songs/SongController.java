@@ -10,7 +10,15 @@ import org.springframework.web.bind.annotation.*;
 public class SongController {
     private final SongCreation creation;
     private final SongListing listing;
-    public SongController(SongCreation creation,SongListing listing){this.creation=creation;this.listing=listing;}
+    private final SongEditing editing;
+    public SongController(SongCreation creation,SongListing listing,SongEditing editing){this.creation=creation;this.listing=listing;this.editing=editing;}
+    @PatchMapping(path="/{id}",consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> patch(@RequestHeader(value="Authorization",required=false) String auth,
+            @RequestHeader(value="X-Device-Id",required=false) String device,
+            @RequestHeader(value="Idempotency-Key",required=false) String op,@PathVariable("id") String id,@RequestBody String body){
+        var result=editing.patch(auth,device,op,id,body);
+        return ResponseEntity.status(result.status()).header("Cache-Control","no-store").contentType(MediaType.APPLICATION_JSON).body(result.body());
+    }
     @GetMapping(produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<com.ksh321.songrecord.api.pagination.KeysetPages.Page<java.util.Map<String,Object>>> list(
             @RequestHeader(value="Authorization",required=false) String auth,
