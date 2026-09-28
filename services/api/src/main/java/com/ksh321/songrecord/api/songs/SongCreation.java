@@ -55,8 +55,8 @@ public final class SongCreation {
         var song=snapshot(owner,id);String state=(String)song.get("lifecycle_state");
         if("PURGED".equals(state))throw conflict("RESOURCE_PURGED");
         if(!type.equals(song.get("source_type")) || !Objects.equals(number,song.get("tj_number")))throw conflict("SONG_ID_CONFLICT");
-        if("TRASHED".equals(state))throw conflict("SONG_RESTORE_REQUIRED");
-        if("PURGE_PENDING".equals(state))throw conflict("SONG_PURGE_PENDING");
+        if("TRASHED".equals(state))throw lifecycleConflict("SONG_RESTORE_REQUIRED",song);
+        if("PURGE_PENDING".equals(state))throw lifecycleConflict("SONG_PURGE_PENDING",song);
         if(!"ACTIVE".equals(state))throw new IllegalStateException("Invalid song lifecycle");
         return reply(200,false,song);
     }
@@ -93,6 +93,11 @@ public final class SongCreation {
     private static String text(JsonNode root,String key,boolean required){var value=root.get(key);if(value==null){if(required)throw invalid();return null;}if(value.isNull() && (key.equals("tier") || key.equals("note")))return null;if(!value.isTextual())throw invalid();return value.asText();}
     private static String normalized(InputContracts.Field field,String value){var result=InputContracts.validate(field,value);if(!result.valid())throw invalid();return result.normalized();}
     private static ApiException invalid(){return new ApiException(HttpStatus.BAD_REQUEST,"VALIDATION_FAILED","곡 등록 값을 확인해 주세요.",false,Map.of());}
+    private static ApiException lifecycleConflict(String code,Map<String,Object> song){
+        String message=code.equals("SONG_RESTORE_REQUIRED")?"휴지통에 같은 곡이 있습니다. 기존 곡을 복원해 주세요.":"기존 곡을 영구 삭제 중입니다. 완료 후 다시 등록해 주세요.";
+        return new ApiException(HttpStatus.CONFLICT,code,message,false,Map.of(
+                "canonical_song_id",song.get("id"),"current_revision",song.get("revision"),"lifecycle_state",song.get("lifecycle_state")));
+    }
     private static ApiException conflict(String code){return new ApiException(HttpStatus.CONFLICT,code,"기존 곡의 상태를 확인해 주세요.",false,Map.of());}
     private static byte[] bytes(UUID id){return ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();}
     private static UUID uuid(byte[] data){var b=ByteBuffer.wrap(data);return new UUID(b.getLong(),b.getLong());}

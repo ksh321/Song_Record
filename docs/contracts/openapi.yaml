@@ -435,7 +435,7 @@ paths:
     post:
       operationId: createSong
       summary: createSong
-      description: P08-04 TJ·MANUAL 생성 구현. TJ는 검증된 후보와 출처 원본을 저장한다. MANUAL은 사용자 확인 사유 TJ_NOT_FOUND와 곡명·가수를 요구하며 외부 후보 검증을 호출하지 않는다. TJ 후보 검증 장애는 503으로 유지하고 MANUAL로 자동 전환하지 않는다.
+      description: P08-04 TJ·MANUAL 생성 구현. TJ는 검증된 후보와 출처 원본을 저장한다. MANUAL은 사용자 확인 사유 TJ_NOT_FOUND와 곡명·가수를 요구하며 외부 후보 검증을 호출하지 않는다. TJ 후보 검증 장애는 503으로 유지하고 MANUAL로 자동 전환하지 않는다. P08-08 같은 번호의 TRASHED는 SONG_RESTORE_REQUIRED, PURGE_PENDING은 SONG_PURGE_PENDING(409)이며 details에 canonical_song_id·current_revision·lifecycle_state를 제공한다. PURGED UUID 및 삭제 원장의 UUID는 RESOURCE_PURGED로 거절하고 같은 번호는 새 UUID로만 등록한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
