@@ -553,4 +553,33 @@ class MySqlIdempotencyTests {
         com.ksh321.songrecord.api.songs.SongLifecycleDatabaseChecks.verify(jdbc,creation,"Bearer test","device",principal.userId(),"00990001");
     }
 
+    @Test void mysqlSameTjNumberAndOperationKeyRemainAccountScoped() throws Exception {
+        var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
+        for(String table:java.util.List.of("song","song_source")){int start=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(start,core.indexOf(';',start)));}
+        installSongQueryKeys();String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));int start=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(start,sync.indexOf(';',start)));
+        var principal=access.revalidate(account);when(access.authenticate("Bearer a","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
+        UUID otherOwner=UUID.randomUUID();var other=mock(AccountAccess.Account.class);var otherPrincipal=new SessionService.Principal(otherOwner,UUID.randomUUID(),UUID.randomUUID());
+        when(access.authenticate("Bearer b","device")).thenReturn(other);when(access.revalidate(other)).thenReturn(otherPrincipal);when(other.principal()).thenReturn(otherPrincipal);
+        byte[] otherBytes=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(otherOwner);
+        jdbc.update("INSERT INTO app_user(id) VALUES(?)",otherBytes);jdbc.update("INSERT INTO user_sync_state(user_id) VALUES(?)",otherBytes);
+        var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
+        var candidates=new com.ksh321.songrecord.api.songs.TjCandidates(token->new com.ksh321.songrecord.api.songs.CandidateVerifier.Verified("FIXTURE",com.ksh321.songrecord.api.songs.CandidateVerifier.Brand.TJ,token,"same title","same artist",clock.instant(),clock.instant().plusSeconds(3600)),clock);
+        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock);
+        var json=new tools.jackson.databind.json.JsonMapper();UUID aId=UUID.randomUUID(),bId=UUID.randomUUID();String sharedKey=UUID.randomUUID().toString();
+        String aBody=json.writeValueAsString(java.util.Map.of("id",aId.toString(),"source_type","TJ","source_token","00990001"));
+        String bBody=aBody.replace(aId.toString(),bId.toString());
+        var a=creation.create("Bearer a","device",sharedKey,aBody);var b=creation.create("Bearer b","device",sharedKey,bBody);
+        assertThat(a.status()).isEqualTo(201);assertThat(b.status()).isEqualTo(201);
+        assertThat(json.readTree(a.body()).get("canonical_song_id").asText()).isEqualTo(aId.toString());assertThat(json.readTree(b.body()).get("canonical_song_id").asText()).isEqualTo(bId.toString());
+        assertThat(creation.create("Bearer a","device",sharedKey,aBody)).isEqualTo(a);assertThat(creation.create("Bearer b","device",sharedKey,bBody)).isEqualTo(b);
+        jdbc.update("UPDATE song SET lifecycle_state='TRASHED',deleted_at=UTC_TIMESTAMP(3) WHERE id=?",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(aId));
+        String retryA=aBody.replace(aId.toString(),UUID.randomUUID().toString());
+        assertThatThrownBy(()->creation.create("Bearer a","device",UUID.randomUUID().toString(),retryA)).isInstanceOfSatisfying(ApiException.class,e->{assertThat(e.code()).isEqualTo("SONG_RESTORE_REQUIRED");assertThat(e.details().get("canonical_song_id")).isEqualTo(aId.toString());});
+        var duplicateB=creation.create("Bearer b","device",UUID.randomUUID().toString(),bBody.replace(bId.toString(),UUID.randomUUID().toString()));assertThat(duplicateB.status()).isEqualTo(200);assertThat(json.readTree(duplicateB.body()).get("canonical_song_id").asText()).isEqualTo(bId.toString());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM song WHERE reserved_tj_number='00990001'",Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(3);
+        assertThat(jdbc.queryForList("SELECT last_change_seq FROM user_sync_state",Long.class)).containsExactlyInAnyOrder(1L,1L);
+    }
+
 }
