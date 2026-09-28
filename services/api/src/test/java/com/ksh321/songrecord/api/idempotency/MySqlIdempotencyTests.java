@@ -369,4 +369,39 @@ class MySqlIdempotencyTests {
                 .isInstanceOf(org.springframework.dao.DuplicateKeyException.class);
     }
 
+
+    @Test void mysqlManualSongsAllowNullNumbersAndRollbackAtomicChanges() throws Exception {
+        var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
+        for(String table:java.util.List.of("song","song_source")){int from=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(from,core.indexOf(';',from)));}
+        int trigger=core.indexOf("CREATE TRIGGER trg_song_source_before_insert");jdbc.execute(core.substring(trigger,core.indexOf("$$",trigger)));
+        String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));int from=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(from,sync.indexOf(';',from)));
+        var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
+        var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
+        var candidates=new com.ksh321.songrecord.api.songs.TjCandidates(token->{throw new AssertionError("Manual creation must not access candidate verifier");},clock);
+        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock);
+        var json=new tools.jackson.databind.json.JsonMapper();
+
+        String id=UUID.randomUUID().toString();
+        String body="{\"id\":\""+id+"\",\"source_type\":\"MANUAL\",\"manual_reason\":\"TJ_NOT_FOUND\",\"title\":\"same\",\"artist\":\"artist\"}";
+        String key=UUID.randomUUID().toString();
+        var first=creation.create("Bearer test","device",key,body);assertThat(first.status()).isEqualTo(201);
+        assertThat(creation.create("Bearer test","device",key,body)).isEqualTo(first);
+        assertThat(creation.create("Bearer test","device",UUID.randomUUID().toString(),body).status()).isEqualTo(200);
+        String next=body.replace(id,UUID.randomUUID().toString());
+        assertThat(creation.create("Bearer test","device",UUID.randomUUID().toString(),next).status()).isEqualTo(201);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM song WHERE source_type='MANUAL' AND tj_number IS NULL AND reserved_tj_number IS NULL",Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM song_source",Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(3);
+        // Reject the next log using a trigger, after song INSERT and sequence allocation.
+        jdbc.execute("CREATE TRIGGER reject_manual_change BEFORE INSERT ON change_log FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='injected manual failure'");
+        assertThatThrownBy(()->creation.create("Bearer test","device",UUID.randomUUID().toString(),body.replace(id,UUID.randomUUID().toString())))
+                .hasRootCauseInstanceOf(java.sql.SQLException.class)
+                .hasStackTraceContaining("injected manual failure");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM song",Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isEqualTo(2);
+    }
+
 }

@@ -37,6 +37,7 @@ class SongCreationTests {
             b.registerSingleton("jdbc",f.jdbc);b.registerSingleton("access",f.access);b.registerSingleton("mutations",f.mutations);
             b.registerSingleton("guard",new CreationGuard(f.jdbc,f.access,f.manager));b.registerSingleton("changes",new AccountChanges(f.jdbc,f.access,f.manager,f.clock));
             b.registerSingleton("candidates",new TjCandidates(token->{
+                if(token.equals("outage"))throw new com.ksh321.songrecord.api.web.ApiException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,"CANDIDATE_VERIFICATION_UNAVAILABLE","unavailable",true,Map.of());
                 if(!Set.of("valid","second","ky").contains(token))throw new com.ksh321.songrecord.api.web.ApiException(org.springframework.http.HttpStatus.BAD_REQUEST,"SOURCE_TOKEN_INVALID","invalid",false,Map.of());
                 return new CandidateVerifier.Verified("FIXTURE",token.equals("ky")?CandidateVerifier.Brand.KY:CandidateVerifier.Brand.TJ,token.equals("second")?"990002":"990001","원본 곡","원본 가수",f.clock.instant,f.clock.instant.plusSeconds(86400));
             },f.clock));
@@ -125,6 +126,59 @@ class SongCreationTests {
         var tokens=f.sessions.issue(new AccountRegistrationService.Registration(f.other.principal().userId(),f.other.principal().deviceId(),false));
         var response=mvc.perform(post("/v1/songs").header("Authorization","Bearer "+tokens.accessToken()).header("X-Device-Id",f.other.principal().deviceId()).header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content(body("").replace(id.toString(),otherId.toString()))).andReturn().getResponse();
         assertThat(response.getStatus()).isEqualTo(201);assertThat(response.getContentAsString()).contains(otherId.toString()).doesNotContain(id.toString());assertThat(count("song")).isEqualTo(2);
+    }
+
+
+    String manual(){return "{\"id\":\""+id+"\",\"source_type\":\"MANUAL\",\"manual_reason\":\"TJ_NOT_FOUND\",\"title\":\" 수동 곡 \",\"artist\":\" 가수 \"}";}
+    @Test void manualCreatesWithoutNumberOrSourceAndReplaysAtomically() throws Exception {
+        var first=postBody(f.key,manual());assertThat(first.getStatus()).isEqualTo(201);
+        assertThat(first.getContentAsString()).contains("\"tj_number\":null","\"source_type\":\"MANUAL\"","\"title\":\"수동 곡\"");
+        assertThat(postBody(f.key,manual()).getContentAsString()).isEqualTo(first.getContentAsString());
+        assertThat(postBody(f.key,manual().replace("수동 곡","변경")).getStatus()).isEqualTo(409);
+        for(String table:List.of("song","change_log","mutation_receipt"))assertThat(count(table)).isEqualTo(1);
+        assertThat(count("song_source")).isZero();
+        assertThat(f.jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state WHERE user_id=?",Long.class,OwnershipTests.bytes(f.registration.userId()))).isEqualTo(1);
+    }
+    @Test void manualSameTitleUsesUuidAndExistingUuidDoesNotOverwrite() throws Exception {
+        postBody(f.key,manual());UUID first=id;
+        var duplicate=postBody(UUID.randomUUID().toString(),manual().replace("수동 곡","새 제목"));
+        assertThat(duplicate.getStatus()).isEqualTo(200);assertThat(duplicate.getContentAsString()).contains(first.toString(),"수동 곡").doesNotContain("새 제목");
+        id=UUID.randomUUID();assertThat(postBody(UUID.randomUUID().toString(),manual()).getStatus()).isEqualTo(201);
+        assertThat(count("song")).isEqualTo(2);assertThat(count("change_log")).isEqualTo(2);assertThat(count("song_source")).isZero();
+    }
+    @Test void manualRejectsMissingReasonNamesAndDirectNumbers() throws Exception {
+        String valid=manual();
+        for(String invalid:List.of(valid.replace(",\"manual_reason\":\"TJ_NOT_FOUND\"",""),valid.replace("TJ_NOT_FOUND","SEARCH_FAILED"),valid.replace("\" 수동 곡 \"","null"),valid.replace("\" 가수 \"","\"  \""),valid.replace(",\"title\":\" 수동 곡 \"",""),valid.replace(",\"artist\":\" 가수 \"",""),valid.replace("수동 곡","가".repeat(201)),valid.replace("가수","가".repeat(201)))) {
+            assertThat(postBody(UUID.randomUUID().toString(),invalid).getStatus()).isEqualTo(400);
+        }
+        for(String field:List.of("\"tj_number\":\"123\"","\"tj_number\":null","\"source_token\":\"valid\"","\"source_token\":null","\"user_id\":\"other\"")) {
+            assertThat(postBody(UUID.randomUUID().toString(),valid.substring(0,valid.length()-1)+","+field+"}").getStatus()).isEqualTo(400);
+        }
+        assertThat(postBody(UUID.randomUUID().toString(),body(",\"manual_reason\":\"TJ_NOT_FOUND\"")).getStatus()).isEqualTo(400);
+        assertThat(count("song")).isZero();assertThat(count("mutation_receipt")).isZero();
+    }
+    @Test void searchOutageNeverCreatesManualFallback() throws Exception {
+        var failed=postBody(f.key,body("").replace("valid","outage"));assertThat(failed.getStatus()).isEqualTo(503);
+        for(String table:List.of("song","song_source","change_log","mutation_receipt"))assertThat(count(table)).isZero();
+        // Previously confirmed manual input needs no provider access.
+        assertThat(postBody(UUID.randomUUID().toString(),manual()).getStatus()).isEqualTo(201);
+    }
+    @Test void manualCannotChangeSourceTypeOrBypassLifecycle() throws Exception {
+        postBody(f.key,manual());
+        assertThat(postBody(UUID.randomUUID().toString(),body("")).getContentAsString()).contains("SONG_ID_CONFLICT");
+        for(String state:List.of("TRASHED","PURGE_PENDING")){
+            f.jdbc.update("UPDATE song SET lifecycle_state=?",state);
+            assertThat(postBody(UUID.randomUUID().toString(),manual()).getContentAsString()).contains(state.equals("TRASHED")?"SONG_RESTORE_REQUIRED":"SONG_PURGE_PENDING");
+        }
+        f.jdbc.update("INSERT INTO deletion_ledger VALUES(?,'SONG',?,NULL,2)",OwnershipTests.bytes(f.registration.userId()),OwnershipTests.bytes(id));
+        assertThat(postBody(UUID.randomUUID().toString(),manual()).getContentAsString()).contains("RESOURCE_PURGED");
+        assertThat(count("song")).isEqualTo(1);
+    }
+    @Test void manualChangeLogFailureRollsBackReceiptAndSong() throws Exception {
+        f.jdbc.execute("ALTER TABLE change_log ADD CONSTRAINT reject_manual CHECK(entity_type<>'SONG')");
+        assertThat(postBody(f.key,manual()).getStatus()).isEqualTo(500);
+        for(String table:List.of("song","change_log","mutation_receipt"))assertThat(count(table)).isZero();
+        assertThat(f.jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state WHERE user_id=?",Long.class,OwnershipTests.bytes(f.registration.userId()))).isZero();
     }
 
 }
