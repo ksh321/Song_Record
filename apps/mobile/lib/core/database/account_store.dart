@@ -271,6 +271,13 @@ final class AccountStore {
         .map(
           (row) => QueuedMutation(
             opId: row.read<String>('op_id'),
+            entity: LocalEntity.values.firstWhere(
+              (value) => value.code == row.read<String>('entity_type'),
+            ),
+            entityId: row.read<String>('entity_id'),
+            operation: LocalOperation.values.firstWhere(
+              (value) => value.code == row.read<String>('operation'),
+            ),
             state: row.read<String>('queue_state'),
             baseRevision: row.read<int>('base_revision'),
             payload: row.read<String>('payload'),

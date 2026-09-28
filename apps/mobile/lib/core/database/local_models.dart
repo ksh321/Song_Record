@@ -119,6 +119,9 @@ final class MetadataCopy {
 final class QueuedMutation {
   const QueuedMutation({
     required this.opId,
+    required this.entity,
+    required this.entityId,
+    required this.operation,
     required this.state,
     required this.baseRevision,
     required this.payload,
@@ -127,6 +130,9 @@ final class QueuedMutation {
     required this.attemptCount,
   });
   final String opId;
+  final LocalEntity entity;
+  final String entityId;
+  final LocalOperation operation;
   final String state;
   final int baseRevision;
   final String payload;
