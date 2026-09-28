@@ -404,4 +404,8 @@ class MySqlIdempotencyTests {
         assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isEqualTo(2);
     }
 
+    @Test void mysqlBinarySongSortKeysMatchSharedContractAcrossPages() throws Exception {
+        com.ksh321.songrecord.api.songs.SongSortDatabaseChecks.verify(jdbc);
+    }
+
 }

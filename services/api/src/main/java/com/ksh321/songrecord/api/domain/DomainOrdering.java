@@ -1,6 +1,7 @@
 package com.ksh321.songrecord.api.domain;
 
 import java.text.Normalizer;
+import java.io.ByteArrayOutputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -11,6 +12,7 @@ import java.util.Set;
 
 public final class DomainOrdering {
     public static final String SORT_KEY_VERSION = "SR-SORT-1";
+    public static final String SORT_BYTES_VERSION = "SR-SORT-BYTES-1";
 
     private DomainOrdering() {}
 
@@ -27,6 +29,28 @@ public final class DomainOrdering {
 
     public static int compareSortText(String left, String right) {
         return SortKey.from(left).compareTo(SortKey.from(right));
+    }
+
+    /** Unsigned lexicographic bytes for VARBINARY keys; never compare with signed byte ordering. */
+    public static byte[] sortKeyBytes(String text) {
+        var key = SortKey.from(text);
+        var out = new ByteArrayOutputStream();
+        out.write(key.group);
+        for (var token : key.tokens) {
+            if (token.number) {
+                out.write(1);
+                int length = token.text.length();
+                for (int shift = 24; shift >= 0; shift -= 8) out.write(length >>> shift);
+                token.text.chars().forEach(out::write);
+            } else {
+                out.write(2);
+                out.write(token.codePoint >>> 16);
+                out.write(token.codePoint >>> 8);
+                out.write(token.codePoint);
+            }
+        }
+        out.write(0); // End sorts before another token, including numeric zero.
+        return out.toByteArray();
     }
 
     public record RecordingCandidate(
@@ -92,7 +116,7 @@ public final class DomainOrdering {
 
     private record SortKey(int group, List<SortToken> tokens) implements Comparable<SortKey> {
         static SortKey from(String raw) {
-            var value = normalize(raw);
+            var value = normalizeText(raw);
             if (value.isEmpty()) return new SortKey(4, List.of());
             var codePoints = value.codePoints().toArray();
             var tokens = new ArrayList<SortToken>();
@@ -145,7 +169,7 @@ public final class DomainOrdering {
         }
     }
 
-    private static String normalize(String raw) {
+    public static String normalizeText(String raw) {
         var value = Normalizer.normalize(InputContracts.trimContractWhitespace(raw), Normalizer.Form.NFC);
         var builder = new StringBuilder();
         value.codePoints().forEach(codePoint ->
