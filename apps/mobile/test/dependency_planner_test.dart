@@ -1,0 +1,174 @@
+import 'dart:convert';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:song_record/core/database/local_models.dart';
+import 'package:song_record/core/sync/dependency_planner.dart';
+
+String id(int n) =>
+    '00000000-0000-4000-8000-${n.toRadixString(16).padLeft(12, '0')}';
+QueuedMutation mutation(
+  int op,
+  LocalEntity entity,
+  int target, {
+  int? order,
+  String state = 'PENDING',
+  LocalOperation operation = LocalOperation.create,
+  int base = 0,
+  Map<String, Object?> body = const {},
+}) => QueuedMutation(
+  opId: id(op),
+  localOrder: order ?? op,
+  entity: entity,
+  entityId: id(target),
+  operation: operation,
+  state: state,
+  baseRevision: base,
+  payload: jsonEncode(body),
+  attemptCount: 0,
+);
+DispatchPlan plan(
+  List<QueuedMutation> pending, {
+  Map<LocalTarget, ServerBaseline> baselines = const {},
+}) => const DependencyPlanner().plan(DispatchSnapshot(
+  pending: pending,
+  baselines: baselines,
+));
+const known = ServerBaseline(revision: 1, tombstone: false);
+
+void main() {
+  test('missing song blocks only its recordings, not unrelated work', () {
+    final result = plan([
+      mutation(1, LocalEntity.song, 10, state: 'FAILED'),
+      mutation(2, LocalEntity.recording, 20, body: {'song_id': id(10)}),
+      mutation(3, LocalEntity.recording, 21),
+      mutation(4, LocalEntity.song, 11),
+    ]);
+    expect(result.ready.map((m) => m.opId), [id(4), id(3)]);
+    expect(result.waiting[id(1)]!.reason, DispatchWaitReason.queueState);
+    expect(result.waiting[id(2)]!.reason, DispatchWaitReason.missingDependency);
+    expect(result.waiting[id(2)]!.dependency, LocalTarget(LocalEntity.song, id(10)));
+  });
+
+  test('ready parent is not mistaken for acknowledged parent', () {
+    final queue = [
+      mutation(1, LocalEntity.song, 10),
+      mutation(2, LocalEntity.recording, 20, body: {'song_id': id(10)}),
+    ];
+    expect(plan(queue).ready.map((m) => m.opId), [id(1)]);
+    final afterAck = plan([queue.last], baselines: {
+      LocalTarget(LocalEntity.song, id(10)): known,
+    });
+    expect(afterAck.ready.map((m) => m.opId), [id(2)]);
+  });
+
+  test('database order wins over lexicographic operation UUID', () {
+    final result = plan([
+      mutation(10, LocalEntity.song, 1, order: 2),
+      mutation(90, LocalEntity.song, 1, order: 1),
+    ]);
+    expect(result.ready.single.opId, id(90));
+    expect(result.waiting[id(10)]!.reason, DispatchWaitReason.earlierMutation);
+  });
+
+  test('conflict, in-flight and retry heads hold later same-target work', () {
+    for (final state in ['CONFLICT', 'SENDING', 'RETRY', 'FAILED']) {
+      final result = plan([
+        mutation(1, LocalEntity.song, 10, state: state),
+        mutation(2, LocalEntity.song, 10),
+        mutation(3, LocalEntity.song, 11),
+      ]);
+      expect(result.ready.single.opId, id(3));
+      expect(result.waiting[id(2)]!.reason, DispatchWaitReason.earlierMutation);
+    }
+  });
+
+  test('patch waits for unresolved or stale baseline without rewriting it', () {
+    final unresolved = mutation(1, LocalEntity.song, 10,
+      operation: LocalOperation.patch, body: {'base_revision': 0, 'title': 'keep'});
+    final before = unresolved.payload;
+    expect(plan([unresolved]).waiting[id(1)]!.reason,
+        DispatchWaitReason.unresolvedBaseline);
+    expect(unresolved.payload, before);
+    final stale = mutation(2, LocalEntity.song, 10,
+      operation: LocalOperation.patch, base: 2, body: {'base_revision': 2});
+    expect(plan([stale], baselines: {
+      LocalTarget(LocalEntity.song, id(10)): known,
+    }).waiting[id(2)]!.reason, DispatchWaitReason.staleBaseline);
+    final valid = mutation(3, LocalEntity.song, 10,
+      operation: LocalOperation.patch, base: 1, body: {'base_revision': 1});
+    expect(plan([valid], baselines: {
+      LocalTarget(LocalEntity.song, id(10)): known,
+    }).ready.single.opId, id(3));
+  });
+
+  test('tags must exist and explicit null song clears the dependency', () {
+    final m = mutation(1, LocalEntity.recording, 20,
+      body: {'song_id': null, 'tag_ids': [id(30)], 'condition_code': 'GOOD'});
+    expect(plan([m]).ready, isEmpty);
+    expect(plan([m], baselines: {
+      LocalTarget(LocalEntity.tag, id(30)): known,
+    }).ready.single.opId, id(1));
+  });
+
+  test('deleted dependencies and deleted targets never become ready', () {
+    const deleted = ServerBaseline(revision: 3, tombstone: true);
+    final result = plan([
+      mutation(1, LocalEntity.song, 10),
+      mutation(2, LocalEntity.recording, 20, body: {'song_id': id(10)}),
+    ], baselines: {LocalTarget(LocalEntity.song, id(10)): deleted});
+    expect(result.ready, isEmpty);
+    expect(result.waiting.values.every(
+      (w) => w.reason == DispatchWaitReason.deletedTarget), isTrue);
+  });
+
+  test('classification, song, recording and relation phases are ordered', () {
+    final result = plan([
+      mutation(1, LocalEntity.playlistItem, 40,
+        body: {'playlist_id': id(30), 'song_id': id(10)}),
+      mutation(2, LocalEntity.recording, 20),
+      mutation(3, LocalEntity.tag, 50),
+      mutation(4, LocalEntity.song, 11),
+    ], baselines: {
+      LocalTarget(LocalEntity.playlist, id(30)): known,
+      LocalTarget(LocalEntity.song, id(10)): known,
+    });
+    expect(result.ready.map((m) => m.opId), [id(3), id(4), id(2), id(1)]);
+  });
+
+  test('unsupported condition mapping and file work stay visible', () {
+    final result = plan([
+      mutation(1, LocalEntity.recordingCondition, 30),
+      mutation(2, LocalEntity.recording, 20, body: {'condition_code': id(30)}),
+      mutation(3, LocalEntity.recordingAsset, 20),
+    ]);
+    expect(result.ready, isEmpty);
+    expect(result.waiting, hasLength(3));
+    expect(result.waiting.values.every(
+      (w) => w.reason == DispatchWaitReason.unsupported), isTrue);
+  });
+
+  test('malformed references are held and dependency cycles do not spin', () {
+    final malformed = plan([
+      mutation(1, LocalEntity.recording, 20, body: {'tag_ids': 'bad'}),
+      mutation(2, LocalEntity.recording, 21, body: {'song_id': 'bad'}),
+    ]);
+    expect(malformed.waiting.values.every(
+      (w) => w.reason == DispatchWaitReason.invalidPayload), isTrue);
+    final cycle = plan([
+      mutation(3, LocalEntity.song, 10, body: {'representative_recording_id': id(20)}),
+      mutation(4, LocalEntity.recording, 20, body: {'song_id': id(10)}),
+    ]);
+    expect(cycle.ready, isEmpty);
+    expect(cycle.waiting, hasLength(2));
+  });
+
+  test('plan collections are immutable and acknowledged entries are ignored', () {
+    final result = plan([
+      mutation(1, LocalEntity.song, 10, state: 'ACKED'),
+      mutation(2, LocalEntity.song, 10),
+    ]);
+    expect(result.ready.single.opId, id(2));
+    expect(() => result.ready.clear(), throwsUnsupportedError);
+    expect(() => result.waiting.clear(), throwsUnsupportedError);
+  });
+}

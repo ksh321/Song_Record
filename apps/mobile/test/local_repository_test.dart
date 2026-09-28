@@ -198,4 +198,43 @@ void main() {
     expect(await repo.pending(), isEmpty);
     expect(await repo.read(LocalEntity.song, uuid(10)), isNull);
   });
+
+  test('database queue order survives equal times and a backwards clock', () async {
+    await manager.openAccount(owner);
+    await manager.logout();
+    final db = await raw();
+    await db.customStatement(
+      'INSERT INTO metadata_copies(user_id,entity_type,entity_id,updated_at) VALUES(?,?,?,1)',
+      [owner, 'SONG', uuid(10)],
+    );
+    for (final entry in [(90, 100), (10, 100), (20, 1)]) {
+      await db.customStatement(
+        "INSERT INTO local_mutations(op_id,user_id,entity_type,entity_id,operation,base_revision,payload,request_hash,created_at,updated_at) VALUES(?,?,?,?,'CREATE',0,'{}',?,?,?)",
+        [uuid(entry.$1), owner, 'SONG', uuid(10), 'a' * 64, entry.$2, entry.$2],
+      );
+    }
+    await db.close();
+    var repo = LocalRepository(await manager.openAccount(owner));
+    expect((await repo.pending()).map((m) => m.opId),
+        [uuid(90), uuid(10), uuid(20)]);
+    expect((await repo.planDispatch()).ready.single.opId, uuid(90));
+    await manager.logout();
+    manager = makeManager();
+    repo = LocalRepository(await manager.openAccount(owner));
+    expect((await repo.pending()).map((m) => m.opId),
+        [uuid(90), uuid(10), uuid(20)]);
+  });
+
+  test('dispatch snapshot remains account scoped', () async {
+    final a = LocalRepository(await manager.openAccount(owner));
+    await a.save(a.prepareCreate(
+      entity: LocalEntity.song,
+      draft: {'title': 'private'},
+      changes: {'title': 'private'},
+    ));
+    expect((await a.planDispatch()).ready, hasLength(1));
+    final b = LocalRepository(await manager.openAccount(uuid(2)));
+    expect((await b.planDispatch()).ready, isEmpty);
+    await expectLater(a.planDispatch(), throwsStateError);
+  });
 }

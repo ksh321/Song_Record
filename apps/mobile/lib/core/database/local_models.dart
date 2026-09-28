@@ -119,6 +119,7 @@ final class MetadataCopy {
 final class QueuedMutation {
   const QueuedMutation({
     required this.opId,
+    required this.localOrder,
     required this.entity,
     required this.entityId,
     required this.operation,
@@ -130,6 +131,7 @@ final class QueuedMutation {
     required this.attemptCount,
   });
   final String opId;
+  final int localOrder;
   final LocalEntity entity;
   final String entityId;
   final LocalOperation operation;
@@ -139,4 +141,36 @@ final class QueuedMutation {
   final String? basePayload;
   final String? serverResponse;
   final int attemptCount;
+}
+
+/// A local target key, never an HTTP route or an account identifier.
+final class LocalTarget {
+  LocalTarget(this.entity, String id) : id = UuidValue(id).value;
+  final LocalEntity entity;
+  final String id;
+
+  @override
+  bool operator ==(Object other) =>
+      other is LocalTarget && other.entity == entity && other.id == id;
+
+  @override
+  int get hashCode => Object.hash(entity, id);
+}
+
+final class ServerBaseline {
+  const ServerBaseline({required this.revision, required this.tombstone});
+  final int revision;
+  final bool tombstone;
+}
+
+/// Queue and server baselines read in the same account database transaction.
+final class DispatchSnapshot {
+  DispatchSnapshot({
+    required List<QueuedMutation> pending,
+    required Map<LocalTarget, ServerBaseline> baselines,
+  }) : pending = List.unmodifiable(pending),
+       baselines = Map.unmodifiable(baselines);
+
+  final List<QueuedMutation> pending;
+  final Map<LocalTarget, ServerBaseline> baselines;
 }

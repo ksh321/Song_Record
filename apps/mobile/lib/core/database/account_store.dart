@@ -261,16 +261,19 @@ final class AccountStore {
     }
   }
 
-  Future<List<QueuedMutation>> pendingMutations() => _run(() async {
+  Future<List<QueuedMutation>> pendingMutations() => _run(_pendingMutations);
+
+  Future<List<QueuedMutation>> _pendingMutations() async {
     final rows = await _database
         .customSelect(
-          "SELECT * FROM local_mutations WHERE queue_state<>'ACKED' ORDER BY created_at,op_id",
+          "SELECT rowid AS local_order,* FROM local_mutations WHERE queue_state<>'ACKED' ORDER BY rowid",
         )
         .get();
     return rows
         .map(
           (row) => QueuedMutation(
             opId: row.read<String>('op_id'),
+            localOrder: row.read<int>('local_order'),
             entity: LocalEntity.values.firstWhere(
               (value) => value.code == row.read<String>('entity_type'),
             ),
@@ -287,7 +290,31 @@ final class AccountStore {
           ),
         )
         .toList(growable: false);
-  });
+  }
+
+  Future<DispatchSnapshot> dispatchSnapshot() => _run(
+    () => _database.transaction(() async {
+      final pending = await _pendingMutations();
+      final rows = await _database.customSelect(
+        'SELECT entity_type,entity_id,server_revision,tombstone FROM metadata_copies',
+      ).get();
+      return DispatchSnapshot(
+        pending: pending,
+        baselines: {
+          for (final row in rows)
+            LocalTarget(
+              LocalEntity.values.firstWhere(
+                (value) => value.code == row.read<String>('entity_type'),
+              ),
+              row.read<String>('entity_id'),
+            ): ServerBaseline(
+              revision: row.read<int>('server_revision'),
+              tombstone: row.read<int>('tombstone') == 1,
+            ),
+        },
+      );
+    }),
+  );
 
   Future<int?> readCursor() => _run(
     () async =>

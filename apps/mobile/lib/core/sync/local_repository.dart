@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import '../database/account_store.dart';
 import '../database/local_models.dart';
 import '../domain/identifiers.dart';
+import 'dependency_planner.dart';
 
 /// Prepare once, retain the command, then save. A failed save is retried with
 /// the same command, never by calling prepare again. Network sending is P10-02.
@@ -83,6 +84,9 @@ final class LocalRepository {
   /// Includes failed/conflicted work so reopening the app cannot hide it.
   /// This is an inspection list, not the dependency-ordered network send queue.
   Future<List<QueuedMutation>> pending() => _store.pendingMutations();
+
+  Future<DispatchPlan> planDispatch() async =>
+      const DependencyPlanner().plan(await _store.dispatchSnapshot());
 
   static void _checkIdentity(Map<String, Object?> payload, String id) {
     if (payload.containsKey('user_id')) {
