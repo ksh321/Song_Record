@@ -32,8 +32,11 @@ class SongCreationTests {
         f.jdbc.execute("CREATE UNIQUE INDEX test_song_number ON song(user_id,reserved_tj_number)");
         f.jdbc.execute("CREATE TABLE song_source(song_id BINARY(16) PRIMARY KEY,user_id BINARY(16),provider VARCHAR(16) CHECK(provider='TJ'),source_title VARCHAR(200),source_artist VARCHAR(200),source_ref VARCHAR(255),verified_at TIMESTAMP(3),created_at TIMESTAMP(3),FOREIGN KEY(song_id) REFERENCES song(id))");
         f.jdbc.execute("CREATE TABLE deletion_ledger(user_id BINARY(16),entity_type VARCHAR(32),entity_id BINARY(16),object_generation BINARY(16),revision BIGINT)");
+        new ResourceDatabasePopulator(new ClassPathResource("song-query-schema.sql")).populate(f.keeper);
+        f.jdbc.execute("ALTER TABLE recording ADD recorded_at TIMESTAMP(3)");
         context=new AnnotationConfigWebApplicationContext();context.setServletContext(new MockServletContext());context.getEnvironment().setActiveProfiles("dev");
         context.addBeanFactoryPostProcessor(b->{
+            b.registerSingleton("pages",new com.ksh321.songrecord.api.pagination.KeysetPages(f.jdbc,f.access,f.manager,new com.ksh321.songrecord.api.pagination.PageCursor(new byte[32],f.clock,Duration.ofMinutes(30))));
             b.registerSingleton("jdbc",f.jdbc);b.registerSingleton("access",f.access);b.registerSingleton("mutations",f.mutations);
             b.registerSingleton("guard",new CreationGuard(f.jdbc,f.access,f.manager));b.registerSingleton("changes",new AccountChanges(f.jdbc,f.access,f.manager,f.clock));
             b.registerSingleton("candidates",new TjCandidates(token->{
@@ -62,7 +65,7 @@ class SongCreationTests {
     }
     @Test void unauthorizedAndUnimplementedRoutesRemainBlocked() throws Exception {
         assertThat(mvc.perform(post("/v1/songs").contentType("application/json").content(body(""))).andReturn().getResponse().getStatus()).isEqualTo(401);
-        assertThat(mvc.perform(get("/v1/songs")).andReturn().getResponse().getStatus()).isEqualTo(403);
+        assertThat(mvc.perform(get("/v1/songs")).andReturn().getResponse().getStatus()).isEqualTo(401);
         assertThat(mvc.perform(post("/v1/songs/other")).andReturn().getResponse().getStatus()).isEqualTo(403);assertThat(count("song")).isZero();
     }
     @Test void forgedFieldsNullsAndUnknownValuesAreRejected() throws Exception {

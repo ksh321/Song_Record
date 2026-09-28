@@ -16,12 +16,13 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration(proxyBeanMethods=false)
 @Profile("!bootstrap")
 public class SongConfiguration {
+    @Bean SongListing songListing(AccountAccess access,com.ksh321.songrecord.api.pagination.KeysetPages pages){return new SongListing(access,pages);}
     @Bean SongCreation songCreation(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,CreationGuard guard,AccountChanges changes,TjCandidates candidates){return new SongCreation(jdbc,access,mutations,guard,changes,candidates,Clock.systemUTC());}
     @Bean @Order(2) SecurityFilterChain songSecurity(HttpSecurity http) throws Exception {
         http.securityMatcher("/v1/songs","/v1/songs/**").csrf(c->c.disable())
             .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).requestCache(c->c.disable())
             // Controller always authenticates bearer + device through AccountAccess before parsing input.
-            .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.POST,"/v1/songs").permitAll().anyRequest().denyAll());
+            .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.POST,"/v1/songs").permitAll().requestMatchers(HttpMethod.GET,"/v1/songs").permitAll().anyRequest().denyAll());
         return http.build();
     }
 }

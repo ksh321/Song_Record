@@ -9,7 +9,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/v1/songs")
 public class SongController {
     private final SongCreation creation;
-    public SongController(SongCreation creation){this.creation=creation;}
+    private final SongListing listing;
+    public SongController(SongCreation creation,SongListing listing){this.creation=creation;this.listing=listing;}
+    @GetMapping(produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<com.ksh321.songrecord.api.pagination.KeysetPages.Page<java.util.Map<String,Object>>> list(
+            @RequestHeader(value="Authorization",required=false) String auth,
+            @RequestHeader(value="X-Device-Id",required=false) String device,
+            @RequestParam org.springframework.util.MultiValueMap<String,String> params){
+        return ResponseEntity.ok().header("Cache-Control","no-store").body(listing.list(auth,device,params));
+    }
     @PostMapping(consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> create(@RequestHeader(value="Authorization",required=false) String auth,
             @RequestHeader(value="X-Device-Id",required=false) String device,

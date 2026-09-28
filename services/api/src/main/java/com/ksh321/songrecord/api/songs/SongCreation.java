@@ -38,6 +38,7 @@ public final class SongCreation {
                     var now=LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
                     jdbc.update("INSERT INTO song(id,user_id,source_type,tj_number,title,artist,version_code,note,song_tier,lifecycle_state,revision,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'ACTIVE',1,?,?)",
                             bytes(request.id),bytes(owner),request.type,proof==null?null:proof.number(),title,artist,request.version,request.note,request.tier,now,now);
+                    SongQueryKeys.insert(jdbc,owner,request.id,title,artist);
                     if(proof!=null){
                         String ref=proof.provider()+":"+proof.number();if(ref.length()>255)throw new IllegalStateException("Invalid candidate source reference");
                         jdbc.update("INSERT INTO song_source(song_id,user_id,provider,source_title,source_artist,source_ref,verified_at,created_at) VALUES(?,?,'TJ',?,?,?,?,?)",

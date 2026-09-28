@@ -24,6 +24,8 @@ if [[ "${P04_DISPOSABLE_DB:-}" != "1" ]]; then
   exit 1
 fi
 api_port="${P04_API_PORT:-18084}"
+# A per-run test-only key; never reuse as a deployed secret.
+export SONGRECORD_PAGINATION_KEY_BASE64="$(python3 -c 'import base64,secrets; print(base64.b64encode(secrets.token_bytes(32)).decode())')"
 
 run_sql() {
   docker compose exec -T mysql sh -lc \
@@ -146,6 +148,13 @@ versions="$(run_sql "SELECT GROUP_CONCAT(version ORDER BY installed_rank) FROM f
 [[ "$versions" == "1,2,3,4,5,6,7,8,9" ]] || { echo "Unexpected Flyway versions: $versions"; exit 1; }
 python3 "$infra_dir/scripts/verify_p06_link_schema.py"
 
+# Populated V9 -> V10/V11: preserve song data and fill derived keys before serving lists.
+start_api ""
+stop_api
+versions="$(run_sql "SELECT GROUP_CONCAT(version ORDER BY installed_rank) FROM flyway_schema_history WHERE success=1;")"
+[[ "$versions" == "1,2,3,4,5,6,7,8,9,10,11" ]] || { echo "Unexpected Flyway versions: $versions"; exit 1; }
+missing_keys="$(run_sql "SELECT COUNT(*) FROM song s LEFT JOIN song_query_key k ON k.song_id=s.id AND k.user_id=s.user_id WHERE k.song_id IS NULL OR k.key_version<>'SR-SORT-1/SR-SORT-BYTES-1';")"
+[[ "$missing_keys" == "0" ]] || { echo "Song key backfill is incomplete"; exit 1; }
 # Re-start against the same data: Flyway must validate existing checksums.
 start_api ""
 stop_api

@@ -388,14 +388,31 @@ paths:
     get:
       operationId: listSongs
       summary: listSongs
-      description: 후속 목록 계약. limit/cursor와 결과 envelope 확정. 공통 커서 검증은 P07-08, 기능별 필터·정렬 매개변수와 실제 API는 P08/P09에서 연결한다. 서버가 기기 파일의 존재를
-        추정하지 않는다.
-      x-implementation-status: planned
+      description: P08-05b 구현. 인증 계정의 ACTIVE 곡에서 제목·가수 부분 검색, 5개 정렬과 티어별 보기. 최근 녹음은 ACTIVE·SAVED만 계산하며 파일 유무는 무관하다. 결과가 바뀌면 기존 커서는 409 LIST_CURSOR_EXPIRED다.
+      x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
       - $ref: '#/components/parameters/Cursor'
       - $ref: '#/components/parameters/Limit'
+      - name: q
+        in: query
+        schema:
+          type: string
+          maxLength: 200
+        description: 앞뒤 계약 공백 제거·NFC·ASCII 소문자화 후 제목 또는 가수의 문자 그대로 부분 일치. 빈 값은 전체.
+      - name: sort
+        in: query
+        schema:
+          type: string
+          enum: [ADDED_DESC, RECORDED_DESC, TIER, TITLE, ARTIST]
+          default: ADDED_DESC
+      - name: view
+        in: query
+        schema:
+          type: string
+          enum: [ALL, TIER_GROUPED]
+          default: ALL
       responses:
         '200':
           description: 성공
@@ -1322,6 +1339,12 @@ components:
           - type: 'null'
         lifecycle_state:
           $ref: '#/components/schemas/LifecycleState'
+        created_at:
+          $ref: '#/components/schemas/UtcInstant'
+        latest_recorded_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
       required:
       - id
       - revision
@@ -1713,15 +1736,21 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/Song'
+            allOf:
+            - $ref: '#/components/schemas/Song'
+            - required: [created_at, latest_recorded_at]
+        count:
+          type: integer
+          minimum: 0
         next_cursor:
           anyOf:
           - $ref: '#/components/schemas/OpaqueCursor'
           - type: 'null'
       required:
       - items
+      - count
       - next_cursor
-      description: 끝 페이지의 next_cursor는 명시적 null. 부분 동기화/기기 파일 UNKNOWN으로 정확하지 않은 전체 개수를 만들지 않는다.
+      description: count는 같은 DB 읽기 스냅샷과 검색 조건의 전체 곡 수. 끝 페이지 next_cursor는 명시적 null. 기기 파일 상태로 후처리하지 않는다.
     RecordingPage:
       type: object
       additionalProperties: false

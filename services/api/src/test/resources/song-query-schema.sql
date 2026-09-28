@@ -1,0 +1,1 @@
+CREATE TABLE song_query_key(song_id BINARY(16) PRIMARY KEY,user_id BINARY(16) NOT NULL,key_version VARCHAR(64) NOT NULL,title_key VARBINARY(2048) NOT NULL,artist_key VARBINARY(2048) NOT NULL,title_search VARBINARY(2400) NOT NULL,artist_search VARBINARY(2400) NOT NULL,FOREIGN KEY(song_id) REFERENCES song(id));

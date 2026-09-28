@@ -301,6 +301,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlSongCreationUsesRealSourceConstraintsAndAtomicChangeLog() throws Exception {
         var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
         for(String table:java.util.List.of("song","song_source")){int from=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(from,core.indexOf(';',from)));}
+        installSongQueryKeys();
         int trigger=core.indexOf("CREATE TRIGGER trg_song_source_before_insert");jdbc.execute(core.substring(trigger,core.indexOf("$$",trigger)));
         String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));int from=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(from,sync.indexOf(';',from)));
         when(access.authenticate("Bearer test","device")).thenReturn(account);
@@ -332,6 +333,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlConcurrentDifferentUuidsMapToOneSongAndPreserveEdits() throws Exception {
         var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
         for(String table:java.util.List.of("song","song_source")){int from=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(from,core.indexOf(';',from)));}
+        installSongQueryKeys();
         int trigger=core.indexOf("CREATE TRIGGER trg_song_source_before_insert");jdbc.execute(core.substring(trigger,core.indexOf("$$",trigger)));
         String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));int from=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(from,sync.indexOf(';',from)));
         var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
@@ -373,6 +375,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlManualSongsAllowNullNumbersAndRollbackAtomicChanges() throws Exception {
         var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
         for(String table:java.util.List.of("song","song_source")){int from=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(from,core.indexOf(';',from)));}
+        installSongQueryKeys();
         int trigger=core.indexOf("CREATE TRIGGER trg_song_source_before_insert");jdbc.execute(core.substring(trigger,core.indexOf("$$",trigger)));
         String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));int from=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(from,sync.indexOf(';',from)));
         var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
@@ -408,4 +411,36 @@ class MySqlIdempotencyTests {
         com.ksh321.songrecord.api.songs.SongSortDatabaseChecks.verify(jdbc);
     }
 
+    void installSongQueryKeys() throws Exception {
+        String ddl=Files.readString(Path.of("src/main/resources/db/migration/V10__song_query_keys.sql"));
+        int start=ddl.indexOf("CREATE TABLE song_query_key (");jdbc.execute(ddl.substring(start,ddl.indexOf(';',start)));
+    }
+
+    @Test void mysqlSongListingUsesRealSchemaAndKeysetAcrossAllSorts() throws Exception {
+        syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
+        for(String table:java.util.List.of("device","song","recording")){
+            int start=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(start,core.indexOf(';',start)));
+        }
+        installSongQueryKeys();var principal=access.revalidate(account);
+        jdbc.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId()),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()));
+        var manager=new DataSourceTransactionManager(jdbc.getDataSource());
+        var pages=new com.ksh321.songrecord.api.pagination.KeysetPages(jdbc,access,manager,new com.ksh321.songrecord.api.pagination.PageCursor(new byte[32],Clock.systemUTC(),java.time.Duration.ofMinutes(30)));
+        com.ksh321.songrecord.api.songs.SongListingDatabaseChecks.verify(jdbc,pages,account,principal.userId(),principal.deviceId());
+    }
+    @Test void mysqlFlywayDiscoversJavaBackfillAndPreservesPopulatedV9Data() throws Exception {
+        String name=database+"_upgrade";admin.execute("CREATE DATABASE "+name);
+        try {
+            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").target("9").load().migrate();
+            var db=new JdbcTemplate(ds);UUID user=UUID.randomUUID(),song=UUID.randomUUID();
+            db.update("INSERT INTO app_user(id) VALUES(?)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(user));
+            db.update("INSERT INTO song(id,user_id,source_type,title,artist,version_code,note,revision) VALUES(?,?,'MANUAL','노래02','Artist','LIVE','keep',7)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(song),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(user));
+            var before=db.queryForMap("SELECT title,artist,note,version_code,revision,updated_at FROM song");
+            var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();
+            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(2);flyway.validate();
+            assertThat(db.queryForObject("SELECT title_key FROM song_query_key",byte[].class)).isEqualTo(com.ksh321.songrecord.api.domain.DomainOrdering.sortKeyBytes("노래02"));
+            assertThat(db.queryForMap("SELECT title,artist,note,version_code,revision,updated_at FROM song")).isEqualTo(before);
+            assertThat(flyway.migrate().migrationsExecuted).isZero();
+        } finally {admin.execute("DROP DATABASE "+name);}
+    }
 }

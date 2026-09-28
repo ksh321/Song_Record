@@ -166,6 +166,7 @@
     "schema": "SongPage",
     "value": {
       "items": [],
+      "count": 0,
       "next_cursor": null
     },
     "valid": true

@@ -5,7 +5,7 @@ Focused P04-09 check: add --scope tj-race (fresh V7 DB, no repeat of the regress
 Requires Docker Desktop (Linux containers), Java 21 and Git for Windows.
 Build services/api with gradlew.bat bootJar first. No third-party Python packages.
 
-This wrapper runs the repository's V1 -> V9 migration/constraint checks.
+This wrapper runs the repository's V1 -> V11 migration/constraint checks.
 It does not declare all of P04-09 complete or verify Android process recreation.
 The source checkout, infra/.env and the development database are not written.
 Only this run's generated Compose project/volume is removed on exit.
