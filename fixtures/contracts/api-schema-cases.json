@@ -344,5 +344,53 @@
       "representative_recording_id": null
     },
     "valid": false
+  },
+  {
+    "schema": "RepresentativePut",
+    "value": {
+      "base_revision": 1,
+      "recording_id": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "RepresentativePut",
+    "value": {
+      "base_revision": 1,
+      "recording_id": "00000000-0000-4000-8000-000000000001"
+    },
+    "valid": true
+  },
+  {
+    "schema": "RepresentativePut",
+    "value": {
+      "base_revision": 1
+    },
+    "valid": false
+  },
+  {
+    "schema": "RepresentativePut",
+    "value": {
+      "base_revision": 0,
+      "recording_id": null
+    },
+    "valid": false
+  },
+  {
+    "schema": "RepresentativePut",
+    "value": {
+      "base_revision": 1,
+      "recording_id": "bad"
+    },
+    "valid": false
+  },
+  {
+    "schema": "RepresentativePut",
+    "value": {
+      "base_revision": 1,
+      "recording_id": null,
+      "note": "x"
+    },
+    "valid": false
   }
 ]

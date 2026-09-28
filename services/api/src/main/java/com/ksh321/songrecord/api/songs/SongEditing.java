@@ -84,12 +84,12 @@ public final class SongEditing {
         if(mode==null || !(shift instanceof Number number) || number.intValue() < -12 || number.intValue() > 12
                 || !Set.of("ORIGINAL","MALE","FEMALE").contains(mode) || (mode.equals("ORIGINAL") && number.intValue()!=0))throw invalid();
     }
-    private static Map<String,Object> wire(Map<String,Object> snapshot){
+    static Map<String,Object> wire(Map<String,Object> snapshot){
         var result=new LinkedHashMap<String,Object>();
-        for(String key:List.of("id","revision","updated_at","source_type","tj_number","title","artist","version_code","note","lifecycle_state","representative_key_mode","representative_key_shift"))result.put(key,snapshot.get(key));
+        for(String key:List.of("id","revision","updated_at","source_type","tj_number","title","artist","version_code","note","lifecycle_state","representative_key_mode","representative_key_shift","representative_recording_id"))result.put(key,snapshot.get(key));
         result.put("tier",snapshot.get("song_tier"));return result;
     }
-    private static UUID parseId(String text){try{var id=UUID.fromString(text);if(!id.toString().equals(text))throw new IllegalArgumentException();return id;}catch(IllegalArgumentException|NullPointerException e){throw new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","요청한 자료를 찾을 수 없습니다.",false,Map.of());}}
+    static UUID parseId(String text){try{var id=UUID.fromString(text);if(!id.toString().equals(text))throw new IllegalArgumentException();return id;}catch(IllegalArgumentException|NullPointerException e){throw new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","요청한 자료를 찾을 수 없습니다.",false,Map.of());}}
     private static ApiException invalid(){return new ApiException(HttpStatus.BAD_REQUEST,"VALIDATION_FAILED","곡 수정 값을 확인해 주세요.",false,Map.of());}
-    private static ApiException stateConflict(String state){String code=switch(state){case "TRASHED"->"SONG_RESTORE_REQUIRED";case "PURGE_PENDING"->"SONG_PURGE_PENDING";case "PURGED"->"RESOURCE_PURGED";default->throw new IllegalStateException("Unknown song lifecycle");};return new ApiException(HttpStatus.CONFLICT,code,"기존 곡의 상태를 확인해 주세요.",false,Map.of());}
+    static ApiException stateConflict(String state){String code=switch(state){case "TRASHED"->"SONG_RESTORE_REQUIRED";case "PURGE_PENDING"->"SONG_PURGE_PENDING";case "PURGED"->"RESOURCE_PURGED";default->throw new IllegalStateException("Unknown song lifecycle");};return new ApiException(HttpStatus.CONFLICT,code,"기존 곡의 상태를 확인해 주세요.",false,Map.of());}
 }

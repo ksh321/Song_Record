@@ -493,4 +493,52 @@ class MySqlIdempotencyTests {
         assertThat(jdbc.queryForObject("SELECT revision FROM song",Long.class)).isEqualTo(4);assertThat(jdbc.queryForMap("SELECT * FROM recording")).usingRecursiveComparison().isEqualTo(recordingBefore);
     }
 
+    @Test void mysqlRepresentativeRaceCompositeFkAndAtomicRollback() throws Exception {
+        var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
+        for(String table:java.util.List.of("device","song","recording")){
+            int start=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(start,core.indexOf(';',start)));
+        }
+        int fk=core.indexOf("ALTER TABLE song");jdbc.execute(core.substring(fk,core.indexOf(';',fk)));
+        var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
+        byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
+        UUID song=UUID.randomUUID(),otherSong=UUID.randomUUID(),recording=UUID.randomUUID();
+        byte[] songBytes=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(song),recordingBytes=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(recording);
+        jdbc.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",device,owner);
+        for(UUID id:java.util.List.of(song,otherSong))jdbc.update("INSERT INTO song(id,user_id,source_type,title,artist,note) VALUES(?,?,'MANUAL','song','artist','')",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(id),owner);
+        jdbc.update("INSERT INTO recording(id,user_id,origin_device_id,song_id,title_snapshot,artist_snapshot,key_mode,key_shift,note,recorded_at,timezone_id,timezone_offset_minutes,metadata_state) VALUES(?,?,?,?,'past','artist','ORIGINAL',0,'keep',UTC_TIMESTAMP(3),'UTC',0,'SAVED')",recordingBytes,owner,device,songBytes);
+        var beforeRecording=jdbc.queryForMap("SELECT * FROM recording");
+        var manager=new DataSourceTransactionManager(jdbc.getDataSource());var selecting=new com.ksh321.songrecord.api.songs.SongRepresentative(jdbc,access,service,new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,Clock.systemUTC()),changes);
+        String body="{\"base_revision\":1,\"recording_id\":\""+recording+"\"}",clear="{\"base_revision\":1,\"recording_id\":null}";
+        String aKey=UUID.randomUUID().toString(),bKey=UUID.randomUUID().toString();Object a,b;
+        try(var pool=Executors.newFixedThreadPool(2)){
+            var ready=new CountDownLatch(2);var go=new CountDownLatch(1);
+            var fa=pool.submit(()->{ready.countDown();go.await();try{return (Object)selecting.put("Bearer test","device",aKey,song.toString(),body);}catch(ApiException e){return e;}});
+            var fb=pool.submit(()->{ready.countDown();go.await();try{return (Object)selecting.put("Bearer test","device",bKey,song.toString(),clear);}catch(ApiException e){return e;}});
+            try{assertThat(ready.await(5,TimeUnit.SECONDS)).isTrue();}finally{go.countDown();}
+            a=fa.get(15,TimeUnit.SECONDS);b=fb.get(15,TimeUnit.SECONDS);
+        }
+        var winner=(IdempotentMutations.Reply)(a instanceof IdempotentMutations.Reply?a:b);var loser=(ApiException)(a instanceof ApiException?a:b);
+        assertThat(winner.status()).isEqualTo(200);assertThat(loser.code()).isEqualTo("REVISION_CONFLICT");
+        assertThat(selecting.put("Bearer test","device",a instanceof IdempotentMutations.Reply?aKey:bKey,song.toString(),a instanceof IdempotentMutations.Reply?body:clear)).isEqualTo(winner);
+        assertThat(jdbc.queryForObject("SELECT revision FROM song WHERE id=?",Long.class,songBytes)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(1);
+        // Actual V2 composite FK, including owner and song, is exercised rather than a test-only approximation.
+        assertThatThrownBy(()->jdbc.update("UPDATE song SET representative_recording_id=? WHERE id=?",recordingBytes,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(otherSong))).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        assertThatThrownBy(()->selecting.put("Bearer test","device",UUID.randomUUID().toString(),otherSong.toString(),body)).isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo("REPRESENTATIVE_NOT_ELIGIBLE"));
+        var before=jdbc.queryForMap("SELECT * FROM song WHERE id=?",songBytes);
+        jdbc.execute("CREATE TRIGGER reject_representative_log BEFORE INSERT ON change_log FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='injected representative failure'");
+        String retryKey=UUID.randomUUID().toString(),retryBody=body.replace("\"base_revision\":1","\"base_revision\":2");
+        assertThatThrownBy(()->selecting.put("Bearer test","device",retryKey,song.toString(),retryBody)).hasRootCauseInstanceOf(java.sql.SQLException.class).hasStackTraceContaining("injected representative failure");
+        assertThat(jdbc.queryForMap("SELECT * FROM song WHERE id=?",songBytes)).usingRecursiveComparison().isEqualTo(before);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(1);assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state",Long.class)).isEqualTo(1);
+        jdbc.execute("DROP TRIGGER reject_representative_log");assertThat(selecting.put("Bearer test","device",retryKey,song.toString(),retryBody).status()).isEqualTo(200);
+        assertThat(jdbc.queryForObject("SELECT representative_recording_id FROM song WHERE id=?",byte[].class,songBytes)).isEqualTo(recordingBytes);
+        assertThat(jdbc.queryForMap("SELECT * FROM recording")).usingRecursiveComparison().isEqualTo(beforeRecording);
+        assertThat(selecting.put("Bearer test","device",UUID.randomUUID().toString(),song.toString(),clear.replace("\"base_revision\":1","\"base_revision\":3")).status()).isEqualTo(200);
+        jdbc.update("UPDATE recording SET lifecycle_state='TRASHED',deleted_at=UTC_TIMESTAMP(3) WHERE id=?",recordingBytes);
+        assertThatThrownBy(()->selecting.put("Bearer test","device",UUID.randomUUID().toString(),song.toString(),body.replace("\"base_revision\":1","\"base_revision\":4"))).isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo("REPRESENTATIVE_NOT_ELIGIBLE"));
+        assertThat(jdbc.queryForObject("SELECT representative_recording_id FROM song WHERE id=?",byte[].class,songBytes)).isNull();
+        assertThat(jdbc.queryForObject("SELECT revision FROM song WHERE id=?",Long.class,songBytes)).isEqualTo(4);
+    }
+
 }

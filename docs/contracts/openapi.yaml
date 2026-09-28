@@ -685,8 +685,8 @@ paths:
     put:
       operationId: setRepresentative
       summary: setRepresentative
-      description: 후속 단계 구현 대상.
-      x-implementation-status: planned
+      description: 같은 계정·같은 곡의 ACTIVE·SAVED 녹음 지정. recording_id null은 해제. 소유권 불일치·없는 자료는 404, 소유한 녹음의 곡/상태 부적합은 409 REPRESENTATIVE_NOT_ELIGIBLE. base_revision 검사와 멱등 처리를 적용하며 녹음 메타데이터는 변경하지 않는다.
+      x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
@@ -1344,6 +1344,11 @@ components:
         latest_recorded_at:
           anyOf:
           - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        representative_recording_id:
+          description: 신규 응답은 UUID 또는 null. 이전 멱등 영수증에는 생략될 수 있다.
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
           - type: 'null'
         representative_key_mode:
           anyOf:
