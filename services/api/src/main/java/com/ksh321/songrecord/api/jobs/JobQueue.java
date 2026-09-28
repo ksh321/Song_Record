@@ -36,6 +36,22 @@ public final class JobQueue {
         requireTransaction();
         return joined.execute(s->insert(access.revalidate(account).userId(),type,aggregate,operation,payload));
     }
+    public record Submission(Type type,UUID aggregate,UUID operation,String payload){
+        public Submission {Objects.requireNonNull(type);Objects.requireNonNull(aggregate);Objects.requireNonNull(operation);Objects.requireNonNull(payload);}
+        @Override public String toString(){return "JobSubmission[REDACTED]";}
+    }
+    /** Multiple jobs must acquire their dedupe locks in the same order as single inserts. */
+    public List<UUID> enqueueAll(AccountAccess.Account account,List<Submission> requests){
+        requireTransaction();var copy=List.copyOf(requests);
+        return joined.execute(s->{
+            UUID user=access.revalidate(account).userId();
+            var ordered=copy.stream().sorted(Comparator.comparing(r->HexFormat.of().formatHex(dedupe(user,r.type(),r.aggregate(),r.operation())))).toList();
+            var result=new ArrayList<UUID>();
+            for(var r:ordered)result.add(insert(user,r.type(),r.aggregate(),r.operation(),r.payload()));
+            return List.copyOf(result);
+        });
+    }
+    private static byte[] dedupe(UUID user,Type type,UUID aggregate,UUID operation){return digest((user==null?"GLOBAL":user.toString())+"/"+type+"/"+aggregate+"/"+operation);}
     /** Reserved for server-owned maintenance; never take userId/type/payload from an untrusted request. */
     public UUID enqueueMaintenance(Type type,UUID aggregate,UUID operation,String payload) {
         requireTransaction();return joined.execute(s->insert(null,type,aggregate,operation,payload));
@@ -44,7 +60,7 @@ public final class JobQueue {
         Objects.requireNonNull(type);Objects.requireNonNull(aggregate);Objects.requireNonNull(operation);
         String canonical=CanonicalRequest.canonical(payload);
         if(!canonical.startsWith("{"))throw new IllegalArgumentException("Job payload must be an object");
-        byte[] dedupe=digest((user==null?"GLOBAL":user.toString())+"/"+type+"/"+aggregate+"/"+operation);
+        byte[] dedupe=dedupe(user,type,aggregate,operation);
         LockOrder.before(LockOrder.Rank.JOB,HexFormat.of().formatHex(dedupe));
         UUID id=UUID.randomUUID();var now=now();
         try {

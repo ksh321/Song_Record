@@ -84,7 +84,7 @@ public final class SongEditing {
         if(mode==null || !(shift instanceof Number number) || number.intValue() < -12 || number.intValue() > 12
                 || !Set.of("ORIGINAL","MALE","FEMALE").contains(mode) || (mode.equals("ORIGINAL") && number.intValue()!=0))throw invalid();
     }
-    static Map<String,Object> wire(Map<String,Object> snapshot){
+    public static Map<String,Object> wire(Map<String,Object> snapshot){
         var result=new LinkedHashMap<String,Object>();
         for(String key:List.of("id","revision","updated_at","source_type","tj_number","title","artist","version_code","note","lifecycle_state","representative_key_mode","representative_key_shift","representative_recording_id"))result.put(key,snapshot.get(key));
         result.put("tier",snapshot.get("song_tier"));return result;

@@ -714,4 +714,27 @@ class MySqlIdempotencyTests {
         } finally {admin.execute("DROP DATABASE "+name);}
     }
 
+    @Test void mysqlRecordingRelinkClearsCompositeForeignKeysAtomically() throws Exception {
+        String name=database+"_relinks";admin.execute("CREATE DATABASE "+name);
+        try {
+            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
+            var db=new JdbcTemplate(ds);var principal=access.revalidate(account);
+            when(account.principal()).thenReturn(principal);when(access.authenticate("Bearer test",principal.deviceId().toString())).thenReturn(account);
+            byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
+            db.update("INSERT INTO app_user(id) VALUES(?)",owner);db.update("INSERT INTO user_sync_state(user_id) VALUES(?)",owner);db.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",device,owner);
+            var manager=new DataSourceTransactionManager(ds);var clock=Clock.systemUTC();
+            var mutations=new IdempotentMutations(db,access,manager,clock);
+            var changes=new com.ksh321.songrecord.api.sync.AccountChanges(db,access,manager,clock);
+            var revisions=new com.ksh321.songrecord.api.revision.RevisionChanges(db,access,manager,clock);
+            var drafts=new com.ksh321.songrecord.api.recordings.RecordingDrafts(db,access,mutations,new com.ksh321.songrecord.api.revision.CreationGuard(db,access,manager),changes,clock);
+            var saving=new com.ksh321.songrecord.api.recordings.RecordingSaving(db,access,mutations,revisions,changes,drafts);
+            var jobs=new com.ksh321.songrecord.api.jobs.JobQueue(db,access,manager,clock,java.time.Duration.ofMinutes(2),5);
+            var editing=new com.ksh321.songrecord.api.recordings.RecordingEditing(db,access,mutations,revisions,changes,drafts,saving,jobs);
+            var linking=new com.ksh321.songrecord.api.recordings.RecordingLinking(db,access,mutations,revisions,changes,editing,jobs);
+            com.ksh321.songrecord.api.recordings.RecordingLinkingDatabaseChecks.verify(db,drafts,editing,linking,"Bearer test",principal.deviceId().toString(),principal.userId());
+            assertThat(flyway.migrate().migrationsExecuted).isZero();
+        } finally {admin.execute("DROP DATABASE "+name);}
+    }
+
 }

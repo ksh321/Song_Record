@@ -882,8 +882,8 @@ paths:
     patch:
       operationId: relinkRecording
       summary: relinkRecording
-      description: 후속 단계 구현 대상.
-      x-implementation-status: planned
+      description: P09-06 ACTIVE 녹음의 연결 변경/해제. 당시 입력과 파일은 유지하고 link_revision, 이전 대표·보관 참조 해제, 양쪽 곡 재계산 작업을 함께 확정한다.
+      x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
@@ -899,7 +899,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Recording'
+                $ref: '#/components/schemas/RecordingEdited'
         '400':
           $ref: '#/components/responses/Error400'
         '401':

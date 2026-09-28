@@ -59,6 +59,13 @@ public final class RevisionChanges {
             return read(resource,owner.userId(),resourceId);
         });
     }
+    /** Pre-lock related aggregates in sorted order before locking the recording being moved. */
+    public Map<String,Object> lock(AccountAccess.Account account,Resource resource,String id){
+        if(!TransactionSynchronizationManager.isActualTransactionActive()
+                || !TransactionSynchronizationManager.hasResource(Objects.requireNonNull(jdbc.getDataSource())))
+            throw new IllegalStateException("Aggregate lock requires the mutation database transaction");
+        return joined.execute(status->read(Objects.requireNonNull(resource),access.revalidate(account).userId(),parseId(id)));
+    }
     private Map<String,Object> read(Resource resource,UUID owner,UUID id) {
         LockOrder.before(LockOrder.Rank.AGGREGATE,owner+"/"+resource.ordinal()+"/"+id);
         var rows=jdbc.query("SELECT id,revision,updated_at,"+resource.columns+" FROM "+resource.table+" WHERE user_id=? AND id=? FOR UPDATE",
