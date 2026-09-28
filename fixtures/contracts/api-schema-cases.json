@@ -728,5 +728,129 @@
       "next_cursor": null
     },
     "valid": false
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "version_code": null
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "note": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "title_snapshot": null,
+      "artist_snapshot": null,
+      "key_mode": null,
+      "key_shift": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "timezone_id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "recorded_at": "2026-09-28T00:00:00.123Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "file": {}
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "tier": "A"
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "song_id": "00000000-0000-4000-8000-000000000001"
+    },
+    "valid": false
+  },
+  {
+    "schema": "RecordingEdited",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "DRAFT",
+      "song_id": null,
+      "title_snapshot": null,
+      "artist_snapshot": null,
+      "version_code": "NORMAL",
+      "key_mode": null,
+      "key_shift": null,
+      "note": "",
+      "recorded_at": "2026-09-28T00:00:00Z",
+      "timezone_id": "UTC",
+      "timezone_offset_minutes": 0,
+      "origin_device_id": "00000000-0000-4000-8000-000000000002",
+      "revision": 2,
+      "link_revision": 1,
+      "updated_at": "2026-09-28T01:00:00Z",
+      "lifecycle_state": "ACTIVE",
+      "tier": null,
+      "condition_code": null,
+      "condition_name_snapshot": null,
+      "tag_ids": [],
+      "tags": []
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingEdited",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "DRAFT",
+      "song_id": null,
+      "title_snapshot": null,
+      "artist_snapshot": null,
+      "version_code": "NORMAL",
+      "key_mode": null,
+      "key_shift": null,
+      "note": "",
+      "recorded_at": "2026-09-28T00:00:00Z",
+      "timezone_id": "UTC",
+      "timezone_offset_minutes": 0,
+      "origin_device_id": "00000000-0000-4000-8000-000000000002",
+      "revision": 2,
+      "link_revision": 1,
+      "updated_at": "2026-09-28T01:00:00Z",
+      "lifecycle_state": "ACTIVE",
+      "tier": null,
+      "condition_code": null,
+      "condition_name_snapshot": null,
+      "tag_ids": []
+    },
+    "valid": false
   }
 ]

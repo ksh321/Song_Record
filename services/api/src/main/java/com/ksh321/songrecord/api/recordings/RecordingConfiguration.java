@@ -16,6 +16,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration(proxyBeanMethods=false)
 @Profile("!bootstrap")
 public class RecordingConfiguration {
+    @Bean RecordingEditing recordingEditing(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,com.ksh321.songrecord.api.revision.RevisionChanges revisions,AccountChanges changes,RecordingDrafts drafts,RecordingSaving saving,com.ksh321.songrecord.api.jobs.JobQueue jobs){return new RecordingEditing(jdbc,access,mutations,revisions,changes,drafts,saving,jobs);}
     @Bean RecordingListing recordingListing(AccountAccess access,com.ksh321.songrecord.api.pagination.KeysetPages pages){return new RecordingListing(access,pages);}
     @Bean RecordingSaving recordingSaving(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,com.ksh321.songrecord.api.revision.RevisionChanges revisions,AccountChanges changes,RecordingDrafts drafts){return new RecordingSaving(jdbc,access,mutations,revisions,changes,drafts);}
     @Bean RecordingDrafts recordingDrafts(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,CreationGuard guard,AccountChanges changes){return new RecordingDrafts(jdbc,access,mutations,guard,changes,Clock.systemUTC());}

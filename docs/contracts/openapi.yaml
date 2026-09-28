@@ -758,7 +758,7 @@ paths:
     patch:
       operationId: patchRecording
       summary: patchRecording
-      description: P09-02 DRAFT에서 SAVED 전환만 구현. 필수 입력과 완료 파일 신고 명세를 검사하며 서버 파일 존재는 요구하지 않는다.
+      description: P09-04 부분 수정 및 기존 DRAFT→SAVED 전환. revision·멱등성을 검사하며 파일 업로드·용량과 독립적으로 수정한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -775,7 +775,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RecordingSaved'
+                oneOf:
+                - $ref: '#/components/schemas/RecordingSaved'
+                - $ref: '#/components/schemas/RecordingEdited'
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -793,7 +795,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RecordingSave'
+              oneOf:
+              - $ref: '#/components/schemas/RecordingSave'
+              - $ref: '#/components/schemas/RecordingPatch'
   /songs/{id}/representative:
     put:
       operationId: setRepresentative
@@ -1701,9 +1705,7 @@ components:
           - $ref: '#/components/schemas/KeyShift'
           - type: 'null'
         version_code:
-          anyOf:
-          - $ref: '#/components/schemas/VersionCode'
-          - type: 'null'
+          $ref: '#/components/schemas/VersionCode'
         condition_code:
           anyOf:
           - $ref: '#/components/schemas/ConditionCode'
@@ -1720,13 +1722,128 @@ components:
           type: string
           minLength: 1
           description: 유효한 IANA 시간대 ID를 서버에서 검증한다.
+          maxLength: 64
         timezone_offset_minutes:
           type: integer
           minimum: -1080
           maximum: 1080
       required:
       - base_revision
-      description: tag_ids 누락=유지, []=전체 해제, null=오류. SAVED 전환의 필수 입력은 서버가 기존 값과 합쳐 검사한다. song/tier 변경은 전용 API를 사용한다.
+      description: P09-04 부분 수정. 누락 필드는 유지하며 note null은 빈 문자열, condition_code null은 해제,
+        tag_ids []는 전체 해제이고 null·중복은 오류다. DRAFT는 제목·가수·키 null을 허용하지만 SAVED의 필수값 해제와 DRAFT
+        복귀는 거절한다. file은 일반 수정에서 불변이며 DRAFT→SAVED 전환은 RecordingSave를 사용한다. 실제 시각/시간대 변경은
+        이력을 남기고, 연결된 SAVED 녹음의 recorded_at 변경은 정책 재계산 작업을 같은 트랜잭션에 등록한다. 티어·연결 곡은 전용 API를
+        사용한다.
+    RecordingEdited:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        metadata_state:
+          $ref: '#/components/schemas/MetadataState'
+        song_id:
+          anyOf:
+          - $ref: '#/components/schemas/Uuid'
+          - type: 'null'
+        title_snapshot:
+          anyOf:
+          - $ref: '#/components/schemas/Title'
+          - type: 'null'
+        artist_snapshot:
+          anyOf:
+          - $ref: '#/components/schemas/Artist'
+          - type: 'null'
+        version_code:
+          $ref: '#/components/schemas/VersionCode'
+        key_mode:
+          anyOf:
+          - $ref: '#/components/schemas/KeyMode'
+          - type: 'null'
+        key_shift:
+          anyOf:
+          - $ref: '#/components/schemas/KeyShift'
+          - type: 'null'
+        note:
+          $ref: '#/components/schemas/Note'
+        recorded_at:
+          $ref: '#/components/schemas/UtcInstant'
+        timezone_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 유효한 IANA 시간대 ID. recorded_at은 MySQL DATETIME 범위(1000~9999년)에서 검증.
+        timezone_offset_minutes:
+          type: integer
+          minimum: -1080
+          maximum: 1080
+        origin_device_id:
+          $ref: '#/components/schemas/Uuid'
+        revision:
+          $ref: '#/components/schemas/Revision'
+        link_revision:
+          $ref: '#/components/schemas/Revision'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        lifecycle_state:
+          type: string
+          const: ACTIVE
+        tier:
+          anyOf:
+          - $ref: '#/components/schemas/RecordingTier'
+          - type: 'null'
+        condition_code:
+          anyOf:
+          - $ref: '#/components/schemas/ConditionCode'
+          - type: 'null'
+        condition_name_snapshot:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 50
+        tag_ids:
+          $ref: '#/components/schemas/TagIds'
+        tags:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                $ref: '#/components/schemas/Uuid'
+              name_snapshot:
+                type: string
+                minLength: 1
+                maxLength: 50
+            required:
+            - id
+            - name_snapshot
+      required:
+      - id
+      - metadata_state
+      - song_id
+      - title_snapshot
+      - artist_snapshot
+      - version_code
+      - key_mode
+      - key_shift
+      - note
+      - recorded_at
+      - timezone_id
+      - timezone_offset_minutes
+      - origin_device_id
+      - revision
+      - link_revision
+      - updated_at
+      - lifecycle_state
+      - tier
+      - condition_code
+      - condition_name_snapshot
+      - tag_ids
+      - tags
+      description: 일반 녹음 정보 수정 결과와 change_log payload. 파일 명세·클라우드 상태는 이 응답의 범위가 아니다. tags의
+        과거 이름은 유지하며 새 연결에만 현재 태그 이름을 저장한다.
     CompletedRecordingFile:
       type: object
       additionalProperties: false
