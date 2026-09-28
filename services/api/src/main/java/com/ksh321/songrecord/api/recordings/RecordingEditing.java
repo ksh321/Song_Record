@@ -89,7 +89,7 @@ public final class RecordingEditing {
         }
         for(UUID tag:kept)if(!tags.contains(tag))jdbc.update("DELETE FROM recording_tag WHERE user_id=? AND recording_id=? AND tag_id=?",bytes(owner),bytes(recording),bytes(tag));
     }
-    private Map<String,Object> snapshot(UUID owner,UUID recording){
+    Map<String,Object> snapshot(UUID owner,UUID recording){
         var result=new LinkedHashMap<>(drafts.snapshot(owner,recording));
         jdbc.query("SELECT tier,condition_code,condition_name_snapshot FROM recording WHERE user_id=? AND id=?",rs->{for(String k:List.of("tier","condition_code","condition_name_snapshot"))result.put(k,rs.getString(k));},bytes(owner),bytes(recording));
         var tags=jdbc.query("SELECT tag_id,name_snapshot FROM recording_tag WHERE user_id=? AND recording_id=? ORDER BY tag_id",(rs,n)->{var b=java.nio.ByteBuffer.wrap(rs.getBytes(1));return Map.of("id",new UUID(b.getLong(),b.getLong()).toString(),"name_snapshot",rs.getString(2));},bytes(owner),bytes(recording));

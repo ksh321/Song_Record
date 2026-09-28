@@ -842,8 +842,8 @@ paths:
     patch:
       operationId: setRecordingTier
       summary: setRecordingTier
-      description: 후속 단계 구현 대상.
-      x-implementation-status: planned
+      description: P09-05 ACTIVE·SAVED 녹음만 S/A/B/C/D/null로 평가한다. 곡 티어와 파일 명세는 유지하며, 연결된 녹음의 실제 티어 변경은 정책 재계산 작업과 함께 확정한다.
+      x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
@@ -859,7 +859,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Recording'
+                $ref: '#/components/schemas/RecordingEdited'
         '400':
           $ref: '#/components/responses/Error400'
         '401':

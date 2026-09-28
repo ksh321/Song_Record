@@ -852,5 +852,69 @@
       "tag_ids": []
     },
     "valid": false
+  },
+  {
+    "schema": "TierPatch",
+    "value": {
+      "base_revision": 1,
+      "tier": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "TierPatch",
+    "value": {
+      "base_revision": 1,
+      "tier": "S"
+    },
+    "valid": true
+  },
+  {
+    "schema": "TierPatch",
+    "value": {
+      "base_revision": 1,
+      "tier": "D"
+    },
+    "valid": true
+  },
+  {
+    "schema": "TierPatch",
+    "value": {
+      "base_revision": 1
+    },
+    "valid": false
+  },
+  {
+    "schema": "TierPatch",
+    "value": {
+      "base_revision": 1,
+      "tier": "E"
+    },
+    "valid": false
+  },
+  {
+    "schema": "TierPatch",
+    "value": {
+      "base_revision": 1,
+      "tier": 1
+    },
+    "valid": false
+  },
+  {
+    "schema": "TierPatch",
+    "value": {
+      "base_revision": 1,
+      "tier": "A",
+      "song_id": "00000000-0000-4000-8000-000000000001"
+    },
+    "valid": false
+  },
+  {
+    "schema": "TierPatch",
+    "value": {
+      "base_revision": 0,
+      "tier": null
+    },
+    "valid": false
   }
 ]
