@@ -1057,5 +1057,98 @@
       "next_cursor": null
     },
     "valid": false
+  },
+  {
+    "schema": "ConditionCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "피곤함"
+    },
+    "valid": true
+  },
+  {
+    "schema": "ConditionCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "피곤함",
+      "code": "GOOD"
+    },
+    "valid": false
+  },
+  {
+    "schema": "ConditionCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+    },
+    "valid": true
+  },
+  {
+    "schema": "ConditionCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "valid": false
+  },
+  {
+    "schema": "ConditionPatch",
+    "value": {
+      "base_revision": 1,
+      "name": "수정"
+    },
+    "valid": true
+  },
+  {
+    "schema": "ConditionArchive",
+    "value": {
+      "base_revision": 1
+    },
+    "valid": true
+  },
+  {
+    "schema": "ConditionArchive",
+    "value": {},
+    "valid": false
+  },
+  {
+    "schema": "ConditionReference",
+    "value": "GOOD",
+    "valid": true
+  },
+  {
+    "schema": "ConditionReference",
+    "value": "00000000-0000-4000-8000-000000000001",
+    "valid": true
+  },
+  {
+    "schema": "ConditionReference",
+    "value": "UNKNOWN",
+    "valid": false
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "condition_code": "00000000-0000-4000-8000-000000000001"
+    },
+    "valid": true
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "condition_code": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "ConditionPage",
+    "value": {
+      "items": [],
+      "count": 0,
+      "next_cursor": null
+    },
+    "valid": true
   }
 ]

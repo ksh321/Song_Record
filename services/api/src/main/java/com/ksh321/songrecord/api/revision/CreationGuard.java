@@ -16,7 +16,8 @@ public final class CreationGuard {
     public enum Resource {
         SONG("song", "lifecycle_state"), RECORDING("recording", "lifecycle_state"),
         PLAYLIST("playlist", "CASE WHEN deleted_at IS NULL THEN 'ACTIVE' ELSE 'DELETED' END"),
-        TAG("tag", "CASE WHEN archived_at IS NULL THEN 'ACTIVE' ELSE 'ARCHIVED' END");
+        TAG("tag", "CASE WHEN archived_at IS NULL THEN 'ACTIVE' ELSE 'ARCHIVED' END"),
+        CONDITION("condition_definition", "CASE WHEN archived_at IS NULL THEN 'ACTIVE' ELSE 'ARCHIVED' END");
         final String table, state;
         Resource(String table, String state) { this.table=table; this.state=state; }
     }

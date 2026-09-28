@@ -24,8 +24,10 @@ class RevisionTests {
     final tools.jackson.databind.json.JsonMapper json=new tools.jackson.databind.json.JsonMapper();
     @BeforeEach void setup() throws Exception {
         f.setup();new ResourceDatabasePopulator(new ClassPathResource("revision-schema.sql")).populate(f.keeper);
+        f.jdbc.execute("CREATE TABLE condition_definition(id BINARY(16) PRIMARY KEY,user_id BINARY(16) NOT NULL,code VARCHAR(36) NOT NULL,name VARCHAR(100) NOT NULL,revision BIGINT NOT NULL DEFAULT 1,archived_at TIMESTAMP(3),updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP)");
         changes=new RevisionChanges(f.jdbc,f.access,f.manager,f.clock);
         for(String table:List.of("playlist","tag"))f.jdbc.update("INSERT INTO "+table+"(id,user_id,name) VALUES(?,?,'before')",OwnershipTests.bytes(id),OwnershipTests.bytes(f.registration.userId()));
+        f.jdbc.update("INSERT INTO condition_definition(id,user_id,code,name) VALUES(?,?,?,'before')",OwnershipTests.bytes(id),OwnershipTests.bytes(f.registration.userId()),id.toString());
         for(String table:List.of("song","recording"))f.jdbc.update("INSERT INTO "+table+"(id,user_id,note) VALUES(?,?,'before')",OwnershipTests.bytes(id),OwnershipTests.bytes(f.registration.userId()));
     }
     @AfterEach void close() throws Exception {f.close();}

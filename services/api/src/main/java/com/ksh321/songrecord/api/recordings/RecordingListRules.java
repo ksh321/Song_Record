@@ -62,7 +62,7 @@ public final class RecordingListRules {
                 case "key_shift" -> {if(!value.matches("-?(?:0|[1-9][0-9]?)"))throw invalid();int shift=Integer.parseInt(value);if(shift < -12 || shift>12)throw invalid();filters.put(name,Integer.toString(shift));}
                 case "version_code" -> filters.put(name,choice(value,Set.of("NORMAL","MR","LIVE")));
                 case "tier" -> {if(!value.equals("ALL"))filters.put(name,choice(value,Set.of("S","A","B","C","D","NONE")));}
-                case "condition_code" -> {if(!value.equals("ALL"))filters.put(name,choice(value,Set.of("VERY_GOOD","GOOD","NORMAL","BAD","NONE")));}
+                case "condition_code" -> {if(!value.equals("ALL")){if(!value.equals("NONE") && !com.ksh321.songrecord.api.classifications.ConditionReference.valid(value))throw invalid();filters.put(name,value);}}
                 case "metadata_state" -> {if(!value.equals("ALL"))filters.put(name,choice(value,Set.of("DRAFT","SAVED")));}
                 case "server_file" -> {if(!value.equals("ALL"))filters.put(name,choice(value,Set.of("PRESENT","ABSENT")));}
                 case "tag_ids" -> {

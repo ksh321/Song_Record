@@ -614,16 +614,12 @@ paths:
       - name: condition_code
         in: query
         required: false
-        description: 컨디션. NONE=미지정, ALL/누락=전체.
+        description: /conditions의 code. 기존 기본 코드 또는 사용자 UUID. NONE=미지정, ALL/누락=전체.
         schema:
-          type: string
-          enum:
-          - ALL
-          - VERY_GOOD
-          - GOOD
-          - NORMAL
-          - BAD
-          - NONE
+          anyOf:
+          - $ref: '#/components/schemas/ConditionReference'
+          - type: string
+            enum: [ALL, NONE]
       - name: tag_ids
         in: query
         required: false
@@ -1115,6 +1111,169 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/TagArchive'
+  /conditions:
+    get:
+      operationId: listConditions
+      summary: listConditions
+      description: 계정별 기본/사용자 컨디션 목록. code를 녹음의 condition_code에 사용한다. 기본 항목은 기존 VERY_GOOD/GOOD/NORMAL/BAD
+        코드, 사용자 항목은 UUID 코드다. state=ACTIVE(기본)/ARCHIVED/ALL 및 정규화 이름·UUID 커서 정렬을 지원한다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - name: state
+        in: query
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - ARCHIVED
+          - ALL
+          default: ACTIVE
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConditionPage'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+    post:
+      operationId: createCondition
+      summary: createCondition
+      description: 계정별 컨디션 생성. 사용자 정의 code는 id와 같은 UUID이며 직접 지정할 수 없다. 이름은 공백 제거 후 1~50
+        code point, 활성 정규화 이름 중복은 409. 기본 컨디션도 계정별로 수정/보관할 수 있다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condition'
+        '201':
+          description: 생성
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condition'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConditionCreate'
+  /conditions/{id}:
+    patch:
+      operationId: renameCondition
+      summary: renameCondition
+      description: revision을 검사하여 활성 컨디션 이름만 수정한다. 과거 recording_tag.name_snapshot은 변경하지
+        않는다. 이름 중복/보관 컨디션/버전 충돌은 409.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condition'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConditionPatch'
+  /conditions/{id}/archive:
+    post:
+      operationId: archiveCondition
+      summary: archiveCondition
+      description: 컨디션를 물리 삭제하지 않고 archived_at을 기록한다. 기존 녹음 관계와 당시 이름은 유지하며 신규 선택은 차단한다.
+        이미 보관된 컨디션의 최초 보관 시각은 유지한다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condition'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
+        '503':
+          $ref: '#/components/responses/Error503'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConditionArchive'
 components:
   securitySchemes:
     BearerAuth:
@@ -1800,9 +1959,13 @@ components:
           anyOf:
           - $ref: '#/components/schemas/RecordingTier'
           - type: 'null'
+        condition_name_snapshot:
+          type: [string, 'null']
+          minLength: 1
+          maxLength: 50
         condition_code:
           anyOf:
-          - $ref: '#/components/schemas/ConditionCode'
+          - $ref: '#/components/schemas/ConditionReference'
           - type: 'null'
         tag_ids:
           $ref: '#/components/schemas/TagIds'
@@ -1837,6 +2000,7 @@ components:
       - version_code
       - tier
       - condition_code
+      - condition_name_snapshot
       - tag_ids
       - note
       - recorded_at
@@ -1872,7 +2036,7 @@ components:
           $ref: '#/components/schemas/VersionCode'
         condition_code:
           anyOf:
-          - $ref: '#/components/schemas/ConditionCode'
+          - $ref: '#/components/schemas/ConditionReference'
           - type: 'null'
         tag_ids:
           $ref: '#/components/schemas/TagIds'
@@ -1958,7 +2122,7 @@ components:
           - type: 'null'
         condition_code:
           anyOf:
-          - $ref: '#/components/schemas/ConditionCode'
+          - $ref: '#/components/schemas/ConditionReference'
           - type: 'null'
         condition_name_snapshot:
           type:
@@ -2287,7 +2451,7 @@ components:
           - type: 'null'
         condition_code:
           anyOf:
-          - $ref: '#/components/schemas/ConditionCode'
+          - $ref: '#/components/schemas/ConditionReference'
           - type: 'null'
         tag_ids:
           $ref: '#/components/schemas/TagIds'
@@ -2510,6 +2674,89 @@ components:
       - items
       - count
       - next_cursor
+    Condition:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          $ref: '#/components/schemas/ConditionName'
+        revision:
+          $ref: '#/components/schemas/Revision'
+        archived_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
+        updated_at:
+          $ref: '#/components/schemas/UtcInstant'
+        code:
+          $ref: '#/components/schemas/ConditionReference'
+      required:
+      - id
+      - name
+      - revision
+      - archived_at
+      - updated_at
+      - code
+    ConditionCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/Uuid'
+        name:
+          $ref: '#/components/schemas/ConditionName'
+      required:
+      - id
+      - name
+    ConditionPatch:
+      type: object
+      additionalProperties: false
+      properties:
+        base_revision:
+          $ref: '#/components/schemas/Revision'
+        name:
+          $ref: '#/components/schemas/ConditionName'
+      required:
+      - base_revision
+      - name
+    ConditionArchive:
+      type: object
+      additionalProperties: false
+      properties:
+        base_revision:
+          $ref: '#/components/schemas/Revision'
+      required:
+      - base_revision
+    ConditionPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        count:
+          type: integer
+          minimum: 0
+        next_cursor:
+          anyOf:
+          - $ref: '#/components/schemas/OpaqueCursor'
+          - type: 'null'
+      required:
+      - items
+      - count
+      - next_cursor
+    ConditionReference:
+      oneOf:
+      - $ref: '#/components/schemas/ConditionCode'
+      - $ref: '#/components/schemas/Uuid'
+      description: 계정별 기본 컨디션의 호환 코드 또는 사용자 컨디션 UUID. API 목록의 code 값을 선택/필터에 사용한다.
+    ConditionName:
+      type: string
+      minLength: 1
+      maxLength: 50
   responses:
     Error400:
       description: 공통 오류 응답.

@@ -24,7 +24,7 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 class SongCreationTests {
     final IdempotencyTests f=new IdempotencyTests();AnnotationConfigWebApplicationContext context;MockMvc mvc;UUID id=UUID.randomUUID();
     @Configuration @EnableWebMvc @EnableWebSecurity
-    @Import({com.ksh321.songrecord.api.classifications.TagConfiguration.class,com.ksh321.songrecord.api.classifications.TagController.class,com.ksh321.songrecord.api.recordings.RecordingConfiguration.class,com.ksh321.songrecord.api.recordings.RecordingController.class,SongConfiguration.class,SongController.class,SecurityConfig.class,GlobalExceptionHandler.class}) static class Config {}
+    @Import({com.ksh321.songrecord.api.classifications.ConditionConfiguration.class,com.ksh321.songrecord.api.classifications.ConditionController.class,com.ksh321.songrecord.api.classifications.TagConfiguration.class,com.ksh321.songrecord.api.classifications.TagController.class,com.ksh321.songrecord.api.recordings.RecordingConfiguration.class,com.ksh321.songrecord.api.recordings.RecordingController.class,SongConfiguration.class,SongController.class,SecurityConfig.class,GlobalExceptionHandler.class}) static class Config {}
     @BeforeEach void setup() throws Exception {
         f.setup();new ResourceDatabasePopulator(new ClassPathResource("revision-schema.sql"),new ClassPathResource("change-log-schema.sql")).populate(f.keeper);
         f.jdbc.execute("ALTER TABLE song ADD created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP");

@@ -15,7 +15,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 /** Serializes each account's domain writes and change records until the surrounding commit. */
 public final class AccountChanges {
-    public enum Entity { SONG, RECORDING, PLAYLIST, PLAYLIST_ITEM, TAG, RECORDING_ASSET }
+    public enum Entity { SONG, RECORDING, PLAYLIST, PLAYLIST_ITEM, TAG, RECORDING_ASSET, CONDITION }
     public enum Operation { UPSERT, DELETE }
     public record Change(Entity entity, UUID id, long revision, Operation operation, String payload) {
         public Change {

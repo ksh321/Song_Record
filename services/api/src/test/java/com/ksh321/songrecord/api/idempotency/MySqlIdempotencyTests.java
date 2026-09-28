@@ -438,14 +438,19 @@ class MySqlIdempotencyTests {
             UUID deviceId=UUID.randomUUID(),recordingId=UUID.randomUUID();
             db.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'upgrade',UTC_TIMESTAMP(3))",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(deviceId),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(user));
             db.update("INSERT INTO recording(id,user_id,origin_device_id,title_snapshot,note,recorded_at,timezone_id,timezone_offset_minutes) VALUES(?,?,?,'곡02','keep',UTC_TIMESTAMP(3),'UTC',0)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(recordingId),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(user),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(deviceId));
+            db.update("UPDATE recording SET condition_code='GOOD' WHERE id=?",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(recordingId));
             var beforeRecording=db.queryForMap("SELECT * FROM recording");
             var before=db.queryForMap("SELECT title,artist,note,version_code,revision,updated_at FROM song");
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();
-            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(5);flyway.validate();
+            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(6);flyway.validate();
             assertThat(db.queryForObject("SELECT title_key FROM recording_query_key",byte[].class)).isEqualTo(com.ksh321.songrecord.api.domain.DomainOrdering.sortKeyBytes("곡02"));
             assertThat(db.queryForMap("SELECT * FROM recording")).usingRecursiveComparison().isEqualTo(beforeRecording);
             assertThat(db.queryForObject("SELECT title_key FROM song_query_key",byte[].class)).isEqualTo(com.ksh321.songrecord.api.domain.DomainOrdering.sortKeyBytes("노래02"));
             assertThat(db.queryForMap("SELECT title,artist,note,version_code,revision,updated_at FROM song")).isEqualTo(before);
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM condition_definition WHERE user_id=?",Integer.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(user))).isEqualTo(4);
+            UUID fresh=UUID.randomUUID();db.update("INSERT INTO app_user(id) VALUES(?)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(fresh));
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM condition_definition WHERE user_id=?",Integer.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(fresh))).isEqualTo(4);
+            assertThat(db.queryForObject("SELECT condition_name_snapshot FROM recording WHERE id=?",String.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(recordingId))).isEqualTo("좋음");
             assertThat(flyway.migrate().migrationsExecuted).isZero();
         } finally {admin.execute("DROP DATABASE "+name);}
     }
@@ -757,6 +762,30 @@ class MySqlIdempotencyTests {
             var pages=new com.ksh321.songrecord.api.pagination.KeysetPages(db,access,manager,new com.ksh321.songrecord.api.pagination.PageCursor(new byte[32],clock,java.time.Duration.ofMinutes(30)));
             var tags=new com.ksh321.songrecord.api.classifications.TagService(db,access,mutations,new com.ksh321.songrecord.api.revision.CreationGuard(db,access,manager),revisions,changes,pages,clock);
             com.ksh321.songrecord.api.classifications.TagDatabaseChecks.verify(db,tags,drafts,editing,"Bearer test",principal.deviceId().toString(),principal.userId());
+            assertThat(flyway.migrate().migrationsExecuted).isZero();
+        } finally {admin.execute("DROP DATABASE "+name);}
+    }
+
+    @Test void mysqlConditionsPreserveLegacyAndCustomNamesAndArchiveRules() throws Exception {
+        String name=database+"_conditions";admin.execute("CREATE DATABASE "+name);
+        try {
+            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
+            var db=new JdbcTemplate(ds);var principal=access.revalidate(account);
+            when(account.principal()).thenReturn(principal);when(access.authenticate("Bearer test",principal.deviceId().toString())).thenReturn(account);
+            byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
+            db.update("INSERT INTO app_user(id) VALUES(?)",owner);db.update("INSERT INTO user_sync_state(user_id) VALUES(?)",owner);db.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",device,owner);
+            var manager=new DataSourceTransactionManager(ds);var clock=Clock.systemUTC();
+            var mutations=new IdempotentMutations(db,access,manager,clock);
+            var changes=new com.ksh321.songrecord.api.sync.AccountChanges(db,access,manager,clock);
+            var revisions=new com.ksh321.songrecord.api.revision.RevisionChanges(db,access,manager,clock);
+            var drafts=new com.ksh321.songrecord.api.recordings.RecordingDrafts(db,access,mutations,new com.ksh321.songrecord.api.revision.CreationGuard(db,access,manager),changes,clock);
+            var saving=new com.ksh321.songrecord.api.recordings.RecordingSaving(db,access,mutations,revisions,changes,drafts);
+            var jobs=new com.ksh321.songrecord.api.jobs.JobQueue(db,access,manager,clock,java.time.Duration.ofMinutes(2),5);
+            var editing=new com.ksh321.songrecord.api.recordings.RecordingEditing(db,access,mutations,revisions,changes,drafts,saving,jobs);
+            var pages=new com.ksh321.songrecord.api.pagination.KeysetPages(db,access,manager,new com.ksh321.songrecord.api.pagination.PageCursor(new byte[32],clock,java.time.Duration.ofMinutes(30)));
+            var conditions=new com.ksh321.songrecord.api.classifications.ConditionService(db,access,mutations,new com.ksh321.songrecord.api.revision.CreationGuard(db,access,manager),revisions,changes,pages,clock);
+            com.ksh321.songrecord.api.classifications.ConditionDatabaseChecks.verify(db,conditions,drafts,editing,"Bearer test",principal.deviceId().toString(),principal.userId());
             assertThat(flyway.migrate().migrationsExecuted).isZero();
         } finally {admin.execute("DROP DATABASE "+name);}
     }

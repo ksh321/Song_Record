@@ -78,7 +78,7 @@ public final class RecordingListing {
     }
     private static Map<String,Object> snapshot(ResultSet rs)throws SQLException{
         var m=new LinkedHashMap<String,Object>();m.put("id",uuid(rs.getBytes("id")).toString());var song=rs.getBytes("song_id");m.put("song_id",song==null?null:uuid(song).toString());m.put("revision",rs.getLong("revision"));
-        for(String name:List.of("metadata_state","title_snapshot","artist_snapshot","key_mode","version_code","tier","condition_code","note","timezone_id","lifecycle_state"))m.put(name,rs.getString(name));
+        for(String name:List.of("metadata_state","title_snapshot","artist_snapshot","key_mode","version_code","tier","condition_code","condition_name_snapshot","note","timezone_id","lifecycle_state"))m.put(name,rs.getString(name));
         m.put("key_shift",rs.getObject("key_shift"));m.put("timezone_offset_minutes",rs.getInt("timezone_offset_minutes"));for(String name:List.of("recorded_at","updated_at"))m.put(name,rs.getTimestamp(name).toLocalDateTime().toInstant(ZoneOffset.UTC).toString());
         m.put("tag_ids",new ArrayList<String>());var cloud=new LinkedHashMap<String,Object>();cloud.put("state",Objects.toString(rs.getString("cloud_state"),"NONE"));cloud.put("blocked_reason",rs.getString("blocked_reason"));cloud.put("stored",rs.getBoolean("server_stored"));
         var reasons=new ArrayList<String>();for(var pair:List.of(new String[]{"role_rep","REPRESENTATIVE"},new String[]{"role_latest","LATEST"},new String[]{"role_lowest","LOWEST_TIER"},new String[]{"role_pin","PINNED"}))if(rs.getBoolean(pair[0]))reasons.add(pair[1]);cloud.put("desired_reasons",reasons);m.put("cloud",cloud);return m;

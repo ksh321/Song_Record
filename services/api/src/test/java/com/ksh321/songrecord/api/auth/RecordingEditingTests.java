@@ -19,6 +19,7 @@ class RecordingEditingTests {
         new ResourceDatabasePopulator(new ClassPathResource("job-schema.sql")).populate(f.keeper);
         f.jdbc.execute("CREATE TABLE condition_catalog(code VARCHAR(16) PRIMARY KEY,name VARCHAR(50))");
         f.jdbc.update("INSERT INTO condition_catalog VALUES('GOOD','좋음'),('BAD','안 좋음'),('NORMAL','보통'),('VERY_GOOD','매우 좋음')");
+        com.ksh321.songrecord.api.classifications.ConditionTestSchema.install(f.jdbc);
         f.jdbc.execute("CREATE TABLE recording_time_correction(user_id BINARY(16),recording_id BINARY(16),revision BIGINT,actor_device_id BINARY(16),old_recorded_at TIMESTAMP(3),new_recorded_at TIMESTAMP(3),old_timezone_id VARCHAR(64),new_timezone_id VARCHAR(64),old_offset_minutes SMALLINT,new_offset_minutes SMALLINT,corrected_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(recording_id,revision))");
     }
     @AfterEach void close()throws Exception{listing.close();}
