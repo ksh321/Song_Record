@@ -8,6 +8,7 @@ function Assert-Equal($Actual,$Expected,$Name) {
 }
 Assert-Equal (Get-LoginState 0 'Logged in using ChatGPT') 'PASS' 'subscription'
 Assert-Equal (Get-LoginState 0 'Logged in using an API key') 'FAIL' 'API blocked'
+Assert-Equal (Get-LoginState 0 'Logged in using ChatGPT; API key') 'FAIL' 'ambiguous API and subscription blocked'
 Assert-Equal (Get-LoginState 0 'unknown output') 'PENDING' 'unknown login'
 Assert-Equal (Get-LoginState 1 'Logged in using ChatGPT') 'FAIL' 'failed login'
 $run=[pscustomobject]@{status='completed';conclusion='success'}
@@ -32,6 +33,18 @@ Assert-Equal (Get-AgentRisk 'Implement' 'RequirementsMissing') 'Complex' 'omissi
 Assert-Equal (Get-AgentRisk 'Complex' 'LogicError') 'Sensitive' 'logic escalates model'
 Assert-Equal (Get-AgentRisk 'Sensitive' 'ReviewBlocker') 'Escalation' 'review escalates reasoning'
 Assert-Equal (Get-AgentRisk 'Explore' 'None') 'Explore' 'normal exploration'
+Assert-Equal (Get-AgentRunPlan 'Implement' 'None' 2 0).model 'gpt-6-sol' 'before escalation budget'
+Assert-Equal (Get-AgentRunPlan 'Implement' 'LogicError' 3 0).effort 'ultra' 'third failure escalates without approval'
+Assert-Equal (Get-AgentRunPlan 'Explore' 'LogicError' 4 1).model 'gpt-6-astra' 'escalated model persists'
+Assert-Equal (Get-AgentRunPlan 'Sensitive' 'ReviewBlocker' 5 2).effort 'ultra' 'last additional attempt allowed'
+foreach($counters in @(@(6,3),@(3,3),@(2,3))) {
+    $blocked=$false
+    try { Get-AgentRunPlan 'Sensitive' 'LogicError' $counters[0] $counters[1] | Out-Null } catch { $blocked=$true }
+    Assert-Equal $blocked $true 'maximum exhausted or invalid count blocked'
+}
+$blocked=$false
+try { Get-AgentRunPlan 'Implement' 'EnvironmentOnly' 3 0 | Out-Null } catch { $blocked=$true }
+Assert-Equal $blocked $true 'environment is not solved by model escalation'
 # Isolated copy: exercise the real sender with an in-memory HTTP stub, never ntfy.
 $fixture=Join-Path $root ('.local/workflow/notify-tests/'+[guid]::NewGuid().ToString('N'))
 $fixtureTools=Join-Path $fixture 'tools'
@@ -46,6 +59,7 @@ function Invoke-RestMethod {
     param($Uri,$Method,$ContentType,$Headers,$Body,$TimeoutSec)
     $global:SongRecordTestHttpCalls++
     $payload=[Text.Encoding]::UTF8.GetString($Body)|ConvertFrom-Json
+    $global:SongRecordTestMessage=$payload.message
     Assert-Equal $Uri 'https://ntfy.sh/' 'fixed endpoint'
     Assert-Equal $payload.topic.Length 51 'server-compatible topic length'
     Assert-Equal $payload.title 'WORKFLOW-02' 'task only title'
@@ -62,7 +76,13 @@ $failed=$false
 try { & $sender -Mode Send } catch { $failed=$true }
 Assert-Equal $failed $true 'uncertain send cooldown'
 Assert-Equal $global:SongRecordTestHttpCalls 1 'cooldown avoids duplicate HTTP'
-@{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='UNKNOWN'}|ConvertTo-Json|Set-Content $attemptFile
+@{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='UNKNOWN';task='WORKFLOW-02';kind='Trial'}|ConvertTo-Json|Set-Content $attemptFile
+$failed=$false
+try { & $sender -Mode Send } catch { $failed=$true }
+Assert-Equal $failed $true 'unknown matching delivery blocked after cooldown'
+Assert-Equal $global:SongRecordTestHttpCalls 1 'unknown delivery does not resend'
+# This isolated fixture now starts a separate, known-unsent scenario.
+@{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='NOT_SENT'}|ConvertTo-Json|Set-Content $attemptFile
 $global:SongRecordTestHttpFail=$false
 & $sender -Mode Send
 Assert-Equal ((Get-Content (Join-Path $phoneDir 'receipt.json') -Raw|ConvertFrom-Json).status) 'SERVER_ACCEPTED' 'HTTP success is not human receipt'
@@ -91,8 +111,13 @@ try {
     Assert-Equal $failed $true 'concurrent operation refused'
     Assert-Equal $global:SongRecordTestHttpCalls $before 'locked sender never calls HTTP'
 } finally { $held.Dispose() }
+$global:SongRecordTestHttpFail=$false
+& $sender -Mode Send -Kind Escalation -BeforeModel Sol -BeforeReasoning high -AfterReasoning ultra -FailureCode SchedulerRecovery
+Assert-Equal ($global:SongRecordTestMessage -match 'Sol/high.*Astra/ultra') $true 'escalation models included'
+Assert-Equal ($global:SongRecordTestMessage -match '복귀 후 재시도 예약 문제.*판단 필요') $true 'failure and requested action included'
+Assert-Equal ((Get-Content (Join-Path $phoneDir 'receipt.json') -Raw|ConvertFrom-Json).status) 'SERVER_ACCEPTED' 'escalation acceptance not receipt'
 Remove-Item Function:Invoke-RestMethod
-Remove-Variable SongRecordTestHttpCalls,SongRecordTestHttpFail -Scope Global
+Remove-Variable SongRecordTestHttpCalls,SongRecordTestHttpFail,SongRecordTestMessage -Scope Global
 & pwsh -NoProfile -File (Join-Path $root 'tools/workflow.ps1') -Mode Quick -Python '__nonexistent_python_workflow_test__' *> $null
 Assert-Equal $LASTEXITCODE 1 'execution error process status'
 $report = Get-Content (Join-Path $root '.local/workflow/quick.json') -Raw | ConvertFrom-Json

@@ -3,7 +3,11 @@
 param(
     [ValidateSet('Init','Subscribe','Send','Confirm')][string]$Mode='Send',
     [ValidatePattern('^(WORKFLOW-\d{2}|P\d{2}-\d{2}[a-z]?)(-[A-Z0-9]+)?$')][string]$TaskId='WORKFLOW-02',
-    [ValidateSet('Trial','PhoneTest','Intervention')][string]$Kind='Trial',
+    [ValidateSet('Trial','PhoneTest','Intervention','Escalation')][string]$Kind='Trial',
+    [ValidateSet('Luna','Sol','Astra')][string]$BeforeModel='Astra',
+    [ValidateSet('medium','high','xhigh','max','ultra','high/xhigh')][string]$BeforeReasoning='high',
+    [ValidateSet('ultra','unconfirmed')][string]$AfterReasoning='ultra',
+    [ValidateSet('SchedulerRecovery','LogicContract','EnvironmentBlocked','ModelUnavailable')][string]$FailureCode='LogicContract',
     [string]$Adb='adb'
 )
 $ErrorActionPreference='Stop'
@@ -47,12 +51,25 @@ if ($Mode -eq 'Confirm') {
 if (Test-Path $attempt) {
     $previous=Get-Content $attempt -Raw | ConvertFrom-Json
     if (([DateTime]::UtcNow-[DateTime]$previous.utc).TotalSeconds -lt 60) { throw 'Wait at least 60 seconds between notifications.' }
+    if ($previous.status -eq 'UNKNOWN' -and $previous.task -eq $TaskId -and $previous.kind -eq $Kind) {
+        throw 'Previous matching notification has unknown delivery. Check it with the user; do not automatically resend.'
+    }
 }
 # Fixed templates only: no logs, URLs, free text, account names or credentials.
 $message=switch($Kind) {
     Trial {'시험 알림입니다. 휴대폰 수신 여부를 대화에 알려주세요.'}
     PhoneTest {'휴대폰 테스트가 필요합니다. 대화의 조작 순서를 확인해 주세요.'}
     Intervention {'사용자 조작이 필요합니다. 대화의 요청 사항을 확인해 주세요.'}
+    Escalation {
+        $summary=switch($FailureCode) {
+            SchedulerRecovery {'복귀 후 재시도 예약 문제'}
+            LogicContract {'요구사항·논리 검증 실패'}
+            EnvironmentBlocked {'실행 환경·권한 문제'}
+            ModelUnavailable {'최대 추론 실행 미확인'}
+        }
+        $action=if($FailureCode -eq 'ModelUnavailable'){'Astra 최대 추론 설정 확인 필요'}else{'대화의 실패 기록·재개 방안 판단 필요'}
+        "$BeforeModel/$BeforeReasoning → Astra/${AfterReasoning}: $summary. $action."
+    }
 }
 $payload=@{topic=$topic;title=$TaskId;message=$message;priority=3} | ConvertTo-Json -Compress
 $sendAttempt=@{attempt_id=[guid]::NewGuid().ToString('N');utc=[DateTime]::UtcNow.ToString('o');task=$TaskId;kind=$Kind;status='UNKNOWN'}

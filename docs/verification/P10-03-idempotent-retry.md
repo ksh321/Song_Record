@@ -55,3 +55,4 @@ Astra/xhigh P1(서버 기준선이 더 최신인 replay ACK 정체)을 수정했
 - 최신 ACK 변경 `flutter analyze --no-pub`: 종료 0, 문제 없음.
 대상 제품 커밋은 이 절과 core 구현을 함께 반영한 Git history로 식별하며 푸시 후 정확한 SHA CI를 확인한다. 아직 전체 P10-03 완료가 아니다.
 다음 P10-03b는 설정의 동기화 상태/수동 재시도와 foreground 실행 연결이다. 별도 Astra/high 작업자가 실제 main/LoginGate/설정/원본 HTML을 대조해 제안을 남겼다. 새 연결의 폰 조작이 필요해지면 해당 범위만 알린다.
+core 완료 SHA c6c1eaacd41b7318aeadfc48953bd356e570eedc: CI 36559780984 / API contract 36559780906 / Idempotency MySQL 36559780885 / Development workflow 36559780857 모두 success. 전체 P10-03은 별도 P10-03b 새 연결/실기 대기를 유지한다.

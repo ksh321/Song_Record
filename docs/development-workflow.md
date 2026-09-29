@@ -72,6 +72,12 @@ pwsh -NoProfile -File tools/run-agent.ps1 -Role Reviewer -Risk Complex -PromptFi
 ```
 
 위 예는 Luna/medium 탐색과 Sol/high 검수다. Sensitive는 Astra/high, Escalation은 Astra/xhigh.
+원인 분석·수정을 포함한 동일 문제 실패 3회부터는 사용자 응답을 기다리지 않고 Astra의 지원 최대
+추론으로 추가 최대 3회 해결을 시도한다. 현재 모델 지원 목록에서 ultra를 확인했다.
+`-SameProblemFailures 3 -MaximumReasoningFailures 0`은 Astra/ultra를 요청한다.
+누적 4회 중 ultra 실패 1회면 각각 4/1, 누적 5회 중 2회면 5/2를 전달한다.
+최대 수준 실패가 3이면 누적 횟수와 무관하게 호출을 거절한다. 이미 ultra로 시작해 3회 실패한
+경우도 3/3으로 종료한다. 문제 ID의 실제 기록을 입력하며 모델/세션 변경으로 초기화하지 않는다.
 실제 모델 지원 실패 시 유료 API로 우회하지 않는다. `--strict-config`로 설정 이름을 검사하고
 ChatGPT 로그인, `service_tier=default`, `features.fast_mode=false`를 요청한다.
 기록 JSON은 **요청 설정**이다. CLI 헤더가 모델/추론을 확인해도 서버의 실제 처리 속도는
@@ -107,18 +113,20 @@ CI 자체의 성공과 서버 보호 규칙을 모두 만족했는지는 구분�
 마스터는 Astra/medium 기본이며 속도 요청과 관측을 구분하고 미노출 속도 탐색은 반복하지 않는다.
 
 progress의 현재 작업 표에는 상태/검증/대기 사유/사용자 요청/다음을 남긴다. 실패는 문제 ID로
-누적하여 세션·모델 변경으로 초기화하지 않는다. 3회 실패 시 ntfy Intervention 알림과 함께
-시도·원인·필요 판단을 대화에 남긴다. 기존 ENV-GRADLE-LOOPBACK 3회는 새 세션에서도 유지한다.
+누적하며 최대 추론 실패 횟수도 따로 남긴다. 기존 모델 3회 실패는 자동 상향 지점이고 최대 수준
+3회 실패는 해당 작업 중단·ntfy 알림 지점이다. 모델·추론·원인·수정 방법·검증 결과를 기록한다.
+분석/수정 없는 동일 명령 반복은 추가 해결 시도로 세지 않는다. 권한·네트워크·도구 부재는 별도
+환경 문제로 관리하며 모델 상향으로 해결했다고 하지 않는다. 기존 ENV-GRADLE-LOOPBACK 환경 실패 3회는 유지한다.
 중단을 감지할 수 있으면 미커밋 변경·실행 중 프로세스·남은 검증·재개 명령을 추가한다.
 
-폰 조작/청취/테스트, 미승인 정책 선택, 로그인/기기/권한, 3회 실패, 별도 승인이 필요하면
+폰 조작/청취/테스트, 미승인 정책 선택, 로그인/기기/권한, 최대 추론 3회 실패, 별도 승인이 필요하면
 해당 작업만 사용자 응답 대기로 두고 ntfy를 보낸다. 이유/절차/기대 결과/답할 내용을 대화에 적는다.
 구체적 결과나 정책 선택은 해당 조건과 대응시켜 재개하고, 결과 없는 “이어서 진행”을 통과로
 기록하지 않는다. 무관하고 파일 충돌 없는 작업은 계속하며 모든 진행 가능한 작업이 막힐 때만 전체 대기한다.
 
 작업별 verification 문서에 작업/요구사항 ID, 선행 조건, 변경 파일, 명령·종료코드·실제 결과,
 대상 SHA, 검수 지적과 해결, 수동 대기, 다음 ID를 적고 progress.md 최신 절을 갱신한다.
-3회 실패/구독 한도 시 실패 시도와 재개 명령을 남긴다. 상태를 숨기거나 테스트를 약화하지 않는다.
+최대 추론 3회 실패/구독 한도 시 실패 시도와 재개 명령을 남긴다. 상태를 숨기거나 테스트를 약화하지 않는다.
 
 핵심 학습 개념은 트랜잭션과 멱등성이다. 현재 P10 코드는 로컬 입력과 전송 큐를 함께 저장해
 부분 저장을 막고, op_id로 같은 작업 재시도를 식별한다. 큐 후보 판정과 실제 서버 승인 반영을
@@ -128,13 +136,18 @@ progress의 현재 작업 표에는 상태/검증/대기 사유/사용자 요청
 
 [WORKFLOW-02](verification/WORKFLOW-02-followup.md)에 Docker/USB, 보호 API 제한, 모델 실행과
 D06/P06 선행 조건을 기록한다. 모델 runner의 `-Finding RequirementsMissing|LogicError|ReviewBlocker`
-는 위험 수준을 상향하고 `EnvironmentOnly`는 유지한다. `-SameProblemFailures 3`은 사용자 호출로 중단한다.
+는 위험 수준을 상향하고 `EnvironmentOnly`는 유지한다. 논리 문제 누적 3회는 위 최대 추론 단계로 전환한다.
+실제 모델/추론 실행을 확인하지 못하면 변경됐다고 보고하지 않고 필요한 설정을 휴대폰에 알린다.
 
 `tools/phone-notify.ps1`은 무료 ntfy에 작업 ID와 고정 문구만 보낸다.
 처음 Init → Android 앱 설치/알림 허용 → Subscribe(USB) → Send(Trial) → 사용자 실제 수신 답변 → Confirm.
 사람의 실기가 필요하면 대화에 이유/순서/기대 결과를 먼저 남기고
 `pwsh -File tools/phone-notify.ps1 -Mode Send -TaskId P06-08 -Kind PhoneTest`를 실행한다.
 사람 개입 요청은 `-Kind Intervention`. 푸시 실패 시 대화로 알리고 실기는 계속 대기다.
+최대 추론 실패/설정 개입은 `-Kind Escalation -BeforeModel Astra -BeforeReasoning high/xhigh
+-AfterReasoning ultra -FailureCode SchedulerRecovery`로 작업 ID와 상향 전후 모델·추론, 안전한 실패 요약·
+판단 요청을 보낸다. 모델 실행 미확인은 AfterReasoning=unconfirmed, FailureCode=ModelUnavailable이다.
+열거형 고정 문구만 허용해 로그·키·개인 정보를 알림에 넣지 않는다. 필요한 구체 조치/상세 시도는 대화와 문서에 적는다.
 무작위 topic/config는 `.local` 밖으로 복사하지 않는다. 이 스크립트는 예약 실행 서비스가 아니며
 활성 작업 중 마스터가 필요한 시점에 호출한다. 구독 한도 뒤 몰래 API로 계속 실행하지 않는다.
 

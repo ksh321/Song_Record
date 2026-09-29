@@ -5,20 +5,19 @@ param(
     [Parameter(Mandatory)][string]$PromptFile,
     [ValidateSet('Explore','Implement','Complex','Sensitive','Escalation')][string]$Risk = 'Implement',
     [ValidateSet('None','EnvironmentOnly','RequirementsMissing','LogicError','ReviewBlocker','ComplexFailure')][string]$Finding='None',
-    [ValidateRange(0,100)][int]$SameProblemFailures=0
+    [ValidateRange(0,100)][int]$SameProblemFailures=0,
+    [ValidateRange(0,100)][int]$MaximumReasoningFailures=0
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 . (Join-Path $PSScriptRoot 'workflow-common.ps1')
-if ($SameProblemFailures -ge 3) { throw 'Same problem failed three times. Record attempts and request human intervention before another retry.' }
 $initialRisk=$Risk
-$Risk=Get-AgentRisk $Risk $Finding
-$model = switch ($Risk) { Explore {'gpt-6-luna'} Sensitive {'gpt-6-astra'} Escalation {'gpt-6-astra'} default {'gpt-6-sol'} }
-$effort = switch ($Risk) { Complex {'high'} Sensitive {'high'} Escalation {'xhigh'} default {'medium'} }
+$plan=Get-AgentRunPlan $Risk $Finding $SameProblemFailures $MaximumReasoningFailures
+$Risk=$plan.risk; $model=$plan.model; $effort=$plan.effort
 # No API fallback, automatic login, credit purchase or sandbox bypass.
 $login = (& codex login status 2>&1 | Out-String)
-if ($LASTEXITCODE -ne 0 -or $login -notmatch 'Logged in using ChatGPT') { throw 'ChatGPT subscription login required; API authentication is not allowed' }
+if ((Get-LoginState $LASTEXITCODE $login) -ne 'PASS') { throw 'ChatGPT subscription login required; API authentication is not allowed' }
 $prompt = Get-Content -LiteralPath $PromptFile -Raw
 $outDir = Join-Path $root '.local/workflow'
 New-Item -ItemType Directory -Force $outDir | Out-Null
@@ -34,6 +33,7 @@ $code = $LASTEXITCODE
 $settings['initial_risk']=$initialRisk
 $settings['finding']=$Finding
 $settings['same_problem_failures']=$SameProblemFailures
+$settings['maximum_reasoning_failures']=$MaximumReasoningFailures
 $header=Get-Content "$prefix.log" -TotalCount 25
 $settings['observed_model']=($header | Where-Object { $_ -match '^model:' }) -join '; '
 $settings['observed_reasoning']=($header | Where-Object { $_ -match '^reasoning effort:' }) -join '; '
