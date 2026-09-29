@@ -1,5 +1,11 @@
 # P10-04 — canonical ID 보존 계약 대조 (구현 전)
 
+최신 상태: P10-04a 부가 v4 저장 기반은 `5c23040abf78e34ea537016545ab78244764a79d`로 통합·푸시했고 [별도 검증 기록](P10-04a-preservation-schema.md)에서 추적한다. 아래 “제품 코드 아직 없음/v3”는 최초 계약 대조 당시 기록이다. 전체 P10-04 원자 매핑은 아직 완료가 아니다.
+
+P10-04b 준비에서 서버 `SongCreation.create/existing`을 다시 대조했다. 인증 계정의 검증된 TJ proof 번호로 reserved_tj_number를 조회하고, existing은 source_type/번호 일치와 ACTIVE를 검사한 후 200/created=false를 반환한다. 따라서 source_token을 TJ 문자열로 해석할 필요가 없다. 새 receipt decoder는 기존 전체 snapshot 검증을 유지하고 이 서버 계약에 연결해야 한다.
+
+현재 recoveryData의 실제 앱 소비는 main.dart의 복구 자료 저장이며 저장소 검색에서 이 형식의 importer는 찾지 못했다. 버전/순서 계약과 미구현 복원 경계는 후속에서 명시한다. 기존 saveEdit fingerprint가 요청 당시 draft를 포함하지만 큐에는 해당 draft가 없으므로 최신 draft로 원래 fingerprint를 재구성하지 않는다. 자동 successor는 별도 결정적 계약/회귀를 준비한 뒤 구현하며, 단순 보류만으로 전체 매핑을 완료 처리하지 않는다. 다음 작업자의 제안은 실제 파일 변경이나 테스트 통과 증거가 아니다.
+
 기준 HEAD `c6c1eaacd41b7318aeadfc48953bd356e570eedc`. P10-03b UI/스케줄러와 파일 범위를 분리한 준비 작업이다. 이 문서는 구현 완료나 테스트 통과 증거가 아니다.
 
 ## 원본과 현재 코드

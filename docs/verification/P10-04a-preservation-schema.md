@@ -30,3 +30,5 @@ P10-04b: 검증된 200/created=false canonical 응답의 원자 적용, 참조�
 Astra/ultra 작업자 제안으로 v4에 기존 요청 rowid UPDATE 불변 트리거를 추가했다. master는 재삽입/숨은 rowid 충돌·비양수 새 순서·삭제도 거부하도록 추가했다. 기존 행을 수정하지 않는다. 관련 44 통과/1 skip·분석 통과 후 별도 ultra 검수에서 확정 제품 결함 없음, INSERT 분기 회귀 누락 P2를 받았다. 실패 누적 4/최대 단계 1 유지. 새로운 op_id의 rowid 충돌, 명시적 0/-1/-2 삽입, v3의 기존 -1행 보존, 생략 rowid 정상 삽입 회귀를 추가해 새 테스트 파일 5개 통과했다. 두 번째 ultra 검수 진행 중.
 
 최종 별도 Astra/ultra 검수에서 위 INSERT 분기 누락 해소·추가 차단 없음 확인. 독립 브랜치 5da5226을 main에 정상 cherry-pick하여 대상 5c23040abf78e34ea537016545ab78244764a79d로 통합했다. 현재 main에서 canonical_schema/account_store/mutation_retry/sync_controller 4파일을 함께 실행해 **84 통과·Windows symlink 1 skipped**, 분석 No issues found. 지연 401/403의 4회귀도 이 통합 범위에 포함된다. 일반 push 완료, 대상 SHA 필수 CI 대기.
+
+대상 5c23040abf78e34ea537016545ab78244764a79d 필수 CI 4개·필수 job 모두 success: [CI 36571851767](https://github.com/ksh321/Song_Record/actions/runs/36571851767), API contract 36571851768, Idempotency MySQL 36571851857, Development workflow 36571851901. **P10-04a 저장 기반 완료**, P10-04 전체 매핑 완료 아님.
