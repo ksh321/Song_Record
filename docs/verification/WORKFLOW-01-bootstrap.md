@@ -120,6 +120,18 @@ tier 확인은 외부 게이트로 유지했다. 결과는 `.local/workflow/Revi
 최종 확인에서 외부 원본 6개 비교 PASS, 기존 원본 6개와 apps/services/infra staged diff 없음,
 비밀 파일/로컬 기록 경로 stage 0개를 확인했다.
 
+### 최초 푸시와 CI 수정
+
+`bd18ca25acbc7dc5363ce34737baed8673e13fd1`을 main에 일반 푸시했다.
+새 [Development workflow 36533770701](https://github.com/ksh321/Song_Record/actions/runs/36533770701)은
+원본 검사·Python 3개·PowerShell 21개 검사 모두 통과 후 종료 코드 1로 실패했다.
+GitHub pwsh wrapper가 의도적으로 실패시킨 자식 프로세스의 LASTEXITCODE=1을 전달한 원인이었다.
+테스트 assert와 실패 사례를 그대로 유지하고, 전체 assert 성공 후에만 명시적 `exit 0`을 추가했다.
+이 실행을 CI 성공으로 기록하지 않는다. 수정 커밋의 정확한 SHA로 4종 CI를 다시 확인한다.
+GitHub와 같은 pwsh wrapper 형태를 Windows에서 실행해 종료 코드 0 및 Quick 전체 통과를
+확인했다. 별도 Sol/medium 검수자는 모든 assert 뒤의 종료 코드 수정이 테스트를 약화하지
+않음을 검토했다. 단순 테스트 실행기 수정이므로 이 검수에는 Astra 대신 Sol/medium을 선택했다.
+
 ## 다음 작업과 재개 조건
 
 다음 구현 ID는 **P10-02b**다. 계획서 `[p00578]~[p00580]`의 P10-02 완료 기준을 유지하는

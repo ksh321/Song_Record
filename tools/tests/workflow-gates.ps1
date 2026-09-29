@@ -34,3 +34,6 @@ Assert-Equal $report.overall 'FAIL' 'execution error overall'
 Assert-Equal $report.execution_error $true 'execution error flag'
 Assert-Equal $report.scope 'working_tree' 'dirty worktree attribution'
 Write-Host "PASS: $script:cases workflow failure/acceptance cases"
+# GitHub's pwsh wrapper propagates LASTEXITCODE. The deliberately failing child
+# above must not become this successful test suite's process result.
+exit 0
