@@ -11,7 +11,7 @@
 | Docker | `docker info --format '{{.ServerVersion}}'`, compose ps | 엔진 29.8.0, 기존 mysql healthy |
 | DB | compose exec mysql, READ ONLY transaction에서 VERSION/information_schema/flyway 이력만 SELECT | MySQL 8.4.11, 테이블 2개, V1 success=1. 현재 V15 적용으로 간주하지 않음 |
 | 보존 | 기존 song-record-dev_song_record_mysql_data 볼륨 /var/lib/mysql mount 확인 | down/reset/migrate/delete 없이 유지 |
-| USB | `adb -d get-state`, OS 속성, `pm list packages --user 0` | 최초 device, Android 16, dev 앱 설치. 이후 재확인 no devices found로 현재 재연결 대기. 실기 통과를 의미하지 않음 |
+| USB | `adb -d get-state`, OS 속성, `pm list packages --user 0` | 최초 device, Android 16, dev 앱 설치. 중간 no devices found 이후 개입 알림 전송·사용자 재연결 후 최종 device 재확인. 실기 통과를 의미하지 않음 |
 | Flutter | `flutter test --no-pub test/auth_session_test.dart test/identity_link_test.dart test/identity_link_http_test.dart test/account_store_test.dart` | exit 0, 49 통과 / Windows symlink 권한으로 1 skipped |
 | 서버 인증 | `gradlew.bat test --offline --no-daemon --tests '*SessionServiceTests' --tests '*OwnershipTests' --tests '*IdentityLinkTests' --tests '*AccountRegistrationTests'` | 실행 전 loopback connection 오류. 아래 재시도 포함 3회 실패, 테스트 결과 없음 |
 | 자동화 | `pwsh -File tools/workflow.ps1 -Mode Quick`, PowerShell AST parse | 출처·Python 3개·PowerShell 36개·diff 검사 통과 |
@@ -107,6 +107,8 @@ CI 성공은 실제 기기의 계정 격리 증거가 아니다. DB 연결 성�
 - [Idempotency MySQL 36538344619](https://github.com/ksh321/Song_Record/actions/runs/36538344619): 성공.
 - [Development workflow 36538344636](https://github.com/ksh321/Song_Record/actions/runs/36538344636): 성공.
 
-원격 서버 자동 검증은 확보했다. Windows H2 실행 환경 오류, 현재 USB 재연결, P06 실제 로그인/두 계정 실기, 개발 DB V1→현재 스키마 준비와 실제 실행 tier 확인은 여전히 대기다. 알림은 사용자 실제 수신 답변으로 완료. P10-02b는 보류, 다음 P09-07b-C1 보정부터 진행 가능하다.
+원격 서버 자동 검증은 확보했다. Windows H2 실행 환경 오류, P06 실제 로그인/두 계정 실기, 개발 DB V1→현재 스키마 준비와 실제 실행 tier 확인은 여전히 대기다. 알림은 사용자 실제 수신 답변으로 완료. P10-02b는 보류, 다음 P09-07b-C1 보정부터 진행 가능하다.
 
 이 절을 추가한 후속 커밋은 검증 결과를 기록하는 문서 전용 변경이다. 그 SHA는 Git history로 식별하며 자체 CI도 별도로 조회한다. 위 결과는 구현 커밋의 증거이며 미래 기록 커밋에 대한 성공 주장으로 사용하지 않는다.
+
+최종 USB 재연결: 사용자 요청 응답 후 adb -d get-state=device, dev 앱 설치, ntfy POST_NOTIFICATIONS granted=true 확인. 새로운 개입 알림도 서버 접수했으며 이 개별 알림의 사람 수신은 따로 추정하지 않는다. 앞선 trial의 명시적 사용자 수신 확인에 기반한 알림 설정 완료는 유지한다. USB 연결 성공은 로그인/녹음 실기 성공을 의미하지 않는다.
