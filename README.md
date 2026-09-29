@@ -1,11 +1,12 @@
 # Song_Record
-노래방 노래 검색, 녹음, 노래의 다양한 정보 기록 관리 앱
 
-2026-09-29 실제 점검: 최신 제품 코드는 **P10-02a (`9b2fc86`)**다. 해당 커밋의 기존 CI 3종과 Windows Flutter 분석·동기화 테스트 19개 성공을 확인했다. 다음 구현은 **P10-02b**이며 HTTP 송신·승인 반영은 아직 없다. 인증 실기와 컨디션 정책 충돌 확인을 선행한다.
+2026-09-29 사용자 확인: **현재까지 커밋된 기존 기능은 사용자 검증 완료**이며 P06도 포함한다. 기준 HEAD는 `eef028dddea87cb0ad02d733808658512dffe431`, 제품 구현은 P10-02a(`9b2fc86`)다. 사용자 확인의 테스트 개수·명령·기기 정보는 추정하지 않는다.
 
-[현재 진행 상태](docs/progress.md) · [AI 개발 자동화 실행 안내](docs/development-workflow.md) · [초기 점검과 검증 증거](docs/verification/WORKFLOW-01-bootstrap.md) · [기준 자료 검색 색인](docs/reference/search/README.md)
+현재 상태·근거·P10 착수 조건은 [진행 기록](docs/progress.md#user-acceptance-20260929)을 따른다. P06 문서 부족으로 인한 재실기 요구는 철회했다. 컨디션 송신 계약 정합성은 별도 선행 항목이며, Gradle 오류와 개발 DB 준비는 별도 실행 환경 문제다. 이후 코드 변경은 변경 부분과 영향 범위를 검증한다.
 
-Docker 엔진·USB 실기·Standard 실제 적용·브랜치 보호 규칙 조회는 확인 대기다. 아래 기존 단계별 완료 기록은 당시 범위의 기록이며, 앱 전체 완료를 뜻하지 않는다.
+[개발 자동화 실행 안내](docs/development-workflow.md) · [후속 점검 기록](docs/verification/WORKFLOW-02-followup.md)
+
+아래 단계별 기록은 당시 이력이다. 과거 대기 문구만으로 사용자 확인을 취소하거나 기존 실기를 반복 요청하지 않는다. Docker·USB·휴대폰 알림은 확인됐으며 실제 Standard 적용과 서버 보호 상태는 별도 미확인 항목이다.
 
 ## 기준 파일
 

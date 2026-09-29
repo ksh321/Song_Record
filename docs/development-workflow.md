@@ -9,6 +9,9 @@ Codex가 현재 작업에서 명령과 로그 확인을 직접 수행하는 흐�
 저장소 루트에서 PowerShell 7로 실행한다. 명령 실행은 AI가 담당하며 로그인·USB 승인·청취만
 필요 시 사용자에게 요청한다. 결과 0=해당 자동 검사 통과, 1=실패, 2=미확인/대기다.
 명령이 통과해도 수동 검증을 포함한 전체 기능이 완료됐다는 뜻은 아니다.
+명시적인 사용자 검증 완료 확인도 완료 근거다. [2026-09-29 사용자 확인](progress.md#user-acceptance-20260929)
+범위의 기존 기능은 검증 완료로 유지하고, 과거 문서 부족만으로 실기를 다시 요청하지 않는다.
+이후 변경은 변경 부분과 영향 범위만 근거에 맞게 검증한다. 현재 PC 실행 환경 상태는 별도 관리한다.
 
 ```powershell
 pwsh -NoProfile -File tools/workflow.ps1 -Mode Doctor -SourcePath 'C:\Users\shoon111111\Desktop\source'
@@ -29,7 +32,8 @@ pwsh -NoProfile -File tools/github-check.ps1 -Commit <40자리SHA> -InspectPolic
 - Phone: USB 연결 기기 점검. 현재 runner는 USB 한 대만 연결한 상태를 지원하며 `-DeviceId`로
   해당 기기 일치를 확인할 수 있다. 여러 USB 기기는 대기로 남긴다. 서버가 준비된 후 `-Reverse`로
   휴대폰 localhost:8080을 개발 PC로 연결할 수 있다. 앱 설치/데이터 초기화는 하지 않는다.
-  녹음·청취·로그인 실기는 관련 작업 문서의 체크리스트로 검증한다.
+  새 변경에 필요한 녹음·청취·로그인 실기는 변경 영향에 맞게 선정한다. 과거 체크리스트의
+  대기 문구만으로 사용자 확인이 끝난 기존 기능의 실기를 반복하지 않는다.
 
 raw 로그·프롬프트·기계별 JSON은 `.local/workflow`에 저장하고 Git에서 제외한다.
 워크플로우 실행별 로그는 runs의 고유 폴더에 보존하고 mode별 JSON은 최신 결과를 가리킨다.
