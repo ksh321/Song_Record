@@ -14,3 +14,7 @@
 Worker Astra/high(동기화 응답 경계), 별도 Reviewer Astra/high 검수에서 범위 내 차단 결함 없음. 기존 조건과 인증/ACK/충돌 보존, 불변 snapshot·원문 보존을 대조했다. 리뷰 입력에 identifiers.dart와 분석 원문이 없어 그 세부 규칙/실행은 검수자가 독립 확인하지 못했다. master는 실제 domain 코드와 실행 결과를 확인했고 대상 SHA CI로 후속 확인한다. default/Fast 끔 요청, 실제 tier 미확인. 상세 로그 `.local/workflow/p10-04b-decoder-test.log`. 커밋·해당 SHA CI 전 완료 판정하지 않는다. DB/파일을 수정하는 실기나 추가 폰 조작을 요청할 변경이 아니다.
 
 다음: 이 객체를 단일 매핑 트랜잭션에 연결하면서 개인 편집/참조/늦은 ACK/보류 순서를 함께 보존한다. 현재 CANONICAL_MAPPING_REQUIRED 정책은 유지한다.
+
+## 커밋·CI 최종 판정
+
+대상 **6f146e150837a178ec96e9ddb3a1db8f1ff9e9e6** 일반 커밋·push 후 필수 CI 4개·필수 job 모두 success: [CI 36575497981](https://github.com/ksh321/Song_Record/actions/runs/36575497981), API contract 36575498123, Idempotency MySQL 36575497682, Development workflow 36575497774. **P10-04b-DECODER 완료**. 이전 절의 커밋/CI 대기는 검증 전 이력이다. P10-04 전체 매핑과 새 폰 실기는 완료로 확대하지 않는다.
