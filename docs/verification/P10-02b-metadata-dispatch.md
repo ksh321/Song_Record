@@ -91,3 +91,12 @@ v1 이력·DDL 의미·마이그레이션 코드·기존 앱 DB·개발 볼륨�
 `dart run build_runner build` 종료 0, 재생성 후 `dart run drift_dev make-migrations --no-test` 종료 0.
 수정 커밋의 필수 CI가 완료되기 전 P10-02b 완료 판정은 보류한다. P10-03 순수 정책은 별도 미커밋 준비로 유지한다.
 별도 Sol/medium 검수: 줄바꿈 차이만 확인, 검사 약화/데이터 변경 결함 없음. Linux 및 정확한 SHA CI는 여전히 대기.
+
+## 최종 완료 — 2026-09-29
+
+수정 SHA `ae678578d376fb040295335f4bbd58e1cf8c2137`의 필수 CI 모두 PASS:
+[CI 36556097022](https://github.com/ksh321/Song_Record/actions/runs/36556097022),
+[API contract 36556097067](https://github.com/ksh321/Song_Record/actions/runs/36556097067),
+[Idempotency MySQL 36556097060](https://github.com/ksh321/Song_Record/actions/runs/36556097060),
+[Development workflow 36556096824](https://github.com/ksh321/Song_Record/actions/runs/36556096824).
+P10-02b 구현 범위 완료. 위 과거 CI 대기 문구를 이 판정으로 대체하며 다음 P10-03을 진행한다.
