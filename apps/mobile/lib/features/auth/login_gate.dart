@@ -3,13 +3,20 @@ import 'package:song_record/app/song_record_app.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 
+import '../sync/sync_controller.dart';
 import 'auth_session.dart';
 import 'identity_link.dart';
 
 class LoginGate extends StatefulWidget {
-  const LoginGate({required this.controller, required this.config, super.key});
+  const LoginGate({
+    required this.controller,
+    required this.config,
+    this.syncController,
+    super.key,
+  });
   final AuthController controller;
   final AppConfig config;
+  final SyncController? Function()? syncController;
   @override
   State<LoginGate> createState() => _LoginGateState();
 }
@@ -30,6 +37,9 @@ class _LoginGateState extends State<LoginGate> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    widget.syncController?.call()?.setForeground(
+      state == AppLifecycleState.resumed,
+    );
     if (state == AppLifecycleState.resumed &&
         widget.controller.phase == AuthPhase.ready) {
       // Keep the existing navigation/recorder tree while silently refreshing.
@@ -50,6 +60,7 @@ class _LoginGateState extends State<LoginGate> with WidgetsBindingObserver {
           key: ValueKey(auth.session!.userId),
           config: widget.config,
           authController: auth,
+          syncController: widget.syncController?.call(),
           identityLink:
               auth.api is IdentityLinkApi &&
                   auth.proofs is IdentityLinkProofSource

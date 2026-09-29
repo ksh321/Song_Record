@@ -7,7 +7,7 @@ param(
     [ValidateSet('Luna','Sol','Astra')][string]$BeforeModel='Astra',
     [ValidateSet('medium','high','xhigh','max','ultra','high/xhigh')][string]$BeforeReasoning='high',
     [ValidateSet('ultra','unconfirmed')][string]$AfterReasoning='ultra',
-    [ValidateSet('SchedulerRecovery','LogicContract','EnvironmentBlocked','ModelUnavailable')][string]$FailureCode='LogicContract',
+    [ValidateSet('SchedulerRecovery','AuthFollowup','LogicContract','EnvironmentBlocked','ModelUnavailable')][string]$FailureCode='LogicContract',
     [string]$Adb='adb'
 )
 $ErrorActionPreference='Stop'
@@ -63,6 +63,7 @@ $message=switch($Kind) {
     Escalation {
         $summary=switch($FailureCode) {
             SchedulerRecovery {'복귀 후 재시도 예약 문제'}
+            AuthFollowup {'인증 차단 뒤 자동 후속 전송 문제'}
             LogicContract {'요구사항·논리 검증 실패'}
             EnvironmentBlocked {'실행 환경·권한 문제'}
             ModelUnavailable {'최대 추론 실행 미확인'}

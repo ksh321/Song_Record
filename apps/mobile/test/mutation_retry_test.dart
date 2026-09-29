@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -10,9 +11,30 @@ import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/sync/mutation_request.dart';
 import 'package:song_record/core/sync/mutation_transport.dart';
 import 'package:song_record/features/auth/auth_session.dart';
+import 'package:song_record/features/sync/sync_controller.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'metadata_dispatcher_test.dart' show id, tag, FakeTransport;
+
+Future<void> idleAfter(
+  SyncController controller,
+  void Function() action,
+) async {
+  final idle = Completer<void>();
+  var actionReturned = false;
+  void listener() {
+    if (actionReturned && !controller.busy && !idle.isCompleted) {
+      idle.complete();
+    }
+  }
+
+  controller.addListener(listener);
+  action();
+  actionReturned = true;
+  if (!controller.busy && !idle.isCompleted) idle.complete();
+  await idle.future;
+  controller.removeListener(listener);
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -57,6 +79,176 @@ void main() {
     await root.delete(recursive: true);
   });
 
+  // manual auth followup guard: queued lifecycle work must honor 401/403.
+  for (final status in [401, 403]) {
+    for (final enableToggle in [false, true]) {
+      test('manual auth followup guard $status enable=$enableToggle', () async {
+        await create(10);
+        await create(11);
+        final sent = Completer<void>();
+        final response = Completer<MutationResponse>();
+        var sends = 0, scheduled = 0;
+        final transport = FakeTransport((_) async {
+          sends++;
+          if (!sent.isCompleted) sent.complete();
+          return response.future;
+        });
+        final controller = SyncController(
+          RepositorySyncBackend(repo, transport, session),
+          now: () => now,
+          schedule: (_, _) {
+            scheduled++;
+            return () {};
+          },
+        );
+        addTearDown(controller.dispose);
+        final pass = idleAfter(controller, () => controller.setEnabled(true));
+        await sent.future;
+        if (enableToggle) {
+          controller.setEnabled(false);
+          controller.setEnabled(true);
+        } else {
+          controller.setForeground(false);
+          controller.setForeground(true);
+        }
+        response.complete(MutationResponse(status, '{}'));
+        await pass;
+        // Let any queued microtask start, then await its full DB pass if present.
+        await Future<void>.delayed(Duration.zero);
+        await idleAfter(controller, () {});
+        expect(sends, 1);
+        expect(scheduled, 0);
+        expect((await repo.pending()).map((m) => m.attemptCount), [1, 0]);
+      });
+    }
+  }
+
+  test('foreground pass automatically drains its 51st ready item', () async {
+    for (var n = 50; n < 101; n++) {
+      await create(n);
+    }
+    final requests = <MutationRequest>[];
+    final transport = FakeTransport((r) async {
+      requests.add(r);
+      return MutationResponse(201, jsonEncode(tag(r.mutation.entityId)));
+    });
+    final callbacks = <void Function()>[];
+    final delays = <Duration>[];
+    final controller = SyncController(
+      RepositorySyncBackend(repo, transport, session),
+      now: () => now,
+      schedule: (delay, action) {
+        callbacks.add(action);
+        delays.add(delay);
+        return () {};
+      },
+    );
+    addTearDown(controller.dispose);
+    await idleAfter(controller, () => controller.setEnabled(true));
+    expect(requests.length, 50);
+    expect((await repo.pending()).length, 1);
+    expect(delays, [const Duration(seconds: 1)]);
+    now = now.add(delays.single);
+    await idleAfter(controller, callbacks.single);
+    expect(requests.length, 51);
+    expect(await repo.pending(), isEmpty);
+    expect(await repo.nextDispatchAt(), isNull);
+    expect(callbacks.length, 1);
+  });
+
+  for (final kind in ['response', 'body', 'network']) {
+    test(
+      'ready backlog is not automatically resumed after auth $kind failure',
+      () async {
+        await create(10);
+        await create(11);
+        var sends = 0, scheduled = 0;
+        final transport = FakeTransport((_) async {
+          sends++;
+          if (kind == 'body') throw const MutationBodyFailure(401);
+          if (kind == 'network') {
+            throw const MutationNetworkFailure(receivedStatus: 403);
+          }
+          return const MutationResponse(401, '{}');
+        });
+        final controller = SyncController(
+          RepositorySyncBackend(repo, transport, session),
+          now: () => now,
+          schedule: (_, _) {
+            scheduled++;
+            return () {};
+          },
+        );
+        addTearDown(controller.dispose);
+        await idleAfter(controller, () => controller.setEnabled(true));
+        expect(sends, 1);
+        expect(scheduled, 0);
+        expect((await repo.pending()).map((m) => m.attemptCount), [1, 0]);
+      },
+    );
+  }
+
+  test('dispatch deadline excludes unsupported and dependency-blocked initial work', () async {
+    final playlist = repo.prepareCreate(
+      entity: LocalEntity.playlist,
+      entityId: id(80),
+      draft: {'name': 'list'},
+      changes: {'name': 'list'},
+    );
+    await repo.save(playlist);
+    final recording = repo.prepareCreate(
+      entity: LocalEntity.recording,
+      entityId: id(81),
+      draft: {'song_id': id(82)},
+      changes: {'song_id': id(82), 'metadata_state': 'DRAFT'},
+    );
+    await repo.save(recording);
+    expect(await repo.nextDispatchAt(), isNull);
+    expect((await repo.pending()).length, 2);
+    expect((await repo.retryStatus(playlist.opId))!.attemptCount, 0);
+    expect((await repo.retryStatus(recording.opId))!.attemptCount, 0);
+  });
+
+  test(
+    'controller resume cannot refill an exhausted persisted mutation budget',
+    () async {
+      final edit = await create(10);
+      final requests = <MutationRequest>[];
+      final transport = FakeTransport((request) async {
+        requests.add(request);
+        throw const MutationNetworkFailure();
+      });
+      await repo.dispatch(transport: transport, session: session);
+      for (final minutes in [1, 5, 15]) {
+        now = now.add(Duration(minutes: minutes));
+        await repo.dispatch(transport: transport, session: session);
+      }
+      expect(requests.length, 4);
+      final controller = SyncController(
+        RepositorySyncBackend(repo, transport, session),
+        now: () => now,
+        schedule: (_, _) => () {},
+      );
+      addTearDown(controller.dispose);
+      await idleAfter(controller, () => controller.setEnabled(true));
+      await controller.resume();
+      await controller.resume();
+      expect(requests.length, 4);
+      var status = (await repo.retryStatus(edit.opId))!;
+      expect(status.automaticRetriesClaimed, 3);
+      expect(status.attemptCount, 4);
+      expect(status.mode, 'MANUAL_REQUIRED');
+      final waiting = controller.items.single;
+      await controller.retry(waiting);
+      expect(requests.length, 5); // One explicit per-item grant, not a refill.
+      status = (await repo.retryStatus(edit.opId))!;
+      expect(status.automaticRetriesClaimed, 3);
+      expect(status.mode, 'MANUAL_REQUIRED');
+      await controller.resume();
+      expect(requests.length, 5);
+    },
+  );
+
   test('same frozen request retries 1 5 15 minutes and consumes only three automatic claims', () async {
     final edit = await create(10);
     final requests = <MutationRequest>[];
@@ -87,6 +279,10 @@ void main() {
     expect(requests.length, 4);
     expect(await repo.retryMutation(edit.opId, expectedAttempt: 3), isFalse);
     expect(await repo.retryMutation(edit.opId, expectedAttempt: 4), isTrue);
+    expect(
+      await repo.nextDispatchAt(),
+      now,
+    ); // Ready manual grant is schedulable.
     expect(await repo.retryMutation(edit.opId, expectedAttempt: 4), isFalse);
     await repo.dispatch(transport: transport, session: session);
     expect(requests.length, 5);

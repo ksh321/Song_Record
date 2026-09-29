@@ -78,6 +78,8 @@ pwsh -NoProfile -File tools/run-agent.ps1 -Role Reviewer -Risk Complex -PromptFi
 누적 4회 중 ultra 실패 1회면 각각 4/1, 누적 5회 중 2회면 5/2를 전달한다.
 최대 수준 실패가 3이면 누적 횟수와 무관하게 호출을 거절한다. 이미 ultra로 시작해 3회 실패한
 경우도 3/3으로 종료한다. 문제 ID의 실제 기록을 입력하며 모델/세션 변경으로 초기화하지 않는다.
+중단 후 사용자 직접 수정 확인과 명시적 검수 요청이 있으면 Reviewer에만 `-ReviewAfterUserFix`를
+전달한다. 기존 누적/최대 실패 수는 그대로 입력한다. 이 예외는 자동 Worker 재시작 권한이 아니다.
 실제 모델 지원 실패 시 유료 API로 우회하지 않는다. `--strict-config`로 설정 이름을 검사하고
 ChatGPT 로그인, `service_tier=default`, `features.fast_mode=false`를 요청한다.
 기록 JSON은 **요청 설정**이다. CLI 헤더가 모델/추론을 확인해도 서버의 실제 처리 속도는

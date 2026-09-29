@@ -381,7 +381,14 @@ final class AccountStore {
   /// Earliest automatic deadline among dependency-ready mutations.
   /// A returned time can already be due. The dispatcher must drain claims
   /// and recompute after queue changes; this API does not send anything.
-  Future<DateTime?> nextAutomaticRetryAt() => _run(
+  Future<DateTime?> nextAutomaticRetryAt() =>
+      _nextDispatchAt(includeReady: false);
+
+  /// A bounded foreground pass must also continue ready initial/manual work.
+  /// This is a read-only eligibility check; only claimMutation spends a budget.
+  Future<DateTime?> nextDispatchAt() => _nextDispatchAt(includeReady: true);
+
+  Future<DateTime?> _nextDispatchAt({required bool includeReady}) => _run(
     () => _database.transaction(() async {
       final snapshot = await _retry.forPlanner(
         await _dispatchSnapshot(),
@@ -391,6 +398,13 @@ final class AccountStore {
       DateTime? earliest;
       for (final candidate in plan.ready) {
         final control = await _retry.status(candidate.opId);
+        if (includeReady &&
+            (control?.mode == 'INITIAL' || control?.mode == 'MANUAL_READY')) {
+          final sendable = candidate.attemptCount > 0
+              ? snapshot.frozenRetries.contains(candidate.opId)
+              : MutationRequest.prepare(candidate) != null;
+          if (sendable) return _retry.now;
+        }
         final due = control?.nextAttemptAt;
         if (control?.mode == 'AUTO' &&
             due != null &&

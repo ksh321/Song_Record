@@ -7,18 +7,22 @@ import '../auth/auth_session.dart';
 import '../auth/identity_link.dart';
 import '../auth/identity_link_screen.dart';
 import '../auth/logout_screen.dart';
+import '../sync/sync_controller.dart';
+import '../sync/sync_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
     required this.showDevelopmentTools,
     this.identityLink,
     this.authController,
+    this.syncController,
     super.key,
   });
 
   final bool showDevelopmentTools;
   final IdentityLinkFlow? identityLink;
   final AuthController? authController;
+  final SyncController? syncController;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +42,19 @@ class SettingsScreen extends StatelessWidget {
           children: [
             Text('나에게 맞는 노래 기록', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: AppSpacing.md),
+            if (syncController != null)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.sync),
+                  title: const Text('동기화 상태'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      builder: (_) => SyncScreen(controller: syncController!),
+                    ),
+                  ),
+                ),
+              ),
             if (identityLink != null)
               Card(
                 child: ListTile(

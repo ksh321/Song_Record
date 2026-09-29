@@ -94,6 +94,7 @@ final class LocalRepository {
       _store.retryMutation(opId, expectedAttempt: expectedAttempt);
 
   Future<DateTime?> nextAutomaticRetryAt() => _store.nextAutomaticRetryAt();
+  Future<DateTime?> nextDispatchAt() => _store.nextDispatchAt();
 
   Future<DispatchPlan> planDispatch() async =>
       const DependencyPlanner().plan(await _store.dispatchSnapshot());
@@ -102,7 +103,12 @@ final class LocalRepository {
     required MutationTransport transport,
     required Future<AuthSession> Function() session,
     int limit = 50,
-  }) => MetadataDispatcher(_store, transport, session).dispatch(limit: limit);
+    void Function()? onAuthenticationBlocked,
+  }) => MetadataDispatcher(
+    _store,
+    transport,
+    session,
+  ).dispatch(limit: limit, onAuthenticationBlocked: onAuthenticationBlocked);
 
   static void _checkIdentity(Map<String, Object?> payload, String id) {
     if (payload.containsKey('user_id')) {

@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_store.dart';
+import 'package:song_record/core/sync/local_repository.dart';
+import 'package:song_record/core/sync/mutation_transport.dart';
 import 'package:song_record/features/auth/auth_adapters.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/auth/login_gate.dart';
+import 'package:song_record/features/sync/sync_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -38,8 +41,10 @@ Future<void> main() async {
     await vault.clear(); // No local database or audio deletion; not server-side logout.
   }
   AccountStore? activeStore;
+  SyncController? activeSync;
   const accountChannel = MethodChannel('song_record/account');
-  final controller = AuthController(
+  late final AuthController controller;
+  controller = AuthController(
     api: HttpAuthApi(
       config.apiBaseUrl,
       allowLocalHttp: kDebugMode && config.environment == AppEnvironment.dev,
@@ -54,13 +59,41 @@ Future<void> main() async {
           'environment': config.environment.name,
         });
         activeStore = store;
+        activeSync?.dispose();
+        late final SyncController sync;
+        sync = SyncController(
+          RepositorySyncBackend(
+            LocalRepository(store),
+            HttpMutationTransport(
+              config.apiBaseUrl,
+              allowLocalHttp:
+                  kDebugMode && config.environment == AppEnvironment.dev,
+            ),
+            () async {
+              if (!sync.maySend) throw const AuthFailure('전송이 일시 중지됐어요.');
+              final session = await controller.validSession();
+              if (!sync.maySend) throw const AuthFailure('전송이 일시 중지됐어요.');
+              return session;
+            },
+          ),
+        );
+        sync.setForeground(
+          WidgetsBinding.instance.lifecycleState == null ||
+              WidgetsBinding.instance.lifecycleState ==
+                  AppLifecycleState.resumed,
+        );
+        activeSync = sync;
       } catch (_) {
+        activeSync?.dispose();
+        activeSync = null;
         activeStore = null;
         await stores.logout();
         rethrow;
       }
     },
     closeAccount: () async {
+      activeSync?.dispose();
+      activeSync = null;
       await accountChannel.invokeMethod<void>(
         'setAccount',
         const <String, Object?>{'userId': null},
@@ -80,5 +113,16 @@ Future<void> main() async {
           false;
     },
   );
-  runApp(LoginGate(controller: controller, config: config));
+  controller.addListener(() {
+    activeSync?.setEnabled(
+      controller.phase == AuthPhase.ready && !controller.busy,
+    );
+  });
+  runApp(
+    LoginGate(
+      controller: controller,
+      config: config,
+      syncController: () => activeSync,
+    ),
+  );
 }

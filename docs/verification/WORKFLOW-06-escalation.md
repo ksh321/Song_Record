@@ -22,4 +22,8 @@
 
 ## 현재 적용 대상
 
-P10-03b-SCHEDULER: 종전 Astra/high 1차, Astra/xhigh 2·3차 검수 실패 기록을 유지한다. Astra/ultra 추가 시도 1 진행 중, 최대 수준 실패 0. 사용자 응답 대기는 해제됐다. USB/로그인 빌드 설정·새 실기 대기는 별도다. 상세는 [P10-03b](P10-03b-sync-ui.md), 최신 상태는 [progress](../progress.md)를 따른다.
+P10-03b-SCHEDULER: 종전 Astra/high 1차, Astra/xhigh 2·3차 실패를 유지하고 Astra/ultra 추가 3회 검수까지 수행했다. 최대 수준 실패 3회에서 실제로 해당 작업을 중단하고 ntfy Escalation을 보냈다(서버 접수, 실수신 미확인). 이전보다 더 시도하도록 임의로 카운터를 초기화하지 않았다. USB/로그인 빌드 설정·새 실기는 별도 대기다. 상세는 [P10-03b](P10-03b-sync-ui.md), 최신 상태는 [progress](../progress.md)를 따른다.
+
+운영 변경 커밋 `9105beeb16e4f374348dd5adefcbfe2feb559450` 일반 푸시 완료. 해당 SHA CI 36564321988 / API contract 36564321983 / Idempotency MySQL 36564322119 / Development workflow 36564322001 모두 success. 후속 AuthFollowup 고정 알림 문구와 이 결과 기록은 별도 문서/알림 변경이다.
+
+이후 사용자가 P10-03b 수동 보완을 직접 실행하고 별도 검수를 명시 요청했다. runner에 Reviewer만 허용하는 `ReviewAfterUserFix`를 추가해 누적 6/최대 3을 그대로 남기고 Astra/ultra 검수를 수행했다. 자동 Worker 예산을 추가하거나 초기화하지 않았다. `tools/tests/workflow-gates.ps1` 최신 종료 0, 52 검증 통과(최대 실패 후 명시적 사용자 수정 검수 허용 및 Worker 거부 포함).

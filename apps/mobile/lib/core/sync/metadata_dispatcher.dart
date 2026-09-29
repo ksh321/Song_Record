@@ -14,7 +14,10 @@ final class MetadataDispatcher {
   final MutationTransport transport;
   final Future<AuthSession> Function() session;
 
-  Future<int> dispatch({int limit = 50}) async {
+  Future<int> dispatch({
+    int limit = 50,
+    void Function()? onAuthenticationBlocked,
+  }) async {
     if (limit < 1 || limit > 500) throw ArgumentError('Invalid dispatch limit');
     var acknowledged = 0;
     for (var i = 0; i < limit; i++) {
@@ -40,6 +43,7 @@ final class MetadataDispatcher {
             status: failure.receivedStatus,
           );
           if (failure.receivedStatus == 401 || failure.receivedStatus == 403) {
+            onAuthenticationBlocked?.call();
             break;
           }
           continue;
@@ -52,7 +56,10 @@ final class MetadataDispatcher {
             status == null ? 'NETWORK_UNAVAILABLE' : 'RESPONSE_LOST',
             status: status,
           );
-          if (status == 401 || status == 403) break;
+          if (status == 401 || status == 403) {
+            onAuthenticationBlocked?.call();
+            break;
+          }
           continue;
         }
         store.requireActive();
@@ -118,7 +125,10 @@ final class MetadataDispatcher {
             status: response.status,
             serverSnapshot: current,
           );
-          if (response.status == 401 || response.status == 403) break;
+          if (response.status == 401 || response.status == 403) {
+            onAuthenticationBlocked?.call();
+            break;
+          }
         }
       } on FormatException {
         // Malformed wire data is retained without automatic retries. Database

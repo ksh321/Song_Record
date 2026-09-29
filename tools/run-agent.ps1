@@ -6,14 +6,18 @@ param(
     [ValidateSet('Explore','Implement','Complex','Sensitive','Escalation')][string]$Risk = 'Implement',
     [ValidateSet('None','EnvironmentOnly','RequirementsMissing','LogicError','ReviewBlocker','ComplexFailure')][string]$Finding='None',
     [ValidateRange(0,100)][int]$SameProblemFailures=0,
-    [ValidateRange(0,100)][int]$MaximumReasoningFailures=0
+    [ValidateRange(0,100)][int]$MaximumReasoningFailures=0,
+    [switch]$ReviewAfterUserFix
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 . (Join-Path $PSScriptRoot 'workflow-common.ps1')
 $initialRisk=$Risk
-$plan=Get-AgentRunPlan $Risk $Finding $SameProblemFailures $MaximumReasoningFailures
+if ($ReviewAfterUserFix -and $Role -ne 'Reviewer') { throw 'User-fix exception authorizes review only, not another worker attempt.' }
+# Master may set this only after an explicit user-confirmed fix and review request.
+# It preserves both counters and does not authorize automatic worker retries.
+$plan=Get-AgentRunPlan $Risk $Finding $SameProblemFailures $MaximumReasoningFailures $ReviewAfterUserFix.IsPresent
 $Risk=$plan.risk; $model=$plan.model; $effort=$plan.effort
 # No API fallback, automatic login, credit purchase or sandbox bypass.
 $login = (& codex login status 2>&1 | Out-String)
@@ -34,6 +38,7 @@ $settings['initial_risk']=$initialRisk
 $settings['finding']=$Finding
 $settings['same_problem_failures']=$SameProblemFailures
 $settings['maximum_reasoning_failures']=$MaximumReasoningFailures
+$settings['review_after_user_fix']=$ReviewAfterUserFix.IsPresent
 $header=Get-Content "$prefix.log" -TotalCount 25
 $settings['observed_model']=($header | Where-Object { $_ -match '^model:' }) -join '; '
 $settings['observed_reasoning']=($header | Where-Object { $_ -match '^reasoning effort:' }) -join '; '

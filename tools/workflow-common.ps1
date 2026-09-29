@@ -1,8 +1,8 @@
-function Get-AgentRunPlan([string]$Risk, [string]$Finding, [int]$Failures, [int]$MaximumFailures) {
+function Get-AgentRunPlan([string]$Risk, [string]$Finding, [int]$Failures, [int]$MaximumFailures, [bool]$ReviewAfterUserFix = $false) {
     if ($Failures -lt 0 -or $MaximumFailures -lt 0 -or $MaximumFailures -gt $Failures) {
         throw 'Invalid cumulative failure counters'
     }
-    if ($MaximumFailures -ge 3) { throw 'Maximum reasoning failed three times; notify user and preserve resume state.' }
+    if ($MaximumFailures -ge 3 -and -not $ReviewAfterUserFix) { throw 'Maximum reasoning failed three times; notify user and preserve resume state.' }
     if ($Failures -ge 3 -and $Finding -eq 'EnvironmentOnly') {
         throw 'Environment intervention required; reasoning escalation cannot grant access or install missing tools.'
     }

@@ -8,6 +8,7 @@ import 'package:song_record/features/auth/identity_link.dart';
 import 'package:song_record/features/health/health_screen.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 import 'package:song_record/features/settings/settings_screen.dart';
+import 'package:song_record/features/sync/sync_controller.dart';
 import 'package:song_record/network/health_client.dart';
 import 'package:song_record/routing/app_routes.dart';
 
@@ -17,6 +18,7 @@ class SongRecordApp extends StatelessWidget {
     this.healthLoader,
     this.identityLink,
     this.authController,
+    this.syncController,
     this.recorderGateway = const MethodChannelRecorderGateway(),
     this.accent = AppAccent.initial,
     super.key,
@@ -25,6 +27,7 @@ class SongRecordApp extends StatelessWidget {
   final AppConfig config;
   final IdentityLinkFlow? identityLink;
   final AuthController? authController;
+  final SyncController? syncController;
   final HealthLoader? healthLoader;
   final RecorderGateway recorderGateway;
   final AppAccent accent;
@@ -44,6 +47,7 @@ class SongRecordApp extends StatelessWidget {
           showDevelopmentTools: config.environment == AppEnvironment.dev,
           identityLink: identityLink,
           authController: authController,
+          syncController: syncController,
         ),
         if (config.environment == AppEnvironment.dev)
           AppRoutes.health: (context) =>
