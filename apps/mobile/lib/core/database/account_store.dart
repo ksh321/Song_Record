@@ -11,6 +11,7 @@ import 'package:sqlite3/sqlite3.dart' as native;
 import '../../config/app_config.dart';
 import '../domain/identifiers.dart';
 import '../sync/dependency_planner.dart';
+import '../sync/metadata_response.dart';
 import '../sync/mutation_request.dart';
 import 'account_database.dart' show AccountDatabase;
 import 'account_paths.dart';
@@ -419,6 +420,360 @@ final class AccountStore {
       return earliest;
     }),
   );
+
+  /// Mapper API only. The dispatcher must not call this until mapping holds
+  /// participate in dispatch eligibility and claim fencing.
+  ///
+  /// true: committed a new mapping.
+  /// false: no longer owns this attempt, including an already applied receipt.
+  Future<bool> applyCanonicalSongReceipt(
+    MutationRequest request,
+    MutationResponse response,
+  ) => _run(
+    () => _database.transaction(
+      () => _applyCanonicalSongReceipt(request, response),
+    ),
+  );
+
+  /// Requires the caller's transaction and AccountStore serialization.
+  Future<bool> _applyCanonicalSongReceipt(
+    MutationRequest request,
+    MutationResponse response,
+  ) async {
+    requireActive();
+
+    // Always decode internally; callers cannot supply unchecked snapshot fields.
+    final receipt = CanonicalSongReceipt.decode(request, response);
+    final mutation = request.mutation;
+    final sourceId = receipt.localSongId;
+    final canonicalId = receipt.canonicalSongId;
+
+    // The raw receipt must remain byte-for-byte intact. Reject identities
+    // requiring normalization rather than rewriting its canonical ID.
+    if (UuidValue(sourceId).value != sourceId ||
+        UuidValue(canonicalId).value != canonicalId ||
+        mutation.baseRevision != 0 ||
+        request.attempt < 1) {
+      throw const FormatException('Invalid canonical mapping identity');
+    }
+    _validatePayloadOwner(request.body);
+
+    if (!await _ownsAttempt(request)) {
+      requireActive();
+      return false;
+    }
+
+    // Small supported scope: direct source -> canonical mappings.
+    // An incoming alias to canonical is a fan-in, not a chain.
+    final chain = await _database
+        .customSelect(
+          '''
+        SELECT source_song_id FROM song_aliases
+        WHERE source_song_id IN (?,?) OR canonical_song_id=?
+        LIMIT 1
+      ''',
+          variables: [
+            Variable(sourceId),
+            Variable(canonicalId),
+            Variable(sourceId),
+          ],
+        )
+        .get();
+    if (chain.isNotEmpty) {
+      throw StateError(
+        'Existing source alias or alias chain requires follow-up',
+      );
+    }
+
+    final superseded = await _database
+        .customSelect(
+          '''
+        SELECT original_op_id FROM mutation_supersessions
+        WHERE original_op_id=? OR replacement_op_id=?
+        LIMIT 1
+      ''',
+          variables: [Variable(mutation.opId), Variable(mutation.opId)],
+        )
+        .get();
+    if (superseded.isNotEmpty) {
+      throw StateError('Mapping CREATE belongs to a supersession chain');
+    }
+
+    Future<QueryRow?> songCopy(String id) => _database
+        .customSelect(
+          '''
+        SELECT * FROM metadata_copies
+        WHERE entity_type='SONG' AND entity_id=?
+      ''',
+          variables: [Variable(id)],
+        )
+        .getSingleOrNull();
+
+    final source = await songCopy(sourceId);
+    final canonicalBefore = await songCopy(canonicalId);
+    if (source == null ||
+        source.read<String>('user_id') != userId ||
+        (canonicalBefore != null &&
+            canonicalBefore.read<String>('user_id') != userId)) {
+      throw StateError('Canonical mapping metadata ownership mismatch');
+    }
+
+    // Capture all evidence before any projection changes.
+    final pending = await _database
+        .customSelect(
+          '''
+        SELECT rowid AS local_order,* FROM local_mutations
+        WHERE queue_state<>'ACKED' AND op_id<>?
+        ORDER BY rowid
+      ''',
+          variables: [Variable(mutation.opId)],
+        )
+        .get();
+
+    final references = await _database.customSelect('''
+        SELECT * FROM metadata_copies
+        WHERE entity_type IN ('RECORDING','PLAYLIST_ITEM')
+        ORDER BY entity_type,entity_id
+      ''').get();
+
+    final referenceMutations = <String, List<QueryRow>>{};
+    for (final row in pending) {
+      final entity = row.read<String>('entity_type');
+      if (entity == 'RECORDING' || entity == 'PLAYLIST_ITEM') {
+        final key = '$entity:${row.read<String>('entity_id')}';
+        referenceMutations.putIfAbsent(key, () => <QueryRow>[]).add(row);
+      }
+    }
+
+    final now = _retry.nowMs;
+    final snapshotJson = canonicalJson(receipt.snapshot);
+    final revision = receipt.snapshot['revision'] as int;
+
+    if (canonicalBefore == null) {
+      await _database.customStatement(
+        '''
+          INSERT INTO metadata_copies(
+            user_id,entity_type,entity_id,server_revision,
+            server_payload,local_payload,updated_at
+          ) VALUES(?,'SONG',?,?,?,?,?)
+        ''',
+        [userId, canonicalId, revision, snapshotJson, snapshotJson, now],
+      );
+    } else if (canonicalBefore.read<int>('tombstone') == 0 &&
+        canonicalBefore.read<int>('server_revision') < revision) {
+      // Never replace an existing draft, including an explicit SQL NULL.
+      // Equal revisions are preserved too; the exact new receipt lives below.
+      await _database.customStatement(
+        '''
+          UPDATE metadata_copies
+          SET server_revision=?,server_payload=?,updated_at=?
+          WHERE entity_type='SONG' AND entity_id=?
+        ''',
+        [revision, snapshotJson, now, canonicalId],
+      );
+    }
+
+    // No OR IGNORE / REPLACE: v4 evidence triggers deliberately reject them.
+    await _database.customStatement(
+      '''
+        INSERT INTO song_aliases(
+          source_song_id,canonical_song_id,user_id,mapping_op_id,
+          receipt_status,receipt_body,created_at
+        ) VALUES(?,?,?,?,?,?,?)
+      ''',
+      [
+        sourceId,
+        canonicalId,
+        userId,
+        mutation.opId,
+        receipt.status,
+        receipt.envelopeBody,
+        now,
+      ],
+    );
+
+    Future<String> intent({
+      required String key,
+      required String kind,
+      required String entity,
+      required String entityId,
+      required String? originOpId,
+      required Map<String, Object?> evidence,
+    }) async {
+      // A deterministic UUID-shaped identifier. Uniqueness is still enforced
+      // by both the PK and (mapping_source_id,intent_key).
+      final hash = sha256
+          .convert(
+            utf8.encode(
+              canonicalJson({
+                'namespace': 'song-record-canonical-intent-v1',
+                'user_id': userId,
+                'mapping_source_id': sourceId,
+                'intent_key': key,
+              }),
+            ),
+          )
+          .toString();
+      final id =
+          '${hash.substring(0, 8)}-${hash.substring(8, 12)}-'
+          '8${hash.substring(13, 16)}-a${hash.substring(17, 20)}-'
+          '${hash.substring(20, 32)}';
+
+      await _database.customStatement(
+        '''
+          INSERT INTO canonical_edit_intents(
+            intent_id,user_id,mapping_source_id,intent_key,kind,
+            entity_type,entity_id,origin_op_id,evidence_json,created_at
+          ) VALUES(?,?,?,?,?,?,?,?,?,?)
+        ''',
+        [
+          id,
+          userId,
+          sourceId,
+          key,
+          kind,
+          entity,
+          entityId,
+          originOpId,
+          canonicalJson(evidence),
+          now,
+        ],
+      );
+      return id;
+    }
+
+    Future<void> hold(QueryRow row, String intentId) =>
+        _database.customStatement(
+          '''
+            INSERT INTO mutation_mapping_holds(
+              op_id,mapping_source_id,user_id,reason,
+              disposition,intent_id,created_at
+            ) VALUES(?,?,?,'CANONICAL_MAPPING','BLOCK',?,?)
+          ''',
+          [row.read<String>('op_id'), sourceId, userId, intentId, now],
+        );
+
+    await intent(
+      key: 'song-values',
+      kind: 'SONG_VALUES',
+      entity: 'SONG',
+      entityId: sourceId,
+      originOpId: mutation.opId,
+      evidence: {
+        'version': 1,
+        'source_before': source.data,
+        'canonical_before': canonicalBefore?.data,
+        'mapping_request_body': request.body,
+        'canonical_song_id': canonicalId,
+      },
+    );
+
+    // Preserve every outstanding operation on either song independently.
+    // Only the original mapping CREATE is excluded.
+    for (final row in pending) {
+      final target = row.read<String>('entity_id');
+      if (row.read<String>('entity_type') != 'SONG' ||
+          (target != sourceId && target != canonicalId)) {
+        continue;
+      }
+      final opId = row.read<String>('op_id');
+      final intentId = await intent(
+        key: 'song-mutation:$opId',
+        kind: 'SONG_MUTATION',
+        entity: 'SONG',
+        entityId: target,
+        originOpId: opId,
+        evidence: {'version': 1, 'mutation_before': row.data},
+      );
+      await hold(row, intentId);
+    }
+
+    Map<String, Object?>? object(String? text) =>
+        text == null ? null : jsonDecode(text) as Map<String, Object?>;
+
+    bool related(String? text) {
+      final id = object(text)?['song_id'];
+      return id == sourceId;
+    }
+
+    for (final row in references) {
+      final entity = row.read<String>('entity_type');
+      final entityId = row.read<String>('entity_id');
+      final mutations = referenceMutations['$entity:$entityId'] ?? <QueryRow>[];
+      final localJson = row.readNullable<String>('local_payload');
+      final serverJson = row.readNullable<String>('server_payload');
+
+      // Includes PATCH payloads omitting song_id and frozen requests whose
+      // local draft has since selected null or another song.
+      final isRelated =
+          related(localJson) ||
+          related(serverJson) ||
+          mutations.any(
+            (m) =>
+                related(m.read<String>('payload')) ||
+                related(m.readNullable<String>('base_payload')),
+          );
+      if (!isRelated) continue;
+
+      final intentId = await intent(
+        key: 'reference:$entity:$entityId',
+        kind: 'REFERENCE_RELINK',
+        entity: entity,
+        entityId: entityId,
+        originOpId: null,
+        evidence: {
+          'version': 1,
+          'metadata_before': row.data,
+          'mutations_before': mutations.map((m) => m.data).toList(),
+          'canonical_song_id': canonicalId,
+        },
+      );
+
+      // Conservatively hold every outstanding operation on this related
+      // entity. Do not modify queue state, frozen wire, budgets or payloads.
+      for (final mutation in mutations) {
+        await hold(mutation, intentId);
+      }
+
+      final local = object(localJson);
+      if (row.read<int>('tombstone') == 0 &&
+          local != null &&
+          local['song_id'] == sourceId) {
+        await _database.customStatement(
+          '''
+            UPDATE metadata_copies SET local_payload=?,updated_at=?
+            WHERE entity_type=? AND entity_id=?
+          ''',
+          [
+            canonicalJson({...local, 'song_id': canonicalId}),
+            now,
+            entity,
+            entityId,
+          ],
+        );
+      }
+    }
+
+    // A conditional acknowledgement of the actual frozen CREATE only.
+    await _database.customStatement(
+      '''
+        UPDATE local_mutations
+        SET queue_state='ACKED',server_response=?,updated_at=?
+        WHERE op_id=? AND queue_state='SENDING' AND attempt_count=?
+      ''',
+      [receipt.envelopeBody, now, mutation.opId, request.attempt],
+    );
+    final changed = await _database
+        .customSelect('SELECT changes() AS affected')
+        .getSingle();
+    if (changed.read<int>('affected') != 1) {
+      throw StateError('Canonical mapping attempt changed before ACK');
+    }
+
+    await _retry.finish(mutation.opId);
+    requireActive();
+    return true;
+  }
 
   Future<bool> acknowledgeMutation(
     MutationRequest request,
