@@ -1,13 +1,23 @@
 # 노래기록앱 구현 진행 기록
 
-- 기록 버전: 4.12
-- 작성일: 2026-09-23
+- 기록 버전: 4.13
+- 작성일: 2026-09-29
 - 기준: 구현설계서 v1.11 / 코드구현계획서 v1.0
 - 요구사항: [requirements.md](requirements.md)
 - 권장 위치: `docs/progress.md`
 - 주의: 기존 진행 파일이 있다면 덮어쓰지 말고 이번 기록을 합친다.
 
-## 1. 현재 상태
+## 1. 현재 상태 — 2026-09-29 실제 점검
+
+최신 제품 커밋은 main `9b2fc86`의 **P10-02a**다. 작업 시작 시 사용자 미커밋 변경은 없었고 원격 main도 일치했다. 현재 SHA의 CI·API contract·Idempotency MySQL과 각 job이 모두 성공했다. Windows Flutter 의존성을 잠금 파일대로 복구한 후 분석 문제 없음·P10 관련 테스트 19개 통과를 확인했다.
+
+다음 구현은 **P10-02b: 실제 HTTP 송신과 서버 승인 후 원자적 반영**이다. P10-02a는 전송 후보 판정만 수행하며 양방향 동기화 완료가 아니다. 선행 P06 로그인/계정 분리 실기는 저장소에서 확인 대기이고 D06 고정 컨디션 계약과 P09-07b 사용자 정의 컨디션 API의 승인 근거를 먼저 대조해야 한다. 막힌 부분과 무관한 계약/테스트 설계는 진행 가능하다.
+
+WORKFLOW-01에서 루트 AGENTS.md, 출처 연결 검색 색인, Windows 점검/검증/CI/독립 에이전트 스크립트를 추가했다. 외부 source는 `C:/Users/shoon111111/Desktop/source`이며 원본 6개를 보존했다. Docker 엔진 꺼짐·USB 기기 없음·보호 규칙 조회 403·모델의 실제 속도 적용 미확인은 대기로 남긴다. 초기 자동화 전체를 완료로 선언하지 않는다.
+
+[실행 안내](development-workflow.md) · [WORKFLOW-01 근거/검수/커밋 기록](verification/WORKFLOW-01-bootstrap.md)
+
+### 이전 상태 기록 (2026-09-23까지의 역사; 현재 판정에 사용하지 않음)
 
 2026-09-22 현재 P04-08의 계정/환경별 Drift·SQLite 저장 기반은 코드 `0b7ff9e`와 스키마·CI·문서 `db1ef62`로 업로드됐고, [CI 35600881401](https://github.com/ksh321/Song_Record/actions/runs/35600881401)에서 Flutter 분석·58개 테스트·Drift 생성물 일치·Android APK와 Spring Boot/MySQL 검증이 성공했다. 초기 Windows 검사에서 보류됐던 링크 사례도 Ubuntu CI에서 통과했다. 상세 구현 경계는 [P04-08 보고서](verification/P04-08-account-local-storage.md)에 기록했다.
 

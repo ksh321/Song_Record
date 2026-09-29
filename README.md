@@ -1,8 +1,11 @@
 # Song_Record
 노래방 노래 검색, 녹음, 노래의 다양한 정보 기록 관리 앱
 
-2026-09-21: P04-07은 `7212fec`와 GitHub 전체 CI 성공을 확인했다. 이어 P04-08 계정별 Drift/SQLite 저장 기반을 추가했다. 로컬 Flutter 분석과 테스트 57개 통과·Windows 링크 검사 1개 보류. P04-08 커밋·push 및 기본 SQLite 바이너리/Android CI 검증은 대기 중이다. 아직 로그인·녹음 화면에는 연결하지 않았고 실제 사용자 DB와 기존 녹음은 변경하지 않았다.
-[P04-08 변경과 검증](docs/verification/P04-08-account-local-storage.md) · [P04-07 완료 기록](docs/verification/P04-07-charts-snapshots.md) · [비개발자를 위한 DB 작업 안내](docs/database-guide.md)
+2026-09-29 실제 점검: 최신 제품 코드는 **P10-02a (`9b2fc86`)**다. 해당 커밋의 기존 CI 3종과 Windows Flutter 분석·동기화 테스트 19개 성공을 확인했다. 다음 구현은 **P10-02b**이며 HTTP 송신·승인 반영은 아직 없다. 인증 실기와 컨디션 정책 충돌 확인을 선행한다.
+
+[현재 진행 상태](docs/progress.md) · [AI 개발 자동화 실행 안내](docs/development-workflow.md) · [초기 점검과 검증 증거](docs/verification/WORKFLOW-01-bootstrap.md) · [기준 자료 검색 색인](docs/reference/search/README.md)
+
+Docker 엔진·USB 실기·Standard 실제 적용·브랜치 보호 규칙 조회는 확인 대기다. 아래 기존 단계별 완료 기록은 당시 범위의 기록이며, 앱 전체 완료를 뜻하지 않는다.
 
 ## 기준 파일
 

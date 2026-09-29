@@ -1,0 +1,94 @@
+#requires -Version 7.0
+[CmdletBinding()]
+param([ValidatePattern('^[0-9a-f]{40}$')][string]$Commit, [switch]$InspectPolicy,
+      [ValidatePattern('^[a-zA-Z0-9-]+$')][string]$Account)
+$ErrorActionPreference = 'Stop'
+$root = Split-Path $PSScriptRoot -Parent
+Set-Location $root
+. (Join-Path $PSScriptRoot 'workflow-common.ps1')
+$gitArgs = @('-c',"safe.directory=$($root.Replace('\','/'))")
+if (-not $Commit) { $Commit = & git @gitArgs rev-parse HEAD; if ($LASTEXITCODE) { throw 'Cannot read HEAD' } }
+$remote = & git @gitArgs remote get-url origin
+if ($LASTEXITCODE -or $remote -notmatch '^https://github\.com/([\w.-]+)/([\w.-]+?)(?:\.git)?$') {
+    throw 'Expected credential-free HTTPS github.com origin; inspect remote without printing secrets'
+}
+$repo = "$($Matches[1])/$($Matches[2])"
+$owner = $Matches[1]
+$headers = @{Accept='application/vnd.github+json'; 'User-Agent'='SongRecord-workflow'; 'X-GitHub-Api-Version'='2022-11-28'}
+$oldPrompt = $env:GIT_TERMINAL_PROMPT
+$oldInteractive = $env:GCM_INTERACTIVE
+try {
+    $env:GIT_TERMINAL_PROMPT = '0'
+    $env:GCM_INTERACTIVE = 'Never'
+    if (-not $Account) {
+        $accounts = @(& git credential-manager github list 2>$null)
+        if ($accounts -contains $owner) { $Account = $owner }
+        elseif ($accounts.Count -eq 1 -and $accounts[0] -match '^[a-zA-Z0-9-]+$') { $Account = $accounts[0] }
+        else { throw 'Multiple/no GitHub accounts; specify -Account using an existing authenticated account' }
+    }
+    $credential = "protocol=https`nhost=github.com`nusername=$Account`n`n" | & git @gitArgs credential fill 2>$null
+    if ($LASTEXITCODE -ne 0) { throw 'GitHub login unavailable; authenticate Git Credential Manager and retry' }
+    $password = ($credential | Where-Object { $_ -like 'password=*' } | Select-Object -First 1) -replace '^password=', ''
+    if (-not $password) { throw 'GitHub credential unavailable' }
+    $headers.Authorization = 'Bearer ' + $password
+    function Read-Api($Path) {
+        try { Invoke-RestMethod -Uri (('https://api.github.com/repos/'+$repo+'/'+$Path).TrimEnd('/')) -Headers $headers -TimeoutSec 30 }
+        catch {
+            $code = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'network' }
+            throw "GitHub read failed: HTTP $code ($Path); credentials suppressed"
+        }
+    }
+    function Read-Collection($Path, $Property) {
+        $items = [System.Collections.Generic.List[object]]::new()
+        $separator = if ($Path.Contains('?')) {'&'} else {'?'}
+        for ($page=1; $page -le 100; $page++) {
+            $data = Read-Api "$Path${separator}per_page=100&page=$page"
+            $batch = @($data.$Property)
+            foreach ($item in $batch) { $items.Add($item) }
+            if ($items.Count -ge $data.total_count) {
+                if ($items.Count -ne $data.total_count) { throw 'GitHub pagination changed during query; retry snapshot' }
+                return $items.ToArray()
+            }
+            if (-not $batch.Count) { throw 'Incomplete GitHub pagination; verification pending' }
+        }
+        throw 'GitHub pagination limit reached; verification pending'
+    }
+    $info = Read-Api ''
+    $policy = [ordered]@{status='NOT_REQUESTED'}
+    $policyPending = $false
+    if ($InspectPolicy) {
+        $policy = [ordered]@{}
+        foreach ($path in @("branches/$($info.default_branch)/protection", "rules/branches/$($info.default_branch)")) {
+            try { $policy[$path] = Read-Api $path } catch { $policy[$path] = 'UNVERIFIED: ' + $_.Exception.Message; $policyPending = $true }
+        }
+    }
+    $expected = @(
+        @{path='.github/workflows/ci.yml'; name='CI'; jobs=@('Flutter analyze, test, and Android build','Spring Boot build and test','MySQL migrations and constraints')},
+        @{path='.github/workflows/api-contract.yml'; name='API contract'; jobs=@('contract')},
+        @{path='.github/workflows/idempotency-mysql.yml'; name='Idempotency MySQL'; jobs=@('mysql')},
+        @{path='.github/workflows/development-workflow.yml'; name='Development workflow'; jobs=@('Source index and automation checks')}
+    )
+    $runs = @(Read-Collection "actions/runs?head_sha=$Commit" 'workflow_runs' | Where-Object { $_.head_sha -eq $Commit -and $_.event -in @('push','pull_request','workflow_dispatch') })
+    $checks = foreach ($workflow in $expected) {
+        $run = $runs | Where-Object path -eq $workflow.path | Sort-Object {[DateTime]$_.created_at},run_attempt -Descending | Select-Object -First 1
+        $jobs = @()
+        if ($run -and $run.status -eq 'completed' -and $run.conclusion -eq 'success') {
+            $jobs = @(Read-Collection "actions/runs/$($run.id)/attempts/$($run.run_attempt)/jobs" 'jobs')
+        }
+        $state = Get-CiState $run $jobs $workflow.jobs
+        [pscustomobject]@{workflow=$workflow.name; path=$workflow.path; status=$state; run_id=$run.id; conclusion=$run.conclusion; url=$run.html_url; jobs=@($jobs | Select-Object name,conclusion)}
+    }
+    $overall = Get-OverallState $checks $policyPending
+    $report = [ordered]@{schema=2; utc=[DateTime]::UtcNow.ToString('o'); repository=$repo; commit=$Commit; overall=$overall; gate_scope='repository workflow contract; not proof of server branch requirements'; policy=$policy; checks=@($checks)}
+    $outDir = Join-Path $root '.local/workflow'
+    New-Item -ItemType Directory -Force $outDir | Out-Null
+    $report | ConvertTo-Json -Depth 15 | Set-Content (Join-Path $outDir "ci-$Commit.json") -Encoding utf8
+    $checks | Format-Table workflow,status,run_id,conclusion,url -AutoSize
+    Write-Host "Overall=$overall; requested policy check unresolved=$policyPending"
+    if ($overall -eq 'FAIL') { exit 1 }
+    if ($overall -eq 'PENDING') { exit 2 }
+    exit 0
+} finally {
+    $headers.Clear(); $credential=$null; $password=$null
+    $env:GIT_TERMINAL_PROMPT=$oldPrompt; $env:GCM_INTERACTIVE=$oldInteractive
+}

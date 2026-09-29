@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "sources": [
+    {
+      "id": "roles",
+      "external_name": "코드 구현 참고 사항 (1).txt",
+      "original": "docs/reference/코드 구현 참고 사항.txt",
+      "sha256": "a9966fdc8286cc5624de4ffb5861b89bd9cc0c102afb59362be17d2234eeeb0a",
+      "hash_basis": "raw DOCX; LF-normalized UTF-8 text",
+      "role": "자료별 적용 역할",
+      "search_copy": "roles.txt",
+      "lines": 7
+    },
+    {
+      "id": "design",
+      "external_name": "노래기록앱_구현설계서_v1.11(1).docx",
+      "original": "docs/reference/노래기록앱_구현설계서_v1.11.docx",
+      "sha256": "957786385b081e52cdca2f83250b712701bcb63a73df63df47c1983a5916fe36",
+      "hash_basis": "raw DOCX; LF-normalized UTF-8 text",
+      "role": "기능·데이터·API·삭제·동기화·보관",
+      "search_copy": "design.txt",
+      "lines": 1288
+    },
+    {
+      "id": "plan",
+      "external_name": "노래기록앱_코드구현계획서_v1.0(1).docx",
+      "original": "docs/노래기록앱_코드구현계획서_v1.0.docx",
+      "sha256": "d3da465095024712634dee18fa341ce500dabbf78a72e37b546498b2e8bfe0bd",
+      "hash_basis": "raw DOCX; LF-normalized UTF-8 text",
+      "role": "작업 ID·선행 조건·완료 기준",
+      "search_copy": "plan.txt",
+      "lines": 1514
+    },
+    {
+      "id": "html",
+      "external_name": "b-playlist-ui-v1.11(1).html",
+      "original": "docs/reference/b-playlist-ui-v1.11.html",
+      "sha256": "3a0b44fa03b8c4adbb0bd22fef8ff728c9f96acbebabf79a59cb7a5b8dd91555",
+      "hash_basis": "raw DOCX; LF-normalized UTF-8 text",
+      "role": "화면 배치·이동·상호작용",
+      "search_copy": "html.html",
+      "lines": 1397
+    },
+    {
+      "id": "ui",
+      "external_name": "UI_REFERENCE(2)(1).md",
+      "original": "docs/reference/UI_REFERENCE.md",
+      "sha256": "b62babdba6a124277e57e57b56a605325cd961e4040c73cca8a9c03a96a53d17",
+      "hash_basis": "raw DOCX; LF-normalized UTF-8 text",
+      "role": "공통 UI·조작 규칙",
+      "search_copy": "ui.txt",
+      "lines": 146
+    },
+    {
+      "id": "palette",
+      "external_name": "ui_reference_palette(2)(1).json",
+      "original": "docs/reference/ui_reference_palette.json",
+      "sha256": "88ad5972f79424629b87698760ca98894c4f65fc23d9448bcec1effc4d12d83b",
+      "hash_basis": "raw DOCX; LF-normalized UTF-8 text",
+      "role": "색상·글자·간격·치수",
+      "search_copy": "palette.txt",
+      "lines": 211
+    }
+  ]
+}

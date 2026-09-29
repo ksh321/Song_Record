@@ -1,0 +1,32 @@
+name: Development workflow
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workflow:
+    name: Source index and automation checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Check source provenance and failure handling
+        run: |
+          python3 tools/index_sources.py --check
+          python3 -m unittest discover -s tools/tests -p 'test_*.py'
+      - name: Parse PowerShell entry points
+        shell: pwsh
+        run: |
+          Get-ChildItem tools -Filter *.ps1 -Recurse | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors) { throw ($errors | Out-String) }
+          }
+          & ./tools/tests/workflow-gates.ps1

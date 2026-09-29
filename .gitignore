@@ -35,3 +35,6 @@ __pycache__/
 # Local infrastructure data
 /infra/data/
 /infra/logs/
+
+# Machine-specific workflow evidence, prompts and raw logs
+/.local/
