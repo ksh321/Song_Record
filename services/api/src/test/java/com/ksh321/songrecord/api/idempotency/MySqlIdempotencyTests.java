@@ -442,7 +442,7 @@ class MySqlIdempotencyTests {
             var beforeRecording=db.queryForMap("SELECT * FROM recording");
             var before=db.queryForMap("SELECT title,artist,note,version_code,revision,updated_at FROM song");
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();
-            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(6);flyway.validate();
+            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(7);flyway.validate();
             assertThat(db.queryForObject("SELECT title_key FROM recording_query_key",byte[].class)).isEqualTo(com.ksh321.songrecord.api.domain.DomainOrdering.sortKeyBytes("곡02"));
             assertThat(db.queryForMap("SELECT * FROM recording")).usingRecursiveComparison().isEqualTo(beforeRecording);
             assertThat(db.queryForObject("SELECT title_key FROM song_query_key",byte[].class)).isEqualTo(com.ksh321.songrecord.api.domain.DomainOrdering.sortKeyBytes("노래02"));
@@ -597,6 +597,8 @@ class MySqlIdempotencyTests {
         var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
         for(String table:java.util.List.of("device","song","recording")){int start=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(start,core.indexOf(';',start)));}
         String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));int start=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(start,sync.indexOf(';',start)));
+        // This narrow V2 fixture also needs the V4 nullable condition columns used by DRAFT.
+        jdbc.execute("ALTER TABLE recording ADD condition_code VARCHAR(36), ADD condition_name_snapshot VARCHAR(50)");
         var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
         byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
         jdbc.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",device,owner);

@@ -60,3 +60,16 @@ C1-HEAD 문제는 1회 실패 후 구현 수정으로 해결. C1-PURGE-FIXTURE�
 
 그 후 P10-02b의 실제 HTTP 송신/원자적 ACK 반영. 사전 작업자 분석은 C1 코드와 독립적으로 진행한다.
 P06는 사용자 확인으로 기존 검증 완료이며 Windows Gradle/개발 DB 준비는 별도 환경 문제다.
+
+## 15f8671 CI 회귀 및 수정
+
+첫 제품 커밋 `15f8671` 푸시 후 API contract(36550593377)·Development workflow(36550593401) 성공.
+Idempotency MySQL(36550593365)은 30개 중 2개 실패하여 C1 완료를 보류했다.
+C1-CI-FIXTURE 문제 첫 실행: V2만 구성하는 초안 fixture의 condition_code 누락,
+V9→최신 마이그레이션 수가 이전 V15 기준 6으로 남은 것이 원인이다.
+nullable 두 열을 보충하고 V10~V16의 정확한 수 7로 갱신했다. 기존 동시성·재시도·롤백·데이터 비교는 유지한다.
+
+격리 MySQL에서 `gradle test --no-daemon --tests "*MySqlIdempotencyTests.mysqlDraftCreationWithoutFileSupportsConcurrentUuidAndRollback" --tests "*MySqlIdempotencyTests.mysqlFlywayDiscoversJavaBackfillAndPreservesPopulatedV9Data"` 실행.
+실제 종료 0, XML 2개 테스트 통과·실패/오류/skip 0. 별도 Sol/medium 검수(제품 변경 없는 명확한 fixture 수정)는 결함/검증 약화 없음.
+검수자는 코드·XML을 확인했고, 명령·종료코드는 마스터가 실행 도구 반환으로 확인했다. 최종 수정 커밋 SHA의 필수 CI는 다시 확인한다.
+작업 전용 tmpfs DB는 이름·마운트 확인 후 종료했으며 기존 개발 DB는 보존했다.
