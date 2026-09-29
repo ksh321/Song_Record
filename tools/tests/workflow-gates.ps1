@@ -59,6 +59,7 @@ Copy-Item (Join-Path $root 'tools/phone-notify.ps1') $sender
 @{topic=('sr-'+('a'*48))}|ConvertTo-Json|Set-Content (Join-Path $phoneDir 'config.json')
 $global:SongRecordTestHttpCalls=0
 $global:SongRecordTestHttpFail=$true
+$global:SongRecordTestTitle='WORKFLOW-02'
 function Invoke-RestMethod {
     param($Uri,$Method,$ContentType,$Headers,$Body,$TimeoutSec)
     $global:SongRecordTestHttpCalls++
@@ -66,7 +67,7 @@ function Invoke-RestMethod {
     $global:SongRecordTestMessage=$payload.message
     Assert-Equal $Uri 'https://ntfy.sh/' 'fixed endpoint'
     Assert-Equal $payload.topic.Length 51 'server-compatible topic length'
-    Assert-Equal $payload.title 'WORKFLOW-02' 'task only title'
+    Assert-Equal $payload.title $global:SongRecordTestTitle 'safe task and optional item title'
     Assert-Equal $Headers.Cache 'no' 'no remote cache'
     if($global:SongRecordTestHttpFail){throw 'simulated uncertain network failure'}
     return @{event='message';id='synthetic-message'}
@@ -116,12 +117,62 @@ try {
     Assert-Equal $global:SongRecordTestHttpCalls $before 'locked sender never calls HTTP'
 } finally { $held.Dispose() }
 $global:SongRecordTestHttpFail=$false
-& $sender -Mode Send -Kind Escalation -BeforeModel Sol -BeforeReasoning high -AfterReasoning ultra -FailureCode SchedulerRecovery
+"### USER-099 — synthetic escalation`n- 상태: **확인 필요**`n- 작업 ID: WORKFLOW-02`n- 요청 판본: 1`n- 알림 종류: Escalation`n- 알림 행동: Details`n" | Set-Content (Join-Path $fixture '내가할일.md')
+$global:SongRecordTestTitle='WORKFLOW-02 USER-099'
+& $sender -Mode Send -Kind Escalation -ItemId USER-099 -BeforeModel Sol -BeforeReasoning high -AfterReasoning ultra -FailureCode SchedulerRecovery
 Assert-Equal ($global:SongRecordTestMessage -match 'Sol/high.*Astra/ultra') $true 'escalation models included'
 Assert-Equal ($global:SongRecordTestMessage -match '복귀 후 재시도 예약 문제.*판단 필요') $true 'failure and requested action included'
 Assert-Equal ((Get-Content (Join-Path $phoneDir 'receipt.json') -Raw|ConvertFrom-Json).status) 'SERVER_ACCEPTED' 'escalation acceptance not receipt'
+$before=$global:SongRecordTestHttpCalls
+$failed=$false
+try { & $sender -Mode Send -ItemId USER-001 -Kind Intervention -Action LoginSetup } catch { $failed=$true }
+Assert-Equal $failed $true 'document must exist before item notification'
+Assert-Equal $global:SongRecordTestHttpCalls $before 'missing document does not call HTTP'
+$itemText="### USER-001 — synthetic request`n- 상태: **확인 필요**`n- 작업 ID: WORKFLOW-02`n- 요청 판본: 1`n- 알림 종류: Intervention`n- 알림 행동: LoginSetup`n"
+$itemText | Set-Content (Join-Path $fixture '내가할일.md')
+@{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='NOT_SENT'}|ConvertTo-Json|Set-Content $attemptFile
+$global:SongRecordTestTitle='WORKFLOW-02 USER-001'
+$failed=$false
+try { & $sender -Mode Send -ItemId USER-001 -Kind Intervention -Action Device } catch { $failed=$true }
+Assert-Equal $failed $true 'action must match recorded request'
+Assert-Equal $global:SongRecordTestHttpCalls $before 'mismatched action does not call HTTP'
+& $sender -Mode Send -ItemId USER-001 -Kind Intervention -Action LoginSetup
+Assert-Equal ($global:SongRecordTestMessage -match 'USER-001 r1:.*로그인 설정 파일 경로') $true 'item ID and fixed action summary included'
+$before=$global:SongRecordTestHttpCalls
+@{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='NOT_SENT'}|ConvertTo-Json|Set-Content $attemptFile
+$failed=$false
+try { & $sender -Mode Send -ItemId USER-001 -Kind Intervention -Action LoginSetup } catch { $failed=$true }
+Assert-Equal $failed $true 'accepted item stays deduplicated across unrelated attempts'
+Assert-Equal $global:SongRecordTestHttpCalls $before 'duplicate item does not call HTTP'
+$global:SongRecordTestHttpFail=$true
+$failed=$false
+try { & $sender -Mode Send -ItemId USER-001 -Revision 2 -Kind Intervention -Action LoginSetup } catch { $failed=$true }
+Assert-Equal $failed $true 'unrecorded revision rejected'
+Assert-Equal $global:SongRecordTestHttpCalls $before 'unrecorded revision does not call HTTP'
+$itemText.Replace('요청 판본: 1','요청 판본: 2') | Set-Content (Join-Path $fixture '내가할일.md')
+$failed=$false
+try { & $sender -Mode Send -ItemId USER-001 -Revision 2 -Kind Intervention -Action LoginSetup } catch { $failed=$true }
+Assert-Equal $failed $true 'revision change reason required'
+($itemText.Replace('요청 판본: 1','요청 판본: 2')+"- 변경 이유: synthetic target change`n") | Set-Content (Join-Path $fixture '내가할일.md')
+try { & $sender -Mode Send -ItemId USER-001 -Revision 2 -Kind Intervention -Action LoginSetup } catch { }
+$before=$global:SongRecordTestHttpCalls
+@{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='NOT_SENT'}|ConvertTo-Json|Set-Content $attemptFile
+$failed=$false
+try { & $sender -Mode Send -ItemId USER-001 -Revision 2 -Kind Intervention -Action LoginSetup } catch { $failed=$true }
+Assert-Equal $failed $true 'uncertain item revision also remains deduplicated'
+Assert-Equal $global:SongRecordTestHttpCalls $before 'uncertain item never automatically resends'
+foreach($kind in @('Intervention','PhoneTest','Escalation')) {
+    $failed=$false
+    try { & $sender -Mode Send -Kind $kind } catch { $failed=$true }
+    Assert-Equal $failed $true 'every user-action kind requires recorded item ID'
+}
+($itemText.Replace('확인 필요','완료').Replace('요청 판본: 1','요청 판본: 3')+"- 변경 이유: synthetic closed request`n") | Set-Content (Join-Path $fixture '내가할일.md')
+$failed=$false
+try { & $sender -Mode Send -ItemId USER-001 -Revision 3 -Kind Intervention -Action LoginSetup } catch { $failed=$true }
+Assert-Equal $failed $true 'completed item cannot trigger action notification'
+Assert-Equal $global:SongRecordTestHttpCalls $before 'rejected requests never call HTTP'
 Remove-Item Function:Invoke-RestMethod
-Remove-Variable SongRecordTestHttpCalls,SongRecordTestHttpFail,SongRecordTestMessage -Scope Global
+Remove-Variable SongRecordTestHttpCalls,SongRecordTestHttpFail,SongRecordTestMessage,SongRecordTestTitle -Scope Global
 & pwsh -NoProfile -File (Join-Path $root 'tools/workflow.ps1') -Mode Quick -Python '__nonexistent_python_workflow_test__' *> $null
 Assert-Equal $LASTEXITCODE 1 'execution error process status'
 $report = Get-Content (Join-Path $root '.local/workflow/quick.json') -Raw | ConvertFrom-Json

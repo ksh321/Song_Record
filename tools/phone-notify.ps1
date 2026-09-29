@@ -4,6 +4,9 @@ param(
     [ValidateSet('Init','Subscribe','Send','Confirm')][string]$Mode='Send',
     [ValidatePattern('^(WORKFLOW-\d{2}|P\d{2}-\d{2}[a-z]?)(-[A-Z0-9]+)?$')][string]$TaskId='WORKFLOW-02',
     [ValidateSet('Trial','PhoneTest','Intervention','Escalation')][string]$Kind='Trial',
+    [ValidatePattern('^USER-\d{3}$')][string]$ItemId,
+    [ValidateRange(1,999)][int]$Revision=1,
+    [ValidateSet('Details','LoginSetup','Device','PhoneSteps','Decision')][string]$Action='Details',
     [ValidateSet('Luna','Sol','Astra')][string]$BeforeModel='Astra',
     [ValidateSet('medium','high','xhigh','max','ultra','high/xhigh')][string]$BeforeReasoning='high',
     [ValidateSet('ultra','unconfirmed')][string]$AfterReasoning='ultra',
@@ -48,6 +51,29 @@ if ($Mode -eq 'Confirm') {
     $r | ConvertTo-Json | Set-Content $receipt -Encoding utf8
     Write-Host 'Human receipt confirmation recorded.'; exit 0
 }
+$itemRecord=$null
+if ($Kind -ne 'Trial' -and -not $ItemId) { throw 'User action notifications require an item ID recorded in 내가할일.md.' }
+if ($ItemId) {
+    $todo=Join-Path (Split-Path $PSScriptRoot -Parent) '내가할일.md'
+    if (-not (Test-Path $todo)) {
+        throw 'Update the user action document before sending an item notification.'
+    }
+    $sections=[regex]::Matches((Get-Content $todo -Raw), "(?ms)^### $ItemId —[^\r\n]*\r?\n(?<body>.*?)(?=^#{1,3} |\z)")
+    if ($sections.Count -ne 1) { throw 'Expected exactly one matching item in the user action document.' }
+    $body=$sections[0].Groups['body'].Value
+    if ($body -notmatch '(?m)^- 상태: \*\*확인 필요\*\*\s*$' -or
+        $body -notmatch "(?m)^- 작업 ID: $([regex]::Escape($TaskId))\s*$" -or
+        $body -notmatch "(?m)^- 요청 판본: $Revision\s*$" -or
+        $body -notmatch "(?m)^- 알림 종류: $Kind\s*$" -or
+        $body -notmatch "(?m)^- 알림 행동: $Action\s*$" -or
+        ($Revision -gt 1 -and $body -notmatch '(?m)^- 변경 이유: \S[^\r\n]*$')) {
+        throw 'Record the pending state, matching task/revision and revision change reason before notifying.'
+    }
+    $items=Join-Path $dir 'items'
+    New-Item -ItemType Directory -Force $items | Out-Null
+    $itemRecord=Join-Path $items "$ItemId-r$Revision.json"
+    if (Test-Path $itemRecord) { throw 'This item revision was already attempted; do not send a duplicate notification.' }
+}
 if (Test-Path $attempt) {
     $previous=Get-Content $attempt -Raw | ConvertFrom-Json
     if (([DateTime]::UtcNow-[DateTime]$previous.utc).TotalSeconds -lt 60) { throw 'Wait at least 60 seconds between notifications.' }
@@ -68,18 +94,35 @@ $message=switch($Kind) {
             EnvironmentBlocked {'실행 환경·권한 문제'}
             ModelUnavailable {'최대 추론 실행 미확인'}
         }
-        $action=if($FailureCode -eq 'ModelUnavailable'){'Astra 최대 추론 설정 확인 필요'}else{'대화의 실패 기록·재개 방안 판단 필요'}
-        "$BeforeModel/$BeforeReasoning → Astra/${AfterReasoning}: $summary. $action."
+        $escalationAction=if($FailureCode -eq 'ModelUnavailable'){'Astra 최대 추론 설정 확인 필요'}else{'대화의 실패 기록·재개 방안 판단 필요'}
+        "$BeforeModel/$BeforeReasoning → Astra/${AfterReasoning}: $summary. $escalationAction."
     }
 }
-$payload=@{topic=$topic;title=$TaskId;message=$message;priority=3} | ConvertTo-Json -Compress
+$title=$TaskId
+if ($ItemId) {
+    $title="$TaskId $ItemId"
+    $actionText=switch($Action) {
+        LoginSetup {'로그인 설정 파일 경로 또는 없음/모름을 알려주세요.'}
+        Device {'휴대폰을 USB로 연결하고 디버깅을 허용해 주세요.'}
+        PhoneSteps {'준비된 앱의 실기 순서를 확인하고 결과를 알려주세요.'}
+        Decision {'기록된 선택 사항을 확인하고 결정해 주세요.'}
+        Details {'기록된 요청 사항을 확인하고 답해주세요.'}
+    }
+    $message="$ItemId r${Revision}: $actionText 자세한 내용은 내가할일.md와 대화를 확인하세요. " + $(if($Kind -eq 'Escalation'){$message}else{''})
+}
+$payload=@{topic=$topic;title=$title;message=$message;priority=3} | ConvertTo-Json -Compress
 $sendAttempt=@{attempt_id=[guid]::NewGuid().ToString('N');utc=[DateTime]::UtcNow.ToString('o');task=$TaskId;kind=$Kind;status='UNKNOWN'}
+if ($ItemId) {
+    $sendAttempt.item_id=$ItemId; $sendAttempt.revision=$Revision
+    $sendAttempt | ConvertTo-Json | Set-Content $itemRecord -Encoding utf8
+}
 $sendAttempt | ConvertTo-Json | Set-Content $attempt -Encoding utf8
 try {
     $response=Invoke-RestMethod -Uri 'https://ntfy.sh/' -Method Post -ContentType 'application/json; charset=utf-8' -Headers @{Cache='no'} -Body ([Text.Encoding]::UTF8.GetBytes($payload)) -TimeoutSec 20
     if ($response.event -ne 'message' -or -not $response.id) { throw 'Unexpected response' }
 } catch { throw 'Notification send failed or uncertain. Do not claim delivery; retry only after checking state.' }
 $sendAttempt.status='SERVER_ACCEPTED'
+if ($itemRecord) { $sendAttempt | ConvertTo-Json | Set-Content $itemRecord -Encoding utf8 }
 $sendAttempt | ConvertTo-Json | Set-Content $attempt -Encoding utf8
 @{attempt_id=$sendAttempt.attempt_id;utc=[DateTime]::UtcNow.ToString('o');task=$TaskId;kind=$Kind;status='SERVER_ACCEPTED';message_id=$response.id} |
     ConvertTo-Json | Set-Content $receipt -Encoding utf8

@@ -8,6 +8,10 @@ Codex가 현재 작업에서 명령과 로그 확인을 직접 수행하는 흐�
 
 ## 실행 입구
 
+사용자 개입은 루트 [내가할일.md](../내가할일.md)에서 관리한다. 상태는 확인 필요 → 사용자 결과 전달됨 → AI 검증 중 → 완료이며, 요청 취소는 사유를 남긴다. 상단 건수는 미종료 세 상태의 합이다. 완료 항목은 하단 기록으로 옮긴다. USB 연결 응답을 앱 실기 통과로 확대하지 않는다.
+
+새 요청은 ID·시각·이유·정확한 앱 커밋/설치 준비 상태·준비·순서·기대 결과·회신 양식을 먼저 기록한다. 그 뒤 `tools/phone-notify.ps1 -Mode Send -TaskId P10-03b -Kind Intervention -ItemId USER-001 -Revision 1 -Action LoginSetup` 형태로 고정 행동 문구만 전송한다. 이 명령은 형식 예시이며 현재 USER-001은 이미 알린 요청이므로 재전송하지 않는다. 동일 ID/판본의 성공 또는 불확실 전송은 재발송하지 않는다. 앱/절차 변경은 같은 항목의 판본과 변경 이유를 갱신하고 한 번 알린다. 알림 서버 접수는 실제 수신/실기 통과가 아니다. 진행·종료 보고에는 미종료 건수와 파일 링크를 표시한다.
+
 저장소 루트에서 PowerShell 7로 실행한다. 명령 실행은 AI가 담당하며 로그인·USB 승인·청취만
 필요 시 사용자에게 요청한다. 결과 0=해당 자동 검사 통과, 1=실패, 2=미확인/대기다.
 명령이 통과해도 수동 검증을 포함한 전체 기능이 완료됐다는 뜻은 아니다.
@@ -144,8 +148,8 @@ D06/P06 선행 조건을 기록한다. 모델 runner의 `-Finding RequirementsMi
 `tools/phone-notify.ps1`은 무료 ntfy에 작업 ID와 고정 문구만 보낸다.
 처음 Init → Android 앱 설치/알림 허용 → Subscribe(USB) → Send(Trial) → 사용자 실제 수신 답변 → Confirm.
 사람의 실기가 필요하면 대화에 이유/순서/기대 결과를 먼저 남기고
-`pwsh -File tools/phone-notify.ps1 -Mode Send -TaskId P06-08 -Kind PhoneTest`를 실행한다.
-사람 개입 요청은 `-Kind Intervention`. 푸시 실패 시 대화로 알리고 실기는 계속 대기다.
+해당 작업 ID와 문서에 먼저 등록한 `-ItemId USER-NNN -Revision N -Action PhoneSteps`를 지정해 `-Kind PhoneTest`로 실행한다. 과거 P06 실기를 다시 요청하는 예시가 아니다.
+사람 개입 요청은 `-Kind Intervention`이며 기록된 항목 ID가 필수다. 푸시 실패 시 대화로 알리고 실기는 계속 대기다.
 최대 추론 실패/설정 개입은 `-Kind Escalation -BeforeModel Astra -BeforeReasoning high/xhigh
 -AfterReasoning ultra -FailureCode SchedulerRecovery`로 작업 ID와 상향 전후 모델·추론, 안전한 실패 요약·
 판단 요청을 보낸다. 모델 실행 미확인은 AfterReasoning=unconfirmed, FailureCode=ModelUnavailable이다.
