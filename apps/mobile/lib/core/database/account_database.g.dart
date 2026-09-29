@@ -4935,6 +4935,352 @@ class MutationWireRequestsCompanion
   }
 }
 
+class MutationRetryControls extends Table
+    with TableInfo<MutationRetryControls, MutationRetryControl> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  MutationRetryControls(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _opIdMeta = const VerificationMeta('opId');
+  late final GeneratedColumn<String> opId = GeneratedColumn<String>(
+    'op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _automaticRetriesClaimedMeta =
+      const VerificationMeta('automaticRetriesClaimed');
+  late final GeneratedColumn<int> automaticRetriesClaimed =
+      GeneratedColumn<int>(
+        'automatic_retries_claimed',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        $customConstraints: 'CHECK (automatic_retries_claimed IS NULL OR automatic_retries_claimed BETWEEN 0 AND 3)',
+      );
+  static const VerificationMeta _retryModeMeta = const VerificationMeta(
+    'retryMode',
+  );
+  late final GeneratedColumn<String> retryMode = GeneratedColumn<String>(
+    'retry_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (retry_mode IN (\'INITIAL\', \'AUTO\', \'MANUAL_REQUIRED\', \'MANUAL_READY\', \'BLOCKED\'))',
+  );
+  static const VerificationMeta _lastAttemptKindMeta = const VerificationMeta(
+    'lastAttemptKind',
+  );
+  late final GeneratedColumn<String> lastAttemptKind = GeneratedColumn<String>(
+    'last_attempt_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (last_attempt_kind IN (\'INITIAL\', \'AUTO\', \'MANUAL\', \'UNKNOWN\'))',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    opId,
+    automaticRetriesClaimed,
+    retryMode,
+    lastAttemptKind,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'mutation_retry_controls';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MutationRetryControl> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('op_id')) {
+      context.handle(
+        _opIdMeta,
+        opId.isAcceptableOrUnknown(data['op_id']!, _opIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_opIdMeta);
+    }
+    if (data.containsKey('automatic_retries_claimed')) {
+      context.handle(
+        _automaticRetriesClaimedMeta,
+        automaticRetriesClaimed.isAcceptableOrUnknown(
+          data['automatic_retries_claimed']!,
+          _automaticRetriesClaimedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('retry_mode')) {
+      context.handle(
+        _retryModeMeta,
+        retryMode.isAcceptableOrUnknown(data['retry_mode']!, _retryModeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_retryModeMeta);
+    }
+    if (data.containsKey('last_attempt_kind')) {
+      context.handle(
+        _lastAttemptKindMeta,
+        lastAttemptKind.isAcceptableOrUnknown(
+          data['last_attempt_kind']!,
+          _lastAttemptKindMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastAttemptKindMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {opId};
+  @override
+  MutationRetryControl map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MutationRetryControl(
+      opId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}op_id'],
+      )!,
+      automaticRetriesClaimed: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}automatic_retries_claimed'],
+      ),
+      retryMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}retry_mode'],
+      )!,
+      lastAttemptKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_attempt_kind'],
+      )!,
+    );
+  }
+
+  @override
+  MutationRetryControls createAlias(String alias) {
+    return MutationRetryControls(attachedDatabase, alias);
+  }
+
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class MutationRetryControl extends DataClass
+    implements Insertable<MutationRetryControl> {
+  final String opId;
+  final int? automaticRetriesClaimed;
+  final String retryMode;
+  final String lastAttemptKind;
+  const MutationRetryControl({
+    required this.opId,
+    this.automaticRetriesClaimed,
+    required this.retryMode,
+    required this.lastAttemptKind,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['op_id'] = Variable<String>(opId);
+    if (!nullToAbsent || automaticRetriesClaimed != null) {
+      map['automatic_retries_claimed'] = Variable<int>(automaticRetriesClaimed);
+    }
+    map['retry_mode'] = Variable<String>(retryMode);
+    map['last_attempt_kind'] = Variable<String>(lastAttemptKind);
+    return map;
+  }
+
+  MutationRetryControlsCompanion toCompanion(bool nullToAbsent) {
+    return MutationRetryControlsCompanion(
+      opId: Value(opId),
+      automaticRetriesClaimed: automaticRetriesClaimed == null && nullToAbsent
+          ? const Value.absent()
+          : Value(automaticRetriesClaimed),
+      retryMode: Value(retryMode),
+      lastAttemptKind: Value(lastAttemptKind),
+    );
+  }
+
+  factory MutationRetryControl.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MutationRetryControl(
+      opId: serializer.fromJson<String>(json['op_id']),
+      automaticRetriesClaimed: serializer.fromJson<int?>(
+        json['automatic_retries_claimed'],
+      ),
+      retryMode: serializer.fromJson<String>(json['retry_mode']),
+      lastAttemptKind: serializer.fromJson<String>(json['last_attempt_kind']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'op_id': serializer.toJson<String>(opId),
+      'automatic_retries_claimed': serializer.toJson<int?>(
+        automaticRetriesClaimed,
+      ),
+      'retry_mode': serializer.toJson<String>(retryMode),
+      'last_attempt_kind': serializer.toJson<String>(lastAttemptKind),
+    };
+  }
+
+  MutationRetryControl copyWith({
+    String? opId,
+    Value<int?> automaticRetriesClaimed = const Value.absent(),
+    String? retryMode,
+    String? lastAttemptKind,
+  }) => MutationRetryControl(
+    opId: opId ?? this.opId,
+    automaticRetriesClaimed: automaticRetriesClaimed.present
+        ? automaticRetriesClaimed.value
+        : this.automaticRetriesClaimed,
+    retryMode: retryMode ?? this.retryMode,
+    lastAttemptKind: lastAttemptKind ?? this.lastAttemptKind,
+  );
+  MutationRetryControl copyWithCompanion(MutationRetryControlsCompanion data) {
+    return MutationRetryControl(
+      opId: data.opId.present ? data.opId.value : this.opId,
+      automaticRetriesClaimed: data.automaticRetriesClaimed.present
+          ? data.automaticRetriesClaimed.value
+          : this.automaticRetriesClaimed,
+      retryMode: data.retryMode.present ? data.retryMode.value : this.retryMode,
+      lastAttemptKind: data.lastAttemptKind.present
+          ? data.lastAttemptKind.value
+          : this.lastAttemptKind,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MutationRetryControl(')
+          ..write('opId: $opId, ')
+          ..write('automaticRetriesClaimed: $automaticRetriesClaimed, ')
+          ..write('retryMode: $retryMode, ')
+          ..write('lastAttemptKind: $lastAttemptKind')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(opId, automaticRetriesClaimed, retryMode, lastAttemptKind);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MutationRetryControl &&
+          other.opId == this.opId &&
+          other.automaticRetriesClaimed == this.automaticRetriesClaimed &&
+          other.retryMode == this.retryMode &&
+          other.lastAttemptKind == this.lastAttemptKind);
+}
+
+class MutationRetryControlsCompanion
+    extends UpdateCompanion<MutationRetryControl> {
+  final Value<String> opId;
+  final Value<int?> automaticRetriesClaimed;
+  final Value<String> retryMode;
+  final Value<String> lastAttemptKind;
+  final Value<int> rowid;
+  const MutationRetryControlsCompanion({
+    this.opId = const Value.absent(),
+    this.automaticRetriesClaimed = const Value.absent(),
+    this.retryMode = const Value.absent(),
+    this.lastAttemptKind = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  MutationRetryControlsCompanion.insert({
+    required String opId,
+    this.automaticRetriesClaimed = const Value.absent(),
+    required String retryMode,
+    required String lastAttemptKind,
+    this.rowid = const Value.absent(),
+  }) : opId = Value(opId),
+       retryMode = Value(retryMode),
+       lastAttemptKind = Value(lastAttemptKind);
+  static Insertable<MutationRetryControl> custom({
+    Expression<String>? opId,
+    Expression<int>? automaticRetriesClaimed,
+    Expression<String>? retryMode,
+    Expression<String>? lastAttemptKind,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (opId != null) 'op_id': opId,
+      if (automaticRetriesClaimed != null)
+        'automatic_retries_claimed': automaticRetriesClaimed,
+      if (retryMode != null) 'retry_mode': retryMode,
+      if (lastAttemptKind != null) 'last_attempt_kind': lastAttemptKind,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  MutationRetryControlsCompanion copyWith({
+    Value<String>? opId,
+    Value<int?>? automaticRetriesClaimed,
+    Value<String>? retryMode,
+    Value<String>? lastAttemptKind,
+    Value<int>? rowid,
+  }) {
+    return MutationRetryControlsCompanion(
+      opId: opId ?? this.opId,
+      automaticRetriesClaimed:
+          automaticRetriesClaimed ?? this.automaticRetriesClaimed,
+      retryMode: retryMode ?? this.retryMode,
+      lastAttemptKind: lastAttemptKind ?? this.lastAttemptKind,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (opId.present) {
+      map['op_id'] = Variable<String>(opId.value);
+    }
+    if (automaticRetriesClaimed.present) {
+      map['automatic_retries_claimed'] = Variable<int>(
+        automaticRetriesClaimed.value,
+      );
+    }
+    if (retryMode.present) {
+      map['retry_mode'] = Variable<String>(retryMode.value);
+    }
+    if (lastAttemptKind.present) {
+      map['last_attempt_kind'] = Variable<String>(lastAttemptKind.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MutationRetryControlsCompanion(')
+          ..write('opId: $opId, ')
+          ..write('automaticRetriesClaimed: $automaticRetriesClaimed, ')
+          ..write('retryMode: $retryMode, ')
+          ..write('lastAttemptKind: $lastAttemptKind, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AccountDatabase extends GeneratedDatabase {
   _$AccountDatabase(QueryExecutor e) : super(e);
   $AccountDatabaseManager get managers => $AccountDatabaseManager(this);
@@ -4979,6 +5325,12 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     'CREATE TRIGGER mutation_wire_request_immutable BEFORE UPDATE ON mutation_wire_requests BEGIN SELECT RAISE (ABORT, \'Frozen HTTP requests must survive retries unchanged\');END',
     'mutation_wire_request_immutable',
   );
+  late final MutationRetryControls mutationRetryControls =
+      MutationRetryControls(this);
+  late final Trigger mutationRetryBudgetMonotonic = Trigger(
+    'CREATE TRIGGER mutation_retry_budget_monotonic BEFORE UPDATE ON mutation_retry_controls WHEN NEW.op_id <> OLD.op_id OR(OLD.automatic_retries_claimed IS NULL AND NEW.automatic_retries_claimed IS NOT NULL)OR(OLD.automatic_retries_claimed IS NOT NULL AND NEW.automatic_retries_claimed IS NULL)OR NEW.automatic_retries_claimed < OLD.automatic_retries_claimed OR NEW.automatic_retries_claimed > OLD.automatic_retries_claimed + 1 BEGIN SELECT RAISE (ABORT, \'Automatic retry budget cannot be replenished\');END',
+    'mutation_retry_budget_monotonic',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5000,6 +5352,8 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     cursorNoRewind,
     mutationWireRequests,
     mutationWireRequestImmutable,
+    mutationRetryControls,
+    mutationRetryBudgetMonotonic,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -5034,6 +5388,13 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'mutation_wire_requests',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_retry_controls',
         limitUpdateKind: UpdateKind.update,
       ),
       result: [],
@@ -6165,6 +6526,27 @@ final class $LocalMutationsReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<MutationRetryControls, List<MutationRetryControl>>
+  _mutationRetryControlsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.mutationRetryControls,
+        aliasName: 'local_mutations__op_id__mutation_retry_controls__op_id',
+      );
+
+  $MutationRetryControlsProcessedTableManager get mutationRetryControlsRefs {
+    final manager = $MutationRetryControlsTableManager(
+      $_db,
+      $_db.mutationRetryControls,
+    ).filter((f) => f.opId.opId.sqlEquals($_itemColumn<String>('op_id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _mutationRetryControlsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $LocalMutationsFilterComposer
@@ -6285,6 +6667,31 @@ class $LocalMutationsFilterComposer
           }) => $MutationWireRequestsFilterComposer(
             $db: $db,
             $table: $db.mutationWireRequests,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> mutationRetryControlsRefs(
+    Expression<bool> Function($MutationRetryControlsFilterComposer f) f,
+  ) {
+    final $MutationRetryControlsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.mutationRetryControls,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationRetryControlsFilterComposer(
+            $db: $db,
+            $table: $db.mutationRetryControls,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -6512,6 +6919,31 @@ class $LocalMutationsAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> mutationRetryControlsRefs<T extends Object>(
+    Expression<T> Function($MutationRetryControlsAnnotationComposer a) f,
+  ) {
+    final $MutationRetryControlsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.mutationRetryControls,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationRetryControlsAnnotationComposer(
+            $db: $db,
+            $table: $db.mutationRetryControls,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $LocalMutationsTableManager
@@ -6527,7 +6959,11 @@ class $LocalMutationsTableManager
           $LocalMutationsUpdateCompanionBuilder,
           (LocalMutation, $LocalMutationsReferences),
           LocalMutation,
-          PrefetchHooks Function({bool userId, bool mutationWireRequestsRefs})
+          PrefetchHooks Function({
+            bool userId,
+            bool mutationWireRequestsRefs,
+            bool mutationRetryControlsRefs,
+          })
         > {
   $LocalMutationsTableManager(_$AccountDatabase db, LocalMutations table)
     : super(
@@ -6621,11 +7057,16 @@ class $LocalMutationsTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({userId = false, mutationWireRequestsRefs = false}) {
+              ({
+                userId = false,
+                mutationWireRequestsRefs = false,
+                mutationRetryControlsRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (mutationWireRequestsRefs) db.mutationWireRequests,
+                    if (mutationRetryControlsRefs) db.mutationRetryControls,
                   ],
                   addJoins:
                       <
@@ -6680,6 +7121,27 @@ class $LocalMutationsTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (mutationRetryControlsRefs)
+                        await $_getPrefetchedData<
+                          LocalMutation,
+                          LocalMutations,
+                          MutationRetryControl
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalMutationsReferences
+                              ._mutationRetryControlsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalMutationsReferences(
+                                db,
+                                table,
+                                p0,
+                              ).mutationRetryControlsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.opId == item.opId,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -6700,7 +7162,11 @@ typedef $LocalMutationsProcessedTableManager =
       $LocalMutationsUpdateCompanionBuilder,
       (LocalMutation, $LocalMutationsReferences),
       LocalMutation,
-      PrefetchHooks Function({bool userId, bool mutationWireRequestsRefs})
+      PrefetchHooks Function({
+        bool userId,
+        bool mutationWireRequestsRefs,
+        bool mutationRetryControlsRefs,
+      })
     >;
 typedef $LocalRecordingFilesCreateCompanionBuilder =
     LocalRecordingFilesCompanion Function({
@@ -8956,6 +9422,319 @@ typedef $MutationWireRequestsProcessedTableManager =
       MutationWireRequest,
       PrefetchHooks Function({bool opId})
     >;
+typedef $MutationRetryControlsCreateCompanionBuilder =
+    MutationRetryControlsCompanion Function({
+      required String opId,
+      Value<int?> automaticRetriesClaimed,
+      required String retryMode,
+      required String lastAttemptKind,
+      Value<int> rowid,
+    });
+typedef $MutationRetryControlsUpdateCompanionBuilder =
+    MutationRetryControlsCompanion Function({
+      Value<String> opId,
+      Value<int?> automaticRetriesClaimed,
+      Value<String> retryMode,
+      Value<String> lastAttemptKind,
+      Value<int> rowid,
+    });
+
+final class $MutationRetryControlsReferences
+    extends
+        BaseReferences<
+          _$AccountDatabase,
+          MutationRetryControls,
+          MutationRetryControl
+        > {
+  $MutationRetryControlsReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static LocalMutations _opIdTable(_$AccountDatabase db) => db.localMutations
+      .createAlias('mutation_retry_controls__op_id__local_mutations__op_id');
+
+  $LocalMutationsProcessedTableManager get opId {
+    final $_column = $_itemColumn<String>('op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_opIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $MutationRetryControlsFilterComposer
+    extends Composer<_$AccountDatabase, MutationRetryControls> {
+  $MutationRetryControlsFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get automaticRetriesClaimed => $composableBuilder(
+    column: $table.automaticRetriesClaimed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get retryMode => $composableBuilder(
+    column: $table.retryMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastAttemptKind => $composableBuilder(
+    column: $table.lastAttemptKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalMutationsFilterComposer get opId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationRetryControlsOrderingComposer
+    extends Composer<_$AccountDatabase, MutationRetryControls> {
+  $MutationRetryControlsOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get automaticRetriesClaimed => $composableBuilder(
+    column: $table.automaticRetriesClaimed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get retryMode => $composableBuilder(
+    column: $table.retryMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lastAttemptKind => $composableBuilder(
+    column: $table.lastAttemptKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalMutationsOrderingComposer get opId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationRetryControlsAnnotationComposer
+    extends Composer<_$AccountDatabase, MutationRetryControls> {
+  $MutationRetryControlsAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get automaticRetriesClaimed => $composableBuilder(
+    column: $table.automaticRetriesClaimed,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get retryMode =>
+      $composableBuilder(column: $table.retryMode, builder: (column) => column);
+
+  GeneratedColumn<String> get lastAttemptKind => $composableBuilder(
+    column: $table.lastAttemptKind,
+    builder: (column) => column,
+  );
+
+  $LocalMutationsAnnotationComposer get opId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationRetryControlsTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          MutationRetryControls,
+          MutationRetryControl,
+          $MutationRetryControlsFilterComposer,
+          $MutationRetryControlsOrderingComposer,
+          $MutationRetryControlsAnnotationComposer,
+          $MutationRetryControlsCreateCompanionBuilder,
+          $MutationRetryControlsUpdateCompanionBuilder,
+          (MutationRetryControl, $MutationRetryControlsReferences),
+          MutationRetryControl,
+          PrefetchHooks Function({bool opId})
+        > {
+  $MutationRetryControlsTableManager(
+    _$AccountDatabase db,
+    MutationRetryControls table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $MutationRetryControlsFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $MutationRetryControlsOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $MutationRetryControlsAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> opId = const Value.absent(),
+                Value<int?> automaticRetriesClaimed = const Value.absent(),
+                Value<String> retryMode = const Value.absent(),
+                Value<String> lastAttemptKind = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => MutationRetryControlsCompanion(
+                opId: opId,
+                automaticRetriesClaimed: automaticRetriesClaimed,
+                retryMode: retryMode,
+                lastAttemptKind: lastAttemptKind,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String opId,
+                Value<int?> automaticRetriesClaimed = const Value.absent(),
+                required String retryMode,
+                required String lastAttemptKind,
+                Value<int> rowid = const Value.absent(),
+              }) => MutationRetryControlsCompanion.insert(
+                opId: opId,
+                automaticRetriesClaimed: automaticRetriesClaimed,
+                retryMode: retryMode,
+                lastAttemptKind: lastAttemptKind,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<MutationRetryControls, MutationRetryControl>(
+                    table,
+                  ),
+                  $MutationRetryControlsReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({opId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (opId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.opId,
+                        referencedTable: $MutationRetryControlsReferences
+                            ._opIdTable(db),
+                        referencedColumn: $MutationRetryControlsReferences
+                            ._opIdTable(db)
+                            .opId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $MutationRetryControlsProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      MutationRetryControls,
+      MutationRetryControl,
+      $MutationRetryControlsFilterComposer,
+      $MutationRetryControlsOrderingComposer,
+      $MutationRetryControlsAnnotationComposer,
+      $MutationRetryControlsCreateCompanionBuilder,
+      $MutationRetryControlsUpdateCompanionBuilder,
+      (MutationRetryControl, $MutationRetryControlsReferences),
+      MutationRetryControl,
+      PrefetchHooks Function({bool opId})
+    >;
 
 class $AccountDatabaseManager {
   final _$AccountDatabase _db;
@@ -8978,4 +9757,6 @@ class $AccountDatabaseManager {
       $SyncCursorsTableManager(_db, _db.syncCursors);
   $MutationWireRequestsTableManager get mutationWireRequests =>
       $MutationWireRequestsTableManager(_db, _db.mutationWireRequests);
+  $MutationRetryControlsTableManager get mutationRetryControls =>
+      $MutationRetryControlsTableManager(_db, _db.mutationRetryControls);
 }

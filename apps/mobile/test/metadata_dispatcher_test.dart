@@ -102,6 +102,91 @@ void main() {
   });
 
   test(
+    '401 headers survive a stalled response body and stop this pass',
+    () async {
+      await createTag(10);
+      await createTag(11);
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      var calls = 0;
+      final listener = server.listen((request) async {
+        calls++;
+        await request.drain<void>();
+        request.response.statusCode = 401;
+        request.response.contentLength = 100;
+        request.response.add([32]);
+        await request.response.flush();
+        // Leave the declared body incomplete to exercise the real timeout path.
+      });
+      try {
+        await HttpOverrides.runWithHttpOverrides(() async {
+          final transport = HttpMutationTransport(
+            Uri.parse('http://127.0.0.1:${server.port}'),
+            allowLocalHttp: true,
+            timeout: const Duration(milliseconds: 500),
+          );
+          expect(
+            await repo.dispatch(transport: transport, session: session),
+            0,
+          );
+        }, RealHttpOverrides());
+        expect(calls, 1);
+        final pending = await repo.pending();
+        expect(pending.map((m) => m.state), ['RETRY', 'PENDING']);
+        expect(jsonDecode(pending.first.serverResponse!)['status'], 401);
+      } finally {
+        await listener.cancel();
+        await server.close(force: true);
+      }
+    },
+  );
+
+  for (final oversized in [false, true]) {
+    test(
+      'auth headers survive ${oversized ? 'oversized' : 'invalid UTF8'} body',
+      () async {
+        await createTag(10);
+        await createTag(11);
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        var calls = 0;
+        final listener = server.listen((request) async {
+          calls++;
+          await request.drain<void>();
+          request.response.statusCode = oversized ? 403 : 401;
+          request.response.add(oversized ? List.filled(1048577, 32) : [255]);
+          try {
+            await request.response.close();
+          } catch (_) {
+            /* client bounds body */
+          }
+        });
+        try {
+          await HttpOverrides.runWithHttpOverrides(() async {
+            final transport = HttpMutationTransport(
+              Uri.parse('http://127.0.0.1:${server.port}'),
+              allowLocalHttp: true,
+            );
+            expect(
+              await repo.dispatch(transport: transport, session: session),
+              0,
+            );
+          }, RealHttpOverrides());
+          expect(calls, 1);
+          final pending = await repo.pending();
+          expect(pending.map((m) => m.state), ['RETRY', 'PENDING']);
+          expect(
+            jsonDecode(pending.first.serverResponse!)['status'],
+            oversized ? 403 : 401,
+          );
+          expect((await repo.retryStatus(pending.first.opId))!.mode, 'BLOCKED');
+        } finally {
+          await listener.cancel();
+          await server.close(force: true);
+        }
+      },
+    );
+  }
+
+  test(
     'real HTTP sends frozen body and headers and commits ACK without cursor',
     () async {
       final edit = await createTag(10);
@@ -711,7 +796,7 @@ void main() {
       final reopened = await manager.openAccount(owner);
       response.complete(MutationResponse(201, jsonEncode(tag(edit.entityId))));
       await assertion;
-      expect((await reopened.pendingMutations()).single.state, 'SENDING');
+      expect((await reopened.pendingMutations()).single.state, 'RETRY');
       expect(
         (await reopened.readMetadata(LocalEntity.tag, edit.entityId))!.revision,
         0,
@@ -735,6 +820,51 @@ void main() {
       expect(await store.recoveryData(), isNot(contains('private proxy text')));
       expect(await repo.dispatch(transport: transport, session: session), 0);
       expect(transport.calls, 2);
+    },
+  );
+
+  test(
+    'only typed network failures become retryable transport failures',
+    () async {
+      await createTag(10);
+      final transport = FakeTransport(
+        (_) async => throw const MutationNetworkFailure(),
+      );
+      expect(await repo.dispatch(transport: transport, session: session), 0);
+      final pending = (await repo.pending()).single;
+      expect(pending.state, 'RETRY');
+      expect(pending.serverResponse, contains('NETWORK_UNAVAILABLE'));
+    },
+  );
+
+  test(
+    'programming failures propagate without mislabeling network failure',
+    () async {
+      await createTag(10);
+      final transport = FakeTransport(
+        (_) async => throw StateError('injected'),
+      );
+      await expectLater(
+        repo.dispatch(transport: transport, session: session),
+        throwsStateError,
+      );
+      final pending = (await repo.pending()).single;
+      expect(pending.state, 'SENDING');
+      expect(pending.serverResponse, isNull);
+    },
+  );
+
+  test(
+    'authentication rejection stops this dispatch without consuming other work',
+    () async {
+      await createTag(10);
+      await createTag(11);
+      final transport = FakeTransport(
+        (_) async => const MutationResponse(401, '{}'),
+      );
+      expect(await repo.dispatch(transport: transport, session: session), 0);
+      expect(transport.calls, 1);
+      expect((await repo.pending()).map((m) => m.state), ['RETRY', 'PENDING']);
     },
   );
 
@@ -771,9 +901,12 @@ void main() {
       final transport = FakeTransport(
         (r) async => MutationResponse(201, jsonEncode(tag(edit.entityId))),
       );
-      expect(await repo.dispatch(transport: transport, session: session), 0);
+      await expectLater(
+        repo.dispatch(transport: transport, session: session),
+        throwsA(anything),
+      );
       expect((await repo.read(LocalEntity.tag, edit.entityId))!.revision, 0);
-      expect((await repo.pending()).single.state, 'RETRY');
+      expect((await repo.pending()).single.state, 'SENDING');
       final reopened = await raw();
       expect(
         await reopened

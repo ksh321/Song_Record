@@ -88,6 +88,13 @@ final class LocalRepository {
   /// This is an inspection list, not the dependency-ordered network send queue.
   Future<List<QueuedMutation>> pending() => _store.pendingMutations();
 
+  Future<RetryStatus?> retryStatus(String opId) => _store.retryStatus(opId);
+
+  Future<bool> retryMutation(String opId, {required int expectedAttempt}) =>
+      _store.retryMutation(opId, expectedAttempt: expectedAttempt);
+
+  Future<DateTime?> nextAutomaticRetryAt() => _store.nextAutomaticRetryAt();
+
   Future<DispatchPlan> planDispatch() async =>
       const DependencyPlanner().plan(await _store.dispatchSnapshot());
 

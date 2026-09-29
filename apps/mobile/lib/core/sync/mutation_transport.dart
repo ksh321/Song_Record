@@ -13,6 +13,17 @@ abstract interface class MutationTransport {
   );
 }
 
+/// Only transport-level uncertainty, never a database or programming failure.
+final class MutationNetworkFailure implements Exception {
+  const MutationNetworkFailure({this.receivedStatus});
+  final int? receivedStatus;
+}
+
+final class MutationBodyFailure implements Exception {
+  const MutationBodyFailure(this.receivedStatus);
+  final int? receivedStatus;
+}
+
 /// No redirects or automatic retries. A lost response retains the frozen request.
 final class HttpMutationTransport implements MutationTransport {
   HttpMutationTransport(
@@ -41,6 +52,7 @@ final class HttpMutationTransport implements MutationTransport {
     void Function() requireCurrent,
   ) async {
     final client = HttpClient()..connectionTimeout = timeout;
+    int? receivedStatus;
     try {
       return await (() async {
         requireCurrent();
@@ -60,6 +72,7 @@ final class HttpMutationTransport implements MutationTransport {
         outgoing.headers.set('Idempotency-Key', request.mutation.opId);
         outgoing.add(utf8.encode(request.body));
         final response = await outgoing.close();
+        receivedStatus = response.statusCode;
         final bytes = <int>[];
         await for (final chunk in response) {
           if (bytes.length + chunk.length > 1048576) {
@@ -69,6 +82,14 @@ final class HttpMutationTransport implements MutationTransport {
         }
         return MutationResponse(response.statusCode, utf8.decode(bytes));
       })().timeout(timeout);
+    } on FormatException {
+      throw MutationBodyFailure(receivedStatus);
+    } on SocketException {
+      throw MutationNetworkFailure(receivedStatus: receivedStatus);
+    } on TimeoutException {
+      throw MutationNetworkFailure(receivedStatus: receivedStatus);
+    } on HttpException {
+      throw MutationNetworkFailure(receivedStatus: receivedStatus);
     } finally {
       client.close(force: true);
     }

@@ -144,30 +144,3 @@ CREATE TABLE mutation_wire_requests (
 CREATE TRIGGER mutation_wire_request_immutable BEFORE UPDATE ON mutation_wire_requests BEGIN
   SELECT RAISE(ABORT, 'Frozen HTTP requests must survive retries unchanged');
 END;
-
--- P10-03: NULL budget means legacy history is unknown.
-CREATE TABLE mutation_retry_controls (
-  op_id TEXT NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id),
-  automatic_retries_claimed INTEGER
-    CHECK (automatic_retries_claimed IS NULL
-      OR automatic_retries_claimed BETWEEN 0 AND 3),
-  retry_mode TEXT NOT NULL CHECK (
-    retry_mode IN ('INITIAL','AUTO','MANUAL_REQUIRED','MANUAL_READY','BLOCKED')
-  ),
-  last_attempt_kind TEXT NOT NULL CHECK (
-    last_attempt_kind IN ('INITIAL','AUTO','MANUAL','UNKNOWN')
-  )
-);
-
-CREATE TRIGGER mutation_retry_budget_monotonic
-BEFORE UPDATE ON mutation_retry_controls
-WHEN NEW.op_id <> OLD.op_id
-  OR (OLD.automatic_retries_claimed IS NULL
-      AND NEW.automatic_retries_claimed IS NOT NULL)
-  OR (OLD.automatic_retries_claimed IS NOT NULL
-      AND NEW.automatic_retries_claimed IS NULL)
-  OR NEW.automatic_retries_claimed < OLD.automatic_retries_claimed
-  OR NEW.automatic_retries_claimed > OLD.automatic_retries_claimed + 1
-BEGIN
-  SELECT RAISE(ABORT, 'Automatic retry budget cannot be replenished');
-END;

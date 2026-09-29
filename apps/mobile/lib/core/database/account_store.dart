@@ -15,6 +15,9 @@ import '../sync/mutation_request.dart';
 import 'account_database.dart' show AccountDatabase;
 import 'account_paths.dart';
 import 'local_models.dart';
+import 'retry_controls.dart';
+
+export 'retry_controls.dart' show RetryClock, RetryStatus;
 
 typedef SupportDirectory = Future<Directory> Function();
 
@@ -40,12 +43,15 @@ final class AccountStoreManager {
     required this.environment,
     SupportDirectory? directory,
     SupportDirectory? temporaryDirectory,
+    RetryClock? clock,
   }) : _directory = directory ?? getApplicationSupportDirectory,
-       _temporaryDirectory = temporaryDirectory ?? getTemporaryDirectory;
+       _temporaryDirectory = temporaryDirectory ?? getTemporaryDirectory,
+       _clock = clock ?? DateTime.now;
 
   final AppEnvironment environment;
   final SupportDirectory _directory;
   final SupportDirectory _temporaryDirectory;
+  final RetryClock _clock;
   Future<void> _tail = Future<void>.value();
   AccountStore? _active;
   int _generation = 0;
@@ -84,16 +90,22 @@ final class AccountStoreManager {
         userId: canonicalId,
         environment: environment,
       );
-      try {
-        await database.verifyReady();
+      final store = AccountStore._(this, database, paths, generation);
+      void requireOpening() {
         if (generation != _generation) {
           throw StateError('Account changed while opening storage');
         }
+      }
+
+      try {
+        await database.verifyReady();
+        requireOpening();
+        await store._retry.recoverOpening(requireOpening);
+        requireOpening();
       } catch (_) {
         await database.close();
         rethrow;
       }
-      final store = AccountStore._(this, database, paths, generation);
       _active = store;
       return store;
     });
@@ -134,6 +146,10 @@ final class AccountStore {
   final AccountDatabase _database;
   final AccountPaths _paths;
   final int _generation;
+  late final RetryControls _retry = RetryControls(
+    _database,
+    clock: _manager._clock,
+  );
   String get userId => _paths.userId;
 
   Future<T> _run<T>(Future<T> Function() action) => _manager._run(this, action);
@@ -146,6 +162,7 @@ final class AccountStore {
         'metadata_copies',
         'local_mutations',
         'mutation_wire_requests',
+        'mutation_retry_controls',
         'local_recording_files',
         'recording_journals',
         'import_jobs',
@@ -254,6 +271,12 @@ final class AccountStore {
           now,
         ],
       );
+      await _database.customStatement(
+        '''INSERT INTO mutation_retry_controls(
+          op_id,automatic_retries_claimed,retry_mode,last_attempt_kind
+        ) VALUES(?,0,'INITIAL','INITIAL')''',
+        [edit.opId],
+      );
     });
   });
 
@@ -327,45 +350,55 @@ final class AccountStore {
 
   Future<MutationRequest?> claimMutation() => _run(
     () => _database.transaction(() async {
-      final plan = const DependencyPlanner().plan(await _dispatchSnapshot());
+      final snapshot = await _retry.forPlanner(await _dispatchSnapshot());
+      final plan = const DependencyPlanner().plan(snapshot);
       for (final candidate in plan.ready) {
-        final request = MutationRequest.prepare(candidate);
+        final request = await _retry.claim(candidate);
         if (request == null) continue;
-        final old = await _database
-            .customSelect(
-              'SELECT * FROM mutation_wire_requests WHERE op_id=?',
-              variables: [Variable(candidate.opId)],
-            )
-            .getSingleOrNull();
-        if (old != null &&
-            (old.read<String>('contract_version') != MutationRequest.contract ||
-                old.read<String>('wire_hash') != request.hash ||
-                old.read<String>('http_method') != request.method ||
-                old.read<String>('relative_path') != request.path ||
-                old.read<String>('body_json') != request.body)) {
-          continue; // Never reinterpret a frozen request using a new contract.
-        }
-        if (old == null) {
-          await _database.customStatement(
-            'INSERT INTO mutation_wire_requests(op_id,contract_version,http_method,relative_path,body_json,wire_hash) VALUES(?,?,?,?,?,?)',
-            [
-              candidate.opId,
-              MutationRequest.contract,
-              request.method,
-              request.path,
-              request.body,
-              request.hash,
-            ],
-          );
-        }
-        await _database.customStatement(
-          "UPDATE local_mutations SET queue_state='SENDING',attempt_count=attempt_count+1,updated_at=? WHERE op_id=? AND queue_state='PENDING'",
-          [DateTime.now().toUtc().millisecondsSinceEpoch, candidate.opId],
-        );
         requireActive();
         return request;
       }
+      requireActive();
       return null;
+    }),
+  );
+
+  Future<RetryStatus?> retryStatus(String opId) =>
+      _run(() => _retry.status(UuidValue(opId).value));
+
+  Future<bool> retryMutation(String opId, {required int expectedAttempt}) =>
+      _run(
+        () => _database.transaction(() async {
+          final changed = await _retry.authorizeManual(
+            UuidValue(opId).value,
+            expectedAttempt: expectedAttempt,
+          );
+          requireActive();
+          return changed;
+        }),
+      );
+
+  /// Earliest automatic deadline among dependency-ready mutations.
+  /// A returned time can already be due. The dispatcher must drain claims
+  /// and recompute after queue changes; this API does not send anything.
+  Future<DateTime?> nextAutomaticRetryAt() => _run(
+    () => _database.transaction(() async {
+      final snapshot = await _retry.forPlanner(
+        await _dispatchSnapshot(),
+        includeFutureAutomatic: true,
+      );
+      final plan = const DependencyPlanner().plan(snapshot);
+      DateTime? earliest;
+      for (final candidate in plan.ready) {
+        final control = await _retry.status(candidate.opId);
+        final due = control?.nextAttemptAt;
+        if (control?.mode == 'AUTO' &&
+            due != null &&
+            (earliest == null || due.isBefore(earliest))) {
+          earliest = due;
+        }
+      }
+      return earliest;
     }),
   );
 
@@ -390,11 +423,11 @@ final class AccountStore {
             variables: [Variable(m.entity.code), Variable(m.entityId)],
           )
           .getSingle();
-      if (current.read<int>('tombstone') == 1 ||
-          current.read<int>('server_revision') >
-              (snapshot['revision'] as int)) {
-        throw StateError('A response cannot rewind or resurrect a server copy');
-      }
+      // A replay receipt acknowledges this operation even when a later pull
+      // has already advanced/deleted the entity. Never rewind that newer copy.
+      final preserveCurrent =
+          current.read<int>('tombstone') == 1 ||
+          current.read<int>('server_revision') > (snapshot['revision'] as int);
       final later = await _database
           .customSelect(
             "SELECT COUNT(*) AS count FROM local_mutations WHERE entity_type=? AND entity_id=? AND op_id<>? AND queue_state<>'ACKED'",
@@ -406,18 +439,20 @@ final class AccountStore {
           )
           .getSingle();
       final payload = canonicalJson(snapshot);
-      await _database.customStatement(
-        'UPDATE metadata_copies SET server_revision=?,server_payload=?,local_payload=CASE WHEN ? THEN local_payload ELSE ? END,updated_at=? WHERE entity_type=? AND entity_id=?',
-        [
-          snapshot['revision'],
-          payload,
-          later.read<int>('count') > 0 ? 1 : 0,
-          payload,
-          DateTime.now().toUtc().millisecondsSinceEpoch,
-          m.entity.code,
-          m.entityId,
-        ],
-      );
+      if (!preserveCurrent) {
+        await _database.customStatement(
+          'UPDATE metadata_copies SET server_revision=?,server_payload=?,local_payload=CASE WHEN ? THEN local_payload ELSE ? END,updated_at=? WHERE entity_type=? AND entity_id=?',
+          [
+            snapshot['revision'],
+            payload,
+            later.read<int>('count') > 0 ? 1 : 0,
+            payload,
+            DateTime.now().toUtc().millisecondsSinceEpoch,
+            m.entity.code,
+            m.entityId,
+          ],
+        );
+      }
       await _database.customStatement(
         "UPDATE local_mutations SET queue_state='ACKED',server_response=?,updated_at=? WHERE op_id=? AND queue_state='SENDING' AND attempt_count=?",
         [
@@ -427,6 +462,7 @@ final class AccountStore {
           request.attempt,
         ],
       );
+      await _retry.finish(m.opId);
       requireActive();
       return true;
     }),
@@ -448,7 +484,7 @@ final class AccountStore {
       }
       if (!await _ownsAttempt(request)) return false;
       await _database.customStatement(
-        'UPDATE local_mutations SET queue_state=?,server_response=?,updated_at=? WHERE op_id=? AND attempt_count=?',
+        "UPDATE local_mutations SET queue_state=?,server_response=?,updated_at=? WHERE op_id=? AND queue_state='SENDING' AND attempt_count=?",
         [
           state,
           canonicalJson({
@@ -456,10 +492,16 @@ final class AccountStore {
             'status': ?status,
             'current': ?serverSnapshot,
           }),
-          DateTime.now().toUtc().millisecondsSinceEpoch,
+          _retry.nowMs,
           request.mutation.opId,
           request.attempt,
         ],
+      );
+      await _retry.afterFailure(
+        request.mutation.opId,
+        state: state,
+        code: reason,
+        status: status,
       );
       requireActive();
       return true;
@@ -469,14 +511,28 @@ final class AccountStore {
   Future<bool> _ownsAttempt(MutationRequest request) async {
     final row = await _database
         .customSelect(
-          'SELECT queue_state,attempt_count,payload FROM local_mutations WHERE op_id=?',
+          '''SELECT m.queue_state,m.attempt_count,m.payload,m.entity_type,
+            m.entity_id,m.operation,m.base_revision,
+            w.contract_version,w.http_method,w.relative_path,w.body_json,w.wire_hash
+          FROM local_mutations m
+          JOIN mutation_wire_requests w ON w.op_id=m.op_id
+          WHERE m.op_id=?''',
           variables: [Variable(request.mutation.opId)],
         )
         .getSingleOrNull();
     return row != null &&
         row.read<String>('queue_state') == 'SENDING' &&
         row.read<int>('attempt_count') == request.attempt &&
-        row.read<String>('payload') == request.body;
+        row.read<String>('entity_type') == request.mutation.entity.code &&
+        row.read<String>('entity_id') == request.mutation.entityId &&
+        row.read<String>('operation') == request.mutation.operation.code &&
+        row.read<int>('base_revision') == request.mutation.baseRevision &&
+        row.read<String>('payload') == request.body &&
+        row.read<String>('contract_version') == MutationRequest.contract &&
+        row.read<String>('http_method') == request.method &&
+        row.read<String>('relative_path') == request.path &&
+        row.read<String>('body_json') == request.body &&
+        row.read<String>('wire_hash') == request.hash;
   }
 
   Future<int?> readCursor() => _run(

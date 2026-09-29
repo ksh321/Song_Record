@@ -168,9 +168,12 @@ final class DispatchSnapshot {
   DispatchSnapshot({
     required List<QueuedMutation> pending,
     required Map<LocalTarget, ServerBaseline> baselines,
+    Set<String> frozenRetries = const {},
   }) : pending = List.unmodifiable(pending),
-       baselines = Map.unmodifiable(baselines);
+       baselines = Map.unmodifiable(baselines),
+       frozenRetries = Set.unmodifiable(frozenRetries);
 
   final List<QueuedMutation> pending;
   final Map<LocalTarget, ServerBaseline> baselines;
+  final Set<String> frozenRetries;
 }

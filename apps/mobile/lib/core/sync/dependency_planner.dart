@@ -72,10 +72,17 @@ final class DependencyPlanner {
     if (mutation.state != 'PENDING') {
       return const DispatchWait(DispatchWaitReason.queueState);
     }
+    // Replay only an already-sent, validated immutable wire request. New edits
+    // still require the latest baseline and all dependency checks below.
+    if (mutation.attemptCount > 0 &&
+        snapshot.frozenRetries.contains(mutation.opId)) {
+      return null;
+    }
     if (_phase(mutation.entity) < 0 ||
-        !{LocalOperation.create, LocalOperation.patch}.contains(
-          mutation.operation,
-        )) {
+        !{
+          LocalOperation.create,
+          LocalOperation.patch,
+        }.contains(mutation.operation)) {
       return const DispatchWait(DispatchWaitReason.unsupported);
     }
     final baseline = snapshot.baselines[target];
@@ -83,14 +90,19 @@ final class DependencyPlanner {
       return DispatchWait(DispatchWaitReason.deletedTarget, dependency: target);
     }
     if (mutation.operation == LocalOperation.patch) {
-      if (mutation.baseRevision == 0 || baseline == null || baseline.revision == 0) {
+      if (mutation.baseRevision == 0 ||
+          baseline == null ||
+          baseline.revision == 0) {
         return DispatchWait(
           DispatchWaitReason.unresolvedBaseline,
           dependency: target,
         );
       }
       if (mutation.baseRevision != baseline.revision) {
-        return DispatchWait(DispatchWaitReason.staleBaseline, dependency: target);
+        return DispatchWait(
+          DispatchWaitReason.staleBaseline,
+          dependency: target,
+        );
       }
     } else if (mutation.baseRevision != 0) {
       return const DispatchWait(DispatchWaitReason.invalidPayload);
@@ -107,7 +119,8 @@ final class DependencyPlanner {
       // Legacy local RECORDING_CONDITION has not yet been migrated to the
       // server CONDITION definition. Do not guess a custom condition mapping.
       final condition = decoded['condition_code'];
-      if (mutation.entity == LocalEntity.recording && condition != null &&
+      if (mutation.entity == LocalEntity.recording &&
+          condition != null &&
           !{'VERY_GOOD', 'GOOD', 'NORMAL', 'BAD'}.contains(condition)) {
         return const DispatchWait(DispatchWaitReason.unsupported);
       }
@@ -145,6 +158,7 @@ final class DependencyPlanner {
       if (value is! String) throw const FormatException('Invalid reference');
       result.add(LocalTarget(type, value));
     }
+
     switch (entity) {
       case LocalEntity.song:
         add('representative_recording_id', LocalEntity.recording);
@@ -175,7 +189,9 @@ final class DependencyPlanner {
   int _phase(LocalEntity entity) => switch (entity) {
     LocalEntity.song || LocalEntity.tag => 0,
     LocalEntity.recording => 1,
-    LocalEntity.playlist || LocalEntity.playlistItem || LocalEntity.recordingTag => 2,
+    LocalEntity.playlist ||
+    LocalEntity.playlistItem ||
+    LocalEntity.recordingTag => 2,
     _ => -1,
   };
 }

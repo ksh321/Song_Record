@@ -28,11 +28,33 @@ final class MetadataDispatcher {
       if (request == null) break;
       try {
         store.requireActive();
-        final response = await transport.send(
-          request,
-          auth,
-          store.requireActive,
-        );
+        final MutationResponse response;
+        try {
+          response = await transport.send(request, auth, store.requireActive);
+        } on MutationBodyFailure catch (failure) {
+          store.requireActive();
+          await store.deferMutation(
+            request,
+            'RETRY',
+            'RESPONSE_INVALID',
+            status: failure.receivedStatus,
+          );
+          if (failure.receivedStatus == 401 || failure.receivedStatus == 403) {
+            break;
+          }
+          continue;
+        } on MutationNetworkFailure catch (failure) {
+          store.requireActive();
+          final status = failure.receivedStatus;
+          await store.deferMutation(
+            request,
+            'RETRY',
+            status == null ? 'NETWORK_UNAVAILABLE' : 'RESPONSE_LOST',
+            status: status,
+          );
+          if (status == 401 || status == 403) break;
+          continue;
+        }
         store.requireActive();
         if (response.status == 200 || response.status == 201) {
           final snapshot = _snapshot(request, response);
@@ -96,10 +118,11 @@ final class MetadataDispatcher {
             status: response.status,
             serverSnapshot: current,
           );
+          if (response.status == 401 || response.status == 403) break;
         }
-      } catch (_) {
-        // No raw exception/body/token in durable diagnostics. An expired lease throws,
-        // leaving the old account's SENDING request intact for explicit recovery.
+      } on FormatException {
+        // Malformed wire data is retained without automatic retries. Database
+        // and programming errors propagate with SENDING intact for recovery.
         store.requireActive();
         await store.deferMutation(request, 'RETRY', 'RESPONSE_UNCONFIRMED');
       }
