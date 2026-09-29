@@ -77,3 +77,17 @@ Dart의 실제 TCP 로컬 HTTP 전송 테스트와 위 Spring 응답 계약 검�
 독립 최종 판정: 실제 HTTP 변환/공유 fixture/Java 3개·Dart 16개 실행을 보고 raw-map P2 지적을 철회했다.
 기존 P1/P2 수정은 유지하며 추가 입증된 수정 대상 결함 없음. 필드명 교차 검증과 실제 서버 JSON 직접 Dart 소비는 구별한다.
 커밋 후 정확한 SHA의 기존 필수 CI 4개를 확인할 때까지 완료 대기다. 다음 작업자 P10-03 사전 분석 완료.
+
+제품 커밋/푸시: `efb97f28357a3e340c3c36ea1244254cd5dcfce3`.
+필수 CI 중 API contract 36554728244, Idempotency MySQL 36554728224, Development workflow 36554728269 success.
+CI 36554728267은 아직 진행 중이므로 완료 대기. 새 P10-03 순수 정책 파일/테스트는 이 커밋에 포함하지 않았다.
+
+## CI 스키마 생성 보정
+
+CI 36554728267은 Flutter 스키마 일치 단계에서 실패했다. 서버 build/test·MySQL job은 통과했다.
+문제 P10-CI-SCHEMA: 첫 CI 실패 1회. Windows CRLF 원본은 로컬 통과했으나 LF 원본으로 같은 실패를 재현했다.
+차이는 v2 JSON의 trigger 원문 다섯 곳 CRLF/LF뿐이다. `.gitattributes`에 `.drift` LF를 고정하고 v2 스냅샷을 재생성했다.
+v1 이력·DDL 의미·마이그레이션 코드·기존 앱 DB·개발 볼륨은 변경하지 않았다. 이전 스냅샷은 .local에 보존했다.
+`dart run build_runner build` 종료 0, 재생성 후 `dart run drift_dev make-migrations --no-test` 종료 0.
+수정 커밋의 필수 CI가 완료되기 전 P10-02b 완료 판정은 보류한다. P10-03 순수 정책은 별도 미커밋 준비로 유지한다.
+별도 Sol/medium 검수: 줄바꿈 차이만 확인, 검사 약화/데이터 변경 결함 없음. Linux 및 정확한 SHA CI는 여전히 대기.

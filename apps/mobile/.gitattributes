@@ -1,3 +1,4 @@
 # Drift compares schema snapshots byte-for-byte on Windows and in Linux CI.
 /drift_schemas/** text eol=lf
 /lib/core/database/*.g.dart text eol=lf
+/lib/core/database/*.drift text eol=lf

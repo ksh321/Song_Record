@@ -980,7 +980,7 @@
           0
         ],
         "name": "local_account_no_update",
-        "sql": "CREATE TRIGGER local_account_no_update BEFORE UPDATE ON local_account BEGIN\r\n  SELECT RAISE(ABORT, 'Local database ownership is immutable');\r\nEND;"
+        "sql": "CREATE TRIGGER local_account_no_update BEFORE UPDATE ON local_account BEGIN\n  SELECT RAISE(ABORT, 'Local database ownership is immutable');\nEND;"
       }
     },
     {
@@ -995,7 +995,7 @@
           0
         ],
         "name": "local_account_no_delete",
-        "sql": "CREATE TRIGGER local_account_no_delete BEFORE DELETE ON local_account BEGIN\r\n  SELECT RAISE(ABORT, 'Local database ownership cannot be removed');\r\nEND;"
+        "sql": "CREATE TRIGGER local_account_no_delete BEFORE DELETE ON local_account BEGIN\n  SELECT RAISE(ABORT, 'Local database ownership cannot be removed');\nEND;"
       }
     },
     {
@@ -1010,7 +1010,7 @@
           2
         ],
         "name": "mutation_request_immutable",
-        "sql": "CREATE TRIGGER mutation_request_immutable BEFORE UPDATE ON local_mutations\r\nWHEN NEW.op_id <> OLD.op_id OR NEW.user_id <> OLD.user_id OR NEW.entity_type <> OLD.entity_type\r\n  OR NEW.entity_id <> OLD.entity_id OR NEW.operation <> OLD.operation OR NEW.base_revision <> OLD.base_revision\r\n  OR NEW.base_payload IS NOT OLD.base_payload OR NEW.payload <> OLD.payload OR NEW.request_hash <> OLD.request_hash\r\n  OR NEW.created_at <> OLD.created_at OR NEW.attempt_count < OLD.attempt_count\r\nBEGIN\r\n  SELECT RAISE(ABORT, 'Mutation identity and request must survive retries unchanged');\r\nEND;"
+        "sql": "CREATE TRIGGER mutation_request_immutable BEFORE UPDATE ON local_mutations\nWHEN NEW.op_id <> OLD.op_id OR NEW.user_id <> OLD.user_id OR NEW.entity_type <> OLD.entity_type\n  OR NEW.entity_id <> OLD.entity_id OR NEW.operation <> OLD.operation OR NEW.base_revision <> OLD.base_revision\n  OR NEW.base_payload IS NOT OLD.base_payload OR NEW.payload <> OLD.payload OR NEW.request_hash <> OLD.request_hash\n  OR NEW.created_at <> OLD.created_at OR NEW.attempt_count < OLD.attempt_count\nBEGIN\n  SELECT RAISE(ABORT, 'Mutation identity and request must survive retries unchanged');\nEND;"
       }
     },
     {
@@ -1025,7 +1025,7 @@
           9
         ],
         "name": "cursor_no_rewind",
-        "sql": "CREATE TRIGGER cursor_no_rewind BEFORE UPDATE ON sync_cursors\r\nWHEN NEW.user_id <> OLD.user_id OR (OLD.last_change_seq IS NOT NULL AND\r\n  (NEW.last_change_seq IS NULL OR NEW.last_change_seq < OLD.last_change_seq))\r\nBEGIN\r\n  SELECT RAISE(ABORT, 'Do not discard an acknowledged cursor');\r\nEND;"
+        "sql": "CREATE TRIGGER cursor_no_rewind BEFORE UPDATE ON sync_cursors\nWHEN NEW.user_id <> OLD.user_id OR (OLD.last_change_seq IS NOT NULL AND\n  (NEW.last_change_seq IS NULL OR NEW.last_change_seq < OLD.last_change_seq))\nBEGIN\n  SELECT RAISE(ABORT, 'Do not discard an acknowledged cursor');\nEND;"
       }
     },
     {
@@ -1129,7 +1129,7 @@
           14
         ],
         "name": "mutation_wire_request_immutable",
-        "sql": "CREATE TRIGGER mutation_wire_request_immutable BEFORE UPDATE ON mutation_wire_requests BEGIN\r\n  SELECT RAISE(ABORT, 'Frozen HTTP requests must survive retries unchanged');\r\nEND;"
+        "sql": "CREATE TRIGGER mutation_wire_request_immutable BEFORE UPDATE ON mutation_wire_requests BEGIN\n  SELECT RAISE(ABORT, 'Frozen HTTP requests must survive retries unchanged');\nEND;"
       }
     }
   ],

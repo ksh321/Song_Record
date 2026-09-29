@@ -9,15 +9,16 @@
 
 ## 1. 현재 상태 — 사용자 확인 반영 / 2026-09-29
 
-### 연속 진행 — WORKFLOW-04 완료 / P09-07b-C1 완료 / P10-02b 검수 중
+### 연속 진행 — WORKFLOW-04 완료 / P09-07b-C1 완료 / P10-02b CI 보정 중
 
 2026-09-29 사용자 요청에 따라 남은 구현을 의존 순서대로 자동 진행한다. 시작 HEAD `27c5a4f80f2e1e177eb9db888f5b64d7f7ed8209`, main/origin 일치, 시작 미커밋 변경 없음. Git 이력·실제 조건 CRUD·송신 후보 코드 대조 결과 P09-07b-C1/P10-02b는 미구현이다. 이미 검증된 설정은 재구축하지 않는다.
 
 | 작업/문제 ID | 상태 | 검증/대기 및 다음 행동 |
 |---|---|---|
 | WORKFLOW-04 | 완료 | AGENTS/실행 안내에 연속 진행·사용자 응답·문제별 실패 누적·재개 기준 통합 |
-| P09-07b-C1 | 구현 중 | D06 카탈로그/쓰기 차단/신규 선택 보정, 기존 정의·스냅샷·관계 보존. 제품 15f8671 푸시. 독립 검수 통과, CI의 기존 fixture 2실패 수정 후 해당 2개 MySQL 재검증·별도 검수 통과. 수정 SHA CI 대기. [상세](verification/P09-07b-C1-fixed-conditions.md) |
-| P10-02b | 커밋/CI 대기 | C1 선행 완료. 송신/원자 ACK·v1→v2 보존 구현, 검수 P1/P2 보완 후 Flutter 새 테스트 16·Spring HTTP 계약 3 통과·분석 무경고. Astra/xhigh 검수 지적 해결(HTTP 변환 근거로 raw-map 지적 철회). 커밋/CI 전. [상세](verification/P10-02b-metadata-dispatch.md) |
+| P09-07b-C1 | 완료 | D06 카탈로그/쓰기 차단/신규 선택 보정, 기존 정의·스냅샷·관계 보존. ace5703829cfdd5034fcbbdf0857b16147e88fb0의 필수 CI 4개 통과. [상세](verification/P09-07b-C1-fixed-conditions.md) |
+| P10-02b | CI 대기 | C1 선행 완료. 송신/원자 ACK·v1→v2 보존 구현, 검수 P1/P2 보완 후 Flutter 새 테스트 16·Spring HTTP 계약 3 통과·분석 무경고. Astra/xhigh 검수 지적 해결(HTTP 변환 근거로 raw-map 지적 철회). efb97f28357a3e340c3c36ea1244254cd5dcfce3 푸시. 필수 CI 3개 통과. CI 36554728267 Flutter 스키마 생성 일치 검사 실패: trigger 원문 CRLF/LF 차이. P10-CI-SCHEMA 1회 실패, LF 고정·v2 재생성 후 로컬 일치 통과; 수정 SHA CI 대기. [상세](verification/P10-02b-metadata-dispatch.md) |
+| P10-03 | 독립 정책 준비 | 별도 Astra/high 작업자 분석 완료. 재시도 간격/예산/차단 순수 정책 4개 테스트 통과. 큐·재개·수동 API 연결 전이며 미커밋. P10-02b 필수 CI 완료 후 통합 |
 | ENV-GRADLE-LOOPBACK | 환경 문제, 기존 3회 실패 유지 | WORKFLOW-02의 기본/IPv4/JVM 재기동 회피 모두 실패. 같은 Windows 시도 반복 중지. 격리 Linux 컨테이너로 새 변경 검증을 준비하며 사용자 기존 기능 검증은 유지 |
 | ENV-DEV-DB | 별도 환경 준비 | 기존 개발 DB V1 및 볼륨 보존. 이번 검증은 격리 환경만 사용 |
 
