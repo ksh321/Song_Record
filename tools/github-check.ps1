@@ -35,6 +35,10 @@ try {
         try { Invoke-RestMethod -Uri (('https://api.github.com/repos/'+$repo+'/'+$Path).TrimEnd('/')) -Headers $headers -TimeoutSec 30 }
         catch {
             $code = if ($_.Exception.Response) { [int]$_.Exception.Response.StatusCode } else { 'network' }
+            # Classify only a known public error; never echo arbitrary response bodies.
+            if ($code -eq 403 -and $_.ErrorDetails.Message -match 'Upgrade to GitHub Pro or make this repository public to enable this feature') {
+                throw "GitHub read failed: HTTP 403 ($Path); PRIVATE_REPOSITORY_PLAN_RESTRICTION; protection state remains unverified"
+            }
             throw "GitHub read failed: HTTP $code ($Path); credentials suppressed"
         }
     }

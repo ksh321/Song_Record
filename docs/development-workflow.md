@@ -102,3 +102,17 @@ CI 자체의 성공과 서버 보호 규칙을 모두 만족했는지는 구분�
 핵심 학습 개념은 트랜잭션과 멱등성이다. 현재 P10 코드는 로컬 입력과 전송 큐를 함께 저장해
 부분 저장을 막고, op_id로 같은 작업 재시도를 식별한다. 큐 후보 판정과 실제 서버 승인 반영을
 분리했기 때문에 P10-02a 테스트가 성공해도 양방향 동기화 완료는 아니다.
+
+## 후속 점검과 휴대폰 알림
+
+[WORKFLOW-02](verification/WORKFLOW-02-followup.md)에 Docker/USB, 보호 API 제한, 모델 실행과
+D06/P06 선행 조건을 기록한다. 모델 runner의 `-Finding RequirementsMissing|LogicError|ReviewBlocker`
+는 위험 수준을 상향하고 `EnvironmentOnly`는 유지한다. `-SameProblemFailures 3`은 사용자 호출로 중단한다.
+
+`tools/phone-notify.ps1`은 무료 ntfy에 작업 ID와 고정 문구만 보낸다.
+처음 Init → Android 앱 설치/알림 허용 → Subscribe(USB) → Send(Trial) → 사용자 실제 수신 답변 → Confirm.
+사람의 실기가 필요하면 대화에 이유/순서/기대 결과를 먼저 남기고
+`pwsh -File tools/phone-notify.ps1 -Mode Send -TaskId P06-08 -Kind PhoneTest`를 실행한다.
+사람 개입 요청은 `-Kind Intervention`. 푸시 실패 시 대화로 알리고 실기는 계속 대기다.
+무작위 topic/config는 `.local` 밖으로 복사하지 않는다. 이 스크립트는 예약 실행 서비스가 아니며
+활성 작업 중 마스터가 필요한 시점에 호출한다. 구독 한도 뒤 몰래 API로 계속 실행하지 않는다.

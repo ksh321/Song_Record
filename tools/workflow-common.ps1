@@ -1,3 +1,13 @@
+function Get-AgentRisk([string]$Risk, [string]$Finding) {
+    if ($Finding -in @('None','EnvironmentOnly')) { return $Risk }
+    switch ($Risk) {
+        Explore { return 'Complex' }
+        Implement { return 'Complex' }
+        Complex { return 'Sensitive' }
+        default { return 'Escalation' }
+    }
+}
+
 function Get-LoginState([int]$ExitCode, [string]$OutputText) {
     if ($ExitCode -ne 0) { return 'FAIL' }
     if ($OutputText -match 'Logged in using ChatGPT') { return 'PASS' }
