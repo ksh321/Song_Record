@@ -96,3 +96,17 @@ CI 성공은 실제 기기의 계정 격리 증거가 아니다. DB 연결 성�
 재검수에서 오래된 receipt 오확인과 동시 전송 경쟁을 지적하여 attempt_id 연결 및 배타적 파일 잠금을 추가했다. 실제 HTTP 없는 모의 테스트로 UNKNOWN 재전송 제한·이전 receipt 확인 거부·잠긴 송신의 HTTP 미호출을 검증했다. Quick 전체 통과(36개 판정 테스트). 사용자 수신 확인은 잠금 보완 전 실제 trial에 대한 답변이며 새 코드를 실행한 휴대폰 실기로 과장하지 않는다.
 
 최종 Astra/xhigh 검수: 두 결함 해결, 추가 커밋 차단 결함 없음. 비차단 시험 보강(만료된 시각에서 잠금 차단, 양쪽 접수 상태에서 다른 attempt ID 거절)도 반영했다. 로컬 상태 DB 스키마에서도 service_tier/fast_mode 전용 열은 발견되지 않아 실제 속도 미확인을 유지한다.
+
+## 최종 검증 결과 기록
+
+구현 커밋: 0866eb326abf4289c025d9ec1109723126e75632, main 일반 push 완료.
+정확한 SHA에 github-check를 실행해 필수 workflow 네 개와 각각의 필수 job success를 확인했다.
+
+- [CI 36538344668](https://github.com/ksh321/Song_Record/actions/runs/36538344668): Flutter 분석/전체 테스트/APK, Spring Boot 빌드/테스트, MySQL 마이그레이션/제약 모두 성공.
+- [API contract 36538344640](https://github.com/ksh321/Song_Record/actions/runs/36538344640): 성공.
+- [Idempotency MySQL 36538344619](https://github.com/ksh321/Song_Record/actions/runs/36538344619): 성공.
+- [Development workflow 36538344636](https://github.com/ksh321/Song_Record/actions/runs/36538344636): 성공.
+
+원격 서버 자동 검증은 확보했다. Windows H2 실행 환경 오류, 현재 USB 재연결, P06 실제 로그인/두 계정 실기, 개발 DB V1→현재 스키마 준비와 실제 실행 tier 확인은 여전히 대기다. 알림은 사용자 실제 수신 답변으로 완료. P10-02b는 보류, 다음 P09-07b-C1 보정부터 진행 가능하다.
+
+이 절을 추가한 후속 커밋은 검증 결과를 기록하는 문서 전용 변경이다. 그 SHA는 Git history로 식별하며 자체 CI도 별도로 조회한다. 위 결과는 구현 커밋의 증거이며 미래 기록 커밋에 대한 성공 주장으로 사용하지 않는다.

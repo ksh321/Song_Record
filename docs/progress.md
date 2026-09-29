@@ -21,6 +21,8 @@ Docker 29.8.0/기존 MySQL healthy·USB Android 16/dev 앱 설치를 확인했�
 
 GitHub 보호 API 403은 비공개 저장소 요금제 제한 응답이다. 보호 상태 증명은 대기지만 일반 push·Actions 조회와 자체 필수 CI 확인은 가능하다. 공개 전환·결제·권한 확대·보호 변경은 하지 않았다.
 
+구현 커밋 **0866eb326abf4289c025d9ec1109723126e75632**를 일반 push했고 필수 CI 4개·각 필수 job 모두 성공했다. 원격 Spring Boot와 MySQL/Android 검증을 확보했다. CI 링크와 정확한 범위는 아래 보고서의 최종 결과 절에 기록했다. 이 결과 갱신은 문서 전용 후속 커밋으로 구분한다.
+
 [후속 점검·명령·검증·남은 일](verification/WORKFLOW-02-followup.md) · [실행 안내](development-workflow.md)
 
 ### 이전 상태 기록 (2026-09-23까지의 역사; 현재 판정에 사용하지 않음)
