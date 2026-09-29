@@ -131,16 +131,3 @@ WHEN NEW.user_id <> OLD.user_id OR (OLD.last_change_seq IS NOT NULL AND
 BEGIN
   SELECT RAISE(ABORT, 'Do not discard an acknowledged cursor');
 END;
-
--- P10-02b: freeze the HTTP contract independently of the local edit fingerprint.
-CREATE TABLE mutation_wire_requests (
-  op_id TEXT NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id),
-  contract_version TEXT NOT NULL,
-  http_method TEXT NOT NULL CHECK (http_method IN ('POST','PATCH')),
-  relative_path TEXT NOT NULL,
-  body_json TEXT NOT NULL CHECK (json_valid(body_json) AND json_type(body_json)='object'),
-  wire_hash TEXT NOT NULL CHECK (length(wire_hash)=64 AND wire_hash NOT GLOB '*[^0-9a-f]*')
-);
-CREATE TRIGGER mutation_wire_request_immutable BEFORE UPDATE ON mutation_wire_requests BEGIN
-  SELECT RAISE(ABORT, 'Frozen HTTP requests must survive retries unchanged');
-END;

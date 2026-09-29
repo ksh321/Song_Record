@@ -2,7 +2,7 @@
 
 - 요구사항: D06, R029·R030 / 후속 보정 ID P09-07b-C1. 원본 사용자 정의 컨디션 요구는 D06 승인 범위에서만 대체한다.
 - 시작 SHA: `27c5a4f80f2e1e177eb9db888f5b64d7f7ed8209`. 당시 작업 트리 clean, origin/main 일치. P09-07b-C1/P10-02b 미구현 확인.
-- 현재 상태: 구현·관련 자동 검증 수행, 검수 지적 보완 MySQL 1 통과, 코드 검수 지적 해결·새 결함 없음, 테스트 원본 XML 보충 확인 완료. 커밋/필수 CI 전이므로 완료 아님.
+- 현재 상태: 완료. 제품 15f8671 및 fixture 보완 ace5703829cfdd5034fcbbdf0857b16147e88fb0. 최종 필수 CI 4개 모두 통과.
 
 ## 변경과 보존
 
@@ -73,3 +73,10 @@ nullable 두 열을 보충하고 V10~V16의 정확한 수 7로 갱신했다. 기
 실제 종료 0, XML 2개 테스트 통과·실패/오류/skip 0. 별도 Sol/medium 검수(제품 변경 없는 명확한 fixture 수정)는 결함/검증 약화 없음.
 검수자는 코드·XML을 확인했고, 명령·종료코드는 마스터가 실행 도구 반환으로 확인했다. 최종 수정 커밋 SHA의 필수 CI는 다시 확인한다.
 작업 전용 tmpfs DB는 이름·마운트 확인 후 종료했으며 기존 개발 DB는 보존했다.
+
+최종 SHA `ace5703829cfdd5034fcbbdf0857b16147e88fb0` 필수 CI 확인 완료:
+[CI](https://github.com/ksh321/Song_Record/actions/runs/36551497000),
+[API contract](https://github.com/ksh321/Song_Record/actions/runs/36551497020),
+[Idempotency MySQL](https://github.com/ksh321/Song_Record/actions/runs/36551496997),
+[Development workflow](https://github.com/ksh321/Song_Record/actions/runs/36551496993) 모두 success.
+P09-07b-C1과 WORKFLOW-04 완료, 다음 P10-02b 실제 구현/별도 검수 진행.

@@ -1,10 +1,13 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import '../../features/auth/auth_session.dart';
 import '../database/account_store.dart';
 import '../database/local_models.dart';
 import '../domain/identifiers.dart';
 import 'dependency_planner.dart';
+import 'metadata_dispatcher.dart';
+import 'mutation_transport.dart';
 
 /// Prepare once, retain the command, then save. A failed save is retried with
 /// the same command, never by calling prepare again. Network sending is P10-02.
@@ -87,6 +90,12 @@ final class LocalRepository {
 
   Future<DispatchPlan> planDispatch() async =>
       const DependencyPlanner().plan(await _store.dispatchSnapshot());
+
+  Future<int> dispatch({
+    required MutationTransport transport,
+    required Future<AuthSession> Function() session,
+    int limit = 50,
+  }) => MetadataDispatcher(_store, transport, session).dispatch(limit: limit);
 
   static void _checkIdentity(Map<String, Object?> payload, String id) {
     if (payload.containsKey('user_id')) {

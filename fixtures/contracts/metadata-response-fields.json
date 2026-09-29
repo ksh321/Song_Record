@@ -1,0 +1,5 @@
+{
+  "SONG": ["id","revision","updated_at","source_type","tj_number","title","artist","version_code","note","lifecycle_state","representative_key_mode","representative_key_shift","representative_recording_id","tier"],
+  "TAG": ["id","revision","updated_at","name","archived_at"],
+  "RECORDING": ["id","origin_device_id","song_id","revision","link_revision","title_snapshot","artist_snapshot","version_code","key_mode","note","metadata_state","lifecycle_state","timezone_id","condition_code","condition_name_snapshot","key_shift","timezone_offset_minutes","recorded_at","updated_at","tier","tag_ids","tags"]
+}

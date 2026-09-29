@@ -4498,6 +4498,443 @@ class SyncCursorsCompanion extends UpdateCompanion<SyncCursor> {
   }
 }
 
+class MutationWireRequests extends Table
+    with TableInfo<MutationWireRequests, MutationWireRequest> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  MutationWireRequests(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _opIdMeta = const VerificationMeta('opId');
+  late final GeneratedColumn<String> opId = GeneratedColumn<String>(
+    'op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _contractVersionMeta = const VerificationMeta(
+    'contractVersion',
+  );
+  late final GeneratedColumn<String> contractVersion = GeneratedColumn<String>(
+    'contract_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _httpMethodMeta = const VerificationMeta(
+    'httpMethod',
+  );
+  late final GeneratedColumn<String> httpMethod = GeneratedColumn<String>(
+    'http_method',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (http_method IN (\'POST\', \'PATCH\'))',
+  );
+  static const VerificationMeta _relativePathMeta = const VerificationMeta(
+    'relativePath',
+  );
+  late final GeneratedColumn<String> relativePath = GeneratedColumn<String>(
+    'relative_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _bodyJsonMeta = const VerificationMeta(
+    'bodyJson',
+  );
+  late final GeneratedColumn<String> bodyJson = GeneratedColumn<String>(
+    'body_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (json_valid(body_json) AND json_type(body_json) = \'object\')',
+  );
+  static const VerificationMeta _wireHashMeta = const VerificationMeta(
+    'wireHash',
+  );
+  late final GeneratedColumn<String> wireHash = GeneratedColumn<String>(
+    'wire_hash',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (length(wire_hash) = 64 AND wire_hash NOT GLOB \'*[^0-9a-f]*\')',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    opId,
+    contractVersion,
+    httpMethod,
+    relativePath,
+    bodyJson,
+    wireHash,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'mutation_wire_requests';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MutationWireRequest> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('op_id')) {
+      context.handle(
+        _opIdMeta,
+        opId.isAcceptableOrUnknown(data['op_id']!, _opIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_opIdMeta);
+    }
+    if (data.containsKey('contract_version')) {
+      context.handle(
+        _contractVersionMeta,
+        contractVersion.isAcceptableOrUnknown(
+          data['contract_version']!,
+          _contractVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_contractVersionMeta);
+    }
+    if (data.containsKey('http_method')) {
+      context.handle(
+        _httpMethodMeta,
+        httpMethod.isAcceptableOrUnknown(data['http_method']!, _httpMethodMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_httpMethodMeta);
+    }
+    if (data.containsKey('relative_path')) {
+      context.handle(
+        _relativePathMeta,
+        relativePath.isAcceptableOrUnknown(
+          data['relative_path']!,
+          _relativePathMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_relativePathMeta);
+    }
+    if (data.containsKey('body_json')) {
+      context.handle(
+        _bodyJsonMeta,
+        bodyJson.isAcceptableOrUnknown(data['body_json']!, _bodyJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyJsonMeta);
+    }
+    if (data.containsKey('wire_hash')) {
+      context.handle(
+        _wireHashMeta,
+        wireHash.isAcceptableOrUnknown(data['wire_hash']!, _wireHashMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_wireHashMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {opId};
+  @override
+  MutationWireRequest map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MutationWireRequest(
+      opId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}op_id'],
+      )!,
+      contractVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}contract_version'],
+      )!,
+      httpMethod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}http_method'],
+      )!,
+      relativePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}relative_path'],
+      )!,
+      bodyJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body_json'],
+      )!,
+      wireHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}wire_hash'],
+      )!,
+    );
+  }
+
+  @override
+  MutationWireRequests createAlias(String alias) {
+    return MutationWireRequests(attachedDatabase, alias);
+  }
+
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class MutationWireRequest extends DataClass
+    implements Insertable<MutationWireRequest> {
+  final String opId;
+  final String contractVersion;
+  final String httpMethod;
+  final String relativePath;
+  final String bodyJson;
+  final String wireHash;
+  const MutationWireRequest({
+    required this.opId,
+    required this.contractVersion,
+    required this.httpMethod,
+    required this.relativePath,
+    required this.bodyJson,
+    required this.wireHash,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['op_id'] = Variable<String>(opId);
+    map['contract_version'] = Variable<String>(contractVersion);
+    map['http_method'] = Variable<String>(httpMethod);
+    map['relative_path'] = Variable<String>(relativePath);
+    map['body_json'] = Variable<String>(bodyJson);
+    map['wire_hash'] = Variable<String>(wireHash);
+    return map;
+  }
+
+  MutationWireRequestsCompanion toCompanion(bool nullToAbsent) {
+    return MutationWireRequestsCompanion(
+      opId: Value(opId),
+      contractVersion: Value(contractVersion),
+      httpMethod: Value(httpMethod),
+      relativePath: Value(relativePath),
+      bodyJson: Value(bodyJson),
+      wireHash: Value(wireHash),
+    );
+  }
+
+  factory MutationWireRequest.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MutationWireRequest(
+      opId: serializer.fromJson<String>(json['op_id']),
+      contractVersion: serializer.fromJson<String>(json['contract_version']),
+      httpMethod: serializer.fromJson<String>(json['http_method']),
+      relativePath: serializer.fromJson<String>(json['relative_path']),
+      bodyJson: serializer.fromJson<String>(json['body_json']),
+      wireHash: serializer.fromJson<String>(json['wire_hash']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'op_id': serializer.toJson<String>(opId),
+      'contract_version': serializer.toJson<String>(contractVersion),
+      'http_method': serializer.toJson<String>(httpMethod),
+      'relative_path': serializer.toJson<String>(relativePath),
+      'body_json': serializer.toJson<String>(bodyJson),
+      'wire_hash': serializer.toJson<String>(wireHash),
+    };
+  }
+
+  MutationWireRequest copyWith({
+    String? opId,
+    String? contractVersion,
+    String? httpMethod,
+    String? relativePath,
+    String? bodyJson,
+    String? wireHash,
+  }) => MutationWireRequest(
+    opId: opId ?? this.opId,
+    contractVersion: contractVersion ?? this.contractVersion,
+    httpMethod: httpMethod ?? this.httpMethod,
+    relativePath: relativePath ?? this.relativePath,
+    bodyJson: bodyJson ?? this.bodyJson,
+    wireHash: wireHash ?? this.wireHash,
+  );
+  MutationWireRequest copyWithCompanion(MutationWireRequestsCompanion data) {
+    return MutationWireRequest(
+      opId: data.opId.present ? data.opId.value : this.opId,
+      contractVersion: data.contractVersion.present
+          ? data.contractVersion.value
+          : this.contractVersion,
+      httpMethod: data.httpMethod.present
+          ? data.httpMethod.value
+          : this.httpMethod,
+      relativePath: data.relativePath.present
+          ? data.relativePath.value
+          : this.relativePath,
+      bodyJson: data.bodyJson.present ? data.bodyJson.value : this.bodyJson,
+      wireHash: data.wireHash.present ? data.wireHash.value : this.wireHash,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MutationWireRequest(')
+          ..write('opId: $opId, ')
+          ..write('contractVersion: $contractVersion, ')
+          ..write('httpMethod: $httpMethod, ')
+          ..write('relativePath: $relativePath, ')
+          ..write('bodyJson: $bodyJson, ')
+          ..write('wireHash: $wireHash')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    opId,
+    contractVersion,
+    httpMethod,
+    relativePath,
+    bodyJson,
+    wireHash,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MutationWireRequest &&
+          other.opId == this.opId &&
+          other.contractVersion == this.contractVersion &&
+          other.httpMethod == this.httpMethod &&
+          other.relativePath == this.relativePath &&
+          other.bodyJson == this.bodyJson &&
+          other.wireHash == this.wireHash);
+}
+
+class MutationWireRequestsCompanion
+    extends UpdateCompanion<MutationWireRequest> {
+  final Value<String> opId;
+  final Value<String> contractVersion;
+  final Value<String> httpMethod;
+  final Value<String> relativePath;
+  final Value<String> bodyJson;
+  final Value<String> wireHash;
+  final Value<int> rowid;
+  const MutationWireRequestsCompanion({
+    this.opId = const Value.absent(),
+    this.contractVersion = const Value.absent(),
+    this.httpMethod = const Value.absent(),
+    this.relativePath = const Value.absent(),
+    this.bodyJson = const Value.absent(),
+    this.wireHash = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  MutationWireRequestsCompanion.insert({
+    required String opId,
+    required String contractVersion,
+    required String httpMethod,
+    required String relativePath,
+    required String bodyJson,
+    required String wireHash,
+    this.rowid = const Value.absent(),
+  }) : opId = Value(opId),
+       contractVersion = Value(contractVersion),
+       httpMethod = Value(httpMethod),
+       relativePath = Value(relativePath),
+       bodyJson = Value(bodyJson),
+       wireHash = Value(wireHash);
+  static Insertable<MutationWireRequest> custom({
+    Expression<String>? opId,
+    Expression<String>? contractVersion,
+    Expression<String>? httpMethod,
+    Expression<String>? relativePath,
+    Expression<String>? bodyJson,
+    Expression<String>? wireHash,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (opId != null) 'op_id': opId,
+      if (contractVersion != null) 'contract_version': contractVersion,
+      if (httpMethod != null) 'http_method': httpMethod,
+      if (relativePath != null) 'relative_path': relativePath,
+      if (bodyJson != null) 'body_json': bodyJson,
+      if (wireHash != null) 'wire_hash': wireHash,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  MutationWireRequestsCompanion copyWith({
+    Value<String>? opId,
+    Value<String>? contractVersion,
+    Value<String>? httpMethod,
+    Value<String>? relativePath,
+    Value<String>? bodyJson,
+    Value<String>? wireHash,
+    Value<int>? rowid,
+  }) {
+    return MutationWireRequestsCompanion(
+      opId: opId ?? this.opId,
+      contractVersion: contractVersion ?? this.contractVersion,
+      httpMethod: httpMethod ?? this.httpMethod,
+      relativePath: relativePath ?? this.relativePath,
+      bodyJson: bodyJson ?? this.bodyJson,
+      wireHash: wireHash ?? this.wireHash,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (opId.present) {
+      map['op_id'] = Variable<String>(opId.value);
+    }
+    if (contractVersion.present) {
+      map['contract_version'] = Variable<String>(contractVersion.value);
+    }
+    if (httpMethod.present) {
+      map['http_method'] = Variable<String>(httpMethod.value);
+    }
+    if (relativePath.present) {
+      map['relative_path'] = Variable<String>(relativePath.value);
+    }
+    if (bodyJson.present) {
+      map['body_json'] = Variable<String>(bodyJson.value);
+    }
+    if (wireHash.present) {
+      map['wire_hash'] = Variable<String>(wireHash.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MutationWireRequestsCompanion(')
+          ..write('opId: $opId, ')
+          ..write('contractVersion: $contractVersion, ')
+          ..write('httpMethod: $httpMethod, ')
+          ..write('relativePath: $relativePath, ')
+          ..write('bodyJson: $bodyJson, ')
+          ..write('wireHash: $wireHash, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AccountDatabase extends GeneratedDatabase {
   _$AccountDatabase(QueryExecutor e) : super(e);
   $AccountDatabaseManager get managers => $AccountDatabaseManager(this);
@@ -4535,6 +4972,13 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     'CREATE TRIGGER cursor_no_rewind BEFORE UPDATE ON sync_cursors WHEN NEW.user_id <> OLD.user_id OR(OLD.last_change_seq IS NOT NULL AND(NEW.last_change_seq IS NULL OR NEW.last_change_seq < OLD.last_change_seq))BEGIN SELECT RAISE (ABORT, \'Do not discard an acknowledged cursor\');END',
     'cursor_no_rewind',
   );
+  late final MutationWireRequests mutationWireRequests = MutationWireRequests(
+    this,
+  );
+  late final Trigger mutationWireRequestImmutable = Trigger(
+    'CREATE TRIGGER mutation_wire_request_immutable BEFORE UPDATE ON mutation_wire_requests BEGIN SELECT RAISE (ABORT, \'Frozen HTTP requests must survive retries unchanged\');END',
+    'mutation_wire_request_immutable',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4554,6 +4998,8 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     localAccountNoDelete,
     mutationRequestImmutable,
     cursorNoRewind,
+    mutationWireRequests,
+    mutationWireRequestImmutable,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4581,6 +5027,13 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'sync_cursors',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_wire_requests',
         limitUpdateKind: UpdateKind.update,
       ),
       result: [],
@@ -5691,6 +6144,27 @@ final class $LocalMutationsReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static MultiTypedResultKey<MutationWireRequests, List<MutationWireRequest>>
+  _mutationWireRequestsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.mutationWireRequests,
+        aliasName: 'local_mutations__op_id__mutation_wire_requests__op_id',
+      );
+
+  $MutationWireRequestsProcessedTableManager get mutationWireRequestsRefs {
+    final manager = $MutationWireRequestsTableManager(
+      $_db,
+      $_db.mutationWireRequests,
+    ).filter((f) => f.opId.opId.sqlEquals($_itemColumn<String>('op_id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _mutationWireRequestsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $LocalMutationsFilterComposer
@@ -5793,6 +6267,31 @@ class $LocalMutationsFilterComposer
           ),
     );
     return composer;
+  }
+
+  Expression<bool> mutationWireRequestsRefs(
+    Expression<bool> Function($MutationWireRequestsFilterComposer f) f,
+  ) {
+    final $MutationWireRequestsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.mutationWireRequests,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationWireRequestsFilterComposer(
+            $db: $db,
+            $table: $db.mutationWireRequests,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 }
 
@@ -5988,6 +6487,31 @@ class $LocalMutationsAnnotationComposer
     );
     return composer;
   }
+
+  Expression<T> mutationWireRequestsRefs<T extends Object>(
+    Expression<T> Function($MutationWireRequestsAnnotationComposer a) f,
+  ) {
+    final $MutationWireRequestsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.mutationWireRequests,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationWireRequestsAnnotationComposer(
+            $db: $db,
+            $table: $db.mutationWireRequests,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $LocalMutationsTableManager
@@ -6003,7 +6527,7 @@ class $LocalMutationsTableManager
           $LocalMutationsUpdateCompanionBuilder,
           (LocalMutation, $LocalMutationsReferences),
           LocalMutation,
-          PrefetchHooks Function({bool userId})
+          PrefetchHooks Function({bool userId, bool mutationWireRequestsRefs})
         > {
   $LocalMutationsTableManager(_$AccountDatabase db, LocalMutations table)
     : super(
@@ -6096,46 +6620,70 @@ class $LocalMutationsTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({userId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (userId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.userId,
-                        referencedTable: $LocalMutationsReferences._userIdTable(
-                          db,
-                        ),
-                        referencedColumn: $LocalMutationsReferences
-                            ._userIdTable(db)
-                            .userId,
-                      ) as T;
-                    }
+          prefetchHooksCallback:
+              ({userId = false, mutationWireRequestsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (mutationWireRequestsRefs) db.mutationWireRequests,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (userId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.userId,
+                            referencedTable: $LocalMutationsReferences
+                                ._userIdTable(db),
+                            referencedColumn: $LocalMutationsReferences
+                                ._userIdTable(db)
+                                .userId,
+                          ) as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (mutationWireRequestsRefs)
+                        await $_getPrefetchedData<
+                          LocalMutation,
+                          LocalMutations,
+                          MutationWireRequest
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalMutationsReferences
+                              ._mutationWireRequestsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalMutationsReferences(
+                                db,
+                                table,
+                                p0,
+                              ).mutationWireRequestsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.opId == item.opId,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -6152,7 +6700,7 @@ typedef $LocalMutationsProcessedTableManager =
       $LocalMutationsUpdateCompanionBuilder,
       (LocalMutation, $LocalMutationsReferences),
       LocalMutation,
-      PrefetchHooks Function({bool userId})
+      PrefetchHooks Function({bool userId, bool mutationWireRequestsRefs})
     >;
 typedef $LocalRecordingFilesCreateCompanionBuilder =
     LocalRecordingFilesCompanion Function({
@@ -8057,6 +8605,357 @@ typedef $SyncCursorsProcessedTableManager =
       SyncCursor,
       PrefetchHooks Function({bool userId})
     >;
+typedef $MutationWireRequestsCreateCompanionBuilder =
+    MutationWireRequestsCompanion Function({
+      required String opId,
+      required String contractVersion,
+      required String httpMethod,
+      required String relativePath,
+      required String bodyJson,
+      required String wireHash,
+      Value<int> rowid,
+    });
+typedef $MutationWireRequestsUpdateCompanionBuilder =
+    MutationWireRequestsCompanion Function({
+      Value<String> opId,
+      Value<String> contractVersion,
+      Value<String> httpMethod,
+      Value<String> relativePath,
+      Value<String> bodyJson,
+      Value<String> wireHash,
+      Value<int> rowid,
+    });
+
+final class $MutationWireRequestsReferences
+    extends
+        BaseReferences<
+          _$AccountDatabase,
+          MutationWireRequests,
+          MutationWireRequest
+        > {
+  $MutationWireRequestsReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static LocalMutations _opIdTable(_$AccountDatabase db) => db.localMutations
+      .createAlias('mutation_wire_requests__op_id__local_mutations__op_id');
+
+  $LocalMutationsProcessedTableManager get opId {
+    final $_column = $_itemColumn<String>('op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_opIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $MutationWireRequestsFilterComposer
+    extends Composer<_$AccountDatabase, MutationWireRequests> {
+  $MutationWireRequestsFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get contractVersion => $composableBuilder(
+    column: $table.contractVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get httpMethod => $composableBuilder(
+    column: $table.httpMethod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get relativePath => $composableBuilder(
+    column: $table.relativePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get bodyJson => $composableBuilder(
+    column: $table.bodyJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get wireHash => $composableBuilder(
+    column: $table.wireHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalMutationsFilterComposer get opId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationWireRequestsOrderingComposer
+    extends Composer<_$AccountDatabase, MutationWireRequests> {
+  $MutationWireRequestsOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get contractVersion => $composableBuilder(
+    column: $table.contractVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get httpMethod => $composableBuilder(
+    column: $table.httpMethod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get relativePath => $composableBuilder(
+    column: $table.relativePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get bodyJson => $composableBuilder(
+    column: $table.bodyJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get wireHash => $composableBuilder(
+    column: $table.wireHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalMutationsOrderingComposer get opId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationWireRequestsAnnotationComposer
+    extends Composer<_$AccountDatabase, MutationWireRequests> {
+  $MutationWireRequestsAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get contractVersion => $composableBuilder(
+    column: $table.contractVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get httpMethod => $composableBuilder(
+    column: $table.httpMethod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get relativePath => $composableBuilder(
+    column: $table.relativePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get bodyJson =>
+      $composableBuilder(column: $table.bodyJson, builder: (column) => column);
+
+  GeneratedColumn<String> get wireHash =>
+      $composableBuilder(column: $table.wireHash, builder: (column) => column);
+
+  $LocalMutationsAnnotationComposer get opId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationWireRequestsTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          MutationWireRequests,
+          MutationWireRequest,
+          $MutationWireRequestsFilterComposer,
+          $MutationWireRequestsOrderingComposer,
+          $MutationWireRequestsAnnotationComposer,
+          $MutationWireRequestsCreateCompanionBuilder,
+          $MutationWireRequestsUpdateCompanionBuilder,
+          (MutationWireRequest, $MutationWireRequestsReferences),
+          MutationWireRequest,
+          PrefetchHooks Function({bool opId})
+        > {
+  $MutationWireRequestsTableManager(
+    _$AccountDatabase db,
+    MutationWireRequests table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $MutationWireRequestsFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $MutationWireRequestsOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $MutationWireRequestsAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> opId = const Value.absent(),
+                Value<String> contractVersion = const Value.absent(),
+                Value<String> httpMethod = const Value.absent(),
+                Value<String> relativePath = const Value.absent(),
+                Value<String> bodyJson = const Value.absent(),
+                Value<String> wireHash = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => MutationWireRequestsCompanion(
+                opId: opId,
+                contractVersion: contractVersion,
+                httpMethod: httpMethod,
+                relativePath: relativePath,
+                bodyJson: bodyJson,
+                wireHash: wireHash,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String opId,
+                required String contractVersion,
+                required String httpMethod,
+                required String relativePath,
+                required String bodyJson,
+                required String wireHash,
+                Value<int> rowid = const Value.absent(),
+              }) => MutationWireRequestsCompanion.insert(
+                opId: opId,
+                contractVersion: contractVersion,
+                httpMethod: httpMethod,
+                relativePath: relativePath,
+                bodyJson: bodyJson,
+                wireHash: wireHash,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<MutationWireRequests, MutationWireRequest>(table),
+                  $MutationWireRequestsReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({opId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (opId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.opId,
+                        referencedTable: $MutationWireRequestsReferences
+                            ._opIdTable(db),
+                        referencedColumn: $MutationWireRequestsReferences
+                            ._opIdTable(db)
+                            .opId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $MutationWireRequestsProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      MutationWireRequests,
+      MutationWireRequest,
+      $MutationWireRequestsFilterComposer,
+      $MutationWireRequestsOrderingComposer,
+      $MutationWireRequestsAnnotationComposer,
+      $MutationWireRequestsCreateCompanionBuilder,
+      $MutationWireRequestsUpdateCompanionBuilder,
+      (MutationWireRequest, $MutationWireRequestsReferences),
+      MutationWireRequest,
+      PrefetchHooks Function({bool opId})
+    >;
 
 class $AccountDatabaseManager {
   final _$AccountDatabase _db;
@@ -8077,4 +8976,6 @@ class $AccountDatabaseManager {
       $ImportItemsTableManager(_db, _db.importItems);
   $SyncCursorsTableManager get syncCursors =>
       $SyncCursorsTableManager(_db, _db.syncCursors);
+  $MutationWireRequestsTableManager get mutationWireRequests =>
+      $MutationWireRequestsTableManager(_db, _db.mutationWireRequests);
 }

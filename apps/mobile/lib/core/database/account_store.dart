@@ -10,6 +10,8 @@ import 'package:sqlite3/sqlite3.dart' as native;
 
 import '../../config/app_config.dart';
 import '../domain/identifiers.dart';
+import '../sync/dependency_planner.dart';
+import '../sync/mutation_request.dart';
 import 'account_database.dart' show AccountDatabase;
 import 'account_paths.dart';
 import 'local_models.dart';
@@ -107,21 +109,21 @@ final class AccountStoreManager {
     });
   }
 
-  Future<T> _run<T>(
-    AccountStore store,
-    Future<T> Function() action,
-  ) => _serialize(() async {
-    void requireCurrent() {
-      if (!identical(_active, store) || store._generation != _generation) {
-        throw StateError('This account storage session has expired');
-      }
+  void _requireCurrent(AccountStore store) {
+    if (!identical(_active, store) || store._generation != _generation) {
+      throw StateError('This account storage session has expired');
     }
+  }
 
-    requireCurrent();
-    final result = await action();
-    requireCurrent(); // Do not deliver a late account-A result to account-B UI.
-    return result;
-  });
+  Future<T> _run<T>(AccountStore store, Future<T> Function() action) =>
+      _serialize(() async {
+        _requireCurrent(store);
+        final result = await action();
+        _requireCurrent(
+          store,
+        ); // Do not deliver a late account-A result to account-B UI.
+        return result;
+      });
 }
 
 /// Scoped lease, not a global database singleton. No raw database or File escapes
@@ -143,6 +145,7 @@ final class AccountStore {
         'local_account',
         'metadata_copies',
         'local_mutations',
+        'mutation_wire_requests',
         'local_recording_files',
         'recording_journals',
         'import_jobs',
@@ -292,29 +295,189 @@ final class AccountStore {
         .toList(growable: false);
   }
 
-  Future<DispatchSnapshot> dispatchSnapshot() => _run(
-    () => _database.transaction(() async {
-      final pending = await _pendingMutations();
-      final rows = await _database.customSelect(
-        'SELECT entity_type,entity_id,server_revision,tombstone FROM metadata_copies',
-      ).get();
-      return DispatchSnapshot(
-        pending: pending,
-        baselines: {
-          for (final row in rows)
-            LocalTarget(
-              LocalEntity.values.firstWhere(
-                (value) => value.code == row.read<String>('entity_type'),
-              ),
-              row.read<String>('entity_id'),
-            ): ServerBaseline(
-              revision: row.read<int>('server_revision'),
-              tombstone: row.read<int>('tombstone') == 1,
+  Future<DispatchSnapshot> dispatchSnapshot() =>
+      _run(() => _database.transaction(_dispatchSnapshot));
+
+  Future<DispatchSnapshot> _dispatchSnapshot() async {
+    final pending = await _pendingMutations();
+    final rows = await _database
+        .customSelect(
+          'SELECT entity_type,entity_id,server_revision,tombstone FROM metadata_copies',
+        )
+        .get();
+    return DispatchSnapshot(
+      pending: pending,
+      baselines: {
+        for (final row in rows)
+          LocalTarget(
+            LocalEntity.values.firstWhere(
+              (value) => value.code == row.read<String>('entity_type'),
             ),
-        },
-      );
+            row.read<String>('entity_id'),
+          ): ServerBaseline(
+            revision: row.read<int>('server_revision'),
+            tombstone: row.read<int>('tombstone') == 1,
+          ),
+      },
+    );
+  }
+
+  /// Synchronous fence for the transport before credentials/body leave the process.
+  void requireActive() => _manager._requireCurrent(this);
+
+  Future<MutationRequest?> claimMutation() => _run(
+    () => _database.transaction(() async {
+      final plan = const DependencyPlanner().plan(await _dispatchSnapshot());
+      for (final candidate in plan.ready) {
+        final request = MutationRequest.prepare(candidate);
+        if (request == null) continue;
+        final old = await _database
+            .customSelect(
+              'SELECT * FROM mutation_wire_requests WHERE op_id=?',
+              variables: [Variable(candidate.opId)],
+            )
+            .getSingleOrNull();
+        if (old != null &&
+            (old.read<String>('contract_version') != MutationRequest.contract ||
+                old.read<String>('wire_hash') != request.hash ||
+                old.read<String>('http_method') != request.method ||
+                old.read<String>('relative_path') != request.path ||
+                old.read<String>('body_json') != request.body)) {
+          continue; // Never reinterpret a frozen request using a new contract.
+        }
+        if (old == null) {
+          await _database.customStatement(
+            'INSERT INTO mutation_wire_requests(op_id,contract_version,http_method,relative_path,body_json,wire_hash) VALUES(?,?,?,?,?,?)',
+            [
+              candidate.opId,
+              MutationRequest.contract,
+              request.method,
+              request.path,
+              request.body,
+              request.hash,
+            ],
+          );
+        }
+        await _database.customStatement(
+          "UPDATE local_mutations SET queue_state='SENDING',attempt_count=attempt_count+1,updated_at=? WHERE op_id=? AND queue_state='PENDING'",
+          [DateTime.now().toUtc().millisecondsSinceEpoch, candidate.opId],
+        );
+        requireActive();
+        return request;
+      }
+      return null;
     }),
   );
+
+  Future<bool> acknowledgeMutation(
+    MutationRequest request,
+    Map<String, Object?> snapshot,
+  ) => _run(
+    () => _database.transaction(() async {
+      final m = request.mutation;
+      if (snapshot['id'] != m.entityId ||
+          snapshot['revision'] is! int ||
+          (snapshot['revision'] as int) <= m.baseRevision) {
+        throw ArgumentError(
+          'Response identity/revision is not an acknowledgement',
+        );
+      }
+      _validatePayloadOwner(canonicalJson(snapshot));
+      if (!await _ownsAttempt(request)) return false;
+      final current = await _database
+          .customSelect(
+            'SELECT server_revision,tombstone FROM metadata_copies WHERE entity_type=? AND entity_id=?',
+            variables: [Variable(m.entity.code), Variable(m.entityId)],
+          )
+          .getSingle();
+      if (current.read<int>('tombstone') == 1 ||
+          current.read<int>('server_revision') >
+              (snapshot['revision'] as int)) {
+        throw StateError('A response cannot rewind or resurrect a server copy');
+      }
+      final later = await _database
+          .customSelect(
+            "SELECT COUNT(*) AS count FROM local_mutations WHERE entity_type=? AND entity_id=? AND op_id<>? AND queue_state<>'ACKED'",
+            variables: [
+              Variable(m.entity.code),
+              Variable(m.entityId),
+              Variable(m.opId),
+            ],
+          )
+          .getSingle();
+      final payload = canonicalJson(snapshot);
+      await _database.customStatement(
+        'UPDATE metadata_copies SET server_revision=?,server_payload=?,local_payload=CASE WHEN ? THEN local_payload ELSE ? END,updated_at=? WHERE entity_type=? AND entity_id=?',
+        [
+          snapshot['revision'],
+          payload,
+          later.read<int>('count') > 0 ? 1 : 0,
+          payload,
+          DateTime.now().toUtc().millisecondsSinceEpoch,
+          m.entity.code,
+          m.entityId,
+        ],
+      );
+      await _database.customStatement(
+        "UPDATE local_mutations SET queue_state='ACKED',server_response=?,updated_at=? WHERE op_id=? AND queue_state='SENDING' AND attempt_count=?",
+        [
+          payload,
+          DateTime.now().toUtc().millisecondsSinceEpoch,
+          m.opId,
+          request.attempt,
+        ],
+      );
+      requireActive();
+      return true;
+    }),
+  );
+
+  Future<bool> deferMutation(
+    MutationRequest request,
+    String state,
+    String reason, {
+    int? status,
+    Map<String, Object?>? serverSnapshot,
+  }) => _run(
+    () => _database.transaction(() async {
+      if (!{'RETRY', 'CONFLICT', 'FAILED'}.contains(state)) {
+        throw ArgumentError('Invalid result state');
+      }
+      if (!RegExp(r'^[A-Z0-9_]{1,64}$').hasMatch(reason)) {
+        throw ArgumentError('Invalid result code');
+      }
+      if (!await _ownsAttempt(request)) return false;
+      await _database.customStatement(
+        'UPDATE local_mutations SET queue_state=?,server_response=?,updated_at=? WHERE op_id=? AND attempt_count=?',
+        [
+          state,
+          canonicalJson({
+            'code': reason,
+            'status': ?status,
+            'current': ?serverSnapshot,
+          }),
+          DateTime.now().toUtc().millisecondsSinceEpoch,
+          request.mutation.opId,
+          request.attempt,
+        ],
+      );
+      requireActive();
+      return true;
+    }),
+  );
+
+  Future<bool> _ownsAttempt(MutationRequest request) async {
+    final row = await _database
+        .customSelect(
+          'SELECT queue_state,attempt_count,payload FROM local_mutations WHERE op_id=?',
+          variables: [Variable(request.mutation.opId)],
+        )
+        .getSingleOrNull();
+    return row != null &&
+        row.read<String>('queue_state') == 'SENDING' &&
+        row.read<int>('attempt_count') == request.attempt &&
+        row.read<String>('payload') == request.body;
+  }
 
   Future<int?> readCursor() => _run(
     () async =>
