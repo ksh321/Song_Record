@@ -171,3 +171,293 @@ WHEN NEW.op_id <> OLD.op_id
 BEGIN
   SELECT RAISE(ABORT, 'Automatic retry budget cannot be replenished');
 END;
+
+-- P10-04: additive schema v4.
+
+CREATE TABLE song_aliases (
+  source_song_id TEXT NOT NULL PRIMARY KEY,
+  canonical_song_id TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES local_account(user_id),
+  entity_type TEXT NOT NULL DEFAULT 'SONG' CHECK (entity_type = 'SONG'),
+  mapping_op_id TEXT NOT NULL UNIQUE REFERENCES local_mutations(op_id),
+  receipt_status INTEGER NOT NULL CHECK (receipt_status = 200),
+  receipt_body TEXT NOT NULL
+    CHECK (json_valid(receipt_body) AND json_type(receipt_body) = 'object'),
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (entity_type, source_song_id)
+    REFERENCES metadata_copies(entity_type, entity_id),
+  FOREIGN KEY (entity_type, canonical_song_id)
+    REFERENCES metadata_copies(entity_type, entity_id),
+  CHECK (source_song_id <> canonical_song_id),
+  CHECK (json_type(receipt_body, '$.created') IS 'false'),
+  CHECK (json_type(receipt_body, '$.song') IS 'object'),
+  CHECK (
+    json_extract(receipt_body, '$.canonical_song_id')
+      IS canonical_song_id
+  ),
+  CHECK (
+    json_extract(receipt_body, '$.song.id')
+      IS canonical_song_id
+  ),
+  CHECK (
+    json_type(receipt_body, '$.song.revision') IS 'integer'
+    AND json_extract(receipt_body, '$.song.revision') > 0
+  ),
+  CHECK (
+    json_extract(receipt_body, '$.song.lifecycle_state') IS 'ACTIVE'
+  )
+) WITHOUT ROWID;
+
+CREATE INDEX song_alias_destination
+  ON song_aliases(canonical_song_id);
+
+CREATE TABLE mutation_supersessions (
+  original_op_id TEXT NOT NULL PRIMARY KEY
+    REFERENCES local_mutations(op_id),
+  replacement_op_id TEXT NOT NULL UNIQUE
+    REFERENCES local_mutations(op_id),
+  mapping_source_id TEXT NOT NULL REFERENCES song_aliases(source_song_id),
+  user_id TEXT NOT NULL REFERENCES local_account(user_id),
+  order_root_op_id TEXT NOT NULL REFERENCES local_mutations(op_id),
+  logical_order INTEGER NOT NULL CHECK (logical_order > 0),
+  created_at INTEGER NOT NULL,
+  CHECK (original_op_id <> replacement_op_id)
+) WITHOUT ROWID;
+
+CREATE TABLE canonical_edit_intents (
+  intent_id TEXT NOT NULL PRIMARY KEY CHECK (length(intent_id) = 36),
+  user_id TEXT NOT NULL REFERENCES local_account(user_id),
+  mapping_source_id TEXT NOT NULL REFERENCES song_aliases(source_song_id),
+  intent_key TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (
+    kind IN ('SONG_VALUES', 'SONG_MUTATION', 'REFERENCE_RELINK')
+  ),
+  entity_type TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  origin_op_id TEXT REFERENCES local_mutations(op_id),
+  evidence_json TEXT NOT NULL
+    CHECK (json_valid(evidence_json) AND json_type(evidence_json) = 'object'),
+  state TEXT NOT NULL DEFAULT 'OPEN'
+    CHECK (state IN ('OPEN', 'QUEUED', 'RESOLVED')),
+  resolution_json TEXT
+    CHECK (
+      resolution_json IS NULL OR
+      (json_valid(resolution_json) AND json_type(resolution_json) = 'object')
+    ),
+  resolution_op_id TEXT REFERENCES local_mutations(op_id),
+  resolved_at INTEGER,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (entity_type, entity_id)
+    REFERENCES metadata_copies(entity_type, entity_id),
+  UNIQUE (mapping_source_id, intent_key),
+  CHECK (
+    (state = 'OPEN'
+      AND resolution_json IS NULL
+      AND resolution_op_id IS NULL
+      AND resolved_at IS NULL)
+    OR
+    (state = 'QUEUED'
+      AND resolution_json IS NOT NULL
+      AND resolution_op_id IS NOT NULL
+      AND resolved_at IS NULL)
+    OR
+    (state = 'RESOLVED'
+      AND resolution_json IS NOT NULL
+      AND resolved_at IS NOT NULL)
+  )
+) WITHOUT ROWID;
+
+CREATE INDEX canonical_intent_target
+  ON canonical_edit_intents(entity_type, entity_id, state);
+
+CREATE TABLE mutation_mapping_holds (
+  op_id TEXT NOT NULL REFERENCES local_mutations(op_id),
+  mapping_source_id TEXT NOT NULL REFERENCES song_aliases(source_song_id),
+  user_id TEXT NOT NULL REFERENCES local_account(user_id),
+  reason TEXT NOT NULL CHECK (length(reason) BETWEEN 1 AND 64),
+  disposition TEXT NOT NULL CHECK (
+    disposition IN ('BLOCK', 'REPLAY_ORIGINAL')
+  ),
+  intent_id TEXT REFERENCES canonical_edit_intents(intent_id),
+  created_at INTEGER NOT NULL,
+  released_at INTEGER,
+  release_evidence TEXT
+    CHECK (
+      release_evidence IS NULL OR
+      (json_valid(release_evidence) AND json_type(release_evidence) = 'object')
+    ),
+  PRIMARY KEY (op_id, mapping_source_id, reason),
+  CHECK (
+    (released_at IS NULL AND release_evidence IS NULL)
+    OR
+    (released_at IS NOT NULL AND release_evidence IS NOT NULL)
+  )
+) WITHOUT ROWID;
+
+CREATE INDEX mutation_mapping_active_holds
+  ON mutation_mapping_holds(op_id, released_at);
+
+CREATE TRIGGER song_alias_valid_insert
+BEFORE INSERT ON song_aliases BEGIN
+  SELECT RAISE(ABORT, 'Alias requires its original song CREATE')
+  WHERE NOT EXISTS (
+    SELECT 1 FROM local_mutations m
+    WHERE m.op_id = NEW.mapping_op_id
+      AND m.user_id = NEW.user_id
+      AND m.entity_type = 'SONG'
+      AND m.entity_id = NEW.source_song_id
+      AND m.operation = 'CREATE'
+  );
+
+  SELECT RAISE(ABORT, 'Song alias cycle')
+  WHERE EXISTS (
+    WITH RECURSIVE destinations(id) AS (
+      SELECT NEW.canonical_song_id
+      UNION
+      SELECT a.canonical_song_id
+      FROM song_aliases a
+      JOIN destinations d ON a.source_song_id = d.id
+    )
+    SELECT 1 FROM destinations WHERE id = NEW.source_song_id
+  );
+END;
+
+CREATE TRIGGER song_alias_no_update
+BEFORE UPDATE ON song_aliases BEGIN
+  SELECT RAISE(ABORT, 'Song aliases and receipts are immutable');
+END;
+
+CREATE TRIGGER song_alias_no_delete
+BEFORE DELETE ON song_aliases BEGIN
+  SELECT RAISE(ABORT, 'Song alias evidence must be retained');
+END;
+
+CREATE TRIGGER mutation_supersession_valid_insert
+BEFORE INSERT ON mutation_supersessions BEGIN
+  SELECT RAISE(ABORT, 'Cannot prepend a frozen replacement chain')
+  WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.replacement_op_id);
+
+  -- A replacement is a newly appended mutation. This also prevents cycles.
+  SELECT RAISE(ABORT, 'Invalid replacement order')
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM local_mutations original
+    JOIN local_mutations replacement
+      ON replacement.op_id = NEW.replacement_op_id
+    WHERE original.op_id = NEW.original_op_id
+      AND replacement.rowid > original.rowid
+  );
+
+  SELECT RAISE(ABORT, 'Replacement must inherit original logical order')
+  WHERE NEW.order_root_op_id IS NOT COALESCE(
+    (SELECT order_root_op_id FROM mutation_supersessions
+      WHERE replacement_op_id = NEW.original_op_id),
+    NEW.original_op_id
+  ) OR NEW.logical_order IS NOT COALESCE(
+    (SELECT logical_order FROM mutation_supersessions
+      WHERE replacement_op_id = NEW.original_op_id),
+    (SELECT rowid FROM local_mutations
+      WHERE op_id = NEW.original_op_id)
+  );
+END;
+
+CREATE TRIGGER mutation_supersession_no_update
+BEFORE UPDATE ON mutation_supersessions BEGIN
+  SELECT RAISE(ABORT, 'Mutation supersessions are immutable');
+END;
+
+CREATE TRIGGER mutation_supersession_no_delete
+BEFORE DELETE ON mutation_supersessions BEGIN
+  SELECT RAISE(ABORT, 'Mutation supersession history must be retained');
+END;
+
+CREATE TRIGGER superseded_mutation_no_claim
+BEFORE UPDATE OF attempt_count ON local_mutations
+WHEN NEW.attempt_count > OLD.attempt_count
+  AND EXISTS (
+    SELECT 1 FROM mutation_supersessions
+    WHERE original_op_id = OLD.op_id
+  )
+BEGIN
+  SELECT RAISE(ABORT, 'Superseded mutation cannot be claimed');
+END;
+
+CREATE TRIGGER canonical_intent_evidence_immutable
+BEFORE UPDATE ON canonical_edit_intents
+WHEN NEW.intent_id IS NOT OLD.intent_id
+  OR NEW.user_id IS NOT OLD.user_id
+  OR NEW.mapping_source_id IS NOT OLD.mapping_source_id
+  OR NEW.intent_key IS NOT OLD.intent_key
+  OR NEW.kind IS NOT OLD.kind
+  OR NEW.entity_type IS NOT OLD.entity_type
+  OR NEW.entity_id IS NOT OLD.entity_id
+  OR NEW.origin_op_id IS NOT OLD.origin_op_id
+  OR NEW.evidence_json IS NOT OLD.evidence_json
+  OR NEW.created_at IS NOT OLD.created_at
+  OR OLD.state = 'RESOLVED'
+  OR (OLD.state = 'QUEUED' AND NEW.state <> 'RESOLVED')
+BEGIN
+  SELECT RAISE(ABORT, 'Canonical intent evidence cannot be rewritten');
+END;
+
+CREATE TRIGGER canonical_intent_no_delete
+BEFORE DELETE ON canonical_edit_intents BEGIN
+  SELECT RAISE(ABORT, 'Canonical edit evidence must be retained');
+END;
+
+CREATE TRIGGER mapping_hold_release_only
+BEFORE UPDATE ON mutation_mapping_holds
+WHEN NEW.op_id IS NOT OLD.op_id
+  OR NEW.mapping_source_id IS NOT OLD.mapping_source_id
+  OR NEW.user_id IS NOT OLD.user_id
+  OR NEW.reason IS NOT OLD.reason
+  OR NEW.disposition IS NOT OLD.disposition
+  OR NEW.intent_id IS NOT OLD.intent_id
+  OR NEW.created_at IS NOT OLD.created_at
+  OR OLD.released_at IS NOT NULL
+  OR NEW.released_at IS NULL
+BEGIN
+  SELECT RAISE(ABORT, 'Mapping hold permits one evidenced release only');
+END;
+
+CREATE TRIGGER mapping_hold_no_delete
+BEFORE DELETE ON mutation_mapping_holds BEGIN
+  SELECT RAISE(ABORT, 'Mapping hold history must be retained');
+END;
+
+CREATE TRIGGER song_alias_no_replace BEFORE INSERT ON song_aliases BEGIN
+  SELECT RAISE(ABORT, 'Preserved evidence cannot be replaced')
+  WHERE EXISTS (SELECT 1 FROM song_aliases WHERE source_song_id = NEW.source_song_id OR mapping_op_id = NEW.mapping_op_id);
+END;
+
+CREATE TRIGGER mutation_supersession_no_replace BEFORE INSERT ON mutation_supersessions BEGIN
+  SELECT RAISE(ABORT, 'Preserved evidence cannot be replaced')
+  WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.replacement_op_id);
+END;
+
+CREATE TRIGGER canonical_intent_no_replace BEFORE INSERT ON canonical_edit_intents BEGIN
+  SELECT RAISE(ABORT, 'Preserved evidence cannot be replaced')
+  WHERE EXISTS (SELECT 1 FROM canonical_edit_intents WHERE intent_id = NEW.intent_id OR (mapping_source_id = NEW.mapping_source_id AND intent_key = NEW.intent_key));
+END;
+
+CREATE TRIGGER mapping_hold_no_replace BEFORE INSERT ON mutation_mapping_holds BEGIN
+  SELECT RAISE(ABORT, 'Preserved evidence cannot be replaced')
+  WHERE EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = NEW.op_id AND mapping_source_id = NEW.mapping_source_id AND reason = NEW.reason);
+END;
+
+CREATE TRIGGER mutation_rowid_immutable BEFORE UPDATE ON local_mutations
+WHEN NEW.rowid IS NOT OLD.rowid BEGIN
+  SELECT RAISE(ABORT, 'Mutation rowid must remain immutable');
+END;
+CREATE TRIGGER mutation_history_no_replace BEFORE INSERT ON local_mutations
+WHEN EXISTS (SELECT 1 FROM local_mutations
+  WHERE op_id = NEW.op_id OR (NEW.rowid <> -1 AND rowid = NEW.rowid)) BEGIN
+  SELECT RAISE(ABORT, 'Mutation history cannot be replaced');
+END;
+CREATE TRIGGER mutation_order_positive AFTER INSERT ON local_mutations
+WHEN NEW.rowid <= 0 BEGIN
+  SELECT RAISE(ABORT, 'New mutation order must be positive');
+END;
+CREATE TRIGGER mutation_history_no_delete BEFORE DELETE ON local_mutations BEGIN
+  SELECT RAISE(ABORT, 'Mutation ordering history must be retained');
+END;

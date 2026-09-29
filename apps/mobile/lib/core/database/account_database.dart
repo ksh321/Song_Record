@@ -18,7 +18,7 @@ class AccountDatabase extends _$AccountDatabase {
   final AppEnvironment environment;
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -37,41 +37,69 @@ class AccountDatabase extends _$AccountDatabase {
     // No destructive fallback. Every future version needs an explicit,
     // data-preserving migration and a checked-in schema snapshot.
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 2 || to != 3) {
+      if (from < 1 || from > 3 || to != 4) {
         throw StateError('Unsupported local schema migration: $from -> $to');
       }
       if (from < 2) {
         await migrator.createTable(mutationWireRequests);
         await migrator.createTrigger(mutationWireRequestImmutable);
       }
-      await migrator.createTable(mutationRetryControls);
-      await migrator.createTrigger(mutationRetryBudgetMonotonic);
-      await customStatement('''
-        INSERT INTO mutation_retry_controls(
-          op_id,automatic_retries_claimed,retry_mode,last_attempt_kind
-        )
-        SELECT op_id,
-          CASE WHEN queue_state='PENDING' AND attempt_count=0
-            THEN 0 ELSE NULL END,
-          CASE
-            WHEN queue_state='PENDING' AND attempt_count=0 THEN 'INITIAL'
-            WHEN queue_state IN ('PENDING','RETRY','SENDING')
-              THEN 'MANUAL_REQUIRED'
-            ELSE 'BLOCKED'
-          END,
-          CASE WHEN queue_state='PENDING' AND attempt_count=0
-            THEN 'INITIAL' ELSE 'UNKNOWN' END
-        FROM local_mutations
-      ''');
-      // Previously attempted PENDING rows must not become fresh initial sends.
-      await customStatement("""
-        UPDATE local_mutations SET queue_state='RETRY'
-        WHERE queue_state='PENDING' AND attempt_count>0
-      """);
-      await customStatement("""
-        UPDATE local_mutations SET next_attempt_at=NULL
-        WHERE queue_state IN ('PENDING','RETRY','SENDING')
-      """);
+      if (from < 3) {
+        await migrator.createTable(mutationRetryControls);
+        await migrator.createTrigger(mutationRetryBudgetMonotonic);
+        await customStatement('''
+          INSERT INTO mutation_retry_controls(
+            op_id,automatic_retries_claimed,retry_mode,last_attempt_kind
+          )
+          SELECT op_id,
+            CASE WHEN queue_state='PENDING' AND attempt_count=0
+              THEN 0 ELSE NULL END,
+            CASE
+              WHEN queue_state='PENDING' AND attempt_count=0 THEN 'INITIAL'
+              WHEN queue_state IN ('PENDING','RETRY','SENDING')
+                THEN 'MANUAL_REQUIRED'
+              ELSE 'BLOCKED'
+            END,
+            CASE WHEN queue_state='PENDING' AND attempt_count=0
+              THEN 'INITIAL' ELSE 'UNKNOWN' END
+          FROM local_mutations
+        ''');
+        // Previously attempted PENDING rows must not become fresh initial sends.
+        await customStatement("""
+          UPDATE local_mutations SET queue_state='RETRY'
+          WHERE queue_state='PENDING' AND attempt_count>0
+        """);
+        await customStatement("""
+          UPDATE local_mutations SET next_attempt_at=NULL
+          WHERE queue_state IN ('PENDING','RETRY','SENDING')
+        """);
+      }
+      await migrator.createTrigger(mutationRowidImmutable);
+      await migrator.createTrigger(mutationHistoryNoReplace);
+      await migrator.createTrigger(mutationOrderPositive);
+      await migrator.createTrigger(mutationHistoryNoDelete);
+      await migrator.createTable(songAliases);
+      await migrator.createTable(mutationSupersessions);
+      await migrator.createTable(canonicalEditIntents);
+      await migrator.createTable(mutationMappingHolds);
+      await migrator.createIndex(songAliasDestination);
+      await migrator.createIndex(canonicalIntentTarget);
+      await migrator.createIndex(mutationMappingActiveHolds);
+      await migrator.createTrigger(songAliasValidInsert);
+      await migrator.createTrigger(songAliasNoUpdate);
+      await migrator.createTrigger(songAliasNoDelete);
+      await migrator.createTrigger(mutationSupersessionValidInsert);
+      await migrator.createTrigger(mutationSupersessionNoUpdate);
+      await migrator.createTrigger(mutationSupersessionNoDelete);
+      await migrator.createTrigger(supersededMutationNoClaim);
+      await migrator.createTrigger(canonicalIntentEvidenceImmutable);
+      await migrator.createTrigger(canonicalIntentNoDelete);
+      await migrator.createTrigger(mappingHoldReleaseOnly);
+      await migrator.createTrigger(mappingHoldNoDelete);
+      await migrator.createTrigger(songAliasNoReplace);
+      await migrator.createTrigger(mutationSupersessionNoReplace);
+      await migrator.createTrigger(canonicalIntentNoReplace);
+      await migrator.createTrigger(mappingHoldNoReplace);
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
