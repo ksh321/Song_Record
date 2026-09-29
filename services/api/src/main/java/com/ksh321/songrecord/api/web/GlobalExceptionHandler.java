@@ -29,8 +29,12 @@ public class GlobalExceptionHandler {
                 exception.getClass().getSimpleName()
         );
 
-        return ResponseEntity
-                .status(exception.status())
+        var response = ResponseEntity.status(exception.status());
+        if (exception.code().equals("CONDITION_CATALOG_READ_ONLY")) {
+            response.header("Allow", request.getRequestURI().endsWith("/conditions") ? "GET, HEAD" : "");
+            response.header("Cache-Control", "no-store");
+        }
+        return response
                 .body(error(
                         exception.code(),
                         exception.getMessage(),

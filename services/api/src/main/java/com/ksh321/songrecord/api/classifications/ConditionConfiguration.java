@@ -17,9 +17,9 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration(proxyBeanMethods=false)
 @Profile("!bootstrap")
 public class ConditionConfiguration {
-    @Bean ConditionService conditionService(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,CreationGuard guard,RevisionChanges revisions,AccountChanges changes,KeysetPages pages){return new ConditionService(jdbc,access,mutations,guard,revisions,changes,pages,Clock.systemUTC());}
+    @Bean ConditionService conditionService(AccountAccess access){return new ConditionService(access);}
     @Bean @Order(5) SecurityFilterChain conditionSecurity(HttpSecurity http)throws Exception{
         http.securityMatcher("/v1/conditions","/v1/conditions/**").csrf(c->c.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).requestCache(c->c.disable())
-            .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.GET,"/v1/conditions").permitAll().requestMatchers(HttpMethod.POST,"/v1/conditions","/v1/conditions/*/archive").permitAll().requestMatchers(HttpMethod.PATCH,"/v1/conditions/*").permitAll().anyRequest().denyAll());return http.build();
+            .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.GET,"/v1/conditions").permitAll().requestMatchers(HttpMethod.HEAD,"/v1/conditions").permitAll().requestMatchers(HttpMethod.POST,"/v1/conditions","/v1/conditions/*/archive").permitAll().requestMatchers(HttpMethod.PATCH,"/v1/conditions/*").permitAll().anyRequest().denyAll());return http.build();
     }
 }

@@ -46,10 +46,10 @@ public final class RecordingEditing {
                 var fields=new LinkedHashMap<>(request.fields);
                 if(fields.containsKey("condition_code") && !Objects.equals(fields.get("condition_code"),current.get("condition_code"))){
                     Object code=fields.get("condition_code");
-                    var definitions=code==null?List.<Map<String,Object>>of():jdbc.queryForList("SELECT name,archived_at FROM condition_definition WHERE user_id=? AND code=?",bytes(owner),code);
-                    if(code!=null && definitions.isEmpty())throw error(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","컨디션을 찾을 수 없습니다.");
-                    if(code!=null && definitions.getFirst().get("archived_at")!=null)throw error(HttpStatus.CONFLICT,"CONDITION_ARCHIVED","보관한 컨디션은 새로 선택할 수 없습니다.");
-                    fields.put("condition_name_snapshot",code==null?null:definitions.getFirst().get("name"));
+                    // Keep the previous selected value before replacing it; the same transaction
+                    // rolls this history back if the recording/change-log write fails.
+                    jdbc.update("INSERT INTO recording_condition_history(user_id,recording_id,source_revision,condition_code,condition_name_snapshot) SELECT user_id,id,revision,condition_code,condition_name_snapshot FROM recording WHERE user_id=? AND id=? AND condition_code IS NOT NULL AND NOT EXISTS (SELECT 1 FROM recording_condition_history h WHERE h.user_id=recording.user_id AND h.recording_id=recording.id AND h.source_revision=recording.revision)",bytes(owner),bytes(recording));
+                    fields.put("condition_name_snapshot",code==null?null:com.ksh321.songrecord.api.classifications.ConditionCatalog.name((String)code));
                 }
                 if(!fields.isEmpty()){
                     String assignments=String.join(",",fields.keySet().stream().map(k->k+"=?").toList());
@@ -114,7 +114,7 @@ public final class RecordingEditing {
                 case "version_code" -> fields.put(k,choice(v,false,Set.of("NORMAL","MR","LIVE")));
                 case "key_mode" -> fields.put(k,choice(v,true,Set.of("ORIGINAL","MALE","FEMALE")));
                 case "key_shift" -> fields.put(k,v.isNull()?null:integer(v,-12,12));
-                case "condition_code" -> {String code=text(v,true);if(code!=null && !com.ksh321.songrecord.api.classifications.ConditionReference.valid(code))throw invalid();fields.put(k,code);}
+                case "condition_code" -> {String code=text(v,true);if(code!=null && !com.ksh321.songrecord.api.classifications.ConditionCatalog.contains(code))throw invalid();fields.put(k,code);}
                 case "tag_ids" -> {
                     if(!v.isArray())throw invalid();var values=new TreeSet<UUID>(Comparator.comparing(UUID::toString));
                     for(var entry:v){try{String t=text(entry,false);UUID u=UUID.fromString(t);if(!u.toString().equals(t))throw invalid();if(!values.add(u))throw invalid();}catch(IllegalArgumentException ex){throw invalid();}}

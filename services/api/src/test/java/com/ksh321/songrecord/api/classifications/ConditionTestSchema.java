@@ -10,6 +10,7 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 public final class ConditionTestSchema {
     private ConditionTestSchema(){}
     public static void install(JdbcTemplate db){
+        db.execute("CREATE TABLE recording_condition_history(user_id BINARY(16),recording_id BINARY(16),source_revision BIGINT,condition_code VARCHAR(36),condition_name_snapshot VARCHAR(100),PRIMARY KEY(user_id,recording_id,source_revision))");
         db.execute("ALTER TABLE recording ALTER COLUMN condition_code VARCHAR(36)");
         db.execute("ALTER TABLE recording ALTER COLUMN condition_name_snapshot VARCHAR(100)");
         db.execute("CREATE TABLE condition_definition(id BINARY(16) PRIMARY KEY,user_id BINARY(16),code VARCHAR(36),name VARCHAR(100),normalized_name_key VARBINARY(800),archived_at TIMESTAMP(3),revision BIGINT DEFAULT 1,created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP,active_name_key VARBINARY(800) GENERATED ALWAYS AS (CASE WHEN archived_at IS NULL THEN normalized_name_key ELSE NULL END),UNIQUE(user_id,code),UNIQUE(user_id,active_name_key))");

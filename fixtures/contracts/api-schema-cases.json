@@ -1132,7 +1132,7 @@
       "base_revision": 1,
       "condition_code": "00000000-0000-4000-8000-000000000001"
     },
-    "valid": true
+    "valid": false
   },
   {
     "schema": "RecordingPatch",
@@ -1150,5 +1150,52 @@
       "next_cursor": null
     },
     "valid": true
+  },
+  {
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "condition_code": "00000000-0000-4000-8000-000000000001"
+    },
+    "valid": false
+  },
+  {
+    "schema": "ConditionCatalog",
+    "value": {
+      "items": [
+        {
+          "code": "VERY_GOOD",
+          "name": "매우 좋음",
+          "order": 1,
+          "catalog_version": 1
+        },
+        {
+          "code": "GOOD",
+          "name": "좋음",
+          "order": 2,
+          "catalog_version": 1
+        },
+        {
+          "code": "NORMAL",
+          "name": "보통",
+          "order": 3,
+          "catalog_version": 1
+        },
+        {
+          "code": "BAD",
+          "name": "안 좋음",
+          "order": 4,
+          "catalog_version": 1
+        }
+      ]
+    },
+    "valid": true
+  },
+  {
+    "schema": "ConditionCatalog",
+    "value": {
+      "items": []
+    },
+    "valid": false
   }
 ]

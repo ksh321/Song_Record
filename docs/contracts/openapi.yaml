@@ -2,8 +2,9 @@ openapi: 3.1.1
 info:
   title: Song Record API
   version: 0.7.1
-  description: P07-01 공통 계약. implemented=기존 인증 API, planned=후속 구현 목표. 문서의 planned 경로는 현재 서버에서 제공되지 않는다. 인증 DTO는
-    호환성을 위해 camelCase, 업무 DTO는 snake_case를 사용한다. 문자열 길이는 정규화 후 Unicode code point 수이며 메모는 CRLF/CR을 LF로 통일한다.
+  description: P07-01 공통 계약. implemented=기존 인증 API, planned=후속 구현 목표. 문서의 planned
+    경로는 현재 서버에서 제공되지 않는다. 인증 DTO는 호환성을 위해 camelCase, 업무 DTO는 snake_case를 사용한다. 문자열
+    길이는 정규화 후 Unicode code point 수이며 메모는 CRLF/CR을 LF로 통일한다.
 servers:
 - url: /v1
 security:
@@ -13,7 +14,8 @@ paths:
     post:
       operationId: socialLogin
       summary: socialLogin
-      description: GOOGLE ID token / KAKAO access token 검증 후 200. 로그인마다 서버가 기기 ID를 발급한다.
+      description: GOOGLE ID token / KAKAO access token 검증 후 200. 로그인마다 서버가 기기 ID를
+        발급한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -345,8 +347,9 @@ paths:
     post:
       operationId: unlinkIdentity
       summary: unlinkIdentity
-      description: '현재 구현: Bearer + X-Device-Id, 본문 없음(앱은 {} 전송). 마지막 수단은 LAST_IDENTITY_REQUIRED. 설계서의 재인증/base_revision
-        요청은 아직 미구현이며 docs/contracts/P07-01-api-contract.md의 차이 목록에 기록한다.'
+      description: '현재 구현: Bearer + X-Device-Id, 본문 없음(앱은 {} 전송). 마지막 수단은 LAST_IDENTITY_REQUIRED.
+        설계서의 재인증/base_revision 요청은 아직 미구현이며 docs/contracts/P07-01-api-contract.md의
+        차이 목록에 기록한다.'
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -388,7 +391,8 @@ paths:
     get:
       operationId: listSongs
       summary: listSongs
-      description: P08-05b 구현. 인증 계정의 ACTIVE 곡에서 제목·가수 부분 검색, 5개 정렬과 티어별 보기. 최근 녹음은 ACTIVE·SAVED만 계산하며 파일 유무는 무관하다. 결과가 바뀌면 기존 커서는 409 LIST_CURSOR_EXPIRED다.
+      description: P08-05b 구현. 인증 계정의 ACTIVE 곡에서 제목·가수 부분 검색, 5개 정렬과 티어별 보기. 최근 녹음은
+        ACTIVE·SAVED만 계산하며 파일 유무는 무관하다. 결과가 바뀌면 기존 커서는 409 LIST_CURSOR_EXPIRED다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -405,13 +409,20 @@ paths:
         in: query
         schema:
           type: string
-          enum: [ADDED_DESC, RECORDED_DESC, TIER, TITLE, ARTIST]
+          enum:
+          - ADDED_DESC
+          - RECORDED_DESC
+          - TIER
+          - TITLE
+          - ARTIST
           default: ADDED_DESC
       - name: view
         in: query
         schema:
           type: string
-          enum: [ALL, TIER_GROUPED]
+          enum:
+          - ALL
+          - TIER_GROUPED
           default: ALL
       responses:
         '200':
@@ -435,7 +446,11 @@ paths:
     post:
       operationId: createSong
       summary: createSong
-      description: P08-04 TJ·MANUAL 생성 구현. TJ는 검증된 후보와 출처 원본을 저장한다. MANUAL은 사용자 확인 사유 TJ_NOT_FOUND와 곡명·가수를 요구하며 외부 후보 검증을 호출하지 않는다. TJ 후보 검증 장애는 503으로 유지하고 MANUAL로 자동 전환하지 않는다. P08-08 같은 번호의 TRASHED는 SONG_RESTORE_REQUIRED, PURGE_PENDING은 SONG_PURGE_PENDING(409)이며 details에 canonical_song_id·current_revision·lifecycle_state를 제공한다. PURGED UUID 및 삭제 원장의 UUID는 RESOURCE_PURGED로 거절하고 같은 번호는 새 UUID로만 등록한다.
+      description: P08-04 TJ·MANUAL 생성 구현. TJ는 검증된 후보와 출처 원본을 저장한다. MANUAL은 사용자 확인
+        사유 TJ_NOT_FOUND와 곡명·가수를 요구하며 외부 후보 검증을 호출하지 않는다. TJ 후보 검증 장애는 503으로 유지하고 MANUAL로
+        자동 전환하지 않는다. P08-08 같은 번호의 TRASHED는 SONG_RESTORE_REQUIRED, PURGE_PENDING은
+        SONG_PURGE_PENDING(409)이며 details에 canonical_song_id·current_revision·lifecycle_state를
+        제공한다. PURGED UUID 및 삭제 원장의 UUID는 RESOURCE_PURGED로 거절하고 같은 번호는 새 UUID로만 등록한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -508,7 +523,8 @@ paths:
     patch:
       operationId: patchSong
       summary: patchSong
-      description: P08-06 구현. base_revision으로 충돌을 검사하고 곡·검색 키·변경 기록을 같은 트랜잭션에서 수정한다. 과거 녹음과 TJ 출처 원본은 유지한다.
+      description: P08-06 구현. base_revision으로 충돌을 검사하고 곡·검색 키·변경 기록을 같은 트랜잭션에서 수정한다.
+        과거 녹음과 TJ 출처 원본은 유지한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -548,7 +564,9 @@ paths:
     get:
       operationId: listRecordings
       summary: listRecordings
-      description: P09-03b DB 목록 조회 구현. 필터 적용 후 정확한 count와 keyset 페이지를 같은 읽기 스냅샷에서 반환. ACTIVE 메타정보는 파일 존재와 무관하게 기본 포함하며 DRAFT/SAVED 필터를 별도 제공한다. 기간은 UTC from 포함·to 제외, 태그는 모두 일치, 최종 동률은 UUID 오름차순. 로컬 파일 유무는 서버에서 추정하지 않는다.
+      description: P09-03b DB 목록 조회 구현. 필터 적용 후 정확한 count와 keyset 페이지를 같은 읽기 스냅샷에서
+        반환. ACTIVE 메타정보는 파일 존재와 무관하게 기본 포함하며 DRAFT/SAVED 필터를 별도 제공한다. 기간은 UTC from
+        포함·to 제외, 태그는 모두 일치, 최종 동률은 UUID 오름차순. 로컬 파일 유무는 서버에서 추정하지 않는다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -558,13 +576,15 @@ paths:
       - name: from
         in: query
         required: false
-        description: UTC 기간 경계. from 포함/to 제외. 둘 다 있으면 from < to. MySQL 1000~9999년 범위.
+        description: UTC 기간 경계. from 포함/to 제외. 둘 다 있으면 from < to. MySQL 1000~9999년
+          범위.
         schema:
           $ref: '#/components/schemas/UtcInstant'
       - name: to
         in: query
         required: false
-        description: UTC 기간 경계. from 포함/to 제외. 둘 다 있으면 from < to. MySQL 1000~9999년 범위.
+        description: UTC 기간 경계. from 포함/to 제외. 둘 다 있으면 from < to. MySQL 1000~9999년
+          범위.
         schema:
           $ref: '#/components/schemas/UtcInstant'
       - name: song_id
@@ -619,7 +639,9 @@ paths:
           anyOf:
           - $ref: '#/components/schemas/ConditionReference'
           - type: string
-            enum: [ALL, NONE]
+            enum:
+            - ALL
+            - NONE
       - name: tag_ids
         in: query
         required: false
@@ -649,8 +671,8 @@ paths:
       - name: sort
         in: query
         required: false
-        description: TITLE은 녹음 제목 snapshot과 공통 자연 정렬 사용, 빈 제목 마지막. TIER는 S→A→B→C→D→미정 및
-          최신순. 최종 동률 UUID 오름차순.
+        description: TITLE은 녹음 제목 snapshot과 공통 자연 정렬 사용, 빈 제목 마지막. TIER는 S→A→B→C→D→미정
+          및 최신순. 최종 동률 UUID 오름차순.
         schema:
           type: string
           enum:
@@ -681,7 +703,8 @@ paths:
     post:
       operationId: createRecording
       summary: createRecording
-      description: P09-01 DRAFT 메타정보 생성. 원본 기기는 인증 세션에서 결정. 같은 UUID 재요청은 기존 초안을 반환하며 입력을 덮어쓰지 않는다. 용량·고정 한도·업로드 잠금과 독립적이며 SAVED 전환은 PATCH에서 수행한다.
+      description: P09-01 DRAFT 메타정보 생성. 원본 기기는 인증 세션에서 결정. 같은 UUID 재요청은 기존 초안을 반환하며
+        입력을 덮어쓰지 않는다. 용량·고정 한도·업로드 잠금과 독립적이며 SAVED 전환은 PATCH에서 수행한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -754,7 +777,9 @@ paths:
     patch:
       operationId: patchRecording
       summary: patchRecording
-      description: P09-04 부분 수정 및 기존 DRAFT→SAVED 전환. revision·멱등성을 검사하며 용량 부족·고정 한도·업로드 잠금과 독립적으로 수정한다. SAVED는 유효한 완료 파일 명세를 요구하지만 서버 파일 보관 완료를 뜻하지 않는다. 파일 대기 상태와 사용량은 이 요청으로 변경하지 않는다.
+      description: P09-04 부분 수정 및 기존 DRAFT→SAVED 전환. revision·멱등성을 검사하며 용량 부족·고정 한도·업로드
+        잠금과 독립적으로 수정한다. SAVED는 유효한 완료 파일 명세를 요구하지만 서버 파일 보관 완료를 뜻하지 않는다. 파일 대기 상태와
+        사용량은 이 요청으로 변경하지 않는다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -798,7 +823,9 @@ paths:
     put:
       operationId: setRepresentative
       summary: setRepresentative
-      description: 같은 계정·같은 곡의 ACTIVE·SAVED 녹음 지정. recording_id null은 해제. 소유권 불일치·없는 자료는 404, 소유한 녹음의 곡/상태 부적합은 409 REPRESENTATIVE_NOT_ELIGIBLE. base_revision 검사와 멱등 처리를 적용하며 녹음 메타데이터는 변경하지 않는다.
+      description: 같은 계정·같은 곡의 ACTIVE·SAVED 녹음 지정. recording_id null은 해제. 소유권 불일치·없는
+        자료는 404, 소유한 녹음의 곡/상태 부적합은 409 REPRESENTATIVE_NOT_ELIGIBLE. base_revision
+        검사와 멱등 처리를 적용하며 녹음 메타데이터는 변경하지 않는다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -838,7 +865,8 @@ paths:
     patch:
       operationId: setRecordingTier
       summary: setRecordingTier
-      description: P09-05 ACTIVE·SAVED 녹음만 S/A/B/C/D/null로 평가한다. 곡 티어와 파일 명세는 유지하며, 연결된 녹음의 실제 티어 변경은 정책 재계산 작업과 함께 확정한다.
+      description: P09-05 ACTIVE·SAVED 녹음만 S/A/B/C/D/null로 평가한다. 곡 티어와 파일 명세는 유지하며,
+        연결된 녹음의 실제 티어 변경은 정책 재계산 작업과 함께 확정한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -878,7 +906,8 @@ paths:
     patch:
       operationId: relinkRecording
       summary: relinkRecording
-      description: P09-06 ACTIVE 녹음의 연결 변경/해제. 당시 입력과 파일은 유지하고 link_revision, 이전 대표·보관 참조 해제, 양쪽 곡 재계산 작업을 함께 확정한다.
+      description: P09-06 ACTIVE 녹음의 연결 변경/해제. 당시 입력과 파일은 유지하고 link_revision, 이전 대표·보관
+        참조 해제, 양쪽 곡 재계산 작업을 함께 확정한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -990,9 +1019,9 @@ paths:
     post:
       operationId: createTag
       summary: createTag
-      description: 동일 계정 활성 정규화 이름 중복은 409 TAG_NAME_IN_USE. 같은 활성 UUID 재생성은 기존 값을 유지하고
-        200, 새 생성은 201. 보관 UUID는 409 TAG_ARCHIVED. 이름 정규화는 NFC·앞뒤 공백 제거·ASCII A-Z 소문자
-        변환이며 표시명은 앞뒤 공백만 제거한다.
+      description: 동일 계정 활성 정규화 이름 중복은 409 TAG_NAME_IN_USE. 같은 활성 UUID 재생성은 기존 값을
+        유지하고 200, 새 생성은 201. 보관 UUID는 409 TAG_ARCHIVED. 이름 정규화는 NFC·앞뒤 공백 제거·ASCII
+        A-Z 소문자 변환이며 표시명은 앞뒤 공백만 제거한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -1033,8 +1062,8 @@ paths:
     patch:
       operationId: renameTag
       summary: renameTag
-      description: revision을 검사하여 활성 태그 이름만 수정한다. 과거 recording_tag.name_snapshot은 변경하지
-        않는다. 이름 중복/보관 태그/버전 충돌은 409.
+      description: revision을 검사하여 활성 태그 이름만 수정한다. 과거 recording_tag.name_snapshot은
+        변경하지 않는다. 이름 중복/보관 태그/버전 충돌은 409.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -1074,8 +1103,8 @@ paths:
     post:
       operationId: archiveTag
       summary: archiveTag
-      description: 태그를 물리 삭제하지 않고 archived_at을 기록한다. 기존 녹음 관계와 당시 이름은 유지하며 신규 선택은 차단한다.
-        이미 보관된 태그의 최초 보관 시각은 유지한다.
+      description: 태그를 물리 삭제하지 않고 archived_at을 기록한다. 기존 녹음 관계와 당시 이름은 유지하며 신규 선택은
+        차단한다. 이미 보관된 태그의 최초 보관 시각은 유지한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
@@ -1115,30 +1144,18 @@ paths:
     get:
       operationId: listConditions
       summary: listConditions
-      description: 계정별 기본/사용자 컨디션 목록. code를 녹음의 condition_code에 사용한다. 기본 항목은 기존 VERY_GOOD/GOOD/NORMAL/BAD
-        코드, 사용자 항목은 UUID 코드다. state=ACTIVE(기본)/ARCHIVED/ALL 및 정규화 이름·UUID 커서 정렬을 지원한다.
+      description: D06 고정 컨디션 카탈로그. 사용자 정의/이름 변경/archive를 제공하지 않는다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
-      - $ref: '#/components/parameters/Limit'
-      - $ref: '#/components/parameters/Cursor'
-      - name: state
-        in: query
-        schema:
-          type: string
-          enum:
-          - ACTIVE
-          - ARCHIVED
-          - ALL
-          default: ACTIVE
       responses:
         '200':
           description: 성공
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ConditionPage'
+                $ref: '#/components/schemas/ConditionCatalog'
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -1154,126 +1171,78 @@ paths:
     post:
       operationId: createCondition
       summary: createCondition
-      description: 계정별 컨디션 생성. 사용자 정의 code는 id와 같은 UUID이며 직접 지정할 수 없다. 이름은 공백 제거 후 1~50
-        code point, 활성 정규화 이름 중복은 409. 기본 컨디션도 계정별로 수정/보관할 수 있다.
+      description: D06 읽기 전용 카탈로그. 인증 후 405 CONDITION_CATALOG_READ_ONLY.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
-      - $ref: '#/components/parameters/IdempotencyKey'
       responses:
-        '200':
-          description: 성공
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Condition'
-        '201':
-          description: 생성
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Condition'
-        '400':
-          $ref: '#/components/responses/Error400'
         '401':
           $ref: '#/components/responses/Error401'
-        '404':
-          $ref: '#/components/responses/Error404'
-        '409':
-          $ref: '#/components/responses/Error409'
         '500':
           $ref: '#/components/responses/Error500'
         '503':
           $ref: '#/components/responses/Error503'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ConditionCreate'
+        '405':
+          description: CONDITION_CATALOG_READ_ONLY
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /conditions/{id}:
     patch:
       operationId: renameCondition
       summary: renameCondition
-      description: revision을 검사하여 활성 컨디션 이름만 수정한다. 과거 recording.condition_name_snapshot은 변경하지
-        않는다. 이름 중복/보관 컨디션/버전 충돌은 409.
+      description: D06 읽기 전용 카탈로그. 인증 후 405 CONDITION_CATALOG_READ_ONLY.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
-      - $ref: '#/components/parameters/IdempotencyKey'
       - name: id
         in: path
         required: true
         schema:
           $ref: '#/components/schemas/Uuid'
       responses:
-        '200':
-          description: 성공
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Condition'
-        '400':
-          $ref: '#/components/responses/Error400'
         '401':
           $ref: '#/components/responses/Error401'
-        '404':
-          $ref: '#/components/responses/Error404'
-        '409':
-          $ref: '#/components/responses/Error409'
         '500':
           $ref: '#/components/responses/Error500'
         '503':
           $ref: '#/components/responses/Error503'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ConditionPatch'
+        '405':
+          description: CONDITION_CATALOG_READ_ONLY
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
   /conditions/{id}/archive:
     post:
       operationId: archiveCondition
       summary: archiveCondition
-      description: 컨디션을 물리 삭제하지 않고 archived_at을 기록한다. 기존 녹음 관계와 당시 이름은 유지하며 신규 선택은 차단한다.
-        이미 보관된 컨디션의 최초 보관 시각은 유지한다.
+      description: D06 읽기 전용 카탈로그. 인증 후 405 CONDITION_CATALOG_READ_ONLY.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
-      - $ref: '#/components/parameters/IdempotencyKey'
       - name: id
         in: path
         required: true
         schema:
           $ref: '#/components/schemas/Uuid'
       responses:
-        '200':
-          description: 성공
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Condition'
-        '400':
-          $ref: '#/components/responses/Error400'
         '401':
           $ref: '#/components/responses/Error401'
-        '404':
-          $ref: '#/components/responses/Error404'
-        '409':
-          $ref: '#/components/responses/Error409'
         '500':
           $ref: '#/components/responses/Error500'
         '503':
           $ref: '#/components/responses/Error503'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ConditionArchive'
+        '405':
+          description: CONDITION_CATALOG_READ_ONLY
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
 components:
   securitySchemes:
     BearerAuth:
@@ -1446,13 +1415,16 @@ components:
       type: string
       minLength: 1
       maxLength: 8192
-      description: 내용을 해석하거나 직접 구성하지 않는다. 계정·조회 종류·필터·정렬·키 규격·limit에 결합한다. 불일치나 변조는 400 INVALID_CURSOR, 조회 세대 변경 또는 만료는 409 LIST_CURSOR_EXPIRED로 첫 페이지 재조회를 요구한다. 목록 커서 수명은 발급 후 30분이며 동기화 스냅샷을 뜻하지 않는다.
+      description: 내용을 해석하거나 직접 구성하지 않는다. 계정·조회 종류·필터·정렬·키 규격·limit에 결합한다. 불일치나 변조는
+        400 INVALID_CURSOR, 조회 세대 변경 또는 만료는 409 LIST_CURSOR_EXPIRED로 첫 페이지 재조회를 요구한다.
+        목록 커서 수명은 발급 후 30분이며 동기화 스냅샷을 뜻하지 않는다.
     AuthProof:
       type: string
       minLength: 1
       maxLength: 16384
       writeOnly: true
-      description: 로그인 GOOGLE=ID token, KAKAO=access token. 연결 proof는 공급자 OIDC ID token이며 challenge nonce에 귀속한다.
+      description: 로그인 GOOGLE=ID token, KAKAO=access token. 연결 proof는 공급자 OIDC ID
+        token이며 challenge nonce에 귀속한다.
     AuthToken:
       type: string
       minLength: 1
@@ -1840,7 +1812,9 @@ components:
           - type: 'null'
       required:
       - base_revision
-      description: 누락=유지. note null은 빈 메모, tier null은 미정. 대표 키는 기존 값과 합친 뒤 두 필드가 함께 null이거나 유효한 모드와 -12~12 정수여야 하며 ORIGINAL은 0만 허용한다. source_type/tj_number/id/user_id/언어/대표 녹음 ID는 변경 금지. 새 요청으로 수락한 PATCH는 동일값·빈 수정이라도 revision을 1 증가시킨다.
+      description: 누락=유지. note null은 빈 메모, tier null은 미정. 대표 키는 기존 값과 합친 뒤 두 필드가 함께
+        null이거나 유효한 모드와 -12~12 정수여야 하며 ORIGINAL은 0만 허용한다. source_type/tj_number/id/user_id/언어/대표
+        녹음 ID는 변경 금지. 새 요청으로 수락한 PATCH는 동일값·빈 수정이라도 revision을 1 증가시킨다.
     SongCreate:
       type: object
       additionalProperties: false
@@ -1896,7 +1870,9 @@ components:
         not:
           required:
           - source_token
-      description: TJ 원본은 서버가 source_token으로 검증한다. MANUAL은 곡명·가수와 사용자 확인 사유 TJ_NOT_FOUND가 필수이며 번호 직접 입력은 거절한다. 검색 장애를 미발견으로 바꾸지 않는다. 같은 UUID 또는 기존 TJ 번호는 입력값으로 덮어쓰지 않는다. version_code 생략 시 NORMAL, note 생략 또는 null은 빈 메모다.
+      description: TJ 원본은 서버가 source_token으로 검증한다. MANUAL은 곡명·가수와 사용자 확인 사유 TJ_NOT_FOUND가
+        필수이며 번호 직접 입력은 거절한다. 검색 장애를 미발견으로 바꾸지 않는다. 같은 UUID 또는 기존 TJ 번호는 입력값으로 덮어쓰지
+        않는다. version_code 생략 시 NORMAL, note 생략 또는 null은 빈 메모다.
     TjSongCreate:
       allOf:
       - $ref: '#/components/schemas/SongCreate'
@@ -1904,7 +1880,8 @@ components:
         properties:
           source_type:
             const: TJ
-      description: TJ 생성 요청의 제한 스키마. version_code 생략 시 NORMAL, note 생략 또는 null은 빈 메모다.
+      description: TJ 생성 요청의 제한 스키마. version_code 생략 시 NORMAL, note 생략 또는 null은 빈
+        메모다.
     SongCreateResult:
       type: object
       additionalProperties: false
@@ -1960,7 +1937,9 @@ components:
           - $ref: '#/components/schemas/RecordingTier'
           - type: 'null'
         condition_name_snapshot:
-          type: [string, 'null']
+          type:
+          - string
+          - 'null'
           minLength: 1
           maxLength: 50
         condition_code:
@@ -2036,7 +2015,7 @@ components:
           $ref: '#/components/schemas/VersionCode'
         condition_code:
           anyOf:
-          - $ref: '#/components/schemas/ConditionReference'
+          - $ref: '#/components/schemas/ConditionCode'
           - type: 'null'
         tag_ids:
           $ref: '#/components/schemas/TagIds'
@@ -2057,11 +2036,11 @@ components:
           maximum: 1080
       required:
       - base_revision
-      description: P09-04 부분 수정. 누락 필드는 유지하며 note null은 빈 문자열, condition_code null은 해제,
-        tag_ids []는 전체 해제이고 null·중복은 오류다. DRAFT는 제목·가수·키 null을 허용하지만 SAVED의 필수값 해제와 DRAFT
-        복귀는 거절한다. file은 일반 수정에서 불변이며 DRAFT→SAVED 전환은 RecordingSave를 사용한다. 실제 시각/시간대 변경은
-        이력을 남기고, 연결된 SAVED 녹음의 recorded_at 변경은 정책 재계산 작업을 같은 트랜잭션에 등록한다. 티어·연결 곡은 전용 API를
-        사용한다.
+      description: P09-04 부분 수정. 누락 필드는 유지하며 note null은 빈 문자열, condition_code null은
+        해제, tag_ids []는 전체 해제이고 null·중복은 오류다. DRAFT는 제목·가수·키 null을 허용하지만 SAVED의 필수값
+        해제와 DRAFT 복귀는 거절한다. file은 일반 수정에서 불변이며 DRAFT→SAVED 전환은 RecordingSave를 사용한다.
+        실제 시각/시간대 변경은 이력을 남기고, 연결된 SAVED 녹음의 recorded_at 변경은 정책 재계산 작업을 같은 트랜잭션에 등록한다.
+        티어·연결 곡은 전용 API를 사용한다.
     RecordingEdited:
       type: object
       additionalProperties: false
@@ -2100,7 +2079,8 @@ components:
           type: string
           minLength: 1
           maxLength: 64
-          description: 유효한 IANA 시간대 ID. recorded_at은 MySQL DATETIME 범위(1000~9999년)에서 검증.
+          description: 유효한 IANA 시간대 ID. recorded_at은 MySQL DATETIME 범위(1000~9999년)에서
+            검증.
         timezone_offset_minutes:
           type: integer
           minimum: -1080
@@ -2170,8 +2150,8 @@ components:
       - condition_name_snapshot
       - tag_ids
       - tags
-      description: 일반 녹음 정보 수정 결과와 change_log payload. 파일 명세·클라우드 상태는 이 응답의 범위가 아니다. tags의
-        과거 이름은 유지하며 새 연결에만 현재 태그 이름을 저장한다.
+      description: 일반 녹음 정보 수정 결과와 change_log payload. 파일 명세·클라우드 상태는 이 응답의 범위가 아니다.
+        tags의 과거 이름은 유지하며 새 연결에만 현재 태그 이름을 저장한다.
     CompletedRecordingFile:
       type: object
       additionalProperties: false
@@ -2239,8 +2219,8 @@ components:
       - base_revision
       - metadata_state
       - file
-      description: P09-02 DRAFT→SAVED 전용. 누락한 입력은 현재 초안과 병합해 필수값 검사. file은 7개 필드 모두 필요.
-        일반 수정은 P09-04.
+      description: P09-02 DRAFT→SAVED 전용. 누락한 입력은 현재 초안과 병합해 필수값 검사. file은 7개 필드 모두
+        필요. 일반 수정은 P09-04.
     RecordingSaved:
       type: object
       additionalProperties: false
@@ -2272,7 +2252,8 @@ components:
           type: string
           minLength: 1
           maxLength: 64
-          description: 유효한 IANA 시간대 ID. recorded_at은 MySQL DATETIME 범위(1000~9999년)에서 검증.
+          description: 유효한 IANA 시간대 ID. recorded_at은 MySQL DATETIME 범위(1000~9999년)에서
+            검증.
         timezone_offset_minutes:
           type: integer
           minimum: -1080
@@ -2352,11 +2333,16 @@ components:
           type: string
           minLength: 1
           maxLength: 64
-          description: 유효한 IANA 시간대 ID. recorded_at은 MySQL DATETIME 범위(1000~9999년)에서 검증.
+          description: 유효한 IANA 시간대 ID. recorded_at은 MySQL DATETIME 범위(1000~9999년)에서
+            검증.
         timezone_offset_minutes: &id009
           type: integer
           minimum: -1080
           maximum: 1080
+        condition_code:
+          anyOf:
+          - $ref: '#/components/schemas/ConditionCode'
+          - type: 'null'
       required:
       - id
       - metadata_state
@@ -2399,6 +2385,14 @@ components:
         lifecycle_state:
           type: string
           const: ACTIVE
+        condition_code:
+          anyOf:
+          - $ref: '#/components/schemas/ConditionReference'
+          - type: 'null'
+        condition_name_snapshot:
+          type:
+          - string
+          - 'null'
       required:
       - id
       - metadata_state
@@ -2451,7 +2445,7 @@ components:
           - type: 'null'
         condition_code:
           anyOf:
-          - $ref: '#/components/schemas/ConditionReference'
+          - $ref: '#/components/schemas/ConditionCode'
           - type: 'null'
         tag_ids:
           $ref: '#/components/schemas/TagIds'
@@ -2513,7 +2507,8 @@ components:
           properties:
             key_shift:
               const: 0
-      description: DRAFT는 입력 미정 null/누락 허용. SAVED는 제목·가수·키·버전 필수. 관계 없는 녹음도 허용. 녹음 생성은 음성 업로드가 아니다.
+      description: DRAFT는 입력 미정 null/누락 허용. SAVED는 제목·가수·키·버전 필수. 관계 없는 녹음도 허용. 녹음
+        생성은 음성 업로드가 아니다.
     TierPatch:
       type: object
       additionalProperties: false
@@ -2562,7 +2557,9 @@ components:
           items:
             allOf:
             - $ref: '#/components/schemas/Song'
-            - required: [created_at, latest_recorded_at]
+            - required:
+              - created_at
+              - latest_recorded_at
         count:
           type: integer
           minimum: 0
@@ -2574,7 +2571,8 @@ components:
       - items
       - count
       - next_cursor
-      description: count는 같은 DB 읽기 스냅샷과 검색 조건의 전체 곡 수. 끝 페이지 next_cursor는 명시적 null. 기기 파일 상태로 후처리하지 않는다.
+      description: count는 같은 DB 읽기 스냅샷과 검색 조건의 전체 곡 수. 끝 페이지 next_cursor는 명시적 null.
+        기기 파일 상태로 후처리하지 않는다.
     RecordingPage:
       type: object
       additionalProperties: false
@@ -2594,7 +2592,8 @@ components:
       - items
       - count
       - next_cursor
-      description: count는 서버의 같은 읽기 스냅샷과 필터에 대한 전체 메타정보 수. 끝 페이지 next_cursor는 명시적 null. 로컬 파일 유무로 후처리하지 않는다.
+      description: count는 서버의 같은 읽기 스냅샷과 필터에 대한 전체 메타정보 수. 끝 페이지 next_cursor는 명시적
+        null. 로컬 파일 유무로 후처리하지 않는다.
     EmptyCommand:
       type: object
       additionalProperties: false
@@ -2752,11 +2751,43 @@ components:
       oneOf:
       - $ref: '#/components/schemas/ConditionCode'
       - $ref: '#/components/schemas/Uuid'
-      description: 계정별 기본 컨디션의 호환 코드 또는 사용자 컨디션 UUID. API 목록의 code 값을 선택/필터에 사용한다.
+      description: 과거 커스텀 UUID 읽기/필터 호환. 신규 입력은 ConditionCode만 허용한다.
     ConditionName:
       type: string
       minLength: 1
       maxLength: 50
+    ConditionCatalogItem:
+      type: object
+      additionalProperties: false
+      required:
+      - code
+      - name
+      - order
+      - catalog_version
+      properties:
+        code:
+          $ref: '#/components/schemas/ConditionCode'
+        name:
+          type: string
+        order:
+          type: integer
+          minimum: 1
+          maximum: 4
+        catalog_version:
+          type: integer
+          const: 1
+    ConditionCatalog:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/ConditionCatalogItem'
   responses:
     Error400:
       description: 공통 오류 응답.

@@ -25,6 +25,19 @@ class RecordingDraftTests {
         assertThat(setup.count("recording")).isEqualTo(1);assertThat(setup.count("change_log")).isEqualTo(1);assertThat(setup.count("mutation_receipt")).isEqualTo(1);
         assertThat(setup.f.jdbc.queryForObject("SELECT entity_type FROM change_log",String.class)).isEqualTo("RECORDING");
     }
+    @Test void conditionInputUsesFixedCatalogOrNullAndServerSnapshot()throws Exception{
+        for(String code:List.of("VERY_GOOD","GOOD","NORMAL","BAD")){
+            id=UUID.randomUUID();var body=base();body.put("condition_code",code);
+            var response=create(body);assertThat(response.getStatus()).isEqualTo(201);
+            var node=json.readTree(response.getContentAsString());
+            assertThat(node.get("condition_code").asText()).isEqualTo(code);
+            assertThat(node.get("condition_name_snapshot").asText()).isEqualTo(com.ksh321.songrecord.api.classifications.ConditionCatalog.name(code));
+        }
+        id=UUID.randomUUID();var body=base();body.put("condition_code",null);var response=create(body);
+        assertThat(response.getStatus()).isEqualTo(201);assertThat(json.readTree(response.getContentAsString()).get("condition_name_snapshot").isNull()).isTrue();
+        id=UUID.randomUUID();body=base();body.put("condition_code",UUID.randomUUID().toString());assertThat(create(body).getStatus()).isEqualTo(400);
+        body.put("condition_code","GOOD");body.put("condition_name_snapshot","spoof");assertThat(create(body).getStatus()).isEqualTo(400);
+    }
     @Test void retriesNeverDuplicateOrOverwriteExistingDraft()throws Exception{
         String key=UUID.randomUUID().toString();var body=base();body.put("title_snapshot","original");var first=create(key,body);assertThat(first.getStatus()).isEqualTo(201);assertThat(create(key,body).getContentAsString()).isEqualTo(first.getContentAsString());
         body.put("title_snapshot","overwrite");assertThat(create(key,body).getContentAsString()).contains("IDEMPOTENCY_CONFLICT");var duplicate=create(body);assertThat(duplicate.getStatus()).isEqualTo(200);assertThat(json.readTree(duplicate.getContentAsString()).get("title_snapshot").asText()).isEqualTo("original");assertThat(setup.count("change_log")).isEqualTo(1);

@@ -766,11 +766,11 @@ class MySqlIdempotencyTests {
         } finally {admin.execute("DROP DATABASE "+name);}
     }
 
-    @Test void mysqlConditionsPreserveLegacyAndCustomNamesAndArchiveRules() throws Exception {
+    @Test void mysqlConditionsPreserveV15DataAndEnforceD06AfterUpgrade() throws Exception {
         String name=database+"_conditions";admin.execute("CREATE DATABASE "+name);
         try {
             var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
-            var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
+            var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").target("15").load();flyway.migrate();flyway.validate();
             var db=new JdbcTemplate(ds);var principal=access.revalidate(account);
             when(account.principal()).thenReturn(principal);when(access.authenticate("Bearer test",principal.deviceId().toString())).thenReturn(account);
             byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
@@ -784,9 +784,36 @@ class MySqlIdempotencyTests {
             var jobs=new com.ksh321.songrecord.api.jobs.JobQueue(db,access,manager,clock,java.time.Duration.ofMinutes(2),5);
             var editing=new com.ksh321.songrecord.api.recordings.RecordingEditing(db,access,mutations,revisions,changes,drafts,saving,jobs);
             var pages=new com.ksh321.songrecord.api.pagination.KeysetPages(db,access,manager,new com.ksh321.songrecord.api.pagination.PageCursor(new byte[32],clock,java.time.Duration.ofMinutes(30)));
-            var conditions=new com.ksh321.songrecord.api.classifications.ConditionService(db,access,mutations,new com.ksh321.songrecord.api.revision.CreationGuard(db,access,manager),revisions,changes,pages,clock);
-            com.ksh321.songrecord.api.classifications.ConditionDatabaseChecks.verify(db,conditions,drafts,editing,"Bearer test",principal.deviceId().toString(),principal.userId());
+            UUID legacy=UUID.randomUUID(),custom=UUID.randomUUID();
+            drafts.create("Bearer test",principal.deviceId().toString(),UUID.randomUUID().toString(),"{\"id\":\""+legacy+"\",\"metadata_state\":\"DRAFT\",\"recorded_at\":\"2026-09-28T07:00:00Z\",\"timezone_id\":\"UTC\",\"timezone_offset_minutes\":0}");
+            db.update("INSERT INTO condition_definition(id,user_id,code,name,normalized_name_key) VALUES(?,?,?,?,?)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(custom),owner,custom.toString(),"😀".repeat(50),new byte[]{1});
+            db.update("UPDATE recording SET condition_code=? WHERE id=?",custom.toString(),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy));
+            db.update("UPDATE condition_definition SET name='과거 수정',archived_at=UTC_TIMESTAMP(3) WHERE code='GOOD' OR code=?",custom.toString());
+            var oldRecordings=db.queryForList("SELECT * FROM recording ORDER BY id");
+            var oldDefinitions=db.queryForList("SELECT * FROM condition_definition ORDER BY id");
+            flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
+            assertThat(db.queryForList("SELECT * FROM recording ORDER BY id")).usingRecursiveComparison().isEqualTo(oldRecordings);
+            assertThat(db.queryForList("SELECT * FROM condition_definition ORDER BY id")).usingRecursiveComparison().isEqualTo(oldDefinitions);
+            assertThat(db.queryForObject("SELECT condition_name_snapshot FROM recording_condition_history WHERE recording_id=?",String.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isEqualTo("😀".repeat(50));
+            db.update("UPDATE recording SET condition_name_snapshot='tamper' WHERE id=?",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy));
+            assertThat(db.queryForObject("SELECT condition_name_snapshot FROM recording WHERE id=?",String.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isEqualTo("😀".repeat(50));
+            for(String assignment:java.util.List.of("condition_name_snapshot='tamper'","condition_code='BAD'","source_revision=999")) {
+                assertThatThrownBy(()->db.update("UPDATE recording_condition_history SET "+assignment+" WHERE recording_id=?",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            }
+            assertThat(db.queryForObject("SELECT condition_name_snapshot FROM recording_condition_history WHERE recording_id=? AND source_revision=1",String.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isEqualTo("😀".repeat(50));
+            assertThatThrownBy(()->db.update("DELETE FROM recording_condition_history WHERE recording_id=?",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM recording_condition_history WHERE recording_id=?",Integer.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isEqualTo(1);
+            var conditions=new com.ksh321.songrecord.api.classifications.ConditionService(access);
+            com.ksh321.songrecord.api.classifications.ConditionDatabaseChecks.verify(db,conditions,drafts,editing,"Bearer test",principal.deviceId().toString(),principal.userId(),legacy);
+            assertThatThrownBy(()->db.update("UPDATE recording SET condition_code=? WHERE id=?",custom.toString(),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isInstanceOf(org.springframework.dao.DataAccessException.class);
             assertThat(flyway.migrate().migrationsExecuted).isZero();
+            // Isolated fixture: a retained PURGED metadata row keeps its history. Physical
+            // owner cleanup cascades after other references are cleaned, never independently.
+            db.update("UPDATE recording SET lifecycle_state='PURGED',deleted_at=UTC_TIMESTAMP(3) WHERE id=?",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy));
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM recording_condition_history WHERE recording_id=?",Integer.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isGreaterThan(0);
+            db.update("DELETE FROM recording_query_key WHERE recording_id=?",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy));
+            db.update("DELETE FROM recording WHERE id=?",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy));
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM recording_condition_history WHERE recording_id=?",Integer.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isZero();
         } finally {admin.execute("DROP DATABASE "+name);}
     }
 
