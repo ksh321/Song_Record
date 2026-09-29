@@ -5281,6 +5281,2468 @@ class MutationRetryControlsCompanion
   }
 }
 
+class SongAliases extends Table with TableInfo<SongAliases, SongAliase> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  SongAliases(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sourceSongIdMeta = const VerificationMeta(
+    'sourceSongId',
+  );
+  late final GeneratedColumn<String> sourceSongId = GeneratedColumn<String>(
+    'source_song_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL PRIMARY KEY',
+  );
+  static const VerificationMeta _canonicalSongIdMeta = const VerificationMeta(
+    'canonicalSongId',
+  );
+  late final GeneratedColumn<String> canonicalSongId = GeneratedColumn<String>(
+    'canonical_song_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_account(user_id)',
+  );
+  static const VerificationMeta _entityTypeMeta = const VerificationMeta(
+    'entityType',
+  );
+  late final GeneratedColumn<String> entityType = GeneratedColumn<String>(
+    'entity_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints:
+        'NOT NULL DEFAULT \'SONG\' CHECK (entity_type = \'SONG\')',
+    defaultValue: const CustomExpression('\'SONG\''),
+  );
+  static const VerificationMeta _mappingOpIdMeta = const VerificationMeta(
+    'mappingOpId',
+  );
+  late final GeneratedColumn<String> mappingOpId = GeneratedColumn<String>(
+    'mapping_op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL UNIQUE REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _receiptStatusMeta = const VerificationMeta(
+    'receiptStatus',
+  );
+  late final GeneratedColumn<int> receiptStatus = GeneratedColumn<int>(
+    'receipt_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (receipt_status = 200)',
+  );
+  static const VerificationMeta _receiptBodyMeta = const VerificationMeta(
+    'receiptBody',
+  );
+  late final GeneratedColumn<String> receiptBody = GeneratedColumn<String>(
+    'receipt_body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (json_valid(receipt_body) AND json_type(receipt_body) = \'object\')',
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    sourceSongId,
+    canonicalSongId,
+    userId,
+    entityType,
+    mappingOpId,
+    receiptStatus,
+    receiptBody,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'song_aliases';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SongAliase> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('source_song_id')) {
+      context.handle(
+        _sourceSongIdMeta,
+        sourceSongId.isAcceptableOrUnknown(
+          data['source_song_id']!,
+          _sourceSongIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceSongIdMeta);
+    }
+    if (data.containsKey('canonical_song_id')) {
+      context.handle(
+        _canonicalSongIdMeta,
+        canonicalSongId.isAcceptableOrUnknown(
+          data['canonical_song_id']!,
+          _canonicalSongIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_canonicalSongIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('entity_type')) {
+      context.handle(
+        _entityTypeMeta,
+        entityType.isAcceptableOrUnknown(data['entity_type']!, _entityTypeMeta),
+      );
+    }
+    if (data.containsKey('mapping_op_id')) {
+      context.handle(
+        _mappingOpIdMeta,
+        mappingOpId.isAcceptableOrUnknown(
+          data['mapping_op_id']!,
+          _mappingOpIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_mappingOpIdMeta);
+    }
+    if (data.containsKey('receipt_status')) {
+      context.handle(
+        _receiptStatusMeta,
+        receiptStatus.isAcceptableOrUnknown(
+          data['receipt_status']!,
+          _receiptStatusMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_receiptStatusMeta);
+    }
+    if (data.containsKey('receipt_body')) {
+      context.handle(
+        _receiptBodyMeta,
+        receiptBody.isAcceptableOrUnknown(
+          data['receipt_body']!,
+          _receiptBodyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_receiptBodyMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sourceSongId};
+  @override
+  SongAliase map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SongAliase(
+      sourceSongId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_song_id'],
+      )!,
+      canonicalSongId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}canonical_song_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      entityType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_type'],
+      )!,
+      mappingOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mapping_op_id'],
+      )!,
+      receiptStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}receipt_status'],
+      )!,
+      receiptBody: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}receipt_body'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  SongAliases createAlias(String alias) {
+    return SongAliases(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+  @override
+  List<String> get customConstraints => const [
+    'FOREIGN KEY(entity_type, source_song_id)REFERENCES metadata_copies(entity_type, entity_id)',
+    'FOREIGN KEY(entity_type, canonical_song_id)REFERENCES metadata_copies(entity_type, entity_id)',
+    'CHECK(source_song_id <> canonical_song_id)',
+    'CHECK(json_type(receipt_body, \'\$.created\') IS \'false\')',
+    'CHECK(json_type(receipt_body, \'\$.song\') IS \'object\')',
+    'CHECK(json_extract(receipt_body, \'\$.canonical_song_id\') IS canonical_song_id)',
+    'CHECK(json_extract(receipt_body, \'\$.song.id\') IS canonical_song_id)',
+    'CHECK(json_type(receipt_body, \'\$.song.revision\') IS \'integer\' AND json_extract(receipt_body, \'\$.song.revision\') > 0)',
+    'CHECK(json_extract(receipt_body, \'\$.song.lifecycle_state\') IS \'ACTIVE\')',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class SongAliase extends DataClass implements Insertable<SongAliase> {
+  final String sourceSongId;
+  final String canonicalSongId;
+  final String userId;
+  final String entityType;
+  final String mappingOpId;
+  final int receiptStatus;
+  final String receiptBody;
+  final int createdAt;
+  const SongAliase({
+    required this.sourceSongId,
+    required this.canonicalSongId,
+    required this.userId,
+    required this.entityType,
+    required this.mappingOpId,
+    required this.receiptStatus,
+    required this.receiptBody,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['source_song_id'] = Variable<String>(sourceSongId);
+    map['canonical_song_id'] = Variable<String>(canonicalSongId);
+    map['user_id'] = Variable<String>(userId);
+    map['entity_type'] = Variable<String>(entityType);
+    map['mapping_op_id'] = Variable<String>(mappingOpId);
+    map['receipt_status'] = Variable<int>(receiptStatus);
+    map['receipt_body'] = Variable<String>(receiptBody);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  SongAliasesCompanion toCompanion(bool nullToAbsent) {
+    return SongAliasesCompanion(
+      sourceSongId: Value(sourceSongId),
+      canonicalSongId: Value(canonicalSongId),
+      userId: Value(userId),
+      entityType: Value(entityType),
+      mappingOpId: Value(mappingOpId),
+      receiptStatus: Value(receiptStatus),
+      receiptBody: Value(receiptBody),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory SongAliase.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SongAliase(
+      sourceSongId: serializer.fromJson<String>(json['source_song_id']),
+      canonicalSongId: serializer.fromJson<String>(json['canonical_song_id']),
+      userId: serializer.fromJson<String>(json['user_id']),
+      entityType: serializer.fromJson<String>(json['entity_type']),
+      mappingOpId: serializer.fromJson<String>(json['mapping_op_id']),
+      receiptStatus: serializer.fromJson<int>(json['receipt_status']),
+      receiptBody: serializer.fromJson<String>(json['receipt_body']),
+      createdAt: serializer.fromJson<int>(json['created_at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'source_song_id': serializer.toJson<String>(sourceSongId),
+      'canonical_song_id': serializer.toJson<String>(canonicalSongId),
+      'user_id': serializer.toJson<String>(userId),
+      'entity_type': serializer.toJson<String>(entityType),
+      'mapping_op_id': serializer.toJson<String>(mappingOpId),
+      'receipt_status': serializer.toJson<int>(receiptStatus),
+      'receipt_body': serializer.toJson<String>(receiptBody),
+      'created_at': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  SongAliase copyWith({
+    String? sourceSongId,
+    String? canonicalSongId,
+    String? userId,
+    String? entityType,
+    String? mappingOpId,
+    int? receiptStatus,
+    String? receiptBody,
+    int? createdAt,
+  }) => SongAliase(
+    sourceSongId: sourceSongId ?? this.sourceSongId,
+    canonicalSongId: canonicalSongId ?? this.canonicalSongId,
+    userId: userId ?? this.userId,
+    entityType: entityType ?? this.entityType,
+    mappingOpId: mappingOpId ?? this.mappingOpId,
+    receiptStatus: receiptStatus ?? this.receiptStatus,
+    receiptBody: receiptBody ?? this.receiptBody,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  SongAliase copyWithCompanion(SongAliasesCompanion data) {
+    return SongAliase(
+      sourceSongId: data.sourceSongId.present
+          ? data.sourceSongId.value
+          : this.sourceSongId,
+      canonicalSongId: data.canonicalSongId.present
+          ? data.canonicalSongId.value
+          : this.canonicalSongId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      entityType: data.entityType.present
+          ? data.entityType.value
+          : this.entityType,
+      mappingOpId: data.mappingOpId.present
+          ? data.mappingOpId.value
+          : this.mappingOpId,
+      receiptStatus: data.receiptStatus.present
+          ? data.receiptStatus.value
+          : this.receiptStatus,
+      receiptBody: data.receiptBody.present
+          ? data.receiptBody.value
+          : this.receiptBody,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SongAliase(')
+          ..write('sourceSongId: $sourceSongId, ')
+          ..write('canonicalSongId: $canonicalSongId, ')
+          ..write('userId: $userId, ')
+          ..write('entityType: $entityType, ')
+          ..write('mappingOpId: $mappingOpId, ')
+          ..write('receiptStatus: $receiptStatus, ')
+          ..write('receiptBody: $receiptBody, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    sourceSongId,
+    canonicalSongId,
+    userId,
+    entityType,
+    mappingOpId,
+    receiptStatus,
+    receiptBody,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SongAliase &&
+          other.sourceSongId == this.sourceSongId &&
+          other.canonicalSongId == this.canonicalSongId &&
+          other.userId == this.userId &&
+          other.entityType == this.entityType &&
+          other.mappingOpId == this.mappingOpId &&
+          other.receiptStatus == this.receiptStatus &&
+          other.receiptBody == this.receiptBody &&
+          other.createdAt == this.createdAt);
+}
+
+class SongAliasesCompanion extends UpdateCompanion<SongAliase> {
+  final Value<String> sourceSongId;
+  final Value<String> canonicalSongId;
+  final Value<String> userId;
+  final Value<String> entityType;
+  final Value<String> mappingOpId;
+  final Value<int> receiptStatus;
+  final Value<String> receiptBody;
+  final Value<int> createdAt;
+  const SongAliasesCompanion({
+    this.sourceSongId = const Value.absent(),
+    this.canonicalSongId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.entityType = const Value.absent(),
+    this.mappingOpId = const Value.absent(),
+    this.receiptStatus = const Value.absent(),
+    this.receiptBody = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  SongAliasesCompanion.insert({
+    required String sourceSongId,
+    required String canonicalSongId,
+    required String userId,
+    this.entityType = const Value.absent(),
+    required String mappingOpId,
+    required int receiptStatus,
+    required String receiptBody,
+    required int createdAt,
+  }) : sourceSongId = Value(sourceSongId),
+       canonicalSongId = Value(canonicalSongId),
+       userId = Value(userId),
+       mappingOpId = Value(mappingOpId),
+       receiptStatus = Value(receiptStatus),
+       receiptBody = Value(receiptBody),
+       createdAt = Value(createdAt);
+  static Insertable<SongAliase> custom({
+    Expression<String>? sourceSongId,
+    Expression<String>? canonicalSongId,
+    Expression<String>? userId,
+    Expression<String>? entityType,
+    Expression<String>? mappingOpId,
+    Expression<int>? receiptStatus,
+    Expression<String>? receiptBody,
+    Expression<int>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (sourceSongId != null) 'source_song_id': sourceSongId,
+      if (canonicalSongId != null) 'canonical_song_id': canonicalSongId,
+      if (userId != null) 'user_id': userId,
+      if (entityType != null) 'entity_type': entityType,
+      if (mappingOpId != null) 'mapping_op_id': mappingOpId,
+      if (receiptStatus != null) 'receipt_status': receiptStatus,
+      if (receiptBody != null) 'receipt_body': receiptBody,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  SongAliasesCompanion copyWith({
+    Value<String>? sourceSongId,
+    Value<String>? canonicalSongId,
+    Value<String>? userId,
+    Value<String>? entityType,
+    Value<String>? mappingOpId,
+    Value<int>? receiptStatus,
+    Value<String>? receiptBody,
+    Value<int>? createdAt,
+  }) {
+    return SongAliasesCompanion(
+      sourceSongId: sourceSongId ?? this.sourceSongId,
+      canonicalSongId: canonicalSongId ?? this.canonicalSongId,
+      userId: userId ?? this.userId,
+      entityType: entityType ?? this.entityType,
+      mappingOpId: mappingOpId ?? this.mappingOpId,
+      receiptStatus: receiptStatus ?? this.receiptStatus,
+      receiptBody: receiptBody ?? this.receiptBody,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (sourceSongId.present) {
+      map['source_song_id'] = Variable<String>(sourceSongId.value);
+    }
+    if (canonicalSongId.present) {
+      map['canonical_song_id'] = Variable<String>(canonicalSongId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (entityType.present) {
+      map['entity_type'] = Variable<String>(entityType.value);
+    }
+    if (mappingOpId.present) {
+      map['mapping_op_id'] = Variable<String>(mappingOpId.value);
+    }
+    if (receiptStatus.present) {
+      map['receipt_status'] = Variable<int>(receiptStatus.value);
+    }
+    if (receiptBody.present) {
+      map['receipt_body'] = Variable<String>(receiptBody.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SongAliasesCompanion(')
+          ..write('sourceSongId: $sourceSongId, ')
+          ..write('canonicalSongId: $canonicalSongId, ')
+          ..write('userId: $userId, ')
+          ..write('entityType: $entityType, ')
+          ..write('mappingOpId: $mappingOpId, ')
+          ..write('receiptStatus: $receiptStatus, ')
+          ..write('receiptBody: $receiptBody, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class MutationSupersessions extends Table
+    with TableInfo<MutationSupersessions, MutationSupersession> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  MutationSupersessions(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _originalOpIdMeta = const VerificationMeta(
+    'originalOpId',
+  );
+  late final GeneratedColumn<String> originalOpId = GeneratedColumn<String>(
+    'original_op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _replacementOpIdMeta = const VerificationMeta(
+    'replacementOpId',
+  );
+  late final GeneratedColumn<String> replacementOpId = GeneratedColumn<String>(
+    'replacement_op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL UNIQUE REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _mappingSourceIdMeta = const VerificationMeta(
+    'mappingSourceId',
+  );
+  late final GeneratedColumn<String> mappingSourceId = GeneratedColumn<String>(
+    'mapping_source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES song_aliases(source_song_id)',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_account(user_id)',
+  );
+  static const VerificationMeta _orderRootOpIdMeta = const VerificationMeta(
+    'orderRootOpId',
+  );
+  late final GeneratedColumn<String> orderRootOpId = GeneratedColumn<String>(
+    'order_root_op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _logicalOrderMeta = const VerificationMeta(
+    'logicalOrder',
+  );
+  late final GeneratedColumn<int> logicalOrder = GeneratedColumn<int>(
+    'logical_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (logical_order > 0)',
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    originalOpId,
+    replacementOpId,
+    mappingSourceId,
+    userId,
+    orderRootOpId,
+    logicalOrder,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'mutation_supersessions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MutationSupersession> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('original_op_id')) {
+      context.handle(
+        _originalOpIdMeta,
+        originalOpId.isAcceptableOrUnknown(
+          data['original_op_id']!,
+          _originalOpIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_originalOpIdMeta);
+    }
+    if (data.containsKey('replacement_op_id')) {
+      context.handle(
+        _replacementOpIdMeta,
+        replacementOpId.isAcceptableOrUnknown(
+          data['replacement_op_id']!,
+          _replacementOpIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_replacementOpIdMeta);
+    }
+    if (data.containsKey('mapping_source_id')) {
+      context.handle(
+        _mappingSourceIdMeta,
+        mappingSourceId.isAcceptableOrUnknown(
+          data['mapping_source_id']!,
+          _mappingSourceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_mappingSourceIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('order_root_op_id')) {
+      context.handle(
+        _orderRootOpIdMeta,
+        orderRootOpId.isAcceptableOrUnknown(
+          data['order_root_op_id']!,
+          _orderRootOpIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_orderRootOpIdMeta);
+    }
+    if (data.containsKey('logical_order')) {
+      context.handle(
+        _logicalOrderMeta,
+        logicalOrder.isAcceptableOrUnknown(
+          data['logical_order']!,
+          _logicalOrderMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_logicalOrderMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {originalOpId};
+  @override
+  MutationSupersession map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MutationSupersession(
+      originalOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_op_id'],
+      )!,
+      replacementOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}replacement_op_id'],
+      )!,
+      mappingSourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mapping_source_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      orderRootOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}order_root_op_id'],
+      )!,
+      logicalOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}logical_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  MutationSupersessions createAlias(String alias) {
+    return MutationSupersessions(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+  @override
+  List<String> get customConstraints => const [
+    'CHECK(original_op_id <> replacement_op_id)',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class MutationSupersession extends DataClass
+    implements Insertable<MutationSupersession> {
+  final String originalOpId;
+  final String replacementOpId;
+  final String mappingSourceId;
+  final String userId;
+  final String orderRootOpId;
+  final int logicalOrder;
+  final int createdAt;
+  const MutationSupersession({
+    required this.originalOpId,
+    required this.replacementOpId,
+    required this.mappingSourceId,
+    required this.userId,
+    required this.orderRootOpId,
+    required this.logicalOrder,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['original_op_id'] = Variable<String>(originalOpId);
+    map['replacement_op_id'] = Variable<String>(replacementOpId);
+    map['mapping_source_id'] = Variable<String>(mappingSourceId);
+    map['user_id'] = Variable<String>(userId);
+    map['order_root_op_id'] = Variable<String>(orderRootOpId);
+    map['logical_order'] = Variable<int>(logicalOrder);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  MutationSupersessionsCompanion toCompanion(bool nullToAbsent) {
+    return MutationSupersessionsCompanion(
+      originalOpId: Value(originalOpId),
+      replacementOpId: Value(replacementOpId),
+      mappingSourceId: Value(mappingSourceId),
+      userId: Value(userId),
+      orderRootOpId: Value(orderRootOpId),
+      logicalOrder: Value(logicalOrder),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory MutationSupersession.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MutationSupersession(
+      originalOpId: serializer.fromJson<String>(json['original_op_id']),
+      replacementOpId: serializer.fromJson<String>(json['replacement_op_id']),
+      mappingSourceId: serializer.fromJson<String>(json['mapping_source_id']),
+      userId: serializer.fromJson<String>(json['user_id']),
+      orderRootOpId: serializer.fromJson<String>(json['order_root_op_id']),
+      logicalOrder: serializer.fromJson<int>(json['logical_order']),
+      createdAt: serializer.fromJson<int>(json['created_at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'original_op_id': serializer.toJson<String>(originalOpId),
+      'replacement_op_id': serializer.toJson<String>(replacementOpId),
+      'mapping_source_id': serializer.toJson<String>(mappingSourceId),
+      'user_id': serializer.toJson<String>(userId),
+      'order_root_op_id': serializer.toJson<String>(orderRootOpId),
+      'logical_order': serializer.toJson<int>(logicalOrder),
+      'created_at': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  MutationSupersession copyWith({
+    String? originalOpId,
+    String? replacementOpId,
+    String? mappingSourceId,
+    String? userId,
+    String? orderRootOpId,
+    int? logicalOrder,
+    int? createdAt,
+  }) => MutationSupersession(
+    originalOpId: originalOpId ?? this.originalOpId,
+    replacementOpId: replacementOpId ?? this.replacementOpId,
+    mappingSourceId: mappingSourceId ?? this.mappingSourceId,
+    userId: userId ?? this.userId,
+    orderRootOpId: orderRootOpId ?? this.orderRootOpId,
+    logicalOrder: logicalOrder ?? this.logicalOrder,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  MutationSupersession copyWithCompanion(MutationSupersessionsCompanion data) {
+    return MutationSupersession(
+      originalOpId: data.originalOpId.present
+          ? data.originalOpId.value
+          : this.originalOpId,
+      replacementOpId: data.replacementOpId.present
+          ? data.replacementOpId.value
+          : this.replacementOpId,
+      mappingSourceId: data.mappingSourceId.present
+          ? data.mappingSourceId.value
+          : this.mappingSourceId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      orderRootOpId: data.orderRootOpId.present
+          ? data.orderRootOpId.value
+          : this.orderRootOpId,
+      logicalOrder: data.logicalOrder.present
+          ? data.logicalOrder.value
+          : this.logicalOrder,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MutationSupersession(')
+          ..write('originalOpId: $originalOpId, ')
+          ..write('replacementOpId: $replacementOpId, ')
+          ..write('mappingSourceId: $mappingSourceId, ')
+          ..write('userId: $userId, ')
+          ..write('orderRootOpId: $orderRootOpId, ')
+          ..write('logicalOrder: $logicalOrder, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    originalOpId,
+    replacementOpId,
+    mappingSourceId,
+    userId,
+    orderRootOpId,
+    logicalOrder,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MutationSupersession &&
+          other.originalOpId == this.originalOpId &&
+          other.replacementOpId == this.replacementOpId &&
+          other.mappingSourceId == this.mappingSourceId &&
+          other.userId == this.userId &&
+          other.orderRootOpId == this.orderRootOpId &&
+          other.logicalOrder == this.logicalOrder &&
+          other.createdAt == this.createdAt);
+}
+
+class MutationSupersessionsCompanion
+    extends UpdateCompanion<MutationSupersession> {
+  final Value<String> originalOpId;
+  final Value<String> replacementOpId;
+  final Value<String> mappingSourceId;
+  final Value<String> userId;
+  final Value<String> orderRootOpId;
+  final Value<int> logicalOrder;
+  final Value<int> createdAt;
+  const MutationSupersessionsCompanion({
+    this.originalOpId = const Value.absent(),
+    this.replacementOpId = const Value.absent(),
+    this.mappingSourceId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.orderRootOpId = const Value.absent(),
+    this.logicalOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  MutationSupersessionsCompanion.insert({
+    required String originalOpId,
+    required String replacementOpId,
+    required String mappingSourceId,
+    required String userId,
+    required String orderRootOpId,
+    required int logicalOrder,
+    required int createdAt,
+  }) : originalOpId = Value(originalOpId),
+       replacementOpId = Value(replacementOpId),
+       mappingSourceId = Value(mappingSourceId),
+       userId = Value(userId),
+       orderRootOpId = Value(orderRootOpId),
+       logicalOrder = Value(logicalOrder),
+       createdAt = Value(createdAt);
+  static Insertable<MutationSupersession> custom({
+    Expression<String>? originalOpId,
+    Expression<String>? replacementOpId,
+    Expression<String>? mappingSourceId,
+    Expression<String>? userId,
+    Expression<String>? orderRootOpId,
+    Expression<int>? logicalOrder,
+    Expression<int>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (originalOpId != null) 'original_op_id': originalOpId,
+      if (replacementOpId != null) 'replacement_op_id': replacementOpId,
+      if (mappingSourceId != null) 'mapping_source_id': mappingSourceId,
+      if (userId != null) 'user_id': userId,
+      if (orderRootOpId != null) 'order_root_op_id': orderRootOpId,
+      if (logicalOrder != null) 'logical_order': logicalOrder,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  MutationSupersessionsCompanion copyWith({
+    Value<String>? originalOpId,
+    Value<String>? replacementOpId,
+    Value<String>? mappingSourceId,
+    Value<String>? userId,
+    Value<String>? orderRootOpId,
+    Value<int>? logicalOrder,
+    Value<int>? createdAt,
+  }) {
+    return MutationSupersessionsCompanion(
+      originalOpId: originalOpId ?? this.originalOpId,
+      replacementOpId: replacementOpId ?? this.replacementOpId,
+      mappingSourceId: mappingSourceId ?? this.mappingSourceId,
+      userId: userId ?? this.userId,
+      orderRootOpId: orderRootOpId ?? this.orderRootOpId,
+      logicalOrder: logicalOrder ?? this.logicalOrder,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (originalOpId.present) {
+      map['original_op_id'] = Variable<String>(originalOpId.value);
+    }
+    if (replacementOpId.present) {
+      map['replacement_op_id'] = Variable<String>(replacementOpId.value);
+    }
+    if (mappingSourceId.present) {
+      map['mapping_source_id'] = Variable<String>(mappingSourceId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (orderRootOpId.present) {
+      map['order_root_op_id'] = Variable<String>(orderRootOpId.value);
+    }
+    if (logicalOrder.present) {
+      map['logical_order'] = Variable<int>(logicalOrder.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MutationSupersessionsCompanion(')
+          ..write('originalOpId: $originalOpId, ')
+          ..write('replacementOpId: $replacementOpId, ')
+          ..write('mappingSourceId: $mappingSourceId, ')
+          ..write('userId: $userId, ')
+          ..write('orderRootOpId: $orderRootOpId, ')
+          ..write('logicalOrder: $logicalOrder, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class CanonicalEditIntents extends Table
+    with TableInfo<CanonicalEditIntents, CanonicalEditIntent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  CanonicalEditIntents(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _intentIdMeta = const VerificationMeta(
+    'intentId',
+  );
+  late final GeneratedColumn<String> intentId = GeneratedColumn<String>(
+    'intent_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL PRIMARY KEY CHECK (length(intent_id) = 36)',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_account(user_id)',
+  );
+  static const VerificationMeta _mappingSourceIdMeta = const VerificationMeta(
+    'mappingSourceId',
+  );
+  late final GeneratedColumn<String> mappingSourceId = GeneratedColumn<String>(
+    'mapping_source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES song_aliases(source_song_id)',
+  );
+  static const VerificationMeta _intentKeyMeta = const VerificationMeta(
+    'intentKey',
+  );
+  late final GeneratedColumn<String> intentKey = GeneratedColumn<String>(
+    'intent_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (kind IN (\'SONG_VALUES\', \'SONG_MUTATION\', \'REFERENCE_RELINK\'))',
+  );
+  static const VerificationMeta _entityTypeMeta = const VerificationMeta(
+    'entityType',
+  );
+  late final GeneratedColumn<String> entityType = GeneratedColumn<String>(
+    'entity_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _entityIdMeta = const VerificationMeta(
+    'entityId',
+  );
+  late final GeneratedColumn<String> entityId = GeneratedColumn<String>(
+    'entity_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _originOpIdMeta = const VerificationMeta(
+    'originOpId',
+  );
+  late final GeneratedColumn<String> originOpId = GeneratedColumn<String>(
+    'origin_op_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _evidenceJsonMeta = const VerificationMeta(
+    'evidenceJson',
+  );
+  late final GeneratedColumn<String> evidenceJson = GeneratedColumn<String>(
+    'evidence_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (json_valid(evidence_json) AND json_type(evidence_json) = \'object\')',
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'NOT NULL DEFAULT \'OPEN\' CHECK (state IN (\'OPEN\', \'QUEUED\', \'RESOLVED\'))',
+    defaultValue: const CustomExpression('\'OPEN\''),
+  );
+  static const VerificationMeta _resolutionJsonMeta = const VerificationMeta(
+    'resolutionJson',
+  );
+  late final GeneratedColumn<String> resolutionJson = GeneratedColumn<String>(
+    'resolution_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'CHECK (resolution_json IS NULL OR(json_valid(resolution_json) AND json_type(resolution_json) = \'object\'))',
+  );
+  static const VerificationMeta _resolutionOpIdMeta = const VerificationMeta(
+    'resolutionOpId',
+  );
+  late final GeneratedColumn<String> resolutionOpId = GeneratedColumn<String>(
+    'resolution_op_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _resolvedAtMeta = const VerificationMeta(
+    'resolvedAt',
+  );
+  late final GeneratedColumn<int> resolvedAt = GeneratedColumn<int>(
+    'resolved_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: '',
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    intentId,
+    userId,
+    mappingSourceId,
+    intentKey,
+    kind,
+    entityType,
+    entityId,
+    originOpId,
+    evidenceJson,
+    state,
+    resolutionJson,
+    resolutionOpId,
+    resolvedAt,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'canonical_edit_intents';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CanonicalEditIntent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('intent_id')) {
+      context.handle(
+        _intentIdMeta,
+        intentId.isAcceptableOrUnknown(data['intent_id']!, _intentIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_intentIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('mapping_source_id')) {
+      context.handle(
+        _mappingSourceIdMeta,
+        mappingSourceId.isAcceptableOrUnknown(
+          data['mapping_source_id']!,
+          _mappingSourceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_mappingSourceIdMeta);
+    }
+    if (data.containsKey('intent_key')) {
+      context.handle(
+        _intentKeyMeta,
+        intentKey.isAcceptableOrUnknown(data['intent_key']!, _intentKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_intentKeyMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('entity_type')) {
+      context.handle(
+        _entityTypeMeta,
+        entityType.isAcceptableOrUnknown(data['entity_type']!, _entityTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityTypeMeta);
+    }
+    if (data.containsKey('entity_id')) {
+      context.handle(
+        _entityIdMeta,
+        entityId.isAcceptableOrUnknown(data['entity_id']!, _entityIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityIdMeta);
+    }
+    if (data.containsKey('origin_op_id')) {
+      context.handle(
+        _originOpIdMeta,
+        originOpId.isAcceptableOrUnknown(
+          data['origin_op_id']!,
+          _originOpIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('evidence_json')) {
+      context.handle(
+        _evidenceJsonMeta,
+        evidenceJson.isAcceptableOrUnknown(
+          data['evidence_json']!,
+          _evidenceJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_evidenceJsonMeta);
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    }
+    if (data.containsKey('resolution_json')) {
+      context.handle(
+        _resolutionJsonMeta,
+        resolutionJson.isAcceptableOrUnknown(
+          data['resolution_json']!,
+          _resolutionJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('resolution_op_id')) {
+      context.handle(
+        _resolutionOpIdMeta,
+        resolutionOpId.isAcceptableOrUnknown(
+          data['resolution_op_id']!,
+          _resolutionOpIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('resolved_at')) {
+      context.handle(
+        _resolvedAtMeta,
+        resolvedAt.isAcceptableOrUnknown(data['resolved_at']!, _resolvedAtMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {intentId};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {mappingSourceId, intentKey},
+  ];
+  @override
+  CanonicalEditIntent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CanonicalEditIntent(
+      intentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}intent_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      mappingSourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mapping_source_id'],
+      )!,
+      intentKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}intent_key'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      entityType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_type'],
+      )!,
+      entityId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity_id'],
+      )!,
+      originOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}origin_op_id'],
+      ),
+      evidenceJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}evidence_json'],
+      )!,
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      resolutionJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolution_json'],
+      ),
+      resolutionOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolution_op_id'],
+      ),
+      resolvedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}resolved_at'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  CanonicalEditIntents createAlias(String alias) {
+    return CanonicalEditIntents(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+  @override
+  List<String> get customConstraints => const [
+    'FOREIGN KEY(entity_type, entity_id)REFERENCES metadata_copies(entity_type, entity_id)',
+    'UNIQUE(mapping_source_id, intent_key)',
+    'CHECK((state = \'OPEN\' AND resolution_json IS NULL AND resolution_op_id IS NULL AND resolved_at IS NULL)OR(state = \'QUEUED\' AND resolution_json IS NOT NULL AND resolution_op_id IS NOT NULL AND resolved_at IS NULL)OR(state = \'RESOLVED\' AND resolution_json IS NOT NULL AND resolved_at IS NOT NULL))',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class CanonicalEditIntent extends DataClass
+    implements Insertable<CanonicalEditIntent> {
+  final String intentId;
+  final String userId;
+  final String mappingSourceId;
+  final String intentKey;
+  final String kind;
+  final String entityType;
+  final String entityId;
+  final String? originOpId;
+  final String evidenceJson;
+  final String state;
+  final String? resolutionJson;
+  final String? resolutionOpId;
+  final int? resolvedAt;
+  final int createdAt;
+  const CanonicalEditIntent({
+    required this.intentId,
+    required this.userId,
+    required this.mappingSourceId,
+    required this.intentKey,
+    required this.kind,
+    required this.entityType,
+    required this.entityId,
+    this.originOpId,
+    required this.evidenceJson,
+    required this.state,
+    this.resolutionJson,
+    this.resolutionOpId,
+    this.resolvedAt,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['intent_id'] = Variable<String>(intentId);
+    map['user_id'] = Variable<String>(userId);
+    map['mapping_source_id'] = Variable<String>(mappingSourceId);
+    map['intent_key'] = Variable<String>(intentKey);
+    map['kind'] = Variable<String>(kind);
+    map['entity_type'] = Variable<String>(entityType);
+    map['entity_id'] = Variable<String>(entityId);
+    if (!nullToAbsent || originOpId != null) {
+      map['origin_op_id'] = Variable<String>(originOpId);
+    }
+    map['evidence_json'] = Variable<String>(evidenceJson);
+    map['state'] = Variable<String>(state);
+    if (!nullToAbsent || resolutionJson != null) {
+      map['resolution_json'] = Variable<String>(resolutionJson);
+    }
+    if (!nullToAbsent || resolutionOpId != null) {
+      map['resolution_op_id'] = Variable<String>(resolutionOpId);
+    }
+    if (!nullToAbsent || resolvedAt != null) {
+      map['resolved_at'] = Variable<int>(resolvedAt);
+    }
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  CanonicalEditIntentsCompanion toCompanion(bool nullToAbsent) {
+    return CanonicalEditIntentsCompanion(
+      intentId: Value(intentId),
+      userId: Value(userId),
+      mappingSourceId: Value(mappingSourceId),
+      intentKey: Value(intentKey),
+      kind: Value(kind),
+      entityType: Value(entityType),
+      entityId: Value(entityId),
+      originOpId: originOpId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originOpId),
+      evidenceJson: Value(evidenceJson),
+      state: Value(state),
+      resolutionJson: resolutionJson == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolutionJson),
+      resolutionOpId: resolutionOpId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolutionOpId),
+      resolvedAt: resolvedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolvedAt),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CanonicalEditIntent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CanonicalEditIntent(
+      intentId: serializer.fromJson<String>(json['intent_id']),
+      userId: serializer.fromJson<String>(json['user_id']),
+      mappingSourceId: serializer.fromJson<String>(json['mapping_source_id']),
+      intentKey: serializer.fromJson<String>(json['intent_key']),
+      kind: serializer.fromJson<String>(json['kind']),
+      entityType: serializer.fromJson<String>(json['entity_type']),
+      entityId: serializer.fromJson<String>(json['entity_id']),
+      originOpId: serializer.fromJson<String?>(json['origin_op_id']),
+      evidenceJson: serializer.fromJson<String>(json['evidence_json']),
+      state: serializer.fromJson<String>(json['state']),
+      resolutionJson: serializer.fromJson<String?>(json['resolution_json']),
+      resolutionOpId: serializer.fromJson<String?>(json['resolution_op_id']),
+      resolvedAt: serializer.fromJson<int?>(json['resolved_at']),
+      createdAt: serializer.fromJson<int>(json['created_at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'intent_id': serializer.toJson<String>(intentId),
+      'user_id': serializer.toJson<String>(userId),
+      'mapping_source_id': serializer.toJson<String>(mappingSourceId),
+      'intent_key': serializer.toJson<String>(intentKey),
+      'kind': serializer.toJson<String>(kind),
+      'entity_type': serializer.toJson<String>(entityType),
+      'entity_id': serializer.toJson<String>(entityId),
+      'origin_op_id': serializer.toJson<String?>(originOpId),
+      'evidence_json': serializer.toJson<String>(evidenceJson),
+      'state': serializer.toJson<String>(state),
+      'resolution_json': serializer.toJson<String?>(resolutionJson),
+      'resolution_op_id': serializer.toJson<String?>(resolutionOpId),
+      'resolved_at': serializer.toJson<int?>(resolvedAt),
+      'created_at': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  CanonicalEditIntent copyWith({
+    String? intentId,
+    String? userId,
+    String? mappingSourceId,
+    String? intentKey,
+    String? kind,
+    String? entityType,
+    String? entityId,
+    Value<String?> originOpId = const Value.absent(),
+    String? evidenceJson,
+    String? state,
+    Value<String?> resolutionJson = const Value.absent(),
+    Value<String?> resolutionOpId = const Value.absent(),
+    Value<int?> resolvedAt = const Value.absent(),
+    int? createdAt,
+  }) => CanonicalEditIntent(
+    intentId: intentId ?? this.intentId,
+    userId: userId ?? this.userId,
+    mappingSourceId: mappingSourceId ?? this.mappingSourceId,
+    intentKey: intentKey ?? this.intentKey,
+    kind: kind ?? this.kind,
+    entityType: entityType ?? this.entityType,
+    entityId: entityId ?? this.entityId,
+    originOpId: originOpId.present ? originOpId.value : this.originOpId,
+    evidenceJson: evidenceJson ?? this.evidenceJson,
+    state: state ?? this.state,
+    resolutionJson: resolutionJson.present
+        ? resolutionJson.value
+        : this.resolutionJson,
+    resolutionOpId: resolutionOpId.present
+        ? resolutionOpId.value
+        : this.resolutionOpId,
+    resolvedAt: resolvedAt.present ? resolvedAt.value : this.resolvedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  CanonicalEditIntent copyWithCompanion(CanonicalEditIntentsCompanion data) {
+    return CanonicalEditIntent(
+      intentId: data.intentId.present ? data.intentId.value : this.intentId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      mappingSourceId: data.mappingSourceId.present
+          ? data.mappingSourceId.value
+          : this.mappingSourceId,
+      intentKey: data.intentKey.present ? data.intentKey.value : this.intentKey,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      entityType: data.entityType.present
+          ? data.entityType.value
+          : this.entityType,
+      entityId: data.entityId.present ? data.entityId.value : this.entityId,
+      originOpId: data.originOpId.present
+          ? data.originOpId.value
+          : this.originOpId,
+      evidenceJson: data.evidenceJson.present
+          ? data.evidenceJson.value
+          : this.evidenceJson,
+      state: data.state.present ? data.state.value : this.state,
+      resolutionJson: data.resolutionJson.present
+          ? data.resolutionJson.value
+          : this.resolutionJson,
+      resolutionOpId: data.resolutionOpId.present
+          ? data.resolutionOpId.value
+          : this.resolutionOpId,
+      resolvedAt: data.resolvedAt.present
+          ? data.resolvedAt.value
+          : this.resolvedAt,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CanonicalEditIntent(')
+          ..write('intentId: $intentId, ')
+          ..write('userId: $userId, ')
+          ..write('mappingSourceId: $mappingSourceId, ')
+          ..write('intentKey: $intentKey, ')
+          ..write('kind: $kind, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('originOpId: $originOpId, ')
+          ..write('evidenceJson: $evidenceJson, ')
+          ..write('state: $state, ')
+          ..write('resolutionJson: $resolutionJson, ')
+          ..write('resolutionOpId: $resolutionOpId, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    intentId,
+    userId,
+    mappingSourceId,
+    intentKey,
+    kind,
+    entityType,
+    entityId,
+    originOpId,
+    evidenceJson,
+    state,
+    resolutionJson,
+    resolutionOpId,
+    resolvedAt,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CanonicalEditIntent &&
+          other.intentId == this.intentId &&
+          other.userId == this.userId &&
+          other.mappingSourceId == this.mappingSourceId &&
+          other.intentKey == this.intentKey &&
+          other.kind == this.kind &&
+          other.entityType == this.entityType &&
+          other.entityId == this.entityId &&
+          other.originOpId == this.originOpId &&
+          other.evidenceJson == this.evidenceJson &&
+          other.state == this.state &&
+          other.resolutionJson == this.resolutionJson &&
+          other.resolutionOpId == this.resolutionOpId &&
+          other.resolvedAt == this.resolvedAt &&
+          other.createdAt == this.createdAt);
+}
+
+class CanonicalEditIntentsCompanion
+    extends UpdateCompanion<CanonicalEditIntent> {
+  final Value<String> intentId;
+  final Value<String> userId;
+  final Value<String> mappingSourceId;
+  final Value<String> intentKey;
+  final Value<String> kind;
+  final Value<String> entityType;
+  final Value<String> entityId;
+  final Value<String?> originOpId;
+  final Value<String> evidenceJson;
+  final Value<String> state;
+  final Value<String?> resolutionJson;
+  final Value<String?> resolutionOpId;
+  final Value<int?> resolvedAt;
+  final Value<int> createdAt;
+  const CanonicalEditIntentsCompanion({
+    this.intentId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.mappingSourceId = const Value.absent(),
+    this.intentKey = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.entityType = const Value.absent(),
+    this.entityId = const Value.absent(),
+    this.originOpId = const Value.absent(),
+    this.evidenceJson = const Value.absent(),
+    this.state = const Value.absent(),
+    this.resolutionJson = const Value.absent(),
+    this.resolutionOpId = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  CanonicalEditIntentsCompanion.insert({
+    required String intentId,
+    required String userId,
+    required String mappingSourceId,
+    required String intentKey,
+    required String kind,
+    required String entityType,
+    required String entityId,
+    this.originOpId = const Value.absent(),
+    required String evidenceJson,
+    this.state = const Value.absent(),
+    this.resolutionJson = const Value.absent(),
+    this.resolutionOpId = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
+    required int createdAt,
+  }) : intentId = Value(intentId),
+       userId = Value(userId),
+       mappingSourceId = Value(mappingSourceId),
+       intentKey = Value(intentKey),
+       kind = Value(kind),
+       entityType = Value(entityType),
+       entityId = Value(entityId),
+       evidenceJson = Value(evidenceJson),
+       createdAt = Value(createdAt);
+  static Insertable<CanonicalEditIntent> custom({
+    Expression<String>? intentId,
+    Expression<String>? userId,
+    Expression<String>? mappingSourceId,
+    Expression<String>? intentKey,
+    Expression<String>? kind,
+    Expression<String>? entityType,
+    Expression<String>? entityId,
+    Expression<String>? originOpId,
+    Expression<String>? evidenceJson,
+    Expression<String>? state,
+    Expression<String>? resolutionJson,
+    Expression<String>? resolutionOpId,
+    Expression<int>? resolvedAt,
+    Expression<int>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (intentId != null) 'intent_id': intentId,
+      if (userId != null) 'user_id': userId,
+      if (mappingSourceId != null) 'mapping_source_id': mappingSourceId,
+      if (intentKey != null) 'intent_key': intentKey,
+      if (kind != null) 'kind': kind,
+      if (entityType != null) 'entity_type': entityType,
+      if (entityId != null) 'entity_id': entityId,
+      if (originOpId != null) 'origin_op_id': originOpId,
+      if (evidenceJson != null) 'evidence_json': evidenceJson,
+      if (state != null) 'state': state,
+      if (resolutionJson != null) 'resolution_json': resolutionJson,
+      if (resolutionOpId != null) 'resolution_op_id': resolutionOpId,
+      if (resolvedAt != null) 'resolved_at': resolvedAt,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  CanonicalEditIntentsCompanion copyWith({
+    Value<String>? intentId,
+    Value<String>? userId,
+    Value<String>? mappingSourceId,
+    Value<String>? intentKey,
+    Value<String>? kind,
+    Value<String>? entityType,
+    Value<String>? entityId,
+    Value<String?>? originOpId,
+    Value<String>? evidenceJson,
+    Value<String>? state,
+    Value<String?>? resolutionJson,
+    Value<String?>? resolutionOpId,
+    Value<int?>? resolvedAt,
+    Value<int>? createdAt,
+  }) {
+    return CanonicalEditIntentsCompanion(
+      intentId: intentId ?? this.intentId,
+      userId: userId ?? this.userId,
+      mappingSourceId: mappingSourceId ?? this.mappingSourceId,
+      intentKey: intentKey ?? this.intentKey,
+      kind: kind ?? this.kind,
+      entityType: entityType ?? this.entityType,
+      entityId: entityId ?? this.entityId,
+      originOpId: originOpId ?? this.originOpId,
+      evidenceJson: evidenceJson ?? this.evidenceJson,
+      state: state ?? this.state,
+      resolutionJson: resolutionJson ?? this.resolutionJson,
+      resolutionOpId: resolutionOpId ?? this.resolutionOpId,
+      resolvedAt: resolvedAt ?? this.resolvedAt,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (intentId.present) {
+      map['intent_id'] = Variable<String>(intentId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (mappingSourceId.present) {
+      map['mapping_source_id'] = Variable<String>(mappingSourceId.value);
+    }
+    if (intentKey.present) {
+      map['intent_key'] = Variable<String>(intentKey.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (entityType.present) {
+      map['entity_type'] = Variable<String>(entityType.value);
+    }
+    if (entityId.present) {
+      map['entity_id'] = Variable<String>(entityId.value);
+    }
+    if (originOpId.present) {
+      map['origin_op_id'] = Variable<String>(originOpId.value);
+    }
+    if (evidenceJson.present) {
+      map['evidence_json'] = Variable<String>(evidenceJson.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (resolutionJson.present) {
+      map['resolution_json'] = Variable<String>(resolutionJson.value);
+    }
+    if (resolutionOpId.present) {
+      map['resolution_op_id'] = Variable<String>(resolutionOpId.value);
+    }
+    if (resolvedAt.present) {
+      map['resolved_at'] = Variable<int>(resolvedAt.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CanonicalEditIntentsCompanion(')
+          ..write('intentId: $intentId, ')
+          ..write('userId: $userId, ')
+          ..write('mappingSourceId: $mappingSourceId, ')
+          ..write('intentKey: $intentKey, ')
+          ..write('kind: $kind, ')
+          ..write('entityType: $entityType, ')
+          ..write('entityId: $entityId, ')
+          ..write('originOpId: $originOpId, ')
+          ..write('evidenceJson: $evidenceJson, ')
+          ..write('state: $state, ')
+          ..write('resolutionJson: $resolutionJson, ')
+          ..write('resolutionOpId: $resolutionOpId, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class MutationMappingHolds extends Table
+    with TableInfo<MutationMappingHolds, MutationMappingHold> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  MutationMappingHolds(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _opIdMeta = const VerificationMeta('opId');
+  late final GeneratedColumn<String> opId = GeneratedColumn<String>(
+    'op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _mappingSourceIdMeta = const VerificationMeta(
+    'mappingSourceId',
+  );
+  late final GeneratedColumn<String> mappingSourceId = GeneratedColumn<String>(
+    'mapping_source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES song_aliases(source_song_id)',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_account(user_id)',
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (length(reason) BETWEEN 1 AND 64)',
+  );
+  static const VerificationMeta _dispositionMeta = const VerificationMeta(
+    'disposition',
+  );
+  late final GeneratedColumn<String> disposition = GeneratedColumn<String>(
+    'disposition',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL CHECK (disposition IN (\'BLOCK\', \'REPLAY_ORIGINAL\'))',
+  );
+  static const VerificationMeta _intentIdMeta = const VerificationMeta(
+    'intentId',
+  );
+  late final GeneratedColumn<String> intentId = GeneratedColumn<String>(
+    'intent_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'REFERENCES canonical_edit_intents(intent_id)',
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _releasedAtMeta = const VerificationMeta(
+    'releasedAt',
+  );
+  late final GeneratedColumn<int> releasedAt = GeneratedColumn<int>(
+    'released_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: '',
+  );
+  static const VerificationMeta _releaseEvidenceMeta = const VerificationMeta(
+    'releaseEvidence',
+  );
+  late final GeneratedColumn<String> releaseEvidence = GeneratedColumn<String>(
+    'release_evidence',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'CHECK (release_evidence IS NULL OR(json_valid(release_evidence) AND json_type(release_evidence) = \'object\'))',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    opId,
+    mappingSourceId,
+    userId,
+    reason,
+    disposition,
+    intentId,
+    createdAt,
+    releasedAt,
+    releaseEvidence,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'mutation_mapping_holds';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MutationMappingHold> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('op_id')) {
+      context.handle(
+        _opIdMeta,
+        opId.isAcceptableOrUnknown(data['op_id']!, _opIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_opIdMeta);
+    }
+    if (data.containsKey('mapping_source_id')) {
+      context.handle(
+        _mappingSourceIdMeta,
+        mappingSourceId.isAcceptableOrUnknown(
+          data['mapping_source_id']!,
+          _mappingSourceIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_mappingSourceIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_reasonMeta);
+    }
+    if (data.containsKey('disposition')) {
+      context.handle(
+        _dispositionMeta,
+        disposition.isAcceptableOrUnknown(
+          data['disposition']!,
+          _dispositionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_dispositionMeta);
+    }
+    if (data.containsKey('intent_id')) {
+      context.handle(
+        _intentIdMeta,
+        intentId.isAcceptableOrUnknown(data['intent_id']!, _intentIdMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('released_at')) {
+      context.handle(
+        _releasedAtMeta,
+        releasedAt.isAcceptableOrUnknown(data['released_at']!, _releasedAtMeta),
+      );
+    }
+    if (data.containsKey('release_evidence')) {
+      context.handle(
+        _releaseEvidenceMeta,
+        releaseEvidence.isAcceptableOrUnknown(
+          data['release_evidence']!,
+          _releaseEvidenceMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {opId, mappingSourceId, reason};
+  @override
+  MutationMappingHold map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MutationMappingHold(
+      opId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}op_id'],
+      )!,
+      mappingSourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mapping_source_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      )!,
+      disposition: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}disposition'],
+      )!,
+      intentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}intent_id'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      releasedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}released_at'],
+      ),
+      releaseEvidence: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}release_evidence'],
+      ),
+    );
+  }
+
+  @override
+  MutationMappingHolds createAlias(String alias) {
+    return MutationMappingHolds(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+  @override
+  List<String> get customConstraints => const [
+    'PRIMARY KEY(op_id, mapping_source_id, reason)',
+    'CHECK((released_at IS NULL AND release_evidence IS NULL)OR(released_at IS NOT NULL AND release_evidence IS NOT NULL))',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class MutationMappingHold extends DataClass
+    implements Insertable<MutationMappingHold> {
+  final String opId;
+  final String mappingSourceId;
+  final String userId;
+  final String reason;
+  final String disposition;
+  final String? intentId;
+  final int createdAt;
+  final int? releasedAt;
+  final String? releaseEvidence;
+  const MutationMappingHold({
+    required this.opId,
+    required this.mappingSourceId,
+    required this.userId,
+    required this.reason,
+    required this.disposition,
+    this.intentId,
+    required this.createdAt,
+    this.releasedAt,
+    this.releaseEvidence,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['op_id'] = Variable<String>(opId);
+    map['mapping_source_id'] = Variable<String>(mappingSourceId);
+    map['user_id'] = Variable<String>(userId);
+    map['reason'] = Variable<String>(reason);
+    map['disposition'] = Variable<String>(disposition);
+    if (!nullToAbsent || intentId != null) {
+      map['intent_id'] = Variable<String>(intentId);
+    }
+    map['created_at'] = Variable<int>(createdAt);
+    if (!nullToAbsent || releasedAt != null) {
+      map['released_at'] = Variable<int>(releasedAt);
+    }
+    if (!nullToAbsent || releaseEvidence != null) {
+      map['release_evidence'] = Variable<String>(releaseEvidence);
+    }
+    return map;
+  }
+
+  MutationMappingHoldsCompanion toCompanion(bool nullToAbsent) {
+    return MutationMappingHoldsCompanion(
+      opId: Value(opId),
+      mappingSourceId: Value(mappingSourceId),
+      userId: Value(userId),
+      reason: Value(reason),
+      disposition: Value(disposition),
+      intentId: intentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(intentId),
+      createdAt: Value(createdAt),
+      releasedAt: releasedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(releasedAt),
+      releaseEvidence: releaseEvidence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(releaseEvidence),
+    );
+  }
+
+  factory MutationMappingHold.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MutationMappingHold(
+      opId: serializer.fromJson<String>(json['op_id']),
+      mappingSourceId: serializer.fromJson<String>(json['mapping_source_id']),
+      userId: serializer.fromJson<String>(json['user_id']),
+      reason: serializer.fromJson<String>(json['reason']),
+      disposition: serializer.fromJson<String>(json['disposition']),
+      intentId: serializer.fromJson<String?>(json['intent_id']),
+      createdAt: serializer.fromJson<int>(json['created_at']),
+      releasedAt: serializer.fromJson<int?>(json['released_at']),
+      releaseEvidence: serializer.fromJson<String?>(json['release_evidence']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'op_id': serializer.toJson<String>(opId),
+      'mapping_source_id': serializer.toJson<String>(mappingSourceId),
+      'user_id': serializer.toJson<String>(userId),
+      'reason': serializer.toJson<String>(reason),
+      'disposition': serializer.toJson<String>(disposition),
+      'intent_id': serializer.toJson<String?>(intentId),
+      'created_at': serializer.toJson<int>(createdAt),
+      'released_at': serializer.toJson<int?>(releasedAt),
+      'release_evidence': serializer.toJson<String?>(releaseEvidence),
+    };
+  }
+
+  MutationMappingHold copyWith({
+    String? opId,
+    String? mappingSourceId,
+    String? userId,
+    String? reason,
+    String? disposition,
+    Value<String?> intentId = const Value.absent(),
+    int? createdAt,
+    Value<int?> releasedAt = const Value.absent(),
+    Value<String?> releaseEvidence = const Value.absent(),
+  }) => MutationMappingHold(
+    opId: opId ?? this.opId,
+    mappingSourceId: mappingSourceId ?? this.mappingSourceId,
+    userId: userId ?? this.userId,
+    reason: reason ?? this.reason,
+    disposition: disposition ?? this.disposition,
+    intentId: intentId.present ? intentId.value : this.intentId,
+    createdAt: createdAt ?? this.createdAt,
+    releasedAt: releasedAt.present ? releasedAt.value : this.releasedAt,
+    releaseEvidence: releaseEvidence.present
+        ? releaseEvidence.value
+        : this.releaseEvidence,
+  );
+  MutationMappingHold copyWithCompanion(MutationMappingHoldsCompanion data) {
+    return MutationMappingHold(
+      opId: data.opId.present ? data.opId.value : this.opId,
+      mappingSourceId: data.mappingSourceId.present
+          ? data.mappingSourceId.value
+          : this.mappingSourceId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      disposition: data.disposition.present
+          ? data.disposition.value
+          : this.disposition,
+      intentId: data.intentId.present ? data.intentId.value : this.intentId,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      releasedAt: data.releasedAt.present
+          ? data.releasedAt.value
+          : this.releasedAt,
+      releaseEvidence: data.releaseEvidence.present
+          ? data.releaseEvidence.value
+          : this.releaseEvidence,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MutationMappingHold(')
+          ..write('opId: $opId, ')
+          ..write('mappingSourceId: $mappingSourceId, ')
+          ..write('userId: $userId, ')
+          ..write('reason: $reason, ')
+          ..write('disposition: $disposition, ')
+          ..write('intentId: $intentId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('releasedAt: $releasedAt, ')
+          ..write('releaseEvidence: $releaseEvidence')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    opId,
+    mappingSourceId,
+    userId,
+    reason,
+    disposition,
+    intentId,
+    createdAt,
+    releasedAt,
+    releaseEvidence,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MutationMappingHold &&
+          other.opId == this.opId &&
+          other.mappingSourceId == this.mappingSourceId &&
+          other.userId == this.userId &&
+          other.reason == this.reason &&
+          other.disposition == this.disposition &&
+          other.intentId == this.intentId &&
+          other.createdAt == this.createdAt &&
+          other.releasedAt == this.releasedAt &&
+          other.releaseEvidence == this.releaseEvidence);
+}
+
+class MutationMappingHoldsCompanion
+    extends UpdateCompanion<MutationMappingHold> {
+  final Value<String> opId;
+  final Value<String> mappingSourceId;
+  final Value<String> userId;
+  final Value<String> reason;
+  final Value<String> disposition;
+  final Value<String?> intentId;
+  final Value<int> createdAt;
+  final Value<int?> releasedAt;
+  final Value<String?> releaseEvidence;
+  const MutationMappingHoldsCompanion({
+    this.opId = const Value.absent(),
+    this.mappingSourceId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.disposition = const Value.absent(),
+    this.intentId = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.releasedAt = const Value.absent(),
+    this.releaseEvidence = const Value.absent(),
+  });
+  MutationMappingHoldsCompanion.insert({
+    required String opId,
+    required String mappingSourceId,
+    required String userId,
+    required String reason,
+    required String disposition,
+    this.intentId = const Value.absent(),
+    required int createdAt,
+    this.releasedAt = const Value.absent(),
+    this.releaseEvidence = const Value.absent(),
+  }) : opId = Value(opId),
+       mappingSourceId = Value(mappingSourceId),
+       userId = Value(userId),
+       reason = Value(reason),
+       disposition = Value(disposition),
+       createdAt = Value(createdAt);
+  static Insertable<MutationMappingHold> custom({
+    Expression<String>? opId,
+    Expression<String>? mappingSourceId,
+    Expression<String>? userId,
+    Expression<String>? reason,
+    Expression<String>? disposition,
+    Expression<String>? intentId,
+    Expression<int>? createdAt,
+    Expression<int>? releasedAt,
+    Expression<String>? releaseEvidence,
+  }) {
+    return RawValuesInsertable({
+      if (opId != null) 'op_id': opId,
+      if (mappingSourceId != null) 'mapping_source_id': mappingSourceId,
+      if (userId != null) 'user_id': userId,
+      if (reason != null) 'reason': reason,
+      if (disposition != null) 'disposition': disposition,
+      if (intentId != null) 'intent_id': intentId,
+      if (createdAt != null) 'created_at': createdAt,
+      if (releasedAt != null) 'released_at': releasedAt,
+      if (releaseEvidence != null) 'release_evidence': releaseEvidence,
+    });
+  }
+
+  MutationMappingHoldsCompanion copyWith({
+    Value<String>? opId,
+    Value<String>? mappingSourceId,
+    Value<String>? userId,
+    Value<String>? reason,
+    Value<String>? disposition,
+    Value<String?>? intentId,
+    Value<int>? createdAt,
+    Value<int?>? releasedAt,
+    Value<String?>? releaseEvidence,
+  }) {
+    return MutationMappingHoldsCompanion(
+      opId: opId ?? this.opId,
+      mappingSourceId: mappingSourceId ?? this.mappingSourceId,
+      userId: userId ?? this.userId,
+      reason: reason ?? this.reason,
+      disposition: disposition ?? this.disposition,
+      intentId: intentId ?? this.intentId,
+      createdAt: createdAt ?? this.createdAt,
+      releasedAt: releasedAt ?? this.releasedAt,
+      releaseEvidence: releaseEvidence ?? this.releaseEvidence,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (opId.present) {
+      map['op_id'] = Variable<String>(opId.value);
+    }
+    if (mappingSourceId.present) {
+      map['mapping_source_id'] = Variable<String>(mappingSourceId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (disposition.present) {
+      map['disposition'] = Variable<String>(disposition.value);
+    }
+    if (intentId.present) {
+      map['intent_id'] = Variable<String>(intentId.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (releasedAt.present) {
+      map['released_at'] = Variable<int>(releasedAt.value);
+    }
+    if (releaseEvidence.present) {
+      map['release_evidence'] = Variable<String>(releaseEvidence.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MutationMappingHoldsCompanion(')
+          ..write('opId: $opId, ')
+          ..write('mappingSourceId: $mappingSourceId, ')
+          ..write('userId: $userId, ')
+          ..write('reason: $reason, ')
+          ..write('disposition: $disposition, ')
+          ..write('intentId: $intentId, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('releasedAt: $releasedAt, ')
+          ..write('releaseEvidence: $releaseEvidence')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AccountDatabase extends GeneratedDatabase {
   _$AccountDatabase(QueryExecutor e) : super(e);
   $AccountDatabaseManager get managers => $AccountDatabaseManager(this);
@@ -5331,6 +7793,103 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     'CREATE TRIGGER mutation_retry_budget_monotonic BEFORE UPDATE ON mutation_retry_controls WHEN NEW.op_id <> OLD.op_id OR(OLD.automatic_retries_claimed IS NULL AND NEW.automatic_retries_claimed IS NOT NULL)OR(OLD.automatic_retries_claimed IS NOT NULL AND NEW.automatic_retries_claimed IS NULL)OR NEW.automatic_retries_claimed < OLD.automatic_retries_claimed OR NEW.automatic_retries_claimed > OLD.automatic_retries_claimed + 1 BEGIN SELECT RAISE (ABORT, \'Automatic retry budget cannot be replenished\');END',
     'mutation_retry_budget_monotonic',
   );
+  late final SongAliases songAliases = SongAliases(this);
+  late final Index songAliasDestination = Index(
+    'song_alias_destination',
+    'CREATE INDEX song_alias_destination ON song_aliases (canonical_song_id)',
+  );
+  late final MutationSupersessions mutationSupersessions =
+      MutationSupersessions(this);
+  late final CanonicalEditIntents canonicalEditIntents = CanonicalEditIntents(
+    this,
+  );
+  late final Index canonicalIntentTarget = Index(
+    'canonical_intent_target',
+    'CREATE INDEX canonical_intent_target ON canonical_edit_intents (entity_type, entity_id, state)',
+  );
+  late final MutationMappingHolds mutationMappingHolds = MutationMappingHolds(
+    this,
+  );
+  late final Index mutationMappingActiveHolds = Index(
+    'mutation_mapping_active_holds',
+    'CREATE INDEX mutation_mapping_active_holds ON mutation_mapping_holds (op_id, released_at)',
+  );
+  late final Trigger songAliasValidInsert = Trigger(
+    'CREATE TRIGGER song_alias_valid_insert BEFORE INSERT ON song_aliases BEGIN SELECT RAISE (ABORT, \'Alias requires its original song CREATE\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.mapping_op_id AND m.user_id = NEW.user_id AND m.entity_type = \'SONG\' AND m.entity_id = NEW.source_song_id AND m.operation = \'CREATE\');SELECT RAISE (ABORT, \'Song alias cycle\') WHERE EXISTS (WITH RECURSIVE destinations (id) AS (SELECT NEW.canonical_song_id UNION SELECT a.canonical_song_id FROM song_aliases AS a JOIN destinations AS d ON a.source_song_id = d.id) SELECT 1 FROM destinations WHERE id = NEW.source_song_id);END',
+    'song_alias_valid_insert',
+  );
+  late final Trigger songAliasNoUpdate = Trigger(
+    'CREATE TRIGGER song_alias_no_update BEFORE UPDATE ON song_aliases BEGIN SELECT RAISE (ABORT, \'Song aliases and receipts are immutable\');END',
+    'song_alias_no_update',
+  );
+  late final Trigger songAliasNoDelete = Trigger(
+    'CREATE TRIGGER song_alias_no_delete BEFORE DELETE ON song_aliases BEGIN SELECT RAISE (ABORT, \'Song alias evidence must be retained\');END',
+    'song_alias_no_delete',
+  );
+  late final Trigger mutationSupersessionValidInsert = Trigger(
+    'CREATE TRIGGER mutation_supersession_valid_insert BEFORE INSERT ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Cannot prepend a frozen replacement chain\') WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.replacement_op_id);SELECT RAISE (ABORT, \'Invalid replacement order\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS original JOIN local_mutations AS replacement ON replacement.op_id = NEW.replacement_op_id WHERE original.op_id = NEW.original_op_id AND replacement."rowid" > original."rowid");SELECT RAISE (ABORT, \'Replacement must inherit original logical order\') WHERE NEW.order_root_op_id IS NOT COALESCE((SELECT order_root_op_id FROM mutation_supersessions WHERE replacement_op_id = NEW.original_op_id), NEW.original_op_id) OR NEW.logical_order IS NOT COALESCE((SELECT logical_order FROM mutation_supersessions WHERE replacement_op_id = NEW.original_op_id), (SELECT "rowid" FROM local_mutations WHERE op_id = NEW.original_op_id));END',
+    'mutation_supersession_valid_insert',
+  );
+  late final Trigger mutationSupersessionNoUpdate = Trigger(
+    'CREATE TRIGGER mutation_supersession_no_update BEFORE UPDATE ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Mutation supersessions are immutable\');END',
+    'mutation_supersession_no_update',
+  );
+  late final Trigger mutationSupersessionNoDelete = Trigger(
+    'CREATE TRIGGER mutation_supersession_no_delete BEFORE DELETE ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Mutation supersession history must be retained\');END',
+    'mutation_supersession_no_delete',
+  );
+  late final Trigger supersededMutationNoClaim = Trigger(
+    'CREATE TRIGGER superseded_mutation_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Superseded mutation cannot be claimed\');END',
+    'superseded_mutation_no_claim',
+  );
+  late final Trigger canonicalIntentEvidenceImmutable = Trigger(
+    'CREATE TRIGGER canonical_intent_evidence_immutable BEFORE UPDATE ON canonical_edit_intents WHEN NEW.intent_id IS NOT OLD.intent_id OR NEW.user_id IS NOT OLD.user_id OR NEW.mapping_source_id IS NOT OLD.mapping_source_id OR NEW.intent_key IS NOT OLD.intent_key OR NEW.kind IS NOT OLD.kind OR NEW.entity_type IS NOT OLD.entity_type OR NEW.entity_id IS NOT OLD.entity_id OR NEW.origin_op_id IS NOT OLD.origin_op_id OR NEW.evidence_json IS NOT OLD.evidence_json OR NEW.created_at IS NOT OLD.created_at OR OLD.state = \'RESOLVED\' OR(OLD.state = \'QUEUED\' AND NEW.state <> \'RESOLVED\')BEGIN SELECT RAISE (ABORT, \'Canonical intent evidence cannot be rewritten\');END',
+    'canonical_intent_evidence_immutable',
+  );
+  late final Trigger canonicalIntentNoDelete = Trigger(
+    'CREATE TRIGGER canonical_intent_no_delete BEFORE DELETE ON canonical_edit_intents BEGIN SELECT RAISE (ABORT, \'Canonical edit evidence must be retained\');END',
+    'canonical_intent_no_delete',
+  );
+  late final Trigger mappingHoldReleaseOnly = Trigger(
+    'CREATE TRIGGER mapping_hold_release_only BEFORE UPDATE ON mutation_mapping_holds WHEN NEW.op_id IS NOT OLD.op_id OR NEW.mapping_source_id IS NOT OLD.mapping_source_id OR NEW.user_id IS NOT OLD.user_id OR NEW.reason IS NOT OLD.reason OR NEW.disposition IS NOT OLD.disposition OR NEW.intent_id IS NOT OLD.intent_id OR NEW.created_at IS NOT OLD.created_at OR OLD.released_at IS NOT NULL OR NEW.released_at IS NULL BEGIN SELECT RAISE (ABORT, \'Mapping hold permits one evidenced release only\');END',
+    'mapping_hold_release_only',
+  );
+  late final Trigger mappingHoldNoDelete = Trigger(
+    'CREATE TRIGGER mapping_hold_no_delete BEFORE DELETE ON mutation_mapping_holds BEGIN SELECT RAISE (ABORT, \'Mapping hold history must be retained\');END',
+    'mapping_hold_no_delete',
+  );
+  late final Trigger songAliasNoReplace = Trigger(
+    'CREATE TRIGGER song_alias_no_replace BEFORE INSERT ON song_aliases BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM song_aliases WHERE source_song_id = NEW.source_song_id OR mapping_op_id = NEW.mapping_op_id);END',
+    'song_alias_no_replace',
+  );
+  late final Trigger mutationSupersessionNoReplace = Trigger(
+    'CREATE TRIGGER mutation_supersession_no_replace BEFORE INSERT ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.replacement_op_id);END',
+    'mutation_supersession_no_replace',
+  );
+  late final Trigger canonicalIntentNoReplace = Trigger(
+    'CREATE TRIGGER canonical_intent_no_replace BEFORE INSERT ON canonical_edit_intents BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM canonical_edit_intents WHERE intent_id = NEW.intent_id OR(mapping_source_id = NEW.mapping_source_id AND intent_key = NEW.intent_key));END',
+    'canonical_intent_no_replace',
+  );
+  late final Trigger mappingHoldNoReplace = Trigger(
+    'CREATE TRIGGER mapping_hold_no_replace BEFORE INSERT ON mutation_mapping_holds BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = NEW.op_id AND mapping_source_id = NEW.mapping_source_id AND reason = NEW.reason);END',
+    'mapping_hold_no_replace',
+  );
+  late final Trigger mutationRowidImmutable = Trigger(
+    'CREATE TRIGGER mutation_rowid_immutable BEFORE UPDATE ON local_mutations WHEN NEW."rowid" IS NOT OLD."rowid" BEGIN SELECT RAISE (ABORT, \'Mutation rowid must remain immutable\');END',
+    'mutation_rowid_immutable',
+  );
+  late final Trigger mutationHistoryNoReplace = Trigger(
+    'CREATE TRIGGER mutation_history_no_replace BEFORE INSERT ON local_mutations WHEN EXISTS (SELECT 1 FROM local_mutations WHERE op_id = NEW.op_id OR(NEW."rowid" <> -1 AND "rowid" = NEW."rowid")) BEGIN SELECT RAISE (ABORT, \'Mutation history cannot be replaced\');END',
+    'mutation_history_no_replace',
+  );
+  late final Trigger mutationOrderPositive = Trigger(
+    'CREATE TRIGGER mutation_order_positive AFTER INSERT ON local_mutations WHEN NEW."rowid" <= 0 BEGIN SELECT RAISE (ABORT, \'New mutation order must be positive\');END',
+    'mutation_order_positive',
+  );
+  late final Trigger mutationHistoryNoDelete = Trigger(
+    'CREATE TRIGGER mutation_history_no_delete BEFORE DELETE ON local_mutations BEGIN SELECT RAISE (ABORT, \'Mutation ordering history must be retained\');END',
+    'mutation_history_no_delete',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5354,6 +7913,32 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     mutationWireRequestImmutable,
     mutationRetryControls,
     mutationRetryBudgetMonotonic,
+    songAliases,
+    songAliasDestination,
+    mutationSupersessions,
+    canonicalEditIntents,
+    canonicalIntentTarget,
+    mutationMappingHolds,
+    mutationMappingActiveHolds,
+    songAliasValidInsert,
+    songAliasNoUpdate,
+    songAliasNoDelete,
+    mutationSupersessionValidInsert,
+    mutationSupersessionNoUpdate,
+    mutationSupersessionNoDelete,
+    supersededMutationNoClaim,
+    canonicalIntentEvidenceImmutable,
+    canonicalIntentNoDelete,
+    mappingHoldReleaseOnly,
+    mappingHoldNoDelete,
+    songAliasNoReplace,
+    mutationSupersessionNoReplace,
+    canonicalIntentNoReplace,
+    mappingHoldNoReplace,
+    mutationRowidImmutable,
+    mutationHistoryNoReplace,
+    mutationOrderPositive,
+    mutationHistoryNoDelete,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -5396,6 +7981,139 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
       on: TableUpdateQuery.onTableName(
         'mutation_retry_controls',
         limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'song_aliases',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'song_aliases',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'song_aliases',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_supersessions',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_supersessions',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_supersessions',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'local_mutations',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'canonical_edit_intents',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'canonical_edit_intents',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_mapping_holds',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_mapping_holds',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'song_aliases',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_supersessions',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'canonical_edit_intents',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_mapping_holds',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'local_mutations',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'local_mutations',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'local_mutations',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'local_mutations',
+        limitUpdateKind: UpdateKind.delete,
       ),
       result: [],
     ),
@@ -5508,6 +8226,95 @@ final class $LocalAccountReferences
     );
 
     final cache = $_typedResult.readTableOrNull(_syncCursorsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<SongAliases, List<SongAliase>>
+  _songAliasesRefsTable(_$AccountDatabase db) => MultiTypedResultKey.fromTable(
+    db.songAliases,
+    aliasName: 'local_account__user_id__song_aliases__user_id',
+  );
+
+  $SongAliasesProcessedTableManager get songAliasesRefs {
+    final manager = $SongAliasesTableManager($_db, $_db.songAliases).filter(
+      (f) => f.userId.userId.sqlEquals($_itemColumn<String>('user_id')!),
+    );
+
+    final cache = $_typedResult.readTableOrNull(_songAliasesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<MutationSupersessions, List<MutationSupersession>>
+  _mutationSupersessionsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.mutationSupersessions,
+        aliasName: 'local_account__user_id__mutation_supersessions__user_id',
+      );
+
+  $MutationSupersessionsProcessedTableManager get mutationSupersessionsRefs {
+    final manager =
+        $MutationSupersessionsTableManager(
+          $_db,
+          $_db.mutationSupersessions,
+        ).filter(
+          (f) => f.userId.userId.sqlEquals($_itemColumn<String>('user_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _mutationSupersessionsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<CanonicalEditIntents, List<CanonicalEditIntent>>
+  _canonicalEditIntentsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.canonicalEditIntents,
+        aliasName: 'local_account__user_id__canonical_edit_intents__user_id',
+      );
+
+  $CanonicalEditIntentsProcessedTableManager get canonicalEditIntentsRefs {
+    final manager =
+        $CanonicalEditIntentsTableManager(
+          $_db,
+          $_db.canonicalEditIntents,
+        ).filter(
+          (f) => f.userId.userId.sqlEquals($_itemColumn<String>('user_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _canonicalEditIntentsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<MutationMappingHolds, List<MutationMappingHold>>
+  _mutationMappingHoldsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.mutationMappingHolds,
+        aliasName: 'local_account__user_id__mutation_mapping_holds__user_id',
+      );
+
+  $MutationMappingHoldsProcessedTableManager get mutationMappingHoldsRefs {
+    final manager =
+        $MutationMappingHoldsTableManager(
+          $_db,
+          $_db.mutationMappingHolds,
+        ).filter(
+          (f) => f.userId.userId.sqlEquals($_itemColumn<String>('user_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _mutationMappingHoldsRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -5659,6 +8466,106 @@ class $LocalAccountFilterComposer
           }) => $SyncCursorsFilterComposer(
             $db: $db,
             $table: $db.syncCursors,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> songAliasesRefs(
+    Expression<bool> Function($SongAliasesFilterComposer f) f,
+  ) {
+    final $SongAliasesFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesFilterComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> mutationSupersessionsRefs(
+    Expression<bool> Function($MutationSupersessionsFilterComposer f) f,
+  ) {
+    final $MutationSupersessionsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.mutationSupersessions,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationSupersessionsFilterComposer(
+            $db: $db,
+            $table: $db.mutationSupersessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> canonicalEditIntentsRefs(
+    Expression<bool> Function($CanonicalEditIntentsFilterComposer f) f,
+  ) {
+    final $CanonicalEditIntentsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.canonicalEditIntents,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $CanonicalEditIntentsFilterComposer(
+            $db: $db,
+            $table: $db.canonicalEditIntents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> mutationMappingHoldsRefs(
+    Expression<bool> Function($MutationMappingHoldsFilterComposer f) f,
+  ) {
+    final $MutationMappingHoldsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.mutationMappingHolds,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationMappingHoldsFilterComposer(
+            $db: $db,
+            $table: $db.mutationMappingHolds,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -5846,6 +8753,106 @@ class $LocalAccountAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> songAliasesRefs<T extends Object>(
+    Expression<T> Function($SongAliasesAnnotationComposer a) f,
+  ) {
+    final $SongAliasesAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesAnnotationComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> mutationSupersessionsRefs<T extends Object>(
+    Expression<T> Function($MutationSupersessionsAnnotationComposer a) f,
+  ) {
+    final $MutationSupersessionsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.mutationSupersessions,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationSupersessionsAnnotationComposer(
+            $db: $db,
+            $table: $db.mutationSupersessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> canonicalEditIntentsRefs<T extends Object>(
+    Expression<T> Function($CanonicalEditIntentsAnnotationComposer a) f,
+  ) {
+    final $CanonicalEditIntentsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.canonicalEditIntents,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $CanonicalEditIntentsAnnotationComposer(
+            $db: $db,
+            $table: $db.canonicalEditIntents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> mutationMappingHoldsRefs<T extends Object>(
+    Expression<T> Function($MutationMappingHoldsAnnotationComposer a) f,
+  ) {
+    final $MutationMappingHoldsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.mutationMappingHolds,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationMappingHoldsAnnotationComposer(
+            $db: $db,
+            $table: $db.mutationMappingHolds,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $LocalAccountTableManager
@@ -5867,6 +8874,10 @@ class $LocalAccountTableManager
             bool localRecordingFilesRefs,
             bool importJobsRefs,
             bool syncCursorsRefs,
+            bool songAliasesRefs,
+            bool mutationSupersessionsRefs,
+            bool canonicalEditIntentsRefs,
+            bool mutationMappingHoldsRefs,
           })
         > {
   $LocalAccountTableManager(_$AccountDatabase db, LocalAccount table)
@@ -5919,6 +8930,10 @@ class $LocalAccountTableManager
                 localRecordingFilesRefs = false,
                 importJobsRefs = false,
                 syncCursorsRefs = false,
+                songAliasesRefs = false,
+                mutationSupersessionsRefs = false,
+                canonicalEditIntentsRefs = false,
+                mutationMappingHoldsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -5928,6 +8943,10 @@ class $LocalAccountTableManager
                     if (localRecordingFilesRefs) db.localRecordingFiles,
                     if (importJobsRefs) db.importJobs,
                     if (syncCursorsRefs) db.syncCursors,
+                    if (songAliasesRefs) db.songAliases,
+                    if (mutationSupersessionsRefs) db.mutationSupersessions,
+                    if (canonicalEditIntentsRefs) db.canonicalEditIntents,
+                    if (mutationMappingHoldsRefs) db.mutationMappingHolds,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -6037,6 +9056,90 @@ class $LocalAccountTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (songAliasesRefs)
+                        await $_getPrefetchedData<
+                          LocalAccountData,
+                          LocalAccount,
+                          SongAliase
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalAccountReferences
+                              ._songAliasesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalAccountReferences(
+                                db,
+                                table,
+                                p0,
+                              ).songAliasesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.userId == item.userId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (mutationSupersessionsRefs)
+                        await $_getPrefetchedData<
+                          LocalAccountData,
+                          LocalAccount,
+                          MutationSupersession
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalAccountReferences
+                              ._mutationSupersessionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalAccountReferences(
+                                db,
+                                table,
+                                p0,
+                              ).mutationSupersessionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.userId == item.userId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (canonicalEditIntentsRefs)
+                        await $_getPrefetchedData<
+                          LocalAccountData,
+                          LocalAccount,
+                          CanonicalEditIntent
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalAccountReferences
+                              ._canonicalEditIntentsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalAccountReferences(
+                                db,
+                                table,
+                                p0,
+                              ).canonicalEditIntentsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.userId == item.userId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (mutationMappingHoldsRefs)
+                        await $_getPrefetchedData<
+                          LocalAccountData,
+                          LocalAccount,
+                          MutationMappingHold
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalAccountReferences
+                              ._mutationMappingHoldsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalAccountReferences(
+                                db,
+                                table,
+                                p0,
+                              ).mutationMappingHoldsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.userId == item.userId,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -6063,6 +9166,10 @@ typedef $LocalAccountProcessedTableManager =
         bool localRecordingFilesRefs,
         bool importJobsRefs,
         bool syncCursorsRefs,
+        bool songAliasesRefs,
+        bool mutationSupersessionsRefs,
+        bool canonicalEditIntentsRefs,
+        bool mutationMappingHoldsRefs,
       })
     >;
 typedef $MetadataCopiesCreateCompanionBuilder =
@@ -6547,6 +9654,44 @@ final class $LocalMutationsReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<SongAliases, List<SongAliase>>
+  _songAliasesRefsTable(_$AccountDatabase db) => MultiTypedResultKey.fromTable(
+    db.songAliases,
+    aliasName: 'local_mutations__op_id__song_aliases__mapping_op_id',
+  );
+
+  $SongAliasesProcessedTableManager get songAliasesRefs {
+    final manager = $SongAliasesTableManager($_db, $_db.songAliases).filter(
+      (f) => f.mappingOpId.opId.sqlEquals($_itemColumn<String>('op_id')!),
+    );
+
+    final cache = $_typedResult.readTableOrNull(_songAliasesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<MutationMappingHolds, List<MutationMappingHold>>
+  _mutationMappingHoldsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.mutationMappingHolds,
+        aliasName: 'local_mutations__op_id__mutation_mapping_holds__op_id',
+      );
+
+  $MutationMappingHoldsProcessedTableManager get mutationMappingHoldsRefs {
+    final manager = $MutationMappingHoldsTableManager(
+      $_db,
+      $_db.mutationMappingHolds,
+    ).filter((f) => f.opId.opId.sqlEquals($_itemColumn<String>('op_id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _mutationMappingHoldsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $LocalMutationsFilterComposer
@@ -6692,6 +9837,56 @@ class $LocalMutationsFilterComposer
           }) => $MutationRetryControlsFilterComposer(
             $db: $db,
             $table: $db.mutationRetryControls,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> songAliasesRefs(
+    Expression<bool> Function($SongAliasesFilterComposer f) f,
+  ) {
+    final $SongAliasesFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.mappingOpId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesFilterComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> mutationMappingHoldsRefs(
+    Expression<bool> Function($MutationMappingHoldsFilterComposer f) f,
+  ) {
+    final $MutationMappingHoldsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.mutationMappingHolds,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationMappingHoldsFilterComposer(
+            $db: $db,
+            $table: $db.mutationMappingHolds,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -6944,6 +10139,56 @@ class $LocalMutationsAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> songAliasesRefs<T extends Object>(
+    Expression<T> Function($SongAliasesAnnotationComposer a) f,
+  ) {
+    final $SongAliasesAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.mappingOpId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesAnnotationComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> mutationMappingHoldsRefs<T extends Object>(
+    Expression<T> Function($MutationMappingHoldsAnnotationComposer a) f,
+  ) {
+    final $MutationMappingHoldsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.mutationMappingHolds,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationMappingHoldsAnnotationComposer(
+            $db: $db,
+            $table: $db.mutationMappingHolds,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $LocalMutationsTableManager
@@ -6963,6 +10208,8 @@ class $LocalMutationsTableManager
             bool userId,
             bool mutationWireRequestsRefs,
             bool mutationRetryControlsRefs,
+            bool songAliasesRefs,
+            bool mutationMappingHoldsRefs,
           })
         > {
   $LocalMutationsTableManager(_$AccountDatabase db, LocalMutations table)
@@ -7061,12 +10308,16 @@ class $LocalMutationsTableManager
                 userId = false,
                 mutationWireRequestsRefs = false,
                 mutationRetryControlsRefs = false,
+                songAliasesRefs = false,
+                mutationMappingHoldsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (mutationWireRequestsRefs) db.mutationWireRequests,
                     if (mutationRetryControlsRefs) db.mutationRetryControls,
+                    if (songAliasesRefs) db.songAliases,
+                    if (mutationMappingHoldsRefs) db.mutationMappingHolds,
                   ],
                   addJoins:
                       <
@@ -7142,6 +10393,48 @@ class $LocalMutationsTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (songAliasesRefs)
+                        await $_getPrefetchedData<
+                          LocalMutation,
+                          LocalMutations,
+                          SongAliase
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalMutationsReferences
+                              ._songAliasesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalMutationsReferences(
+                                db,
+                                table,
+                                p0,
+                              ).songAliasesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.mappingOpId == item.opId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (mutationMappingHoldsRefs)
+                        await $_getPrefetchedData<
+                          LocalMutation,
+                          LocalMutations,
+                          MutationMappingHold
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalMutationsReferences
+                              ._mutationMappingHoldsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalMutationsReferences(
+                                db,
+                                table,
+                                p0,
+                              ).mutationMappingHoldsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.opId == item.opId,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -7166,6 +10459,8 @@ typedef $LocalMutationsProcessedTableManager =
         bool userId,
         bool mutationWireRequestsRefs,
         bool mutationRetryControlsRefs,
+        bool songAliasesRefs,
+        bool mutationMappingHoldsRefs,
       })
     >;
 typedef $LocalRecordingFilesCreateCompanionBuilder =
@@ -9735,6 +13030,3059 @@ typedef $MutationRetryControlsProcessedTableManager =
       MutationRetryControl,
       PrefetchHooks Function({bool opId})
     >;
+typedef $SongAliasesCreateCompanionBuilder = SongAliasesCompanion Function({
+  required String sourceSongId,
+  required String canonicalSongId,
+  required String userId,
+  Value<String> entityType,
+  required String mappingOpId,
+  required int receiptStatus,
+  required String receiptBody,
+  required int createdAt,
+});
+typedef $SongAliasesUpdateCompanionBuilder = SongAliasesCompanion Function({
+  Value<String> sourceSongId,
+  Value<String> canonicalSongId,
+  Value<String> userId,
+  Value<String> entityType,
+  Value<String> mappingOpId,
+  Value<int> receiptStatus,
+  Value<String> receiptBody,
+  Value<int> createdAt,
+});
+
+final class $SongAliasesReferences
+    extends BaseReferences<_$AccountDatabase, SongAliases, SongAliase> {
+  $SongAliasesReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static LocalAccount _userIdTable(_$AccountDatabase db) => db.localAccount
+      .createAlias('song_aliases__user_id__local_account__user_id');
+
+  $LocalAccountProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $LocalAccountTableManager(
+      $_db,
+      $_db.localAccount,
+    ).filter((f) => f.userId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalMutations _mappingOpIdTable(_$AccountDatabase db) => db
+      .localMutations
+      .createAlias('song_aliases__mapping_op_id__local_mutations__op_id');
+
+  $LocalMutationsProcessedTableManager get mappingOpId {
+    final $_column = $_itemColumn<String>('mapping_op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_mappingOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<MutationSupersessions, List<MutationSupersession>>
+  _mutationSupersessionsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.mutationSupersessions,
+        aliasName: 'song_aliases__source_song_id__mutation_supersessions__mapping_source_id',
+      );
+
+  $MutationSupersessionsProcessedTableManager get mutationSupersessionsRefs {
+    final manager =
+        $MutationSupersessionsTableManager(
+          $_db,
+          $_db.mutationSupersessions,
+        ).filter(
+          (f) => f.mappingSourceId.sourceSongId.sqlEquals(
+            $_itemColumn<String>('source_song_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _mutationSupersessionsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<CanonicalEditIntents, List<CanonicalEditIntent>>
+  _canonicalEditIntentsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.canonicalEditIntents,
+        aliasName: 'song_aliases__source_song_id__canonical_edit_intents__mapping_source_id',
+      );
+
+  $CanonicalEditIntentsProcessedTableManager get canonicalEditIntentsRefs {
+    final manager =
+        $CanonicalEditIntentsTableManager(
+          $_db,
+          $_db.canonicalEditIntents,
+        ).filter(
+          (f) => f.mappingSourceId.sourceSongId.sqlEquals(
+            $_itemColumn<String>('source_song_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _canonicalEditIntentsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<MutationMappingHolds, List<MutationMappingHold>>
+  _mutationMappingHoldsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.mutationMappingHolds,
+        aliasName: 'song_aliases__source_song_id__mutation_mapping_holds__mapping_source_id',
+      );
+
+  $MutationMappingHoldsProcessedTableManager get mutationMappingHoldsRefs {
+    final manager =
+        $MutationMappingHoldsTableManager(
+          $_db,
+          $_db.mutationMappingHolds,
+        ).filter(
+          (f) => f.mappingSourceId.sourceSongId.sqlEquals(
+            $_itemColumn<String>('source_song_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _mutationMappingHoldsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $SongAliasesFilterComposer
+    extends Composer<_$AccountDatabase, SongAliases> {
+  $SongAliasesFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get sourceSongId => $composableBuilder(
+    column: $table.sourceSongId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get canonicalSongId => $composableBuilder(
+    column: $table.canonicalSongId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get receiptStatus => $composableBuilder(
+    column: $table.receiptStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get receiptBody => $composableBuilder(
+    column: $table.receiptBody,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalAccountFilterComposer get userId {
+    final $LocalAccountFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountFilterComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsFilterComposer get mappingOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mappingOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> mutationSupersessionsRefs(
+    Expression<bool> Function($MutationSupersessionsFilterComposer f) f,
+  ) {
+    final $MutationSupersessionsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sourceSongId,
+      referencedTable: $db.mutationSupersessions,
+      getReferencedColumn: (t) => t.mappingSourceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationSupersessionsFilterComposer(
+            $db: $db,
+            $table: $db.mutationSupersessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> canonicalEditIntentsRefs(
+    Expression<bool> Function($CanonicalEditIntentsFilterComposer f) f,
+  ) {
+    final $CanonicalEditIntentsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sourceSongId,
+      referencedTable: $db.canonicalEditIntents,
+      getReferencedColumn: (t) => t.mappingSourceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $CanonicalEditIntentsFilterComposer(
+            $db: $db,
+            $table: $db.canonicalEditIntents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> mutationMappingHoldsRefs(
+    Expression<bool> Function($MutationMappingHoldsFilterComposer f) f,
+  ) {
+    final $MutationMappingHoldsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sourceSongId,
+      referencedTable: $db.mutationMappingHolds,
+      getReferencedColumn: (t) => t.mappingSourceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationMappingHoldsFilterComposer(
+            $db: $db,
+            $table: $db.mutationMappingHolds,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $SongAliasesOrderingComposer
+    extends Composer<_$AccountDatabase, SongAliases> {
+  $SongAliasesOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get sourceSongId => $composableBuilder(
+    column: $table.sourceSongId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get canonicalSongId => $composableBuilder(
+    column: $table.canonicalSongId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get receiptStatus => $composableBuilder(
+    column: $table.receiptStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get receiptBody => $composableBuilder(
+    column: $table.receiptBody,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalAccountOrderingComposer get userId {
+    final $LocalAccountOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountOrderingComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsOrderingComposer get mappingOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mappingOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SongAliasesAnnotationComposer
+    extends Composer<_$AccountDatabase, SongAliases> {
+  $SongAliasesAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get sourceSongId => $composableBuilder(
+    column: $table.sourceSongId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get canonicalSongId => $composableBuilder(
+    column: $table.canonicalSongId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get receiptStatus => $composableBuilder(
+    column: $table.receiptStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get receiptBody => $composableBuilder(
+    column: $table.receiptBody,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $LocalAccountAnnotationComposer get userId {
+    final $LocalAccountAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountAnnotationComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsAnnotationComposer get mappingOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mappingOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> mutationSupersessionsRefs<T extends Object>(
+    Expression<T> Function($MutationSupersessionsAnnotationComposer a) f,
+  ) {
+    final $MutationSupersessionsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sourceSongId,
+      referencedTable: $db.mutationSupersessions,
+      getReferencedColumn: (t) => t.mappingSourceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationSupersessionsAnnotationComposer(
+            $db: $db,
+            $table: $db.mutationSupersessions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> canonicalEditIntentsRefs<T extends Object>(
+    Expression<T> Function($CanonicalEditIntentsAnnotationComposer a) f,
+  ) {
+    final $CanonicalEditIntentsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sourceSongId,
+      referencedTable: $db.canonicalEditIntents,
+      getReferencedColumn: (t) => t.mappingSourceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $CanonicalEditIntentsAnnotationComposer(
+            $db: $db,
+            $table: $db.canonicalEditIntents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> mutationMappingHoldsRefs<T extends Object>(
+    Expression<T> Function($MutationMappingHoldsAnnotationComposer a) f,
+  ) {
+    final $MutationMappingHoldsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sourceSongId,
+      referencedTable: $db.mutationMappingHolds,
+      getReferencedColumn: (t) => t.mappingSourceId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationMappingHoldsAnnotationComposer(
+            $db: $db,
+            $table: $db.mutationMappingHolds,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $SongAliasesTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          SongAliases,
+          SongAliase,
+          $SongAliasesFilterComposer,
+          $SongAliasesOrderingComposer,
+          $SongAliasesAnnotationComposer,
+          $SongAliasesCreateCompanionBuilder,
+          $SongAliasesUpdateCompanionBuilder,
+          (SongAliase, $SongAliasesReferences),
+          SongAliase,
+          PrefetchHooks Function({
+            bool userId,
+            bool mappingOpId,
+            bool mutationSupersessionsRefs,
+            bool canonicalEditIntentsRefs,
+            bool mutationMappingHoldsRefs,
+          })
+        > {
+  $SongAliasesTableManager(_$AccountDatabase db, SongAliases table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $SongAliasesFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $SongAliasesOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $SongAliasesAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> sourceSongId = const Value.absent(),
+                Value<String> canonicalSongId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> entityType = const Value.absent(),
+                Value<String> mappingOpId = const Value.absent(),
+                Value<int> receiptStatus = const Value.absent(),
+                Value<String> receiptBody = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+              }) => SongAliasesCompanion(
+                sourceSongId: sourceSongId,
+                canonicalSongId: canonicalSongId,
+                userId: userId,
+                entityType: entityType,
+                mappingOpId: mappingOpId,
+                receiptStatus: receiptStatus,
+                receiptBody: receiptBody,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String sourceSongId,
+                required String canonicalSongId,
+                required String userId,
+                Value<String> entityType = const Value.absent(),
+                required String mappingOpId,
+                required int receiptStatus,
+                required String receiptBody,
+                required int createdAt,
+              }) => SongAliasesCompanion.insert(
+                sourceSongId: sourceSongId,
+                canonicalSongId: canonicalSongId,
+                userId: userId,
+                entityType: entityType,
+                mappingOpId: mappingOpId,
+                receiptStatus: receiptStatus,
+                receiptBody: receiptBody,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<SongAliases, SongAliase>(table),
+                  $SongAliasesReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                userId = false,
+                mappingOpId = false,
+                mutationSupersessionsRefs = false,
+                canonicalEditIntentsRefs = false,
+                mutationMappingHoldsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (mutationSupersessionsRefs) db.mutationSupersessions,
+                    if (canonicalEditIntentsRefs) db.canonicalEditIntents,
+                    if (mutationMappingHoldsRefs) db.mutationMappingHolds,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (userId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.userId,
+                            referencedTable: $SongAliasesReferences
+                                ._userIdTable(db),
+                            referencedColumn: $SongAliasesReferences
+                                ._userIdTable(db)
+                                .userId,
+                          ) as T;
+                        }
+                        if (mappingOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.mappingOpId,
+                            referencedTable: $SongAliasesReferences
+                                ._mappingOpIdTable(db),
+                            referencedColumn: $SongAliasesReferences
+                                ._mappingOpIdTable(db)
+                                .opId,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (mutationSupersessionsRefs)
+                        await $_getPrefetchedData<
+                          SongAliase,
+                          SongAliases,
+                          MutationSupersession
+                        >(
+                          currentTable: table,
+                          referencedTable: $SongAliasesReferences
+                              ._mutationSupersessionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $SongAliasesReferences(
+                                db,
+                                table,
+                                p0,
+                              ).mutationSupersessionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.mappingSourceId == item.sourceSongId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (canonicalEditIntentsRefs)
+                        await $_getPrefetchedData<
+                          SongAliase,
+                          SongAliases,
+                          CanonicalEditIntent
+                        >(
+                          currentTable: table,
+                          referencedTable: $SongAliasesReferences
+                              ._canonicalEditIntentsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $SongAliasesReferences(
+                                db,
+                                table,
+                                p0,
+                              ).canonicalEditIntentsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.mappingSourceId == item.sourceSongId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (mutationMappingHoldsRefs)
+                        await $_getPrefetchedData<
+                          SongAliase,
+                          SongAliases,
+                          MutationMappingHold
+                        >(
+                          currentTable: table,
+                          referencedTable: $SongAliasesReferences
+                              ._mutationMappingHoldsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $SongAliasesReferences(
+                                db,
+                                table,
+                                p0,
+                              ).mutationMappingHoldsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.mappingSourceId == item.sourceSongId,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $SongAliasesProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      SongAliases,
+      SongAliase,
+      $SongAliasesFilterComposer,
+      $SongAliasesOrderingComposer,
+      $SongAliasesAnnotationComposer,
+      $SongAliasesCreateCompanionBuilder,
+      $SongAliasesUpdateCompanionBuilder,
+      (SongAliase, $SongAliasesReferences),
+      SongAliase,
+      PrefetchHooks Function({
+        bool userId,
+        bool mappingOpId,
+        bool mutationSupersessionsRefs,
+        bool canonicalEditIntentsRefs,
+        bool mutationMappingHoldsRefs,
+      })
+    >;
+typedef $MutationSupersessionsCreateCompanionBuilder =
+    MutationSupersessionsCompanion Function({
+      required String originalOpId,
+      required String replacementOpId,
+      required String mappingSourceId,
+      required String userId,
+      required String orderRootOpId,
+      required int logicalOrder,
+      required int createdAt,
+    });
+typedef $MutationSupersessionsUpdateCompanionBuilder =
+    MutationSupersessionsCompanion Function({
+      Value<String> originalOpId,
+      Value<String> replacementOpId,
+      Value<String> mappingSourceId,
+      Value<String> userId,
+      Value<String> orderRootOpId,
+      Value<int> logicalOrder,
+      Value<int> createdAt,
+    });
+
+final class $MutationSupersessionsReferences
+    extends
+        BaseReferences<
+          _$AccountDatabase,
+          MutationSupersessions,
+          MutationSupersession
+        > {
+  $MutationSupersessionsReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static LocalMutations _originalOpIdTable(_$AccountDatabase db) =>
+      db.localMutations.createAlias(
+        'mutation_supersessions__original_op_id__local_mutations__op_id',
+      );
+
+  $LocalMutationsProcessedTableManager get originalOpId {
+    final $_column = $_itemColumn<String>('original_op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_originalOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalMutations _replacementOpIdTable(_$AccountDatabase db) =>
+      db.localMutations.createAlias(
+        'mutation_supersessions__replacement_op_id__local_mutations__op_id',
+      );
+
+  $LocalMutationsProcessedTableManager get replacementOpId {
+    final $_column = $_itemColumn<String>('replacement_op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_replacementOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static SongAliases _mappingSourceIdTable(
+    _$AccountDatabase db,
+  ) => db.songAliases.createAlias(
+    'mutation_supersessions__mapping_source_id__song_aliases__source_song_id',
+  );
+
+  $SongAliasesProcessedTableManager get mappingSourceId {
+    final $_column = $_itemColumn<String>('mapping_source_id')!;
+
+    final manager = $SongAliasesTableManager(
+      $_db,
+      $_db.songAliases,
+    ).filter((f) => f.sourceSongId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_mappingSourceIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalAccount _userIdTable(_$AccountDatabase db) => db.localAccount
+      .createAlias('mutation_supersessions__user_id__local_account__user_id');
+
+  $LocalAccountProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $LocalAccountTableManager(
+      $_db,
+      $_db.localAccount,
+    ).filter((f) => f.userId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalMutations _orderRootOpIdTable(_$AccountDatabase db) =>
+      db.localMutations.createAlias(
+        'mutation_supersessions__order_root_op_id__local_mutations__op_id',
+      );
+
+  $LocalMutationsProcessedTableManager get orderRootOpId {
+    final $_column = $_itemColumn<String>('order_root_op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_orderRootOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $MutationSupersessionsFilterComposer
+    extends Composer<_$AccountDatabase, MutationSupersessions> {
+  $MutationSupersessionsFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get logicalOrder => $composableBuilder(
+    column: $table.logicalOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalMutationsFilterComposer get originalOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originalOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsFilterComposer get replacementOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.replacementOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $SongAliasesFilterComposer get mappingSourceId {
+    final $SongAliasesFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mappingSourceId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.sourceSongId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesFilterComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountFilterComposer get userId {
+    final $LocalAccountFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountFilterComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsFilterComposer get orderRootOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.orderRootOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationSupersessionsOrderingComposer
+    extends Composer<_$AccountDatabase, MutationSupersessions> {
+  $MutationSupersessionsOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get logicalOrder => $composableBuilder(
+    column: $table.logicalOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalMutationsOrderingComposer get originalOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originalOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsOrderingComposer get replacementOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.replacementOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $SongAliasesOrderingComposer get mappingSourceId {
+    final $SongAliasesOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mappingSourceId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.sourceSongId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesOrderingComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountOrderingComposer get userId {
+    final $LocalAccountOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountOrderingComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsOrderingComposer get orderRootOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.orderRootOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationSupersessionsAnnotationComposer
+    extends Composer<_$AccountDatabase, MutationSupersessions> {
+  $MutationSupersessionsAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get logicalOrder => $composableBuilder(
+    column: $table.logicalOrder,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $LocalMutationsAnnotationComposer get originalOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originalOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsAnnotationComposer get replacementOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.replacementOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $SongAliasesAnnotationComposer get mappingSourceId {
+    final $SongAliasesAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mappingSourceId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.sourceSongId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesAnnotationComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountAnnotationComposer get userId {
+    final $LocalAccountAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountAnnotationComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsAnnotationComposer get orderRootOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.orderRootOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationSupersessionsTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          MutationSupersessions,
+          MutationSupersession,
+          $MutationSupersessionsFilterComposer,
+          $MutationSupersessionsOrderingComposer,
+          $MutationSupersessionsAnnotationComposer,
+          $MutationSupersessionsCreateCompanionBuilder,
+          $MutationSupersessionsUpdateCompanionBuilder,
+          (MutationSupersession, $MutationSupersessionsReferences),
+          MutationSupersession,
+          PrefetchHooks Function({
+            bool originalOpId,
+            bool replacementOpId,
+            bool mappingSourceId,
+            bool userId,
+            bool orderRootOpId,
+          })
+        > {
+  $MutationSupersessionsTableManager(
+    _$AccountDatabase db,
+    MutationSupersessions table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $MutationSupersessionsFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $MutationSupersessionsOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $MutationSupersessionsAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> originalOpId = const Value.absent(),
+                Value<String> replacementOpId = const Value.absent(),
+                Value<String> mappingSourceId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> orderRootOpId = const Value.absent(),
+                Value<int> logicalOrder = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+              }) => MutationSupersessionsCompanion(
+                originalOpId: originalOpId,
+                replacementOpId: replacementOpId,
+                mappingSourceId: mappingSourceId,
+                userId: userId,
+                orderRootOpId: orderRootOpId,
+                logicalOrder: logicalOrder,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String originalOpId,
+                required String replacementOpId,
+                required String mappingSourceId,
+                required String userId,
+                required String orderRootOpId,
+                required int logicalOrder,
+                required int createdAt,
+              }) => MutationSupersessionsCompanion.insert(
+                originalOpId: originalOpId,
+                replacementOpId: replacementOpId,
+                mappingSourceId: mappingSourceId,
+                userId: userId,
+                orderRootOpId: orderRootOpId,
+                logicalOrder: logicalOrder,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<MutationSupersessions, MutationSupersession>(
+                    table,
+                  ),
+                  $MutationSupersessionsReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                originalOpId = false,
+                replacementOpId = false,
+                mappingSourceId = false,
+                userId = false,
+                orderRootOpId = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (originalOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.originalOpId,
+                            referencedTable: $MutationSupersessionsReferences
+                                ._originalOpIdTable(db),
+                            referencedColumn: $MutationSupersessionsReferences
+                                ._originalOpIdTable(db)
+                                .opId,
+                          ) as T;
+                        }
+                        if (replacementOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.replacementOpId,
+                            referencedTable: $MutationSupersessionsReferences
+                                ._replacementOpIdTable(db),
+                            referencedColumn: $MutationSupersessionsReferences
+                                ._replacementOpIdTable(db)
+                                .opId,
+                          ) as T;
+                        }
+                        if (mappingSourceId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.mappingSourceId,
+                            referencedTable: $MutationSupersessionsReferences
+                                ._mappingSourceIdTable(db),
+                            referencedColumn: $MutationSupersessionsReferences
+                                ._mappingSourceIdTable(db)
+                                .sourceSongId,
+                          ) as T;
+                        }
+                        if (userId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.userId,
+                            referencedTable: $MutationSupersessionsReferences
+                                ._userIdTable(db),
+                            referencedColumn: $MutationSupersessionsReferences
+                                ._userIdTable(db)
+                                .userId,
+                          ) as T;
+                        }
+                        if (orderRootOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.orderRootOpId,
+                            referencedTable: $MutationSupersessionsReferences
+                                ._orderRootOpIdTable(db),
+                            referencedColumn: $MutationSupersessionsReferences
+                                ._orderRootOpIdTable(db)
+                                .opId,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $MutationSupersessionsProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      MutationSupersessions,
+      MutationSupersession,
+      $MutationSupersessionsFilterComposer,
+      $MutationSupersessionsOrderingComposer,
+      $MutationSupersessionsAnnotationComposer,
+      $MutationSupersessionsCreateCompanionBuilder,
+      $MutationSupersessionsUpdateCompanionBuilder,
+      (MutationSupersession, $MutationSupersessionsReferences),
+      MutationSupersession,
+      PrefetchHooks Function({
+        bool originalOpId,
+        bool replacementOpId,
+        bool mappingSourceId,
+        bool userId,
+        bool orderRootOpId,
+      })
+    >;
+typedef $CanonicalEditIntentsCreateCompanionBuilder =
+    CanonicalEditIntentsCompanion Function({
+      required String intentId,
+      required String userId,
+      required String mappingSourceId,
+      required String intentKey,
+      required String kind,
+      required String entityType,
+      required String entityId,
+      Value<String?> originOpId,
+      required String evidenceJson,
+      Value<String> state,
+      Value<String?> resolutionJson,
+      Value<String?> resolutionOpId,
+      Value<int?> resolvedAt,
+      required int createdAt,
+    });
+typedef $CanonicalEditIntentsUpdateCompanionBuilder =
+    CanonicalEditIntentsCompanion Function({
+      Value<String> intentId,
+      Value<String> userId,
+      Value<String> mappingSourceId,
+      Value<String> intentKey,
+      Value<String> kind,
+      Value<String> entityType,
+      Value<String> entityId,
+      Value<String?> originOpId,
+      Value<String> evidenceJson,
+      Value<String> state,
+      Value<String?> resolutionJson,
+      Value<String?> resolutionOpId,
+      Value<int?> resolvedAt,
+      Value<int> createdAt,
+    });
+
+final class $CanonicalEditIntentsReferences
+    extends
+        BaseReferences<
+          _$AccountDatabase,
+          CanonicalEditIntents,
+          CanonicalEditIntent
+        > {
+  $CanonicalEditIntentsReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static LocalAccount _userIdTable(_$AccountDatabase db) => db.localAccount
+      .createAlias('canonical_edit_intents__user_id__local_account__user_id');
+
+  $LocalAccountProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $LocalAccountTableManager(
+      $_db,
+      $_db.localAccount,
+    ).filter((f) => f.userId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static SongAliases _mappingSourceIdTable(
+    _$AccountDatabase db,
+  ) => db.songAliases.createAlias(
+    'canonical_edit_intents__mapping_source_id__song_aliases__source_song_id',
+  );
+
+  $SongAliasesProcessedTableManager get mappingSourceId {
+    final $_column = $_itemColumn<String>('mapping_source_id')!;
+
+    final manager = $SongAliasesTableManager(
+      $_db,
+      $_db.songAliases,
+    ).filter((f) => f.sourceSongId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_mappingSourceIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalMutations _originOpIdTable(_$AccountDatabase db) =>
+      db.localMutations.createAlias(
+        'canonical_edit_intents__origin_op_id__local_mutations__op_id',
+      );
+
+  $LocalMutationsProcessedTableManager? get originOpId {
+    final $_column = $_itemColumn<String>('origin_op_id');
+    if ($_column == null) return null;
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_originOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalMutations _resolutionOpIdTable(_$AccountDatabase db) =>
+      db.localMutations.createAlias(
+        'canonical_edit_intents__resolution_op_id__local_mutations__op_id',
+      );
+
+  $LocalMutationsProcessedTableManager? get resolutionOpId {
+    final $_column = $_itemColumn<String>('resolution_op_id');
+    if ($_column == null) return null;
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_resolutionOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<MutationMappingHolds, List<MutationMappingHold>>
+  _mutationMappingHoldsRefsTable(
+    _$AccountDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.mutationMappingHolds,
+    aliasName:
+        'canonical_edit_intents__intent_id__mutation_mapping_holds__intent_id',
+  );
+
+  $MutationMappingHoldsProcessedTableManager get mutationMappingHoldsRefs {
+    final manager =
+        $MutationMappingHoldsTableManager(
+          $_db,
+          $_db.mutationMappingHolds,
+        ).filter(
+          (f) =>
+              f.intentId.intentId.sqlEquals($_itemColumn<String>('intent_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _mutationMappingHoldsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $CanonicalEditIntentsFilterComposer
+    extends Composer<_$AccountDatabase, CanonicalEditIntents> {
+  $CanonicalEditIntentsFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get intentId => $composableBuilder(
+    column: $table.intentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get intentKey => $composableBuilder(
+    column: $table.intentKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get evidenceJson => $composableBuilder(
+    column: $table.evidenceJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolutionJson => $composableBuilder(
+    column: $table.resolutionJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalAccountFilterComposer get userId {
+    final $LocalAccountFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountFilterComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $SongAliasesFilterComposer get mappingSourceId {
+    final $SongAliasesFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mappingSourceId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.sourceSongId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesFilterComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsFilterComposer get originOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsFilterComposer get resolutionOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.resolutionOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> mutationMappingHoldsRefs(
+    Expression<bool> Function($MutationMappingHoldsFilterComposer f) f,
+  ) {
+    final $MutationMappingHoldsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.intentId,
+      referencedTable: $db.mutationMappingHolds,
+      getReferencedColumn: (t) => t.intentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationMappingHoldsFilterComposer(
+            $db: $db,
+            $table: $db.mutationMappingHolds,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $CanonicalEditIntentsOrderingComposer
+    extends Composer<_$AccountDatabase, CanonicalEditIntents> {
+  $CanonicalEditIntentsOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get intentId => $composableBuilder(
+    column: $table.intentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get intentKey => $composableBuilder(
+    column: $table.intentKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entityId => $composableBuilder(
+    column: $table.entityId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get evidenceJson => $composableBuilder(
+    column: $table.evidenceJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resolutionJson => $composableBuilder(
+    column: $table.resolutionJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalAccountOrderingComposer get userId {
+    final $LocalAccountOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountOrderingComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $SongAliasesOrderingComposer get mappingSourceId {
+    final $SongAliasesOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mappingSourceId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.sourceSongId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesOrderingComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsOrderingComposer get originOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsOrderingComposer get resolutionOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.resolutionOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $CanonicalEditIntentsAnnotationComposer
+    extends Composer<_$AccountDatabase, CanonicalEditIntents> {
+  $CanonicalEditIntentsAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get intentId =>
+      $composableBuilder(column: $table.intentId, builder: (column) => column);
+
+  GeneratedColumn<String> get intentKey =>
+      $composableBuilder(column: $table.intentKey, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get entityType => $composableBuilder(
+    column: $table.entityType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entityId =>
+      $composableBuilder(column: $table.entityId, builder: (column) => column);
+
+  GeneratedColumn<String> get evidenceJson => $composableBuilder(
+    column: $table.evidenceJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<String> get resolutionJson => $composableBuilder(
+    column: $table.resolutionJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $LocalAccountAnnotationComposer get userId {
+    final $LocalAccountAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountAnnotationComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $SongAliasesAnnotationComposer get mappingSourceId {
+    final $SongAliasesAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mappingSourceId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.sourceSongId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesAnnotationComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsAnnotationComposer get originOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsAnnotationComposer get resolutionOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.resolutionOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> mutationMappingHoldsRefs<T extends Object>(
+    Expression<T> Function($MutationMappingHoldsAnnotationComposer a) f,
+  ) {
+    final $MutationMappingHoldsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.intentId,
+      referencedTable: $db.mutationMappingHolds,
+      getReferencedColumn: (t) => t.intentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $MutationMappingHoldsAnnotationComposer(
+            $db: $db,
+            $table: $db.mutationMappingHolds,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $CanonicalEditIntentsTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          CanonicalEditIntents,
+          CanonicalEditIntent,
+          $CanonicalEditIntentsFilterComposer,
+          $CanonicalEditIntentsOrderingComposer,
+          $CanonicalEditIntentsAnnotationComposer,
+          $CanonicalEditIntentsCreateCompanionBuilder,
+          $CanonicalEditIntentsUpdateCompanionBuilder,
+          (CanonicalEditIntent, $CanonicalEditIntentsReferences),
+          CanonicalEditIntent,
+          PrefetchHooks Function({
+            bool userId,
+            bool mappingSourceId,
+            bool originOpId,
+            bool resolutionOpId,
+            bool mutationMappingHoldsRefs,
+          })
+        > {
+  $CanonicalEditIntentsTableManager(
+    _$AccountDatabase db,
+    CanonicalEditIntents table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $CanonicalEditIntentsFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $CanonicalEditIntentsOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $CanonicalEditIntentsAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> intentId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> mappingSourceId = const Value.absent(),
+                Value<String> intentKey = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String> entityType = const Value.absent(),
+                Value<String> entityId = const Value.absent(),
+                Value<String?> originOpId = const Value.absent(),
+                Value<String> evidenceJson = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<String?> resolutionJson = const Value.absent(),
+                Value<String?> resolutionOpId = const Value.absent(),
+                Value<int?> resolvedAt = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+              }) => CanonicalEditIntentsCompanion(
+                intentId: intentId,
+                userId: userId,
+                mappingSourceId: mappingSourceId,
+                intentKey: intentKey,
+                kind: kind,
+                entityType: entityType,
+                entityId: entityId,
+                originOpId: originOpId,
+                evidenceJson: evidenceJson,
+                state: state,
+                resolutionJson: resolutionJson,
+                resolutionOpId: resolutionOpId,
+                resolvedAt: resolvedAt,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String intentId,
+                required String userId,
+                required String mappingSourceId,
+                required String intentKey,
+                required String kind,
+                required String entityType,
+                required String entityId,
+                Value<String?> originOpId = const Value.absent(),
+                required String evidenceJson,
+                Value<String> state = const Value.absent(),
+                Value<String?> resolutionJson = const Value.absent(),
+                Value<String?> resolutionOpId = const Value.absent(),
+                Value<int?> resolvedAt = const Value.absent(),
+                required int createdAt,
+              }) => CanonicalEditIntentsCompanion.insert(
+                intentId: intentId,
+                userId: userId,
+                mappingSourceId: mappingSourceId,
+                intentKey: intentKey,
+                kind: kind,
+                entityType: entityType,
+                entityId: entityId,
+                originOpId: originOpId,
+                evidenceJson: evidenceJson,
+                state: state,
+                resolutionJson: resolutionJson,
+                resolutionOpId: resolutionOpId,
+                resolvedAt: resolvedAt,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<CanonicalEditIntents, CanonicalEditIntent>(table),
+                  $CanonicalEditIntentsReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                userId = false,
+                mappingSourceId = false,
+                originOpId = false,
+                resolutionOpId = false,
+                mutationMappingHoldsRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (mutationMappingHoldsRefs) db.mutationMappingHolds,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (userId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.userId,
+                            referencedTable: $CanonicalEditIntentsReferences
+                                ._userIdTable(db),
+                            referencedColumn: $CanonicalEditIntentsReferences
+                                ._userIdTable(db)
+                                .userId,
+                          ) as T;
+                        }
+                        if (mappingSourceId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.mappingSourceId,
+                            referencedTable: $CanonicalEditIntentsReferences
+                                ._mappingSourceIdTable(db),
+                            referencedColumn: $CanonicalEditIntentsReferences
+                                ._mappingSourceIdTable(db)
+                                .sourceSongId,
+                          ) as T;
+                        }
+                        if (originOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.originOpId,
+                            referencedTable: $CanonicalEditIntentsReferences
+                                ._originOpIdTable(db),
+                            referencedColumn: $CanonicalEditIntentsReferences
+                                ._originOpIdTable(db)
+                                .opId,
+                          ) as T;
+                        }
+                        if (resolutionOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.resolutionOpId,
+                            referencedTable: $CanonicalEditIntentsReferences
+                                ._resolutionOpIdTable(db),
+                            referencedColumn: $CanonicalEditIntentsReferences
+                                ._resolutionOpIdTable(db)
+                                .opId,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (mutationMappingHoldsRefs)
+                        await $_getPrefetchedData<
+                          CanonicalEditIntent,
+                          CanonicalEditIntents,
+                          MutationMappingHold
+                        >(
+                          currentTable: table,
+                          referencedTable: $CanonicalEditIntentsReferences
+                              ._mutationMappingHoldsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $CanonicalEditIntentsReferences(
+                                db,
+                                table,
+                                p0,
+                              ).mutationMappingHoldsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.intentId == item.intentId,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $CanonicalEditIntentsProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      CanonicalEditIntents,
+      CanonicalEditIntent,
+      $CanonicalEditIntentsFilterComposer,
+      $CanonicalEditIntentsOrderingComposer,
+      $CanonicalEditIntentsAnnotationComposer,
+      $CanonicalEditIntentsCreateCompanionBuilder,
+      $CanonicalEditIntentsUpdateCompanionBuilder,
+      (CanonicalEditIntent, $CanonicalEditIntentsReferences),
+      CanonicalEditIntent,
+      PrefetchHooks Function({
+        bool userId,
+        bool mappingSourceId,
+        bool originOpId,
+        bool resolutionOpId,
+        bool mutationMappingHoldsRefs,
+      })
+    >;
+typedef $MutationMappingHoldsCreateCompanionBuilder =
+    MutationMappingHoldsCompanion Function({
+      required String opId,
+      required String mappingSourceId,
+      required String userId,
+      required String reason,
+      required String disposition,
+      Value<String?> intentId,
+      required int createdAt,
+      Value<int?> releasedAt,
+      Value<String?> releaseEvidence,
+    });
+typedef $MutationMappingHoldsUpdateCompanionBuilder =
+    MutationMappingHoldsCompanion Function({
+      Value<String> opId,
+      Value<String> mappingSourceId,
+      Value<String> userId,
+      Value<String> reason,
+      Value<String> disposition,
+      Value<String?> intentId,
+      Value<int> createdAt,
+      Value<int?> releasedAt,
+      Value<String?> releaseEvidence,
+    });
+
+final class $MutationMappingHoldsReferences
+    extends
+        BaseReferences<
+          _$AccountDatabase,
+          MutationMappingHolds,
+          MutationMappingHold
+        > {
+  $MutationMappingHoldsReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static LocalMutations _opIdTable(_$AccountDatabase db) => db.localMutations
+      .createAlias('mutation_mapping_holds__op_id__local_mutations__op_id');
+
+  $LocalMutationsProcessedTableManager get opId {
+    final $_column = $_itemColumn<String>('op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_opIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static SongAliases _mappingSourceIdTable(
+    _$AccountDatabase db,
+  ) => db.songAliases.createAlias(
+    'mutation_mapping_holds__mapping_source_id__song_aliases__source_song_id',
+  );
+
+  $SongAliasesProcessedTableManager get mappingSourceId {
+    final $_column = $_itemColumn<String>('mapping_source_id')!;
+
+    final manager = $SongAliasesTableManager(
+      $_db,
+      $_db.songAliases,
+    ).filter((f) => f.sourceSongId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_mappingSourceIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalAccount _userIdTable(_$AccountDatabase db) => db.localAccount
+      .createAlias('mutation_mapping_holds__user_id__local_account__user_id');
+
+  $LocalAccountProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $LocalAccountTableManager(
+      $_db,
+      $_db.localAccount,
+    ).filter((f) => f.userId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static CanonicalEditIntents _intentIdTable(_$AccountDatabase db) =>
+      db.canonicalEditIntents.createAlias(
+        'mutation_mapping_holds__intent_id__canonical_edit_intents__intent_id',
+      );
+
+  $CanonicalEditIntentsProcessedTableManager? get intentId {
+    final $_column = $_itemColumn<String>('intent_id');
+    if ($_column == null) return null;
+    final manager = $CanonicalEditIntentsTableManager(
+      $_db,
+      $_db.canonicalEditIntents,
+    ).filter((f) => f.intentId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_intentIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $MutationMappingHoldsFilterComposer
+    extends Composer<_$AccountDatabase, MutationMappingHolds> {
+  $MutationMappingHoldsFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get disposition => $composableBuilder(
+    column: $table.disposition,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get releasedAt => $composableBuilder(
+    column: $table.releasedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get releaseEvidence => $composableBuilder(
+    column: $table.releaseEvidence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalMutationsFilterComposer get opId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $SongAliasesFilterComposer get mappingSourceId {
+    final $SongAliasesFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mappingSourceId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.sourceSongId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesFilterComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountFilterComposer get userId {
+    final $LocalAccountFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountFilterComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $CanonicalEditIntentsFilterComposer get intentId {
+    final $CanonicalEditIntentsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.intentId,
+      referencedTable: $db.canonicalEditIntents,
+      getReferencedColumn: (t) => t.intentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $CanonicalEditIntentsFilterComposer(
+            $db: $db,
+            $table: $db.canonicalEditIntents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationMappingHoldsOrderingComposer
+    extends Composer<_$AccountDatabase, MutationMappingHolds> {
+  $MutationMappingHoldsOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get disposition => $composableBuilder(
+    column: $table.disposition,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get releasedAt => $composableBuilder(
+    column: $table.releasedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get releaseEvidence => $composableBuilder(
+    column: $table.releaseEvidence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalMutationsOrderingComposer get opId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $SongAliasesOrderingComposer get mappingSourceId {
+    final $SongAliasesOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mappingSourceId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.sourceSongId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesOrderingComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountOrderingComposer get userId {
+    final $LocalAccountOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountOrderingComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $CanonicalEditIntentsOrderingComposer get intentId {
+    final $CanonicalEditIntentsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.intentId,
+      referencedTable: $db.canonicalEditIntents,
+      getReferencedColumn: (t) => t.intentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $CanonicalEditIntentsOrderingComposer(
+            $db: $db,
+            $table: $db.canonicalEditIntents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationMappingHoldsAnnotationComposer
+    extends Composer<_$AccountDatabase, MutationMappingHolds> {
+  $MutationMappingHoldsAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<String> get disposition => $composableBuilder(
+    column: $table.disposition,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get releasedAt => $composableBuilder(
+    column: $table.releasedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get releaseEvidence => $composableBuilder(
+    column: $table.releaseEvidence,
+    builder: (column) => column,
+  );
+
+  $LocalMutationsAnnotationComposer get opId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $SongAliasesAnnotationComposer get mappingSourceId {
+    final $SongAliasesAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.mappingSourceId,
+      referencedTable: $db.songAliases,
+      getReferencedColumn: (t) => t.sourceSongId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SongAliasesAnnotationComposer(
+            $db: $db,
+            $table: $db.songAliases,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountAnnotationComposer get userId {
+    final $LocalAccountAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountAnnotationComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $CanonicalEditIntentsAnnotationComposer get intentId {
+    final $CanonicalEditIntentsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.intentId,
+      referencedTable: $db.canonicalEditIntents,
+      getReferencedColumn: (t) => t.intentId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $CanonicalEditIntentsAnnotationComposer(
+            $db: $db,
+            $table: $db.canonicalEditIntents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationMappingHoldsTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          MutationMappingHolds,
+          MutationMappingHold,
+          $MutationMappingHoldsFilterComposer,
+          $MutationMappingHoldsOrderingComposer,
+          $MutationMappingHoldsAnnotationComposer,
+          $MutationMappingHoldsCreateCompanionBuilder,
+          $MutationMappingHoldsUpdateCompanionBuilder,
+          (MutationMappingHold, $MutationMappingHoldsReferences),
+          MutationMappingHold,
+          PrefetchHooks Function({
+            bool opId,
+            bool mappingSourceId,
+            bool userId,
+            bool intentId,
+          })
+        > {
+  $MutationMappingHoldsTableManager(
+    _$AccountDatabase db,
+    MutationMappingHolds table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $MutationMappingHoldsFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $MutationMappingHoldsOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $MutationMappingHoldsAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> opId = const Value.absent(),
+                Value<String> mappingSourceId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> reason = const Value.absent(),
+                Value<String> disposition = const Value.absent(),
+                Value<String?> intentId = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int?> releasedAt = const Value.absent(),
+                Value<String?> releaseEvidence = const Value.absent(),
+              }) => MutationMappingHoldsCompanion(
+                opId: opId,
+                mappingSourceId: mappingSourceId,
+                userId: userId,
+                reason: reason,
+                disposition: disposition,
+                intentId: intentId,
+                createdAt: createdAt,
+                releasedAt: releasedAt,
+                releaseEvidence: releaseEvidence,
+              ),
+          createCompanionCallback:
+              ({
+                required String opId,
+                required String mappingSourceId,
+                required String userId,
+                required String reason,
+                required String disposition,
+                Value<String?> intentId = const Value.absent(),
+                required int createdAt,
+                Value<int?> releasedAt = const Value.absent(),
+                Value<String?> releaseEvidence = const Value.absent(),
+              }) => MutationMappingHoldsCompanion.insert(
+                opId: opId,
+                mappingSourceId: mappingSourceId,
+                userId: userId,
+                reason: reason,
+                disposition: disposition,
+                intentId: intentId,
+                createdAt: createdAt,
+                releasedAt: releasedAt,
+                releaseEvidence: releaseEvidence,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<MutationMappingHolds, MutationMappingHold>(table),
+                  $MutationMappingHoldsReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                opId = false,
+                mappingSourceId = false,
+                userId = false,
+                intentId = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (opId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.opId,
+                            referencedTable: $MutationMappingHoldsReferences
+                                ._opIdTable(db),
+                            referencedColumn: $MutationMappingHoldsReferences
+                                ._opIdTable(db)
+                                .opId,
+                          ) as T;
+                        }
+                        if (mappingSourceId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.mappingSourceId,
+                            referencedTable: $MutationMappingHoldsReferences
+                                ._mappingSourceIdTable(db),
+                            referencedColumn: $MutationMappingHoldsReferences
+                                ._mappingSourceIdTable(db)
+                                .sourceSongId,
+                          ) as T;
+                        }
+                        if (userId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.userId,
+                            referencedTable: $MutationMappingHoldsReferences
+                                ._userIdTable(db),
+                            referencedColumn: $MutationMappingHoldsReferences
+                                ._userIdTable(db)
+                                .userId,
+                          ) as T;
+                        }
+                        if (intentId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.intentId,
+                            referencedTable: $MutationMappingHoldsReferences
+                                ._intentIdTable(db),
+                            referencedColumn: $MutationMappingHoldsReferences
+                                ._intentIdTable(db)
+                                .intentId,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $MutationMappingHoldsProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      MutationMappingHolds,
+      MutationMappingHold,
+      $MutationMappingHoldsFilterComposer,
+      $MutationMappingHoldsOrderingComposer,
+      $MutationMappingHoldsAnnotationComposer,
+      $MutationMappingHoldsCreateCompanionBuilder,
+      $MutationMappingHoldsUpdateCompanionBuilder,
+      (MutationMappingHold, $MutationMappingHoldsReferences),
+      MutationMappingHold,
+      PrefetchHooks Function({
+        bool opId,
+        bool mappingSourceId,
+        bool userId,
+        bool intentId,
+      })
+    >;
 
 class $AccountDatabaseManager {
   final _$AccountDatabase _db;
@@ -9759,4 +16107,12 @@ class $AccountDatabaseManager {
       $MutationWireRequestsTableManager(_db, _db.mutationWireRequests);
   $MutationRetryControlsTableManager get mutationRetryControls =>
       $MutationRetryControlsTableManager(_db, _db.mutationRetryControls);
+  $SongAliasesTableManager get songAliases =>
+      $SongAliasesTableManager(_db, _db.songAliases);
+  $MutationSupersessionsTableManager get mutationSupersessions =>
+      $MutationSupersessionsTableManager(_db, _db.mutationSupersessions);
+  $CanonicalEditIntentsTableManager get canonicalEditIntents =>
+      $CanonicalEditIntentsTableManager(_db, _db.canonicalEditIntents);
+  $MutationMappingHoldsTableManager get mutationMappingHolds =>
+      $MutationMappingHoldsTableManager(_db, _db.mutationMappingHolds);
 }

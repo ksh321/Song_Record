@@ -1255,9 +1255,801 @@ i1.GeneratedColumn<String> _column_63(String aliasedName) =>
       type: i1.DriftSqlType.string,
       $customConstraints: 'NOT NULL CHECK (last_attempt_kind IN (\'INITIAL\', \'AUTO\', \'MANUAL\', \'UNKNOWN\'))',
     );
+
+final class Schema4 extends i0.VersionedSchema {
+  Schema4({required super.database}) : super(version: 4);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    localAccount,
+    metadataCopies,
+    localMutations,
+    mutationQueue,
+    mutationTarget,
+    localRecordingFiles,
+    recordingJournals,
+    importJobs,
+    importItems,
+    syncCursors,
+    localAccountNoUpdate,
+    localAccountNoDelete,
+    mutationRequestImmutable,
+    cursorNoRewind,
+    mutationWireRequests,
+    mutationWireRequestImmutable,
+    mutationRetryControls,
+    mutationRetryBudgetMonotonic,
+    songAliases,
+    songAliasDestination,
+    mutationSupersessions,
+    canonicalEditIntents,
+    canonicalIntentTarget,
+    mutationMappingHolds,
+    mutationMappingActiveHolds,
+    songAliasValidInsert,
+    songAliasNoUpdate,
+    songAliasNoDelete,
+    mutationSupersessionValidInsert,
+    mutationSupersessionNoUpdate,
+    mutationSupersessionNoDelete,
+    supersededMutationNoClaim,
+    canonicalIntentEvidenceImmutable,
+    canonicalIntentNoDelete,
+    mappingHoldReleaseOnly,
+    mappingHoldNoDelete,
+    songAliasNoReplace,
+    mutationSupersessionNoReplace,
+    canonicalIntentNoReplace,
+    mappingHoldNoReplace,
+    mutationRowidImmutable,
+    mutationHistoryNoReplace,
+    mutationOrderPositive,
+    mutationHistoryNoDelete,
+  ];
+  late final Shape0 localAccount = Shape0(
+    source: i0.VersionedTable(
+      entityName: 'local_account',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [_column_0, _column_1, _column_2, _column_3],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape1 metadataCopies = Shape1(
+    source: i0.VersionedTable(
+      entityName: 'metadata_copies',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(entity_type, entity_id)',
+        'CHECK((server_revision = 0 AND server_payload IS NULL)OR(server_revision > 0 AND server_payload IS NOT NULL))',
+        'CHECK(tombstone = 0 OR server_revision > 0)',
+      ],
+      columns: [
+        _column_4,
+        _column_5,
+        _column_6,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape2 localMutations = Shape2(
+    source: i0.VersionedTable(
+      entityName: 'local_mutations',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(entity_type, entity_id)REFERENCES metadata_copies(entity_type, entity_id)',
+        'CHECK((base_revision = 0 AND base_payload IS NULL)OR(base_revision > 0 AND base_payload IS NOT NULL))',
+      ],
+      columns: [
+        _column_12,
+        _column_4,
+        _column_13,
+        _column_14,
+        _column_15,
+        _column_16,
+        _column_17,
+        _column_18,
+        _column_19,
+        _column_20,
+        _column_21,
+        _column_22,
+        _column_23,
+        _column_3,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index mutationQueue = i1.Index(
+    'mutation_queue',
+    'CREATE INDEX mutation_queue ON local_mutations (queue_state, next_attempt_at, created_at, op_id)',
+  );
+  final i1.Index mutationTarget = i1.Index(
+    'mutation_target',
+    'CREATE INDEX mutation_target ON local_mutations (entity_type, entity_id, created_at)',
+  );
+  late final Shape3 localRecordingFiles = Shape3(
+    source: i0.VersionedTable(
+      entityName: 'local_recording_files',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'UNIQUE(user_id, recording_id)',
+        'CHECK(relative_path = \'audio/\' || recording_id || \'.m4a\' OR relative_path = \'pending/\' || recording_id || \'.m4a.part\')',
+        'CHECK(local_state NOT IN (\'INPUT_PENDING\', \'SAVED\') OR(sha256 IS NOT NULL AND size_bytes IS NOT NULL AND verified_at IS NOT NULL AND relative_path = \'audio/\' || recording_id || \'.m4a\'))',
+      ],
+      columns: [
+        _column_24,
+        _column_4,
+        _column_25,
+        _column_26,
+        _column_27,
+        _column_28,
+        _column_29,
+        _column_30,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape4 recordingJournals = Shape4(
+    source: i0.VersionedTable(
+      entityName: 'recording_journals',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(user_id, recording_id)REFERENCES local_recording_files(user_id, recording_id)',
+        'CHECK(pending_path = \'pending/\' || recording_id || \'.m4a.part\')',
+        'CHECK(final_path = \'audio/\' || recording_id || \'.m4a\')',
+      ],
+      columns: [
+        _column_31,
+        _column_32,
+        _column_33,
+        _column_34,
+        _column_35,
+        _column_36,
+        _column_37,
+        _column_38,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape5 importJobs = Shape5(
+    source: i0.VersionedTable(
+      entityName: 'import_jobs',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(archive_path = \'imports/\' || import_job_id || \'.zip\')',
+        'CHECK(status <> \'COMPLETED\' OR completed_items = total_items)',
+      ],
+      columns: [
+        _column_39,
+        _column_4,
+        _column_40,
+        _column_41,
+        _column_42,
+        _column_43,
+        _column_44,
+        _column_45,
+        _column_46,
+        _column_3,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape6 importItems = Shape6(
+    source: i0.VersionedTable(
+      entityName: 'import_items',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(import_job_id, ordinal)'],
+      columns: [
+        _column_47,
+        _column_48,
+        _column_49,
+        _column_50,
+        _column_51,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape7 syncCursors = Shape7(
+    source: i0.VersionedTable(
+      entityName: 'sync_cursors',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(baseline_complete = 0 OR last_change_seq IS NOT NULL)',
+      ],
+      columns: [
+        _column_0,
+        _column_4,
+        _column_52,
+        _column_53,
+        _column_54,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger localAccountNoUpdate = i1.Trigger(
+    'CREATE TRIGGER local_account_no_update BEFORE UPDATE ON local_account BEGIN SELECT RAISE (ABORT, \'Local database ownership is immutable\');END',
+    'local_account_no_update',
+  );
+  final i1.Trigger localAccountNoDelete = i1.Trigger(
+    'CREATE TRIGGER local_account_no_delete BEFORE DELETE ON local_account BEGIN SELECT RAISE (ABORT, \'Local database ownership cannot be removed\');END',
+    'local_account_no_delete',
+  );
+  final i1.Trigger mutationRequestImmutable = i1.Trigger(
+    'CREATE TRIGGER mutation_request_immutable BEFORE UPDATE ON local_mutations WHEN NEW.op_id <> OLD.op_id OR NEW.user_id <> OLD.user_id OR NEW.entity_type <> OLD.entity_type OR NEW.entity_id <> OLD.entity_id OR NEW.operation <> OLD.operation OR NEW.base_revision <> OLD.base_revision OR NEW.base_payload IS NOT OLD.base_payload OR NEW.payload <> OLD.payload OR NEW.request_hash <> OLD.request_hash OR NEW.created_at <> OLD.created_at OR NEW.attempt_count < OLD.attempt_count BEGIN SELECT RAISE (ABORT, \'Mutation identity and request must survive retries unchanged\');END',
+    'mutation_request_immutable',
+  );
+  final i1.Trigger cursorNoRewind = i1.Trigger(
+    'CREATE TRIGGER cursor_no_rewind BEFORE UPDATE ON sync_cursors WHEN NEW.user_id <> OLD.user_id OR(OLD.last_change_seq IS NOT NULL AND(NEW.last_change_seq IS NULL OR NEW.last_change_seq < OLD.last_change_seq))BEGIN SELECT RAISE (ABORT, \'Do not discard an acknowledged cursor\');END',
+    'cursor_no_rewind',
+  );
+  late final Shape8 mutationWireRequests = Shape8(
+    source: i0.VersionedTable(
+      entityName: 'mutation_wire_requests',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [
+        _column_55,
+        _column_56,
+        _column_57,
+        _column_58,
+        _column_59,
+        _column_60,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger mutationWireRequestImmutable = i1.Trigger(
+    'CREATE TRIGGER mutation_wire_request_immutable BEFORE UPDATE ON mutation_wire_requests BEGIN SELECT RAISE (ABORT, \'Frozen HTTP requests must survive retries unchanged\');END',
+    'mutation_wire_request_immutable',
+  );
+  late final Shape9 mutationRetryControls = Shape9(
+    source: i0.VersionedTable(
+      entityName: 'mutation_retry_controls',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [_column_55, _column_61, _column_62, _column_63],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger mutationRetryBudgetMonotonic = i1.Trigger(
+    'CREATE TRIGGER mutation_retry_budget_monotonic BEFORE UPDATE ON mutation_retry_controls WHEN NEW.op_id <> OLD.op_id OR(OLD.automatic_retries_claimed IS NULL AND NEW.automatic_retries_claimed IS NOT NULL)OR(OLD.automatic_retries_claimed IS NOT NULL AND NEW.automatic_retries_claimed IS NULL)OR NEW.automatic_retries_claimed < OLD.automatic_retries_claimed OR NEW.automatic_retries_claimed > OLD.automatic_retries_claimed + 1 BEGIN SELECT RAISE (ABORT, \'Automatic retry budget cannot be replenished\');END',
+    'mutation_retry_budget_monotonic',
+  );
+  late final Shape10 songAliases = Shape10(
+    source: i0.VersionedTable(
+      entityName: 'song_aliases',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(entity_type, source_song_id)REFERENCES metadata_copies(entity_type, entity_id)',
+        'FOREIGN KEY(entity_type, canonical_song_id)REFERENCES metadata_copies(entity_type, entity_id)',
+        'CHECK(source_song_id <> canonical_song_id)',
+        'CHECK(json_type(receipt_body, \'\$.created\') IS \'false\')',
+        'CHECK(json_type(receipt_body, \'\$.song\') IS \'object\')',
+        'CHECK(json_extract(receipt_body, \'\$.canonical_song_id\') IS canonical_song_id)',
+        'CHECK(json_extract(receipt_body, \'\$.song.id\') IS canonical_song_id)',
+        'CHECK(json_type(receipt_body, \'\$.song.revision\') IS \'integer\' AND json_extract(receipt_body, \'\$.song.revision\') > 0)',
+        'CHECK(json_extract(receipt_body, \'\$.song.lifecycle_state\') IS \'ACTIVE\')',
+      ],
+      columns: [
+        _column_64,
+        _column_65,
+        _column_4,
+        _column_66,
+        _column_67,
+        _column_68,
+        _column_69,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index songAliasDestination = i1.Index(
+    'song_alias_destination',
+    'CREATE INDEX song_alias_destination ON song_aliases (canonical_song_id)',
+  );
+  late final Shape11 mutationSupersessions = Shape11(
+    source: i0.VersionedTable(
+      entityName: 'mutation_supersessions',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['CHECK(original_op_id <> replacement_op_id)'],
+      columns: [
+        _column_70,
+        _column_71,
+        _column_72,
+        _column_4,
+        _column_73,
+        _column_74,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape12 canonicalEditIntents = Shape12(
+    source: i0.VersionedTable(
+      entityName: 'canonical_edit_intents',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(entity_type, entity_id)REFERENCES metadata_copies(entity_type, entity_id)',
+        'UNIQUE(mapping_source_id, intent_key)',
+        'CHECK((state = \'OPEN\' AND resolution_json IS NULL AND resolution_op_id IS NULL AND resolved_at IS NULL)OR(state = \'QUEUED\' AND resolution_json IS NOT NULL AND resolution_op_id IS NOT NULL AND resolved_at IS NULL)OR(state = \'RESOLVED\' AND resolution_json IS NOT NULL AND resolved_at IS NOT NULL))',
+      ],
+      columns: [
+        _column_75,
+        _column_4,
+        _column_72,
+        _column_76,
+        _column_77,
+        _column_13,
+        _column_14,
+        _column_78,
+        _column_79,
+        _column_80,
+        _column_81,
+        _column_82,
+        _column_83,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index canonicalIntentTarget = i1.Index(
+    'canonical_intent_target',
+    'CREATE INDEX canonical_intent_target ON canonical_edit_intents (entity_type, entity_id, state)',
+  );
+  late final Shape13 mutationMappingHolds = Shape13(
+    source: i0.VersionedTable(
+      entityName: 'mutation_mapping_holds',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(op_id, mapping_source_id, reason)',
+        'CHECK((released_at IS NULL AND release_evidence IS NULL)OR(released_at IS NOT NULL AND release_evidence IS NOT NULL))',
+      ],
+      columns: [
+        _column_84,
+        _column_72,
+        _column_4,
+        _column_85,
+        _column_86,
+        _column_87,
+        _column_3,
+        _column_88,
+        _column_89,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index mutationMappingActiveHolds = i1.Index(
+    'mutation_mapping_active_holds',
+    'CREATE INDEX mutation_mapping_active_holds ON mutation_mapping_holds (op_id, released_at)',
+  );
+  final i1.Trigger songAliasValidInsert = i1.Trigger(
+    'CREATE TRIGGER song_alias_valid_insert BEFORE INSERT ON song_aliases BEGIN SELECT RAISE (ABORT, \'Alias requires its original song CREATE\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.mapping_op_id AND m.user_id = NEW.user_id AND m.entity_type = \'SONG\' AND m.entity_id = NEW.source_song_id AND m.operation = \'CREATE\');SELECT RAISE (ABORT, \'Song alias cycle\') WHERE EXISTS (WITH RECURSIVE destinations (id) AS (SELECT NEW.canonical_song_id UNION SELECT a.canonical_song_id FROM song_aliases AS a JOIN destinations AS d ON a.source_song_id = d.id) SELECT 1 FROM destinations WHERE id = NEW.source_song_id);END',
+    'song_alias_valid_insert',
+  );
+  final i1.Trigger songAliasNoUpdate = i1.Trigger(
+    'CREATE TRIGGER song_alias_no_update BEFORE UPDATE ON song_aliases BEGIN SELECT RAISE (ABORT, \'Song aliases and receipts are immutable\');END',
+    'song_alias_no_update',
+  );
+  final i1.Trigger songAliasNoDelete = i1.Trigger(
+    'CREATE TRIGGER song_alias_no_delete BEFORE DELETE ON song_aliases BEGIN SELECT RAISE (ABORT, \'Song alias evidence must be retained\');END',
+    'song_alias_no_delete',
+  );
+  final i1.Trigger mutationSupersessionValidInsert = i1.Trigger(
+    'CREATE TRIGGER mutation_supersession_valid_insert BEFORE INSERT ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Cannot prepend a frozen replacement chain\') WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.replacement_op_id);SELECT RAISE (ABORT, \'Invalid replacement order\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS original JOIN local_mutations AS replacement ON replacement.op_id = NEW.replacement_op_id WHERE original.op_id = NEW.original_op_id AND replacement."rowid" > original."rowid");SELECT RAISE (ABORT, \'Replacement must inherit original logical order\') WHERE NEW.order_root_op_id IS NOT COALESCE((SELECT order_root_op_id FROM mutation_supersessions WHERE replacement_op_id = NEW.original_op_id), NEW.original_op_id) OR NEW.logical_order IS NOT COALESCE((SELECT logical_order FROM mutation_supersessions WHERE replacement_op_id = NEW.original_op_id), (SELECT "rowid" FROM local_mutations WHERE op_id = NEW.original_op_id));END',
+    'mutation_supersession_valid_insert',
+  );
+  final i1.Trigger mutationSupersessionNoUpdate = i1.Trigger(
+    'CREATE TRIGGER mutation_supersession_no_update BEFORE UPDATE ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Mutation supersessions are immutable\');END',
+    'mutation_supersession_no_update',
+  );
+  final i1.Trigger mutationSupersessionNoDelete = i1.Trigger(
+    'CREATE TRIGGER mutation_supersession_no_delete BEFORE DELETE ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Mutation supersession history must be retained\');END',
+    'mutation_supersession_no_delete',
+  );
+  final i1.Trigger supersededMutationNoClaim = i1.Trigger(
+    'CREATE TRIGGER superseded_mutation_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Superseded mutation cannot be claimed\');END',
+    'superseded_mutation_no_claim',
+  );
+  final i1.Trigger canonicalIntentEvidenceImmutable = i1.Trigger(
+    'CREATE TRIGGER canonical_intent_evidence_immutable BEFORE UPDATE ON canonical_edit_intents WHEN NEW.intent_id IS NOT OLD.intent_id OR NEW.user_id IS NOT OLD.user_id OR NEW.mapping_source_id IS NOT OLD.mapping_source_id OR NEW.intent_key IS NOT OLD.intent_key OR NEW.kind IS NOT OLD.kind OR NEW.entity_type IS NOT OLD.entity_type OR NEW.entity_id IS NOT OLD.entity_id OR NEW.origin_op_id IS NOT OLD.origin_op_id OR NEW.evidence_json IS NOT OLD.evidence_json OR NEW.created_at IS NOT OLD.created_at OR OLD.state = \'RESOLVED\' OR(OLD.state = \'QUEUED\' AND NEW.state <> \'RESOLVED\')BEGIN SELECT RAISE (ABORT, \'Canonical intent evidence cannot be rewritten\');END',
+    'canonical_intent_evidence_immutable',
+  );
+  final i1.Trigger canonicalIntentNoDelete = i1.Trigger(
+    'CREATE TRIGGER canonical_intent_no_delete BEFORE DELETE ON canonical_edit_intents BEGIN SELECT RAISE (ABORT, \'Canonical edit evidence must be retained\');END',
+    'canonical_intent_no_delete',
+  );
+  final i1.Trigger mappingHoldReleaseOnly = i1.Trigger(
+    'CREATE TRIGGER mapping_hold_release_only BEFORE UPDATE ON mutation_mapping_holds WHEN NEW.op_id IS NOT OLD.op_id OR NEW.mapping_source_id IS NOT OLD.mapping_source_id OR NEW.user_id IS NOT OLD.user_id OR NEW.reason IS NOT OLD.reason OR NEW.disposition IS NOT OLD.disposition OR NEW.intent_id IS NOT OLD.intent_id OR NEW.created_at IS NOT OLD.created_at OR OLD.released_at IS NOT NULL OR NEW.released_at IS NULL BEGIN SELECT RAISE (ABORT, \'Mapping hold permits one evidenced release only\');END',
+    'mapping_hold_release_only',
+  );
+  final i1.Trigger mappingHoldNoDelete = i1.Trigger(
+    'CREATE TRIGGER mapping_hold_no_delete BEFORE DELETE ON mutation_mapping_holds BEGIN SELECT RAISE (ABORT, \'Mapping hold history must be retained\');END',
+    'mapping_hold_no_delete',
+  );
+  final i1.Trigger songAliasNoReplace = i1.Trigger(
+    'CREATE TRIGGER song_alias_no_replace BEFORE INSERT ON song_aliases BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM song_aliases WHERE source_song_id = NEW.source_song_id OR mapping_op_id = NEW.mapping_op_id);END',
+    'song_alias_no_replace',
+  );
+  final i1.Trigger mutationSupersessionNoReplace = i1.Trigger(
+    'CREATE TRIGGER mutation_supersession_no_replace BEFORE INSERT ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.replacement_op_id);END',
+    'mutation_supersession_no_replace',
+  );
+  final i1.Trigger canonicalIntentNoReplace = i1.Trigger(
+    'CREATE TRIGGER canonical_intent_no_replace BEFORE INSERT ON canonical_edit_intents BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM canonical_edit_intents WHERE intent_id = NEW.intent_id OR(mapping_source_id = NEW.mapping_source_id AND intent_key = NEW.intent_key));END',
+    'canonical_intent_no_replace',
+  );
+  final i1.Trigger mappingHoldNoReplace = i1.Trigger(
+    'CREATE TRIGGER mapping_hold_no_replace BEFORE INSERT ON mutation_mapping_holds BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = NEW.op_id AND mapping_source_id = NEW.mapping_source_id AND reason = NEW.reason);END',
+    'mapping_hold_no_replace',
+  );
+  final i1.Trigger mutationRowidImmutable = i1.Trigger(
+    'CREATE TRIGGER mutation_rowid_immutable BEFORE UPDATE ON local_mutations WHEN NEW."rowid" IS NOT OLD."rowid" BEGIN SELECT RAISE (ABORT, \'Mutation rowid must remain immutable\');END',
+    'mutation_rowid_immutable',
+  );
+  final i1.Trigger mutationHistoryNoReplace = i1.Trigger(
+    'CREATE TRIGGER mutation_history_no_replace BEFORE INSERT ON local_mutations WHEN EXISTS (SELECT 1 FROM local_mutations WHERE op_id = NEW.op_id OR(NEW."rowid" <> -1 AND "rowid" = NEW."rowid")) BEGIN SELECT RAISE (ABORT, \'Mutation history cannot be replaced\');END',
+    'mutation_history_no_replace',
+  );
+  final i1.Trigger mutationOrderPositive = i1.Trigger(
+    'CREATE TRIGGER mutation_order_positive AFTER INSERT ON local_mutations WHEN NEW."rowid" <= 0 BEGIN SELECT RAISE (ABORT, \'New mutation order must be positive\');END',
+    'mutation_order_positive',
+  );
+  final i1.Trigger mutationHistoryNoDelete = i1.Trigger(
+    'CREATE TRIGGER mutation_history_no_delete BEFORE DELETE ON local_mutations BEGIN SELECT RAISE (ABORT, \'Mutation ordering history must be retained\');END',
+    'mutation_history_no_delete',
+  );
+}
+
+class Shape10 extends i0.VersionedTable {
+  Shape10({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get sourceSongId =>
+      columnsByName['source_song_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get canonicalSongId =>
+      columnsByName['canonical_song_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get userId =>
+      columnsByName['user_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get entityType =>
+      columnsByName['entity_type']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get mappingOpId =>
+      columnsByName['mapping_op_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get receiptStatus =>
+      columnsByName['receipt_status']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get receiptBody =>
+      columnsByName['receipt_body']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_64(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'source_song_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL PRIMARY KEY',
+    );
+i1.GeneratedColumn<String> _column_65(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'canonical_song_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_66(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'entity_type',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints:
+          'NOT NULL DEFAULT \'SONG\' CHECK (entity_type = \'SONG\')',
+      defaultValue: const i1.CustomExpression('\'SONG\''),
+    );
+i1.GeneratedColumn<String> _column_67(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'mapping_op_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL UNIQUE REFERENCES local_mutations(op_id)',
+    );
+i1.GeneratedColumn<int> _column_68(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'receipt_status',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL CHECK (receipt_status = 200)',
+    );
+i1.GeneratedColumn<String> _column_69(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'receipt_body',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL CHECK (json_valid(receipt_body) AND json_type(receipt_body) = \'object\')',
+    );
+
+class Shape11 extends i0.VersionedTable {
+  Shape11({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get originalOpId =>
+      columnsByName['original_op_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get replacementOpId =>
+      columnsByName['replacement_op_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get mappingSourceId =>
+      columnsByName['mapping_source_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get userId =>
+      columnsByName['user_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get orderRootOpId =>
+      columnsByName['order_root_op_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get logicalOrder =>
+      columnsByName['logical_order']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_70(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'original_op_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints:
+          'NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id)',
+    );
+i1.GeneratedColumn<String> _column_71(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'replacement_op_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL UNIQUE REFERENCES local_mutations(op_id)',
+    );
+i1.GeneratedColumn<String> _column_72(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'mapping_source_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL REFERENCES song_aliases(source_song_id)',
+    );
+i1.GeneratedColumn<String> _column_73(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'order_root_op_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL REFERENCES local_mutations(op_id)',
+    );
+i1.GeneratedColumn<int> _column_74(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'logical_order',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.int,
+      $customConstraints: 'NOT NULL CHECK (logical_order > 0)',
+    );
+
+class Shape12 extends i0.VersionedTable {
+  Shape12({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get intentId =>
+      columnsByName['intent_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get userId =>
+      columnsByName['user_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get mappingSourceId =>
+      columnsByName['mapping_source_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get intentKey =>
+      columnsByName['intent_key']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get kind =>
+      columnsByName['kind']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get entityType =>
+      columnsByName['entity_type']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get entityId =>
+      columnsByName['entity_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get originOpId =>
+      columnsByName['origin_op_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get evidenceJson =>
+      columnsByName['evidence_json']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get state =>
+      columnsByName['state']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get resolutionJson =>
+      columnsByName['resolution_json']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get resolutionOpId =>
+      columnsByName['resolution_op_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get resolvedAt =>
+      columnsByName['resolved_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+}
+
+i1.GeneratedColumn<String> _column_75(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'intent_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL PRIMARY KEY CHECK (length(intent_id) = 36)',
+    );
+i1.GeneratedColumn<String> _column_76(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'intent_key',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL',
+    );
+i1.GeneratedColumn<String> _column_77(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'kind',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL CHECK (kind IN (\'SONG_VALUES\', \'SONG_MUTATION\', \'REFERENCE_RELINK\'))',
+    );
+i1.GeneratedColumn<String> _column_78(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'origin_op_id',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'REFERENCES local_mutations(op_id)',
+    );
+i1.GeneratedColumn<String> _column_79(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'evidence_json',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL CHECK (json_valid(evidence_json) AND json_type(evidence_json) = \'object\')',
+    );
+i1.GeneratedColumn<String> _column_80(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'state',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL DEFAULT \'OPEN\' CHECK (state IN (\'OPEN\', \'QUEUED\', \'RESOLVED\'))',
+      defaultValue: const i1.CustomExpression('\'OPEN\''),
+    );
+i1.GeneratedColumn<String> _column_81(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'resolution_json',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'CHECK (resolution_json IS NULL OR(json_valid(resolution_json) AND json_type(resolution_json) = \'object\'))',
+    );
+i1.GeneratedColumn<String> _column_82(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'resolution_op_id',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'REFERENCES local_mutations(op_id)',
+    );
+i1.GeneratedColumn<int> _column_83(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'resolved_at',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.int,
+      $customConstraints: '',
+    );
+
+class Shape13 extends i0.VersionedTable {
+  Shape13({required super.source, required super.alias}) : super.aliased();
+  i1.GeneratedColumn<String> get opId =>
+      columnsByName['op_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get mappingSourceId =>
+      columnsByName['mapping_source_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get userId =>
+      columnsByName['user_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get reason =>
+      columnsByName['reason']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get disposition =>
+      columnsByName['disposition']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<String> get intentId =>
+      columnsByName['intent_id']! as i1.GeneratedColumn<String>;
+  i1.GeneratedColumn<int> get createdAt =>
+      columnsByName['created_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<int> get releasedAt =>
+      columnsByName['released_at']! as i1.GeneratedColumn<int>;
+  i1.GeneratedColumn<String> get releaseEvidence =>
+      columnsByName['release_evidence']! as i1.GeneratedColumn<String>;
+}
+
+i1.GeneratedColumn<String> _column_84(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'op_id',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL REFERENCES local_mutations(op_id)',
+    );
+i1.GeneratedColumn<String> _column_85(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'reason',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL CHECK (length(reason) BETWEEN 1 AND 64)',
+    );
+i1.GeneratedColumn<String> _column_86(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'disposition',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints:
+          'NOT NULL CHECK (disposition IN (\'BLOCK\', \'REPLAY_ORIGINAL\'))',
+    );
+i1.GeneratedColumn<String> _column_87(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'intent_id',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'REFERENCES canonical_edit_intents(intent_id)',
+    );
+i1.GeneratedColumn<int> _column_88(String aliasedName) =>
+    i1.GeneratedColumn<int>(
+      'released_at',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.int,
+      $customConstraints: '',
+    );
+i1.GeneratedColumn<String> _column_89(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'release_evidence',
+      aliasedName,
+      true,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'CHECK (release_evidence IS NULL OR(json_valid(release_evidence) AND json_type(release_evidence) = \'object\'))',
+    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
+  required Future<void> Function(i1.Migrator m, Schema4 schema) from3To4,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -1271,6 +2063,11 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from2To3(migrator, schema);
         return 3;
+      case 3:
+        final schema = Schema4(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from3To4(migrator, schema);
+        return 4;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -1280,6 +2077,11 @@ i0.MigrationStepWithVersion migrationSteps({
 i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
+  required Future<void> Function(i1.Migrator m, Schema4 schema) from3To4,
 }) => i0.VersionedSchema.stepByStepHelper(
-  step: migrationSteps(from1To2: from1To2, from2To3: from2To3),
+  step: migrationSteps(
+    from1To2: from1To2,
+    from2To3: from2To3,
+    from3To4: from3To4,
+  ),
 );

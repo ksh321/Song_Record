@@ -1,0 +1,2622 @@
+{
+  "_meta": {
+    "description": "This file contains a serialized version of schema entities for drift.",
+    "version": "1.3.0"
+  },
+  "options": {
+    "store_date_time_values_as_text": false
+  },
+  "entities": [
+    {
+      "id": 0,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "local_account",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "singleton",
+            "getter_name": "singleton",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL PRIMARY KEY CHECK (singleton = 1)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "primary-key"
+            ]
+          },
+          {
+            "name": "user_id",
+            "getter_name": "userId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL UNIQUE CHECK (length(user_id) = 36)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "unique"
+            ]
+          },
+          {
+            "name": "environment",
+            "getter_name": "environment",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (environment IN ('dev', 'staging', 'prod'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": []
+      }
+    },
+    {
+      "id": 1,
+      "references": [
+        0
+      ],
+      "type": "table",
+      "data": {
+        "name": "metadata_copies",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "user_id",
+            "getter_name": "userId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES local_account(user_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_account",
+                    "column": "user_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "entity_type",
+            "getter_name": "entityType",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (entity_type IN ('SONG', 'RECORDING', 'PLAYLIST', 'PLAYLIST_ITEM', 'TAG', 'RECORDING_TAG', 'RECORDING_CONDITION', 'RECORDING_FILE_SPEC', 'RECORDING_ASSET', 'SONG_CLOUD_SELECTION', 'PIN_SLOT', 'USER_ENTITLEMENT', 'DELETION_LEDGER'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "entity_id",
+            "getter_name": "entityId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (length(entity_id) = 36)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "server_revision",
+            "getter_name": "serverRevision",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL DEFAULT 0 CHECK (server_revision >= 0)",
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "server_payload",
+            "getter_name": "serverPayload",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "CHECK (server_payload IS NULL OR(json_valid(server_payload) AND json_type(server_payload) = 'object'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "local_payload",
+            "getter_name": "localPayload",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "CHECK (local_payload IS NULL OR(json_valid(local_payload) AND json_type(local_payload) = 'object'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "tombstone",
+            "getter_name": "tombstone",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL DEFAULT 0 CHECK (tombstone IN (0, 1))",
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "PRIMARY KEY(entity_type, entity_id)",
+          "CHECK((server_revision = 0 AND server_payload IS NULL)OR(server_revision > 0 AND server_payload IS NOT NULL))",
+          "CHECK(tombstone = 0 OR server_revision > 0)"
+        ],
+        "explicit_pk": [
+          "entity_type",
+          "entity_id"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "references": [
+        0,
+        1
+      ],
+      "type": "table",
+      "data": {
+        "name": "local_mutations",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "op_id",
+            "getter_name": "opId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL PRIMARY KEY CHECK (length(op_id) = 36)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "primary-key"
+            ]
+          },
+          {
+            "name": "user_id",
+            "getter_name": "userId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES local_account(user_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_account",
+                    "column": "user_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "entity_type",
+            "getter_name": "entityType",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "entity_id",
+            "getter_name": "entityId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "operation",
+            "getter_name": "operation",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (operation IN ('CREATE', 'PATCH', 'TRASH', 'RESTORE', 'PURGE'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "base_revision",
+            "getter_name": "baseRevision",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (base_revision >= 0)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "base_payload",
+            "getter_name": "basePayload",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "CHECK (base_payload IS NULL OR(json_valid(base_payload) AND json_type(base_payload) = 'object'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "payload",
+            "getter_name": "payload",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (json_valid(payload) AND json_type(payload) = 'object')",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "request_hash",
+            "getter_name": "requestHash",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (length(request_hash) = 64 AND request_hash NOT GLOB '*[^0-9a-f]*')",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "queue_state",
+            "getter_name": "queueState",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL DEFAULT 'PENDING' CHECK (queue_state IN ('PENDING', 'SENDING', 'RETRY', 'CONFLICT', 'ACKED', 'FAILED'))",
+            "default_dart": "const CustomExpression('\\'PENDING\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "attempt_count",
+            "getter_name": "attemptCount",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL DEFAULT 0 CHECK (attempt_count >= 0)",
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "next_attempt_at",
+            "getter_name": "nextAttemptAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": "",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "server_response",
+            "getter_name": "serverResponse",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "CHECK (server_response IS NULL OR(json_valid(server_response) AND json_type(server_response) = 'object'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "FOREIGN KEY(entity_type, entity_id)REFERENCES metadata_copies(entity_type, entity_id)",
+          "CHECK((base_revision = 0 AND base_payload IS NULL)OR(base_revision > 0 AND base_payload IS NOT NULL))"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "mutation_queue",
+        "sql": "CREATE INDEX mutation_queue ON local_mutations(queue_state, next_attempt_at, created_at, op_id);",
+        "unique": false,
+        "columns": []
+      }
+    },
+    {
+      "id": 4,
+      "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "mutation_target",
+        "sql": "CREATE INDEX mutation_target ON local_mutations(entity_type, entity_id, created_at);",
+        "unique": false,
+        "columns": []
+      }
+    },
+    {
+      "id": 5,
+      "references": [
+        0
+      ],
+      "type": "table",
+      "data": {
+        "name": "local_recording_files",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "recording_id",
+            "getter_name": "recordingId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL PRIMARY KEY CHECK (length(recording_id) = 36)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "primary-key"
+            ]
+          },
+          {
+            "name": "user_id",
+            "getter_name": "userId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES local_account(user_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_account",
+                    "column": "user_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "relative_path",
+            "getter_name": "relativePath",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL UNIQUE",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "unique"
+            ]
+          },
+          {
+            "name": "sha256",
+            "getter_name": "sha256",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "CHECK (sha256 IS NULL OR(length(sha256) = 64 AND sha256 NOT GLOB '*[^0-9a-f]*'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "size_bytes",
+            "getter_name": "sizeBytes",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": "CHECK (size_bytes IS NULL OR size_bytes BETWEEN 1 AND 6291456)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "local_state",
+            "getter_name": "localState",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (local_state IN ('CAPTURING', 'INPUT_PENDING', 'SAVED', 'INTERRUPTED', 'CORRUPT', 'MISSING'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "cleanup_fence",
+            "getter_name": "cleanupFence",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL DEFAULT 0 CHECK (cleanup_fence >= 0)",
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "verified_at",
+            "getter_name": "verifiedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": "",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "UNIQUE(user_id, recording_id)",
+          "CHECK(relative_path = 'audio/' || recording_id || '.m4a' OR relative_path = 'pending/' || recording_id || '.m4a.part')",
+          "CHECK(local_state NOT IN ('INPUT_PENDING', 'SAVED') OR(sha256 IS NOT NULL AND size_bytes IS NOT NULL AND verified_at IS NOT NULL AND relative_path = 'audio/' || recording_id || '.m4a'))"
+        ],
+        "unique_keys": [
+          [
+            "user_id",
+            "recording_id"
+          ]
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "references": [
+        5
+      ],
+      "type": "table",
+      "data": {
+        "name": "recording_journals",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "recording_id",
+            "getter_name": "recordingId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL PRIMARY KEY",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "primary-key"
+            ]
+          },
+          {
+            "name": "user_id",
+            "getter_name": "userId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "operation_id",
+            "getter_name": "operationId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL UNIQUE CHECK (length(operation_id) = 36)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "unique"
+            ]
+          },
+          {
+            "name": "pending_path",
+            "getter_name": "pendingPath",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "final_path",
+            "getter_name": "finalPath",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "phase",
+            "getter_name": "phase",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (phase IN ('PREPARING', 'CAPTURING', 'FINALIZING', 'VERIFIED', 'COMMITTED', 'FAILED'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "recovery_payload",
+            "getter_name": "recoveryPayload",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (json_valid(recovery_payload) AND json_type(recovery_payload) = 'object')",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "revision",
+            "getter_name": "revision",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL DEFAULT 1 CHECK (revision > 0)",
+            "default_dart": "const CustomExpression('1')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "FOREIGN KEY(user_id, recording_id)REFERENCES local_recording_files(user_id, recording_id)",
+          "CHECK(pending_path = 'pending/' || recording_id || '.m4a.part')",
+          "CHECK(final_path = 'audio/' || recording_id || '.m4a')"
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "references": [
+        0
+      ],
+      "type": "table",
+      "data": {
+        "name": "import_jobs",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "import_job_id",
+            "getter_name": "importJobId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL PRIMARY KEY CHECK (length(import_job_id) = 36)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "primary-key"
+            ]
+          },
+          {
+            "name": "user_id",
+            "getter_name": "userId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES local_account(user_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_account",
+                    "column": "user_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "source_user_id",
+            "getter_name": "sourceUserId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (source_user_id = user_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "archive_path",
+            "getter_name": "archivePath",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "manifest_hash",
+            "getter_name": "manifestHash",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (length(manifest_hash) = 64 AND manifest_hash NOT GLOB '*[^0-9a-f]*')",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "status",
+            "getter_name": "status",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'RUNNING', 'PAUSED', 'COMPLETED', 'FAILED'))",
+            "default_dart": "const CustomExpression('\\'PENDING\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "total_items",
+            "getter_name": "totalItems",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (total_items >= 0)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "completed_items",
+            "getter_name": "completedItems",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL DEFAULT 0 CHECK (completed_items BETWEEN 0 AND total_items)",
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "error_code",
+            "getter_name": "errorCode",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK(archive_path = 'imports/' || import_job_id || '.zip')",
+          "CHECK(status <> 'COMPLETED' OR completed_items = total_items)"
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "references": [
+        7
+      ],
+      "type": "table",
+      "data": {
+        "name": "import_items",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "import_job_id",
+            "getter_name": "importJobId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES import_jobs(import_job_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "import_jobs",
+                    "column": "import_job_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "ordinal",
+            "getter_name": "ordinal",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (ordinal > 0)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "resource_id",
+            "getter_name": "resourceId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (length(resource_id) = 36)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "status",
+            "getter_name": "status",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPLIED', 'SKIPPED', 'CONFLICT', 'FAILED'))",
+            "default_dart": "const CustomExpression('\\'PENDING\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "result_payload",
+            "getter_name": "resultPayload",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "CHECK (result_payload IS NULL OR(json_valid(result_payload) AND json_type(result_payload) = 'object'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "PRIMARY KEY(import_job_id, ordinal)"
+        ],
+        "explicit_pk": [
+          "import_job_id",
+          "ordinal"
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "references": [
+        0
+      ],
+      "type": "table",
+      "data": {
+        "name": "sync_cursors",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "singleton",
+            "getter_name": "singleton",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL PRIMARY KEY CHECK (singleton = 1)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "primary-key"
+            ]
+          },
+          {
+            "name": "user_id",
+            "getter_name": "userId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES local_account(user_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_account",
+                    "column": "user_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "last_change_seq",
+            "getter_name": "lastChangeSeq",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": "CHECK (last_change_seq IS NULL OR last_change_seq >= 0)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "baseline_complete",
+            "getter_name": "baselineComplete",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL DEFAULT 0 CHECK (baseline_complete IN (0, 1))",
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "snapshot_resume",
+            "getter_name": "snapshotResume",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "CHECK (snapshot_resume IS NULL OR(json_valid(snapshot_resume) AND json_type(snapshot_resume) = 'object'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK(baseline_complete = 0 OR last_change_seq IS NOT NULL)"
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "references": [
+        0
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 0,
+        "references_in_body": [
+          0
+        ],
+        "name": "local_account_no_update",
+        "sql": "CREATE TRIGGER local_account_no_update BEFORE UPDATE ON local_account BEGIN\n  SELECT RAISE(ABORT, 'Local database ownership is immutable');\nEND;"
+      }
+    },
+    {
+      "id": 11,
+      "references": [
+        0
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 0,
+        "references_in_body": [
+          0
+        ],
+        "name": "local_account_no_delete",
+        "sql": "CREATE TRIGGER local_account_no_delete BEFORE DELETE ON local_account BEGIN\n  SELECT RAISE(ABORT, 'Local database ownership cannot be removed');\nEND;"
+      }
+    },
+    {
+      "id": 12,
+      "references": [
+        2
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 2,
+        "references_in_body": [
+          2
+        ],
+        "name": "mutation_request_immutable",
+        "sql": "CREATE TRIGGER mutation_request_immutable BEFORE UPDATE ON local_mutations\nWHEN NEW.op_id <> OLD.op_id OR NEW.user_id <> OLD.user_id OR NEW.entity_type <> OLD.entity_type\n  OR NEW.entity_id <> OLD.entity_id OR NEW.operation <> OLD.operation OR NEW.base_revision <> OLD.base_revision\n  OR NEW.base_payload IS NOT OLD.base_payload OR NEW.payload <> OLD.payload OR NEW.request_hash <> OLD.request_hash\n  OR NEW.created_at <> OLD.created_at OR NEW.attempt_count < OLD.attempt_count\nBEGIN\n  SELECT RAISE(ABORT, 'Mutation identity and request must survive retries unchanged');\nEND;"
+      }
+    },
+    {
+      "id": 13,
+      "references": [
+        9
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 9,
+        "references_in_body": [
+          9
+        ],
+        "name": "cursor_no_rewind",
+        "sql": "CREATE TRIGGER cursor_no_rewind BEFORE UPDATE ON sync_cursors\nWHEN NEW.user_id <> OLD.user_id OR (OLD.last_change_seq IS NOT NULL AND\n  (NEW.last_change_seq IS NULL OR NEW.last_change_seq < OLD.last_change_seq))\nBEGIN\n  SELECT RAISE(ABORT, 'Do not discard an acknowledged cursor');\nEND;"
+      }
+    },
+    {
+      "id": 14,
+      "references": [
+        2
+      ],
+      "type": "table",
+      "data": {
+        "name": "mutation_wire_requests",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "op_id",
+            "getter_name": "opId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "primary-key",
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_mutations",
+                    "column": "op_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "contract_version",
+            "getter_name": "contractVersion",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "http_method",
+            "getter_name": "httpMethod",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (http_method IN ('POST', 'PATCH'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "relative_path",
+            "getter_name": "relativePath",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "body_json",
+            "getter_name": "bodyJson",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (json_valid(body_json) AND json_type(body_json) = 'object')",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "wire_hash",
+            "getter_name": "wireHash",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (length(wire_hash) = 64 AND wire_hash NOT GLOB '*[^0-9a-f]*')",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": []
+      }
+    },
+    {
+      "id": 15,
+      "references": [
+        14
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 14,
+        "references_in_body": [
+          14
+        ],
+        "name": "mutation_wire_request_immutable",
+        "sql": "CREATE TRIGGER mutation_wire_request_immutable BEFORE UPDATE ON mutation_wire_requests BEGIN\n  SELECT RAISE(ABORT, 'Frozen HTTP requests must survive retries unchanged');\nEND;"
+      }
+    },
+    {
+      "id": 16,
+      "references": [
+        2
+      ],
+      "type": "table",
+      "data": {
+        "name": "mutation_retry_controls",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "op_id",
+            "getter_name": "opId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "primary-key",
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_mutations",
+                    "column": "op_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "automatic_retries_claimed",
+            "getter_name": "automaticRetriesClaimed",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": "CHECK (automatic_retries_claimed IS NULL OR automatic_retries_claimed BETWEEN 0 AND 3)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "retry_mode",
+            "getter_name": "retryMode",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (retry_mode IN ('INITIAL', 'AUTO', 'MANUAL_REQUIRED', 'MANUAL_READY', 'BLOCKED'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "last_attempt_kind",
+            "getter_name": "lastAttemptKind",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (last_attempt_kind IN ('INITIAL', 'AUTO', 'MANUAL', 'UNKNOWN'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": []
+      }
+    },
+    {
+      "id": 17,
+      "references": [
+        16
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 16,
+        "references_in_body": [
+          16
+        ],
+        "name": "mutation_retry_budget_monotonic",
+        "sql": "CREATE TRIGGER mutation_retry_budget_monotonic\nBEFORE UPDATE ON mutation_retry_controls\nWHEN NEW.op_id <> OLD.op_id\n  OR (OLD.automatic_retries_claimed IS NULL\n      AND NEW.automatic_retries_claimed IS NOT NULL)\n  OR (OLD.automatic_retries_claimed IS NOT NULL\n      AND NEW.automatic_retries_claimed IS NULL)\n  OR NEW.automatic_retries_claimed < OLD.automatic_retries_claimed\n  OR NEW.automatic_retries_claimed > OLD.automatic_retries_claimed + 1\nBEGIN\n  SELECT RAISE(ABORT, 'Automatic retry budget cannot be replenished');\nEND;"
+      }
+    },
+    {
+      "id": 18,
+      "references": [
+        0,
+        2,
+        1
+      ],
+      "type": "table",
+      "data": {
+        "name": "song_aliases",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "source_song_id",
+            "getter_name": "sourceSongId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL PRIMARY KEY",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "primary-key"
+            ]
+          },
+          {
+            "name": "canonical_song_id",
+            "getter_name": "canonicalSongId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "user_id",
+            "getter_name": "userId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES local_account(user_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_account",
+                    "column": "user_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "entity_type",
+            "getter_name": "entityType",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL DEFAULT 'SONG' CHECK (entity_type = 'SONG')",
+            "default_dart": "const CustomExpression('\\'SONG\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "mapping_op_id",
+            "getter_name": "mappingOpId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL UNIQUE REFERENCES local_mutations(op_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "unique",
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_mutations",
+                    "column": "op_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "receipt_status",
+            "getter_name": "receiptStatus",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (receipt_status = 200)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "receipt_body",
+            "getter_name": "receiptBody",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (json_valid(receipt_body) AND json_type(receipt_body) = 'object')",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": true,
+        "constraints": [
+          "FOREIGN KEY(entity_type, source_song_id)REFERENCES metadata_copies(entity_type, entity_id)",
+          "FOREIGN KEY(entity_type, canonical_song_id)REFERENCES metadata_copies(entity_type, entity_id)",
+          "CHECK(source_song_id <> canonical_song_id)",
+          "CHECK(json_type(receipt_body, '$.created') IS 'false')",
+          "CHECK(json_type(receipt_body, '$.song') IS 'object')",
+          "CHECK(json_extract(receipt_body, '$.canonical_song_id') IS canonical_song_id)",
+          "CHECK(json_extract(receipt_body, '$.song.id') IS canonical_song_id)",
+          "CHECK(json_type(receipt_body, '$.song.revision') IS 'integer' AND json_extract(receipt_body, '$.song.revision') > 0)",
+          "CHECK(json_extract(receipt_body, '$.song.lifecycle_state') IS 'ACTIVE')"
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "references": [
+        18
+      ],
+      "type": "index",
+      "data": {
+        "on": 18,
+        "name": "song_alias_destination",
+        "sql": "CREATE INDEX song_alias_destination\n  ON song_aliases(canonical_song_id);",
+        "unique": false,
+        "columns": []
+      }
+    },
+    {
+      "id": 20,
+      "references": [
+        2,
+        18,
+        0
+      ],
+      "type": "table",
+      "data": {
+        "name": "mutation_supersessions",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "original_op_id",
+            "getter_name": "originalOpId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "primary-key",
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_mutations",
+                    "column": "op_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "replacement_op_id",
+            "getter_name": "replacementOpId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL UNIQUE REFERENCES local_mutations(op_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "unique",
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_mutations",
+                    "column": "op_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "mapping_source_id",
+            "getter_name": "mappingSourceId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES song_aliases(source_song_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "song_aliases",
+                    "column": "source_song_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "user_id",
+            "getter_name": "userId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES local_account(user_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_account",
+                    "column": "user_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "order_root_op_id",
+            "getter_name": "orderRootOpId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES local_mutations(op_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_mutations",
+                    "column": "op_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "logical_order",
+            "getter_name": "logicalOrder",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (logical_order > 0)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": true,
+        "constraints": [
+          "CHECK(original_op_id <> replacement_op_id)"
+        ]
+      }
+    },
+    {
+      "id": 21,
+      "references": [
+        0,
+        18,
+        2,
+        1
+      ],
+      "type": "table",
+      "data": {
+        "name": "canonical_edit_intents",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "intent_id",
+            "getter_name": "intentId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL PRIMARY KEY CHECK (length(intent_id) = 36)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              "primary-key"
+            ]
+          },
+          {
+            "name": "user_id",
+            "getter_name": "userId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES local_account(user_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_account",
+                    "column": "user_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "mapping_source_id",
+            "getter_name": "mappingSourceId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES song_aliases(source_song_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "song_aliases",
+                    "column": "source_song_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "intent_key",
+            "getter_name": "intentKey",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "kind",
+            "getter_name": "kind",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (kind IN ('SONG_VALUES', 'SONG_MUTATION', 'REFERENCE_RELINK'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "entity_type",
+            "getter_name": "entityType",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "entity_id",
+            "getter_name": "entityId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "origin_op_id",
+            "getter_name": "originOpId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "REFERENCES local_mutations(op_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_mutations",
+                    "column": "op_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "evidence_json",
+            "getter_name": "evidenceJson",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (json_valid(evidence_json) AND json_type(evidence_json) = 'object')",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "state",
+            "getter_name": "state",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL DEFAULT 'OPEN' CHECK (state IN ('OPEN', 'QUEUED', 'RESOLVED'))",
+            "default_dart": "const CustomExpression('\\'OPEN\\'')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "resolution_json",
+            "getter_name": "resolutionJson",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "CHECK (resolution_json IS NULL OR(json_valid(resolution_json) AND json_type(resolution_json) = 'object'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "resolution_op_id",
+            "getter_name": "resolutionOpId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "REFERENCES local_mutations(op_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_mutations",
+                    "column": "op_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "resolved_at",
+            "getter_name": "resolvedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": "",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": true,
+        "constraints": [
+          "FOREIGN KEY(entity_type, entity_id)REFERENCES metadata_copies(entity_type, entity_id)",
+          "UNIQUE(mapping_source_id, intent_key)",
+          "CHECK((state = 'OPEN' AND resolution_json IS NULL AND resolution_op_id IS NULL AND resolved_at IS NULL)OR(state = 'QUEUED' AND resolution_json IS NOT NULL AND resolution_op_id IS NOT NULL AND resolved_at IS NULL)OR(state = 'RESOLVED' AND resolution_json IS NOT NULL AND resolved_at IS NOT NULL))"
+        ],
+        "unique_keys": [
+          [
+            "mapping_source_id",
+            "intent_key"
+          ]
+        ]
+      }
+    },
+    {
+      "id": 22,
+      "references": [
+        21
+      ],
+      "type": "index",
+      "data": {
+        "on": 21,
+        "name": "canonical_intent_target",
+        "sql": "CREATE INDEX canonical_intent_target\n  ON canonical_edit_intents(entity_type, entity_id, state);",
+        "unique": false,
+        "columns": []
+      }
+    },
+    {
+      "id": 23,
+      "references": [
+        2,
+        18,
+        0,
+        21
+      ],
+      "type": "table",
+      "data": {
+        "name": "mutation_mapping_holds",
+        "was_declared_in_moor": true,
+        "columns": [
+          {
+            "name": "op_id",
+            "getter_name": "opId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES local_mutations(op_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_mutations",
+                    "column": "op_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "mapping_source_id",
+            "getter_name": "mappingSourceId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES song_aliases(source_song_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "song_aliases",
+                    "column": "source_song_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "user_id",
+            "getter_name": "userId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL REFERENCES local_account(user_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "local_account",
+                    "column": "user_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "reason",
+            "getter_name": "reason",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (length(reason) BETWEEN 1 AND 64)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "disposition",
+            "getter_name": "disposition",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": "NOT NULL CHECK (disposition IN ('BLOCK', 'REPLAY_ORIGINAL'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "intent_id",
+            "getter_name": "intentId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "REFERENCES canonical_edit_intents(intent_id)",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "canonical_edit_intents",
+                    "column": "intent_id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": "NOT NULL",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "released_at",
+            "getter_name": "releasedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": "",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "release_evidence",
+            "getter_name": "releaseEvidence",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": "CHECK (release_evidence IS NULL OR(json_valid(release_evidence) AND json_type(release_evidence) = 'object'))",
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": true,
+        "constraints": [
+          "PRIMARY KEY(op_id, mapping_source_id, reason)",
+          "CHECK((released_at IS NULL AND release_evidence IS NULL)OR(released_at IS NOT NULL AND release_evidence IS NOT NULL))"
+        ],
+        "explicit_pk": [
+          "op_id",
+          "mapping_source_id",
+          "reason"
+        ]
+      }
+    },
+    {
+      "id": 24,
+      "references": [
+        23
+      ],
+      "type": "index",
+      "data": {
+        "on": 23,
+        "name": "mutation_mapping_active_holds",
+        "sql": "CREATE INDEX mutation_mapping_active_holds\n  ON mutation_mapping_holds(op_id, released_at);",
+        "unique": false,
+        "columns": []
+      }
+    },
+    {
+      "id": 25,
+      "references": [
+        18,
+        2
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 18,
+        "references_in_body": [
+          18,
+          2
+        ],
+        "name": "song_alias_valid_insert",
+        "sql": "CREATE TRIGGER song_alias_valid_insert\nBEFORE INSERT ON song_aliases BEGIN\n  SELECT RAISE(ABORT, 'Alias requires its original song CREATE')\n  WHERE NOT EXISTS (\n    SELECT 1 FROM local_mutations m\n    WHERE m.op_id = NEW.mapping_op_id\n      AND m.user_id = NEW.user_id\n      AND m.entity_type = 'SONG'\n      AND m.entity_id = NEW.source_song_id\n      AND m.operation = 'CREATE'\n  );\n\n  SELECT RAISE(ABORT, 'Song alias cycle')\n  WHERE EXISTS (\n    WITH RECURSIVE destinations(id) AS (\n      SELECT NEW.canonical_song_id\n      UNION\n      SELECT a.canonical_song_id\n      FROM song_aliases a\n      JOIN destinations d ON a.source_song_id = d.id\n    )\n    SELECT 1 FROM destinations WHERE id = NEW.source_song_id\n  );\nEND;"
+      }
+    },
+    {
+      "id": 26,
+      "references": [
+        18
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 18,
+        "references_in_body": [
+          18
+        ],
+        "name": "song_alias_no_update",
+        "sql": "CREATE TRIGGER song_alias_no_update\nBEFORE UPDATE ON song_aliases BEGIN\n  SELECT RAISE(ABORT, 'Song aliases and receipts are immutable');\nEND;"
+      }
+    },
+    {
+      "id": 27,
+      "references": [
+        18
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 18,
+        "references_in_body": [
+          18
+        ],
+        "name": "song_alias_no_delete",
+        "sql": "CREATE TRIGGER song_alias_no_delete\nBEFORE DELETE ON song_aliases BEGIN\n  SELECT RAISE(ABORT, 'Song alias evidence must be retained');\nEND;"
+      }
+    },
+    {
+      "id": 28,
+      "references": [
+        20,
+        2
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 20,
+        "references_in_body": [
+          20,
+          2
+        ],
+        "name": "mutation_supersession_valid_insert",
+        "sql": "CREATE TRIGGER mutation_supersession_valid_insert\nBEFORE INSERT ON mutation_supersessions BEGIN\n  SELECT RAISE(ABORT, 'Cannot prepend a frozen replacement chain')\n  WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.replacement_op_id);\n\n  -- A replacement is a newly appended mutation. This also prevents cycles.\n  SELECT RAISE(ABORT, 'Invalid replacement order')\n  WHERE NOT EXISTS (\n    SELECT 1\n    FROM local_mutations original\n    JOIN local_mutations replacement\n      ON replacement.op_id = NEW.replacement_op_id\n    WHERE original.op_id = NEW.original_op_id\n      AND replacement.rowid > original.rowid\n  );\n\n  SELECT RAISE(ABORT, 'Replacement must inherit original logical order')\n  WHERE NEW.order_root_op_id IS NOT COALESCE(\n    (SELECT order_root_op_id FROM mutation_supersessions\n      WHERE replacement_op_id = NEW.original_op_id),\n    NEW.original_op_id\n  ) OR NEW.logical_order IS NOT COALESCE(\n    (SELECT logical_order FROM mutation_supersessions\n      WHERE replacement_op_id = NEW.original_op_id),\n    (SELECT rowid FROM local_mutations\n      WHERE op_id = NEW.original_op_id)\n  );\nEND;"
+      }
+    },
+    {
+      "id": 29,
+      "references": [
+        20
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 20,
+        "references_in_body": [
+          20
+        ],
+        "name": "mutation_supersession_no_update",
+        "sql": "CREATE TRIGGER mutation_supersession_no_update\nBEFORE UPDATE ON mutation_supersessions BEGIN\n  SELECT RAISE(ABORT, 'Mutation supersessions are immutable');\nEND;"
+      }
+    },
+    {
+      "id": 30,
+      "references": [
+        20
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 20,
+        "references_in_body": [
+          20
+        ],
+        "name": "mutation_supersession_no_delete",
+        "sql": "CREATE TRIGGER mutation_supersession_no_delete\nBEFORE DELETE ON mutation_supersessions BEGIN\n  SELECT RAISE(ABORT, 'Mutation supersession history must be retained');\nEND;"
+      }
+    },
+    {
+      "id": 31,
+      "references": [
+        2,
+        20
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 2,
+        "references_in_body": [
+          2,
+          20
+        ],
+        "name": "superseded_mutation_no_claim",
+        "sql": "CREATE TRIGGER superseded_mutation_no_claim\nBEFORE UPDATE OF attempt_count ON local_mutations\nWHEN NEW.attempt_count > OLD.attempt_count\n  AND EXISTS (\n    SELECT 1 FROM mutation_supersessions\n    WHERE original_op_id = OLD.op_id\n  )\nBEGIN\n  SELECT RAISE(ABORT, 'Superseded mutation cannot be claimed');\nEND;"
+      }
+    },
+    {
+      "id": 32,
+      "references": [
+        21
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 21,
+        "references_in_body": [
+          21
+        ],
+        "name": "canonical_intent_evidence_immutable",
+        "sql": "CREATE TRIGGER canonical_intent_evidence_immutable\nBEFORE UPDATE ON canonical_edit_intents\nWHEN NEW.intent_id IS NOT OLD.intent_id\n  OR NEW.user_id IS NOT OLD.user_id\n  OR NEW.mapping_source_id IS NOT OLD.mapping_source_id\n  OR NEW.intent_key IS NOT OLD.intent_key\n  OR NEW.kind IS NOT OLD.kind\n  OR NEW.entity_type IS NOT OLD.entity_type\n  OR NEW.entity_id IS NOT OLD.entity_id\n  OR NEW.origin_op_id IS NOT OLD.origin_op_id\n  OR NEW.evidence_json IS NOT OLD.evidence_json\n  OR NEW.created_at IS NOT OLD.created_at\n  OR OLD.state = 'RESOLVED'\n  OR (OLD.state = 'QUEUED' AND NEW.state <> 'RESOLVED')\nBEGIN\n  SELECT RAISE(ABORT, 'Canonical intent evidence cannot be rewritten');\nEND;"
+      }
+    },
+    {
+      "id": 33,
+      "references": [
+        21
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 21,
+        "references_in_body": [
+          21
+        ],
+        "name": "canonical_intent_no_delete",
+        "sql": "CREATE TRIGGER canonical_intent_no_delete\nBEFORE DELETE ON canonical_edit_intents BEGIN\n  SELECT RAISE(ABORT, 'Canonical edit evidence must be retained');\nEND;"
+      }
+    },
+    {
+      "id": 34,
+      "references": [
+        23
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 23,
+        "references_in_body": [
+          23
+        ],
+        "name": "mapping_hold_release_only",
+        "sql": "CREATE TRIGGER mapping_hold_release_only\nBEFORE UPDATE ON mutation_mapping_holds\nWHEN NEW.op_id IS NOT OLD.op_id\n  OR NEW.mapping_source_id IS NOT OLD.mapping_source_id\n  OR NEW.user_id IS NOT OLD.user_id\n  OR NEW.reason IS NOT OLD.reason\n  OR NEW.disposition IS NOT OLD.disposition\n  OR NEW.intent_id IS NOT OLD.intent_id\n  OR NEW.created_at IS NOT OLD.created_at\n  OR OLD.released_at IS NOT NULL\n  OR NEW.released_at IS NULL\nBEGIN\n  SELECT RAISE(ABORT, 'Mapping hold permits one evidenced release only');\nEND;"
+      }
+    },
+    {
+      "id": 35,
+      "references": [
+        23
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 23,
+        "references_in_body": [
+          23
+        ],
+        "name": "mapping_hold_no_delete",
+        "sql": "CREATE TRIGGER mapping_hold_no_delete\nBEFORE DELETE ON mutation_mapping_holds BEGIN\n  SELECT RAISE(ABORT, 'Mapping hold history must be retained');\nEND;"
+      }
+    },
+    {
+      "id": 36,
+      "references": [
+        18
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 18,
+        "references_in_body": [
+          18
+        ],
+        "name": "song_alias_no_replace",
+        "sql": "CREATE TRIGGER song_alias_no_replace BEFORE INSERT ON song_aliases BEGIN\n  SELECT RAISE(ABORT, 'Preserved evidence cannot be replaced')\n  WHERE EXISTS (SELECT 1 FROM song_aliases WHERE source_song_id = NEW.source_song_id OR mapping_op_id = NEW.mapping_op_id);\nEND;"
+      }
+    },
+    {
+      "id": 37,
+      "references": [
+        20
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 20,
+        "references_in_body": [
+          20
+        ],
+        "name": "mutation_supersession_no_replace",
+        "sql": "CREATE TRIGGER mutation_supersession_no_replace BEFORE INSERT ON mutation_supersessions BEGIN\n  SELECT RAISE(ABORT, 'Preserved evidence cannot be replaced')\n  WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.replacement_op_id);\nEND;"
+      }
+    },
+    {
+      "id": 38,
+      "references": [
+        21
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 21,
+        "references_in_body": [
+          21
+        ],
+        "name": "canonical_intent_no_replace",
+        "sql": "CREATE TRIGGER canonical_intent_no_replace BEFORE INSERT ON canonical_edit_intents BEGIN\n  SELECT RAISE(ABORT, 'Preserved evidence cannot be replaced')\n  WHERE EXISTS (SELECT 1 FROM canonical_edit_intents WHERE intent_id = NEW.intent_id OR (mapping_source_id = NEW.mapping_source_id AND intent_key = NEW.intent_key));\nEND;"
+      }
+    },
+    {
+      "id": 39,
+      "references": [
+        23
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 23,
+        "references_in_body": [
+          23
+        ],
+        "name": "mapping_hold_no_replace",
+        "sql": "CREATE TRIGGER mapping_hold_no_replace BEFORE INSERT ON mutation_mapping_holds BEGIN\n  SELECT RAISE(ABORT, 'Preserved evidence cannot be replaced')\n  WHERE EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = NEW.op_id AND mapping_source_id = NEW.mapping_source_id AND reason = NEW.reason);\nEND;"
+      }
+    },
+    {
+      "id": 40,
+      "references": [
+        2
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 2,
+        "references_in_body": [
+          2
+        ],
+        "name": "mutation_rowid_immutable",
+        "sql": "CREATE TRIGGER mutation_rowid_immutable BEFORE UPDATE ON local_mutations\nWHEN NEW.rowid IS NOT OLD.rowid BEGIN\n  SELECT RAISE(ABORT, 'Mutation rowid must remain immutable');\nEND;"
+      }
+    },
+    {
+      "id": 41,
+      "references": [
+        2
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 2,
+        "references_in_body": [
+          2
+        ],
+        "name": "mutation_history_no_replace",
+        "sql": "CREATE TRIGGER mutation_history_no_replace BEFORE INSERT ON local_mutations\nWHEN EXISTS (SELECT 1 FROM local_mutations\n  WHERE op_id = NEW.op_id OR (NEW.rowid <> -1 AND rowid = NEW.rowid)) BEGIN\n  SELECT RAISE(ABORT, 'Mutation history cannot be replaced');\nEND;"
+      }
+    },
+    {
+      "id": 42,
+      "references": [
+        2
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 2,
+        "references_in_body": [
+          2
+        ],
+        "name": "mutation_order_positive",
+        "sql": "CREATE TRIGGER mutation_order_positive AFTER INSERT ON local_mutations\nWHEN NEW.rowid <= 0 BEGIN\n  SELECT RAISE(ABORT, 'New mutation order must be positive');\nEND;"
+      }
+    },
+    {
+      "id": 43,
+      "references": [
+        2
+      ],
+      "type": "trigger",
+      "data": {
+        "on": 2,
+        "references_in_body": [
+          2
+        ],
+        "name": "mutation_history_no_delete",
+        "sql": "CREATE TRIGGER mutation_history_no_delete BEFORE DELETE ON local_mutations BEGIN\n  SELECT RAISE(ABORT, 'Mutation ordering history must be retained');\nEND;"
+      }
+    }
+  ],
+  "fixed_sql": [
+    {
+      "name": "local_account",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"local_account\" (\"singleton\" INTEGER NOT NULL PRIMARY KEY CHECK (singleton = 1), \"user_id\" TEXT NOT NULL UNIQUE CHECK (length(user_id) = 36), \"environment\" TEXT NOT NULL CHECK (environment IN ('dev', 'staging', 'prod')), \"created_at\" INTEGER NOT NULL);"
+        }
+      ]
+    },
+    {
+      "name": "metadata_copies",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"metadata_copies\" (\"user_id\" TEXT NOT NULL REFERENCES local_account(user_id), \"entity_type\" TEXT NOT NULL CHECK (entity_type IN ('SONG', 'RECORDING', 'PLAYLIST', 'PLAYLIST_ITEM', 'TAG', 'RECORDING_TAG', 'RECORDING_CONDITION', 'RECORDING_FILE_SPEC', 'RECORDING_ASSET', 'SONG_CLOUD_SELECTION', 'PIN_SLOT', 'USER_ENTITLEMENT', 'DELETION_LEDGER')), \"entity_id\" TEXT NOT NULL CHECK (length(entity_id) = 36), \"server_revision\" INTEGER NOT NULL DEFAULT 0 CHECK (server_revision >= 0), \"server_payload\" TEXT CHECK (server_payload IS NULL OR(json_valid(server_payload) AND json_type(server_payload) = 'object')), \"local_payload\" TEXT CHECK (local_payload IS NULL OR(json_valid(local_payload) AND json_type(local_payload) = 'object')), \"tombstone\" INTEGER NOT NULL DEFAULT 0 CHECK (tombstone IN (0, 1)), \"updated_at\" INTEGER NOT NULL, PRIMARY KEY(entity_type, entity_id), CHECK((server_revision = 0 AND server_payload IS NULL)OR(server_revision > 0 AND server_payload IS NOT NULL)), CHECK(tombstone = 0 OR server_revision > 0));"
+        }
+      ]
+    },
+    {
+      "name": "local_mutations",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"local_mutations\" (\"op_id\" TEXT NOT NULL PRIMARY KEY CHECK (length(op_id) = 36), \"user_id\" TEXT NOT NULL REFERENCES local_account(user_id), \"entity_type\" TEXT NOT NULL, \"entity_id\" TEXT NOT NULL, \"operation\" TEXT NOT NULL CHECK (operation IN ('CREATE', 'PATCH', 'TRASH', 'RESTORE', 'PURGE')), \"base_revision\" INTEGER NOT NULL CHECK (base_revision >= 0), \"base_payload\" TEXT CHECK (base_payload IS NULL OR(json_valid(base_payload) AND json_type(base_payload) = 'object')), \"payload\" TEXT NOT NULL CHECK (json_valid(payload) AND json_type(payload) = 'object'), \"request_hash\" TEXT NOT NULL CHECK (length(request_hash) = 64 AND request_hash NOT GLOB '*[^0-9a-f]*'), \"queue_state\" TEXT NOT NULL DEFAULT 'PENDING' CHECK (queue_state IN ('PENDING', 'SENDING', 'RETRY', 'CONFLICT', 'ACKED', 'FAILED')), \"attempt_count\" INTEGER NOT NULL DEFAULT 0 CHECK (attempt_count >= 0), \"next_attempt_at\" INTEGER, \"server_response\" TEXT CHECK (server_response IS NULL OR(json_valid(server_response) AND json_type(server_response) = 'object')), \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, FOREIGN KEY(entity_type, entity_id)REFERENCES metadata_copies(entity_type, entity_id), CHECK((base_revision = 0 AND base_payload IS NULL)OR(base_revision > 0 AND base_payload IS NOT NULL)));"
+        }
+      ]
+    },
+    {
+      "name": "mutation_queue",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX mutation_queue ON local_mutations (queue_state, next_attempt_at, created_at, op_id)"
+        }
+      ]
+    },
+    {
+      "name": "mutation_target",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX mutation_target ON local_mutations (entity_type, entity_id, created_at)"
+        }
+      ]
+    },
+    {
+      "name": "local_recording_files",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"local_recording_files\" (\"recording_id\" TEXT NOT NULL PRIMARY KEY CHECK (length(recording_id) = 36), \"user_id\" TEXT NOT NULL REFERENCES local_account(user_id), \"relative_path\" TEXT NOT NULL UNIQUE, \"sha256\" TEXT CHECK (sha256 IS NULL OR(length(sha256) = 64 AND sha256 NOT GLOB '*[^0-9a-f]*')), \"size_bytes\" INTEGER CHECK (size_bytes IS NULL OR size_bytes BETWEEN 1 AND 6291456), \"local_state\" TEXT NOT NULL CHECK (local_state IN ('CAPTURING', 'INPUT_PENDING', 'SAVED', 'INTERRUPTED', 'CORRUPT', 'MISSING')), \"cleanup_fence\" INTEGER NOT NULL DEFAULT 0 CHECK (cleanup_fence >= 0), \"verified_at\" INTEGER, \"updated_at\" INTEGER NOT NULL, UNIQUE(user_id, recording_id), CHECK(relative_path = 'audio/' || recording_id || '.m4a' OR relative_path = 'pending/' || recording_id || '.m4a.part'), CHECK(local_state NOT IN ('INPUT_PENDING', 'SAVED') OR(sha256 IS NOT NULL AND size_bytes IS NOT NULL AND verified_at IS NOT NULL AND relative_path = 'audio/' || recording_id || '.m4a')));"
+        }
+      ]
+    },
+    {
+      "name": "recording_journals",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"recording_journals\" (\"recording_id\" TEXT NOT NULL PRIMARY KEY, \"user_id\" TEXT NOT NULL, \"operation_id\" TEXT NOT NULL UNIQUE CHECK (length(operation_id) = 36), \"pending_path\" TEXT NOT NULL, \"final_path\" TEXT NOT NULL, \"phase\" TEXT NOT NULL CHECK (phase IN ('PREPARING', 'CAPTURING', 'FINALIZING', 'VERIFIED', 'COMMITTED', 'FAILED')), \"recovery_payload\" TEXT NOT NULL CHECK (json_valid(recovery_payload) AND json_type(recovery_payload) = 'object'), \"revision\" INTEGER NOT NULL DEFAULT 1 CHECK (revision > 0), \"updated_at\" INTEGER NOT NULL, FOREIGN KEY(user_id, recording_id)REFERENCES local_recording_files(user_id, recording_id), CHECK(pending_path = 'pending/' || recording_id || '.m4a.part'), CHECK(final_path = 'audio/' || recording_id || '.m4a'));"
+        }
+      ]
+    },
+    {
+      "name": "import_jobs",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"import_jobs\" (\"import_job_id\" TEXT NOT NULL PRIMARY KEY CHECK (length(import_job_id) = 36), \"user_id\" TEXT NOT NULL REFERENCES local_account(user_id), \"source_user_id\" TEXT NOT NULL CHECK (source_user_id = user_id), \"archive_path\" TEXT NOT NULL, \"manifest_hash\" TEXT NOT NULL CHECK (length(manifest_hash) = 64 AND manifest_hash NOT GLOB '*[^0-9a-f]*'), \"status\" TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'RUNNING', 'PAUSED', 'COMPLETED', 'FAILED')), \"total_items\" INTEGER NOT NULL CHECK (total_items >= 0), \"completed_items\" INTEGER NOT NULL DEFAULT 0 CHECK (completed_items BETWEEN 0 AND total_items), \"error_code\" TEXT, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, CHECK(archive_path = 'imports/' || import_job_id || '.zip'), CHECK(status <> 'COMPLETED' OR completed_items = total_items));"
+        }
+      ]
+    },
+    {
+      "name": "import_items",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"import_items\" (\"import_job_id\" TEXT NOT NULL REFERENCES import_jobs(import_job_id), \"ordinal\" INTEGER NOT NULL CHECK (ordinal > 0), \"resource_id\" TEXT NOT NULL CHECK (length(resource_id) = 36), \"status\" TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPLIED', 'SKIPPED', 'CONFLICT', 'FAILED')), \"result_payload\" TEXT CHECK (result_payload IS NULL OR(json_valid(result_payload) AND json_type(result_payload) = 'object')), \"updated_at\" INTEGER NOT NULL, PRIMARY KEY(import_job_id, ordinal));"
+        }
+      ]
+    },
+    {
+      "name": "sync_cursors",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"sync_cursors\" (\"singleton\" INTEGER NOT NULL PRIMARY KEY CHECK (singleton = 1), \"user_id\" TEXT NOT NULL REFERENCES local_account(user_id), \"last_change_seq\" INTEGER CHECK (last_change_seq IS NULL OR last_change_seq >= 0), \"baseline_complete\" INTEGER NOT NULL DEFAULT 0 CHECK (baseline_complete IN (0, 1)), \"snapshot_resume\" TEXT CHECK (snapshot_resume IS NULL OR(json_valid(snapshot_resume) AND json_type(snapshot_resume) = 'object')), \"updated_at\" INTEGER NOT NULL, CHECK(baseline_complete = 0 OR last_change_seq IS NOT NULL));"
+        }
+      ]
+    },
+    {
+      "name": "local_account_no_update",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER local_account_no_update BEFORE UPDATE ON local_account BEGIN SELECT RAISE (ABORT, 'Local database ownership is immutable');END"
+        }
+      ]
+    },
+    {
+      "name": "local_account_no_delete",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER local_account_no_delete BEFORE DELETE ON local_account BEGIN SELECT RAISE (ABORT, 'Local database ownership cannot be removed');END"
+        }
+      ]
+    },
+    {
+      "name": "mutation_request_immutable",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mutation_request_immutable BEFORE UPDATE ON local_mutations WHEN NEW.op_id <> OLD.op_id OR NEW.user_id <> OLD.user_id OR NEW.entity_type <> OLD.entity_type OR NEW.entity_id <> OLD.entity_id OR NEW.operation <> OLD.operation OR NEW.base_revision <> OLD.base_revision OR NEW.base_payload IS NOT OLD.base_payload OR NEW.payload <> OLD.payload OR NEW.request_hash <> OLD.request_hash OR NEW.created_at <> OLD.created_at OR NEW.attempt_count < OLD.attempt_count BEGIN SELECT RAISE (ABORT, 'Mutation identity and request must survive retries unchanged');END"
+        }
+      ]
+    },
+    {
+      "name": "cursor_no_rewind",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER cursor_no_rewind BEFORE UPDATE ON sync_cursors WHEN NEW.user_id <> OLD.user_id OR(OLD.last_change_seq IS NOT NULL AND(NEW.last_change_seq IS NULL OR NEW.last_change_seq < OLD.last_change_seq))BEGIN SELECT RAISE (ABORT, 'Do not discard an acknowledged cursor');END"
+        }
+      ]
+    },
+    {
+      "name": "mutation_wire_requests",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"mutation_wire_requests\" (\"op_id\" TEXT NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id), \"contract_version\" TEXT NOT NULL, \"http_method\" TEXT NOT NULL CHECK (http_method IN ('POST', 'PATCH')), \"relative_path\" TEXT NOT NULL, \"body_json\" TEXT NOT NULL CHECK (json_valid(body_json) AND json_type(body_json) = 'object'), \"wire_hash\" TEXT NOT NULL CHECK (length(wire_hash) = 64 AND wire_hash NOT GLOB '*[^0-9a-f]*'));"
+        }
+      ]
+    },
+    {
+      "name": "mutation_wire_request_immutable",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mutation_wire_request_immutable BEFORE UPDATE ON mutation_wire_requests BEGIN SELECT RAISE (ABORT, 'Frozen HTTP requests must survive retries unchanged');END"
+        }
+      ]
+    },
+    {
+      "name": "mutation_retry_controls",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"mutation_retry_controls\" (\"op_id\" TEXT NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id), \"automatic_retries_claimed\" INTEGER CHECK (automatic_retries_claimed IS NULL OR automatic_retries_claimed BETWEEN 0 AND 3), \"retry_mode\" TEXT NOT NULL CHECK (retry_mode IN ('INITIAL', 'AUTO', 'MANUAL_REQUIRED', 'MANUAL_READY', 'BLOCKED')), \"last_attempt_kind\" TEXT NOT NULL CHECK (last_attempt_kind IN ('INITIAL', 'AUTO', 'MANUAL', 'UNKNOWN')));"
+        }
+      ]
+    },
+    {
+      "name": "mutation_retry_budget_monotonic",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mutation_retry_budget_monotonic BEFORE UPDATE ON mutation_retry_controls WHEN NEW.op_id <> OLD.op_id OR(OLD.automatic_retries_claimed IS NULL AND NEW.automatic_retries_claimed IS NOT NULL)OR(OLD.automatic_retries_claimed IS NOT NULL AND NEW.automatic_retries_claimed IS NULL)OR NEW.automatic_retries_claimed < OLD.automatic_retries_claimed OR NEW.automatic_retries_claimed > OLD.automatic_retries_claimed + 1 BEGIN SELECT RAISE (ABORT, 'Automatic retry budget cannot be replenished');END"
+        }
+      ]
+    },
+    {
+      "name": "song_aliases",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"song_aliases\" (\"source_song_id\" TEXT NOT NULL PRIMARY KEY, \"canonical_song_id\" TEXT NOT NULL, \"user_id\" TEXT NOT NULL REFERENCES local_account(user_id), \"entity_type\" TEXT NOT NULL DEFAULT 'SONG' CHECK (entity_type = 'SONG'), \"mapping_op_id\" TEXT NOT NULL UNIQUE REFERENCES local_mutations(op_id), \"receipt_status\" INTEGER NOT NULL CHECK (receipt_status = 200), \"receipt_body\" TEXT NOT NULL CHECK (json_valid(receipt_body) AND json_type(receipt_body) = 'object'), \"created_at\" INTEGER NOT NULL, FOREIGN KEY(entity_type, source_song_id)REFERENCES metadata_copies(entity_type, entity_id), FOREIGN KEY(entity_type, canonical_song_id)REFERENCES metadata_copies(entity_type, entity_id), CHECK(source_song_id <> canonical_song_id), CHECK(json_type(receipt_body, '$.created') IS 'false'), CHECK(json_type(receipt_body, '$.song') IS 'object'), CHECK(json_extract(receipt_body, '$.canonical_song_id') IS canonical_song_id), CHECK(json_extract(receipt_body, '$.song.id') IS canonical_song_id), CHECK(json_type(receipt_body, '$.song.revision') IS 'integer' AND json_extract(receipt_body, '$.song.revision') > 0), CHECK(json_extract(receipt_body, '$.song.lifecycle_state') IS 'ACTIVE')) WITHOUT ROWID;"
+        }
+      ]
+    },
+    {
+      "name": "song_alias_destination",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX song_alias_destination ON song_aliases (canonical_song_id)"
+        }
+      ]
+    },
+    {
+      "name": "mutation_supersessions",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"mutation_supersessions\" (\"original_op_id\" TEXT NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id), \"replacement_op_id\" TEXT NOT NULL UNIQUE REFERENCES local_mutations(op_id), \"mapping_source_id\" TEXT NOT NULL REFERENCES song_aliases(source_song_id), \"user_id\" TEXT NOT NULL REFERENCES local_account(user_id), \"order_root_op_id\" TEXT NOT NULL REFERENCES local_mutations(op_id), \"logical_order\" INTEGER NOT NULL CHECK (logical_order > 0), \"created_at\" INTEGER NOT NULL, CHECK(original_op_id <> replacement_op_id)) WITHOUT ROWID;"
+        }
+      ]
+    },
+    {
+      "name": "canonical_edit_intents",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"canonical_edit_intents\" (\"intent_id\" TEXT NOT NULL PRIMARY KEY CHECK (length(intent_id) = 36), \"user_id\" TEXT NOT NULL REFERENCES local_account(user_id), \"mapping_source_id\" TEXT NOT NULL REFERENCES song_aliases(source_song_id), \"intent_key\" TEXT NOT NULL, \"kind\" TEXT NOT NULL CHECK (kind IN ('SONG_VALUES', 'SONG_MUTATION', 'REFERENCE_RELINK')), \"entity_type\" TEXT NOT NULL, \"entity_id\" TEXT NOT NULL, \"origin_op_id\" TEXT REFERENCES local_mutations(op_id), \"evidence_json\" TEXT NOT NULL CHECK (json_valid(evidence_json) AND json_type(evidence_json) = 'object'), \"state\" TEXT NOT NULL DEFAULT 'OPEN' CHECK (state IN ('OPEN', 'QUEUED', 'RESOLVED')), \"resolution_json\" TEXT CHECK (resolution_json IS NULL OR(json_valid(resolution_json) AND json_type(resolution_json) = 'object')), \"resolution_op_id\" TEXT REFERENCES local_mutations(op_id), \"resolved_at\" INTEGER, \"created_at\" INTEGER NOT NULL, FOREIGN KEY(entity_type, entity_id)REFERENCES metadata_copies(entity_type, entity_id), UNIQUE(mapping_source_id, intent_key), CHECK((state = 'OPEN' AND resolution_json IS NULL AND resolution_op_id IS NULL AND resolved_at IS NULL)OR(state = 'QUEUED' AND resolution_json IS NOT NULL AND resolution_op_id IS NOT NULL AND resolved_at IS NULL)OR(state = 'RESOLVED' AND resolution_json IS NOT NULL AND resolved_at IS NOT NULL))) WITHOUT ROWID;"
+        }
+      ]
+    },
+    {
+      "name": "canonical_intent_target",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX canonical_intent_target ON canonical_edit_intents (entity_type, entity_id, state)"
+        }
+      ]
+    },
+    {
+      "name": "mutation_mapping_holds",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"mutation_mapping_holds\" (\"op_id\" TEXT NOT NULL REFERENCES local_mutations(op_id), \"mapping_source_id\" TEXT NOT NULL REFERENCES song_aliases(source_song_id), \"user_id\" TEXT NOT NULL REFERENCES local_account(user_id), \"reason\" TEXT NOT NULL CHECK (length(reason) BETWEEN 1 AND 64), \"disposition\" TEXT NOT NULL CHECK (disposition IN ('BLOCK', 'REPLAY_ORIGINAL')), \"intent_id\" TEXT REFERENCES canonical_edit_intents(intent_id), \"created_at\" INTEGER NOT NULL, \"released_at\" INTEGER, \"release_evidence\" TEXT CHECK (release_evidence IS NULL OR(json_valid(release_evidence) AND json_type(release_evidence) = 'object')), PRIMARY KEY(op_id, mapping_source_id, reason), CHECK((released_at IS NULL AND release_evidence IS NULL)OR(released_at IS NOT NULL AND release_evidence IS NOT NULL))) WITHOUT ROWID;"
+        }
+      ]
+    },
+    {
+      "name": "mutation_mapping_active_holds",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX mutation_mapping_active_holds ON mutation_mapping_holds (op_id, released_at)"
+        }
+      ]
+    },
+    {
+      "name": "song_alias_valid_insert",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER song_alias_valid_insert BEFORE INSERT ON song_aliases BEGIN SELECT RAISE (ABORT, 'Alias requires its original song CREATE') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.mapping_op_id AND m.user_id = NEW.user_id AND m.entity_type = 'SONG' AND m.entity_id = NEW.source_song_id AND m.operation = 'CREATE');SELECT RAISE (ABORT, 'Song alias cycle') WHERE EXISTS (WITH RECURSIVE destinations (id) AS (SELECT NEW.canonical_song_id UNION SELECT a.canonical_song_id FROM song_aliases AS a JOIN destinations AS d ON a.source_song_id = d.id) SELECT 1 FROM destinations WHERE id = NEW.source_song_id);END"
+        }
+      ]
+    },
+    {
+      "name": "song_alias_no_update",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER song_alias_no_update BEFORE UPDATE ON song_aliases BEGIN SELECT RAISE (ABORT, 'Song aliases and receipts are immutable');END"
+        }
+      ]
+    },
+    {
+      "name": "song_alias_no_delete",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER song_alias_no_delete BEFORE DELETE ON song_aliases BEGIN SELECT RAISE (ABORT, 'Song alias evidence must be retained');END"
+        }
+      ]
+    },
+    {
+      "name": "mutation_supersession_valid_insert",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mutation_supersession_valid_insert BEFORE INSERT ON mutation_supersessions BEGIN SELECT RAISE (ABORT, 'Cannot prepend a frozen replacement chain') WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.replacement_op_id);SELECT RAISE (ABORT, 'Invalid replacement order') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS original JOIN local_mutations AS replacement ON replacement.op_id = NEW.replacement_op_id WHERE original.op_id = NEW.original_op_id AND replacement.\"rowid\" > original.\"rowid\");SELECT RAISE (ABORT, 'Replacement must inherit original logical order') WHERE NEW.order_root_op_id IS NOT COALESCE((SELECT order_root_op_id FROM mutation_supersessions WHERE replacement_op_id = NEW.original_op_id), NEW.original_op_id) OR NEW.logical_order IS NOT COALESCE((SELECT logical_order FROM mutation_supersessions WHERE replacement_op_id = NEW.original_op_id), (SELECT \"rowid\" FROM local_mutations WHERE op_id = NEW.original_op_id));END"
+        }
+      ]
+    },
+    {
+      "name": "mutation_supersession_no_update",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mutation_supersession_no_update BEFORE UPDATE ON mutation_supersessions BEGIN SELECT RAISE (ABORT, 'Mutation supersessions are immutable');END"
+        }
+      ]
+    },
+    {
+      "name": "mutation_supersession_no_delete",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mutation_supersession_no_delete BEFORE DELETE ON mutation_supersessions BEGIN SELECT RAISE (ABORT, 'Mutation supersession history must be retained');END"
+        }
+      ]
+    },
+    {
+      "name": "superseded_mutation_no_claim",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER superseded_mutation_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, 'Superseded mutation cannot be claimed');END"
+        }
+      ]
+    },
+    {
+      "name": "canonical_intent_evidence_immutable",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER canonical_intent_evidence_immutable BEFORE UPDATE ON canonical_edit_intents WHEN NEW.intent_id IS NOT OLD.intent_id OR NEW.user_id IS NOT OLD.user_id OR NEW.mapping_source_id IS NOT OLD.mapping_source_id OR NEW.intent_key IS NOT OLD.intent_key OR NEW.kind IS NOT OLD.kind OR NEW.entity_type IS NOT OLD.entity_type OR NEW.entity_id IS NOT OLD.entity_id OR NEW.origin_op_id IS NOT OLD.origin_op_id OR NEW.evidence_json IS NOT OLD.evidence_json OR NEW.created_at IS NOT OLD.created_at OR OLD.state = 'RESOLVED' OR(OLD.state = 'QUEUED' AND NEW.state <> 'RESOLVED')BEGIN SELECT RAISE (ABORT, 'Canonical intent evidence cannot be rewritten');END"
+        }
+      ]
+    },
+    {
+      "name": "canonical_intent_no_delete",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER canonical_intent_no_delete BEFORE DELETE ON canonical_edit_intents BEGIN SELECT RAISE (ABORT, 'Canonical edit evidence must be retained');END"
+        }
+      ]
+    },
+    {
+      "name": "mapping_hold_release_only",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mapping_hold_release_only BEFORE UPDATE ON mutation_mapping_holds WHEN NEW.op_id IS NOT OLD.op_id OR NEW.mapping_source_id IS NOT OLD.mapping_source_id OR NEW.user_id IS NOT OLD.user_id OR NEW.reason IS NOT OLD.reason OR NEW.disposition IS NOT OLD.disposition OR NEW.intent_id IS NOT OLD.intent_id OR NEW.created_at IS NOT OLD.created_at OR OLD.released_at IS NOT NULL OR NEW.released_at IS NULL BEGIN SELECT RAISE (ABORT, 'Mapping hold permits one evidenced release only');END"
+        }
+      ]
+    },
+    {
+      "name": "mapping_hold_no_delete",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mapping_hold_no_delete BEFORE DELETE ON mutation_mapping_holds BEGIN SELECT RAISE (ABORT, 'Mapping hold history must be retained');END"
+        }
+      ]
+    },
+    {
+      "name": "song_alias_no_replace",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER song_alias_no_replace BEFORE INSERT ON song_aliases BEGIN SELECT RAISE (ABORT, 'Preserved evidence cannot be replaced') WHERE EXISTS (SELECT 1 FROM song_aliases WHERE source_song_id = NEW.source_song_id OR mapping_op_id = NEW.mapping_op_id);END"
+        }
+      ]
+    },
+    {
+      "name": "mutation_supersession_no_replace",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mutation_supersession_no_replace BEFORE INSERT ON mutation_supersessions BEGIN SELECT RAISE (ABORT, 'Preserved evidence cannot be replaced') WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.replacement_op_id);END"
+        }
+      ]
+    },
+    {
+      "name": "canonical_intent_no_replace",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER canonical_intent_no_replace BEFORE INSERT ON canonical_edit_intents BEGIN SELECT RAISE (ABORT, 'Preserved evidence cannot be replaced') WHERE EXISTS (SELECT 1 FROM canonical_edit_intents WHERE intent_id = NEW.intent_id OR(mapping_source_id = NEW.mapping_source_id AND intent_key = NEW.intent_key));END"
+        }
+      ]
+    },
+    {
+      "name": "mapping_hold_no_replace",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mapping_hold_no_replace BEFORE INSERT ON mutation_mapping_holds BEGIN SELECT RAISE (ABORT, 'Preserved evidence cannot be replaced') WHERE EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = NEW.op_id AND mapping_source_id = NEW.mapping_source_id AND reason = NEW.reason);END"
+        }
+      ]
+    },
+    {
+      "name": "mutation_rowid_immutable",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mutation_rowid_immutable BEFORE UPDATE ON local_mutations WHEN NEW.\"rowid\" IS NOT OLD.\"rowid\" BEGIN SELECT RAISE (ABORT, 'Mutation rowid must remain immutable');END"
+        }
+      ]
+    },
+    {
+      "name": "mutation_history_no_replace",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mutation_history_no_replace BEFORE INSERT ON local_mutations WHEN EXISTS (SELECT 1 FROM local_mutations WHERE op_id = NEW.op_id OR(NEW.\"rowid\" <> -1 AND \"rowid\" = NEW.\"rowid\")) BEGIN SELECT RAISE (ABORT, 'Mutation history cannot be replaced');END"
+        }
+      ]
+    },
+    {
+      "name": "mutation_order_positive",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mutation_order_positive AFTER INSERT ON local_mutations WHEN NEW.\"rowid\" <= 0 BEGIN SELECT RAISE (ABORT, 'New mutation order must be positive');END"
+        }
+      ]
+    },
+    {
+      "name": "mutation_history_no_delete",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TRIGGER mutation_history_no_delete BEFORE DELETE ON local_mutations BEGIN SELECT RAISE (ABORT, 'Mutation ordering history must be retained');END"
+        }
+      ]
+    }
+  ]
+}

@@ -464,7 +464,7 @@ void main() {
     future.close();
     await expectLater(
       manager.openAccount(userA),
-      remoteFailure('Unsupported local schema migration: 99 -> 3'),
+      remoteFailure('Unsupported local schema migration: 99 -> 4'),
     );
     final inspect = sqlite.sqlite3.open(file.path);
     try {
