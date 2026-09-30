@@ -33,20 +33,34 @@ public final class SnapshotBuildStore {
     public record Published(UUID id,long cursor,Instant readyAt,Instant expiresAt,String manifestHash) {
         @Override public String toString(){return "SnapshotPublished[REDACTED]";}
     }
+    record BuildState(Attempt attempt,boolean captured,Instant leaseUntil) {}
     private final JdbcTemplate jdbc;
     private final AccountAccess access;
     private final TransactionTemplate transaction;
+    private final TransactionTemplate joined;
     private final Clock clock;
     public SnapshotBuildStore(JdbcTemplate jdbc,AccountAccess access,PlatformTransactionManager manager,Clock clock) {
         this.jdbc=Objects.requireNonNull(jdbc);this.access=Objects.requireNonNull(access);this.clock=Objects.requireNonNull(clock);
         transaction=new TransactionTemplate(manager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
         transaction.setTimeout(30);
+        joined=new TransactionTemplate(manager);
+        joined.setPropagationBehavior(TransactionDefinition.PROPAGATION_MANDATORY);
     }
     public Attempt begin(AccountAccess.Account account,UUID opId,int schemaVersion) {
+        return begin(account,opId,schemaVersion,transaction);
+    }
+    /** Receipt, header and durable job must commit in the caller's single request transaction. */
+    Attempt beginJoined(AccountAccess.Account account,UUID opId,int schemaVersion) {
+        if(!org.springframework.transaction.support.TransactionSynchronizationManager.hasResource(Objects.requireNonNull(jdbc.getDataSource())))
+            throw new IllegalStateException("Snapshot submission requires its database transaction");
+        return begin(account,opId,schemaVersion,joined);
+    }
+    private Attempt begin(AccountAccess.Account account,UUID opId,int schemaVersion,TransactionTemplate boundary) {
         Objects.requireNonNull(opId);
         if(schemaVersion!=1)throw error(HttpStatus.BAD_REQUEST,"SNAPSHOT_SCHEMA_UNSUPPORTED");
-        return transaction.execute(tx->{
+        return boundary.execute(tx->{
             UUID owner=access.revalidate(account).userId();capacity();
             var existing=jdbc.query("SELECT id,attempt_id,build_started_at,status,purpose,schema_version FROM snapshot_header WHERE user_id=? AND op_id=? FOR UPDATE",
                     (rs,n)->{
@@ -66,26 +80,42 @@ public final class SnapshotBuildStore {
         });
     }
     public void capture(AccountAccess.Account account,Attempt attempt,long cursor,Instant capturedAt) {
+        capture(SnapshotAuthority.request(access,account),attempt,cursor,capturedAt);
+    }
+    void capture(SnapshotAuthority authority,Attempt attempt,long cursor,Instant capturedAt) {
+        authority.requireSnapshot(attempt.id);
         Objects.requireNonNull(capturedAt);
         if(cursor<0)throw new IllegalArgumentException("Invalid snapshot baseline");
         transaction.executeWithoutResult(tx->{
-            UUID owner=access.revalidate(account).userId();capacity();building(owner,attempt);
+            UUID owner=authority.requireActive();capacity();building(owner,attempt);
             if(capturedAt.isBefore(attempt.startedAt)||capturedAt.isAfter(now()))throw new IllegalArgumentException("Invalid capture time");
             int updated=jdbc.update("UPDATE snapshot_header SET snapshot_cursor=?,captured_at=? WHERE id=? AND snapshot_cursor IS NULL AND captured_at IS NULL",
                     cursor,utc(capturedAt),bytes(attempt.id));
             if(updated!=1)throw error(HttpStatus.CONFLICT,"SNAPSHOT_CAPTURE_ALREADY_SET");
+            authority.fence();
         });
     }
     /** Replaces only a lease-expired BUILDING attempt; never continues its old read view. */
     public Attempt restartExpired(AccountAccess.Account account,Attempt old) {
+        return restartExpired(SnapshotAuthority.request(access,account),old);
+    }
+    Attempt restartExpired(SnapshotAuthority authority,Attempt old) {
+        return restart(authority,old,false);
+    }
+    Attempt restartOwned(SnapshotAuthority authority,Attempt old) {
+        if(!authority.isJob())throw new IllegalStateException("Live attempt replacement requires a current worker lease");
+        return restart(authority,old,true);
+    }
+    private Attempt restart(SnapshotAuthority authority,Attempt old,boolean ownedJob) {
+        authority.requireSnapshot(old.id);
         Objects.requireNonNull(old);
         return transaction.execute(tx->{
-            UUID owner=access.revalidate(account).userId();capacity();
+            UUID owner=authority.requireActive();capacity();
             var rows=jdbc.query("SELECT attempt_id,status,lease_until,attempt_count FROM snapshot_header WHERE user_id=? AND id=? AND purpose='SYNC' FOR UPDATE",
                     (rs,n)->{
                         var lease=rs.getTimestamp(3);
                         if(!uuid(rs.getBytes(1)).equals(old.attemptId)||!rs.getString(2).equals("BUILDING")||lease==null
-                                ||now().isBefore(lease.toLocalDateTime().toInstant(ZoneOffset.UTC)))
+                                ||(!ownedJob&&now().isBefore(lease.toLocalDateTime().toInstant(ZoneOffset.UTC))))
                             throw error(HttpStatus.CONFLICT,"SNAPSHOT_ATTEMPT_STALE");
                         return rs.getInt(4);
                     },bytes(owner),bytes(old.id));
@@ -96,14 +126,27 @@ public final class SnapshotBuildStore {
             UUID attempt=UUID.randomUUID();Instant now=now();
             jdbc.update("UPDATE snapshot_header SET attempt_id=?,attempt_count=?,snapshot_cursor=NULL,captured_at=NULL,row_count=0,byte_count=0,reserved_bytes=0,build_started_at=?,lease_until=? WHERE id=?",
                     bytes(attempt),count,utc(now),utc(now.plusSeconds(600)),bytes(old.id));
+            authority.fence();
             return new Attempt(old.id,attempt,now,"BUILDING");
         });
     }
+    BuildState current(SnapshotAuthority authority,UUID snapshot) {
+        authority.requireSnapshot(snapshot);UUID owner=authority.requireActive();
+        var rows=jdbc.query("SELECT attempt_id,build_started_at,status,snapshot_cursor,lease_until FROM snapshot_header WHERE user_id=? AND id=? AND purpose='SYNC'",
+                (rs,n)->new BuildState(new Attempt(snapshot,uuid(rs.getBytes(1)),rs.getTimestamp(2).toLocalDateTime().toInstant(ZoneOffset.UTC),rs.getString(3)),
+                        rs.getObject(4)!=null,rs.getTimestamp(5)==null?null:rs.getTimestamp(5).toLocalDateTime().toInstant(ZoneOffset.UTC)),bytes(owner),bytes(snapshot));
+        if(rows.isEmpty())throw error(HttpStatus.NOT_FOUND,"SNAPSHOT_NOT_FOUND");
+        return rows.getFirst();
+    }
     public void append(AccountAccess.Account account,Attempt attempt,List<Entry> batch) {
+        append(SnapshotAuthority.request(access,account),attempt,batch);
+    }
+    void append(SnapshotAuthority authority,Attempt attempt,List<Entry> batch) {
+        authority.requireSnapshot(attempt.id);
         var entries=List.copyOf(batch);
         if(entries.isEmpty()||entries.size()>100)throw new IllegalArgumentException("Expected 1..100 snapshot rows");
         transaction.executeWithoutResult(tx->{
-            UUID owner=access.revalidate(account).userId();long global=capacity();long reserved=building(owner,attempt);
+            UUID owner=authority.requireActive();long global=capacity();long reserved=building(owner,attempt);
             Long cursor=jdbc.queryForObject("SELECT snapshot_cursor FROM snapshot_header WHERE id=?",Long.class,bytes(attempt.id));
             if(cursor==null)throw error(HttpStatus.CONFLICT,"SNAPSHOT_CAPTURE_REQUIRED");
             long bytes=0;
@@ -115,15 +158,20 @@ public final class SnapshotBuildStore {
             jdbc.update("UPDATE snapshot_header SET reserved_bytes=? WHERE id=?",reserved+bytes,bytes(attempt.id));
             for(var entry:entries)jdbc.update("INSERT INTO snapshot_entry(snapshot_id,attempt_id,entity,ordinal,resource_id,payload) VALUES(?,?,?,?,?,?)",
                     bytes(attempt.id),bytes(attempt.attemptId),entry.entity.name(),entry.ordinal,bytes(entry.resourceId),entry.payload);
+            authority.fence();
         });
     }
     /** expectedCounts must be produced after all entities finish in the same source read view. */
     public Published publish(AccountAccess.Account account,Attempt attempt,Map<SnapshotPages.Entity,Long> expectedCounts) {
+        return publish(SnapshotAuthority.request(access,account),attempt,expectedCounts);
+    }
+    Published publish(SnapshotAuthority authority,Attempt attempt,Map<SnapshotPages.Entity,Long> expectedCounts) {
+        authority.requireSnapshot(attempt.id);
         var expected=Map.copyOf(expectedCounts);
         if(!expected.keySet().equals(EnumSet.allOf(SnapshotPages.Entity.class))||expected.values().stream().anyMatch(n->n<0))
             throw new IllegalArgumentException("A complete entity manifest is required");
         return transaction.execute(tx->{
-            UUID owner=access.revalidate(account).userId();capacity();building(owner,attempt);
+            UUID owner=authority.requireActive();capacity();building(owner,attempt);
             Long cursor=jdbc.queryForObject("SELECT snapshot_cursor FROM snapshot_header WHERE id=?",Long.class,bytes(attempt.id));
             if(cursor==null)throw error(HttpStatus.CONFLICT,"SNAPSHOT_CAPTURE_REQUIRED");
             var counts=new EnumMap<SnapshotPages.Entity,Long>(SnapshotPages.Entity.class);
@@ -146,12 +194,13 @@ public final class SnapshotBuildStore {
                         digest.update(ByteBuffer.allocate(4).putInt(payload.length).array());digest.update(payload);
                     },bytes(attempt.id));
             if(!counts.equals(expected))throw error(HttpStatus.CONFLICT,"SNAPSHOT_INCOMPLETE");
-            if(!access.revalidate(account).userId().equals(owner))throw error(HttpStatus.UNAUTHORIZED,"AUTH_INVALID_SESSION");
+            if(!authority.requireActive().equals(owner))throw error(HttpStatus.UNAUTHORIZED,"AUTH_INVALID_SESSION");
             building(owner,attempt);
             Instant ready=now(),expiry=ready.plusSeconds(1800);
             String hash=HexFormat.of().formatHex(digest.digest());
             jdbc.update("UPDATE snapshot_header SET status='READY',ready_at=?,expires_at=?,manifest_hash=?,lease_until=NULL WHERE id=?",
                     utc(ready),utc(expiry),hash,bytes(attempt.id));
+            authority.fence();
             return new Published(attempt.id,cursor,ready,expiry,hash);
         });
     }

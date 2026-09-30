@@ -1,6 +1,7 @@
 package com.ksh321.songrecord.api.sync;
 
 import com.ksh321.songrecord.api.auth.*;
+import com.ksh321.songrecord.api.jobs.JobQueue;
 import java.nio.ByteBuffer;
 import java.time.*;
 import java.util.*;
@@ -31,6 +32,12 @@ class MySqlSnapshotSourceRowsTests {
         Flyway.configure().dataSource(source).locations("classpath:db/migration").load().migrate();
     }
     @AfterAll static void cleanup(){if(admin!=null&&database!=null&&database.matches("p10_source_test_[0-9a-f]{32}"))admin.execute("DROP DATABASE "+database);}
+    @BeforeEach void isolateQueuedFixtureJobs() {
+        // Claim is intentionally global; a previous test's unconsumed job must
+        // not be selected instead of this test's new account fixture.
+        jdbc.update("UPDATE job SET state='CANCELLED',lease_token=NULL,claimed_at=NULL,lease_until=NULL,finished_at=? WHERE type='SNAPSHOT_BUILD' AND state IN ('QUEUED','RUNNING','RETRY_WAIT')",
+                LocalDateTime.ofInstant(NOW,ZoneOffset.UTC));
+    }
     UUID owner(){
         UUID owner=UUID.randomUUID();jdbc.update("INSERT INTO app_user(id) VALUES(?)",bytes(owner));
         jdbc.update("INSERT INTO user_sync_state(user_id,last_change_seq) VALUES(?,7)",bytes(owner));
@@ -104,6 +111,133 @@ class MySqlSnapshotSourceRowsTests {
         var pages=new SnapshotPages(jdbc,access,new SnapshotPageCursor(new byte[32],CLOCK),CLOCK);
         assertThatThrownBy(()->pages.read(account,attempt.id(),SnapshotPages.Entity.SONG,null,50))
                 .isInstanceOfSatisfying(com.ksh321.songrecord.api.web.ApiException.class,e->assertThat(e.code()).isEqualTo("SNAPSHOT_NOT_READY"));
+    }
+    @Test void durableJobAuthorityRejectsForgeryRevocationAndDifferentSnapshot() throws Exception {
+        UUID owner=owner();var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);
+        when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,UUID.randomUUID(),UUID.randomUUID()));
+        var manager=new DataSourceTransactionManager(source);var tx=new org.springframework.transaction.support.TransactionTemplate(manager);
+        var store=new SnapshotBuildStore(jdbc,access,manager,CLOCK);var attempt=store.begin(account,UUID.randomUUID(),1);
+        var queue=new JobQueue(jdbc,access,manager,CLOCK,Duration.ofMinutes(10),5);
+        tx.executeWithoutResult(s->queue.enqueue(account,JobQueue.Type.SNAPSHOT_BUILD,attempt.id(),UUID.randomUUID(),"{}"));
+        var lease=queue.claim(JobQueue.Type.SNAPSHOT_BUILD).orElseThrow();
+        var authority=SnapshotAuthority.job(jdbc,lease,CLOCK);
+        assertThat(authority.requireActive()).isEqualTo(owner);
+        assertThat(authority.toString()).isEqualTo("SnapshotAuthority[REDACTED]");
+        assertThatThrownBy(()->authority.requireSnapshot(UUID.randomUUID())).isInstanceOf(IllegalStateException.class);
+        var forged=new JobQueue.Lease(lease.id(),UUID.randomUUID(),owner,lease.type(),attempt.id(),"{}",lease.attempt());
+        assertThatThrownBy(()->SnapshotAuthority.job(jdbc,forged,CLOCK).requireActive()).isInstanceOf(IllegalStateException.class);
+        var expired=SnapshotAuthority.job(jdbc,lease,Clock.fixed(NOW.plusSeconds(600),ZoneOffset.UTC));
+        assertThatThrownBy(expired::requireActive).isInstanceOf(IllegalStateException.class);
+        store.capture(authority,attempt,7,NOW);
+        store.append(authority,attempt,List.of(new SnapshotBuildStore.Entry(SnapshotPages.Entity.SONG,1,UUID.randomUUID(),"{\"id\":\"fixture\"}")));
+        jdbc.update("UPDATE app_user SET status='DELETING' WHERE id=?",bytes(owner));
+        assertThatThrownBy(authority::requireActive).isInstanceOf(IllegalStateException.class);
+    }
+    @Test void jobFenceLocksCurrentLeaseThroughSnapshotTransaction() throws Exception {
+        UUID owner=owner();var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);
+        when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,UUID.randomUUID(),UUID.randomUUID()));
+        var manager=new DataSourceTransactionManager(source);var tx=new org.springframework.transaction.support.TransactionTemplate(manager);
+        var store=new SnapshotBuildStore(jdbc,access,manager,CLOCK);var attempt=store.begin(account,UUID.randomUUID(),1);
+        var queue=new JobQueue(jdbc,access,manager,CLOCK,Duration.ofMinutes(10),5);
+        tx.executeWithoutResult(s->queue.enqueue(account,JobQueue.Type.SNAPSHOT_BUILD,attempt.id(),UUID.randomUUID(),"{}"));
+        var lease=queue.claim(JobQueue.Type.SNAPSHOT_BUILD).orElseThrow();
+        var authority=SnapshotAuthority.job(jdbc,lease,CLOCK);
+        assertThatThrownBy(authority::fence).isInstanceOf(IllegalStateException.class);
+        tx.executeWithoutResult(s->{
+            authority.fence();
+            assertThat(canLockJob(lease.id())).isFalse();
+        });
+        assertThat(canLockJob(lease.id())).isTrue();
+        jdbc.update("UPDATE job SET lease_token=? WHERE id=?",bytes(UUID.randomUUID()),bytes(lease.id()));
+        assertThatThrownBy(()->tx.executeWithoutResult(s->authority.fence())).isInstanceOf(IllegalStateException.class);
+    }
+    boolean canLockJob(UUID job) {
+        try(var connection=source.getConnection();var query=connection.prepareStatement("SELECT id FROM job WHERE id=? FOR UPDATE SKIP LOCKED")) {
+            query.setBytes(1,bytes(job));try(var result=query.executeQuery()){return result.next();}
+        }catch(java.sql.SQLException e){throw new IllegalStateException(e);}
+    }
+    @Test void lostFinalWorkerFenceRollsBackRowsAndByteReservation(){
+        UUID owner=owner();var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);
+        when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,UUID.randomUUID(),UUID.randomUUID()));
+        var store=new SnapshotBuildStore(jdbc,access,new DataSourceTransactionManager(source),CLOCK);
+        var attempt=store.begin(account,UUID.randomUUID(),1);store.capture(account,attempt,7,NOW);
+        var authority=mock(SnapshotAuthority.class);when(authority.requireActive()).thenReturn(owner);
+        doThrow(new IllegalStateException("lost final fence")).when(authority).fence();
+        long before=jdbc.queryForObject("SELECT reserved_bytes FROM snapshot_capacity WHERE id=1",Long.class);
+        assertThatThrownBy(()->store.append(authority,attempt,List.of(new SnapshotBuildStore.Entry(SnapshotPages.Entity.SONG,1,UUID.randomUUID(),"{}"))))
+                .isInstanceOf(IllegalStateException.class).hasMessage("lost final fence");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM snapshot_entry WHERE snapshot_id=?",Integer.class,bytes(attempt.id()))).isZero();
+        assertThat(jdbc.queryForObject("SELECT reserved_bytes FROM snapshot_capacity WHERE id=1",Long.class)).isEqualTo(before);
+    }
+    @Test void receiptSnapshotAndJobCommitTogetherAndReplayWithoutAnotherBuild(){
+        UUID owner=owner();var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);
+        when(access.authenticate("fixture-auth","fixture-device")).thenReturn(account);
+        when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,UUID.randomUUID(),UUID.randomUUID()));
+        var manager=new DataSourceTransactionManager(source);var store=new SnapshotBuildStore(jdbc,access,manager,CLOCK);
+        var queue=new JobQueue(jdbc,access,manager,CLOCK,Duration.ofMinutes(10),5);
+        var receipts=new com.ksh321.songrecord.api.idempotency.IdempotentMutations(jdbc,access,manager,CLOCK);
+        var requests=new SnapshotRequests(access,receipts,store,queue);String op=UUID.randomUUID().toString();
+        var first=requests.create("fixture-auth","fixture-device",op,"{\"schema_version\":1}");
+        var replay=requests.create("fixture-auth","fixture-device",op,"{ \"schema_version\" : 1 }");
+        assertThat(first.status()).isEqualTo(202);assertThat(replay).isEqualTo(first);
+        for(String table:List.of("mutation_receipt","snapshot_header","job"))
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM "+table+" WHERE user_id=?",Integer.class,bytes(owner))).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT CAST(payload AS CHAR) FROM job WHERE user_id=?",String.class,bytes(owner))).isEqualTo("{}");
+        assertThatThrownBy(()->requests.create("fixture-auth","fixture-device",UUID.randomUUID().toString(),"{\"schema_version\":18446744073709551617}"))
+                .isInstanceOf(com.ksh321.songrecord.api.web.ApiException.class);
+        assertThatThrownBy(()->store.beginJoined(account,UUID.randomUUID(),1)).isInstanceOf(IllegalStateException.class);
+    }
+    @Test void enqueueFailureRollsBackReceiptAndSnapshotReservation(){
+        UUID owner=owner();var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);
+        when(access.authenticate("fixture-auth","fixture-device")).thenReturn(account);
+        when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,UUID.randomUUID(),UUID.randomUUID()));
+        var manager=new DataSourceTransactionManager(source);var store=new SnapshotBuildStore(jdbc,access,manager,CLOCK);
+        var queue=mock(JobQueue.class);
+        when(queue.enqueue(any(),any(),any(),any(),any())).thenThrow(new IllegalStateException("synthetic enqueue failure"));
+        var receipts=new com.ksh321.songrecord.api.idempotency.IdempotentMutations(jdbc,access,manager,CLOCK);
+        var requests=new SnapshotRequests(access,receipts,store,queue);
+        assertThatThrownBy(()->requests.create("fixture-auth","fixture-device",UUID.randomUUID().toString(),"{\"schema_version\":1}"))
+                .isInstanceOf(IllegalStateException.class).hasMessage("synthetic enqueue failure");
+        for(String table:List.of("mutation_receipt","snapshot_header","job"))
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM "+table+" WHERE user_id=?",Integer.class,bytes(owner))).isZero();
+    }
+    @Test void durableWorkerBuildsAndReclaimedJobDoesNotRenewReadySnapshot(){
+        UUID owner=owner();song(owner,UUID.randomUUID(),"worker song");
+        var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);
+        when(access.authenticate("fixture-auth","fixture-device")).thenReturn(account);
+        when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,UUID.randomUUID(),UUID.randomUUID()));
+        var manager=new DataSourceTransactionManager(source);var store=new SnapshotBuildStore(jdbc,access,manager,CLOCK);
+        var jobs=new JobQueue(jdbc,access,manager,CLOCK,Duration.ofMinutes(10),5);
+        var receipts=new com.ksh321.songrecord.api.idempotency.IdempotentMutations(jdbc,access,manager,CLOCK);
+        var requests=new SnapshotRequests(access,receipts,store,jobs);
+        var accepted=requests.create("fixture-auth","fixture-device",UUID.randomUUID().toString(),"{\"schema_version\":1}");
+        var id=UUID.fromString(new JsonMapper().readTree(accepted.body()).get("snapshot_token").asText());
+        var worker=new SnapshotWorker(jdbc,jobs,store,new SnapshotReadView(source,access,CLOCK),new SnapshotSourceRows(CLOCK),CLOCK);
+        assertThat(worker.runOnce()).isTrue();assertThat(worker.runOnce()).isFalse();
+        assertThat(jdbc.queryForObject("SELECT status FROM snapshot_header WHERE id=?",String.class,bytes(id))).isEqualTo("READY");
+        assertThat(jdbc.queryForObject("SELECT state FROM job WHERE user_id=?",String.class,bytes(owner))).isEqualTo("SUCCEEDED");
+        var expiry=jdbc.queryForObject("SELECT expires_at FROM snapshot_header WHERE id=?",java.sql.Timestamp.class,bytes(id));
+        // Simulate a lost completion acknowledgement with the READY snapshot intact.
+        jdbc.update("UPDATE job SET state='RETRY_WAIT',finished_at=NULL WHERE user_id=?",bytes(owner));
+        assertThat(worker.runOnce()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT expires_at FROM snapshot_header WHERE id=?",java.sql.Timestamp.class,bytes(id))).isEqualTo(expiry);
+        assertThat(jdbc.queryForObject("SELECT attempt_count FROM snapshot_header WHERE id=?",Integer.class,bytes(id))).isEqualTo(1);
+    }
+    @Test void reclaimedJobDiscardsPartialAttemptBeforeAnotherReadView(){
+        UUID owner=owner();song(owner,UUID.randomUUID(),"real source");
+        var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);
+        when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,UUID.randomUUID(),UUID.randomUUID()));
+        var manager=new DataSourceTransactionManager(source);var tx=new org.springframework.transaction.support.TransactionTemplate(manager);
+        var store=new SnapshotBuildStore(jdbc,access,manager,CLOCK);var old=store.begin(account,UUID.randomUUID(),1);
+        store.capture(account,old,7,NOW);store.append(account,old,List.of(new SnapshotBuildStore.Entry(SnapshotPages.Entity.SONG,1,UUID.randomUUID(),"{\"note\":\"discard partial\"}")));
+        var jobs=new JobQueue(jdbc,access,manager,CLOCK,Duration.ofMinutes(10),5);
+        tx.executeWithoutResult(s->jobs.enqueue(account,JobQueue.Type.SNAPSHOT_BUILD,old.id(),UUID.randomUUID(),"{}"));
+        var worker=new SnapshotWorker(jdbc,jobs,store,new SnapshotReadView(source,access,CLOCK),new SnapshotSourceRows(CLOCK),CLOCK);
+        assertThat(worker.runOnce()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT status FROM snapshot_header WHERE id=?",String.class,bytes(old.id()))).isEqualTo("READY");
+        assertThat(jdbc.queryForObject("SELECT attempt_count FROM snapshot_header WHERE id=?",Integer.class,bytes(old.id()))).isEqualTo(2);
+        assertThat(jdbc.queryForList("SELECT CAST(payload AS CHAR) FROM snapshot_entry WHERE snapshot_id=? AND entity='SONG'",String.class,bytes(old.id())))
+                .singleElement().asString().contains("real source").doesNotContain("discard partial");
     }
     static byte[] bytes(UUID id){return ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();}
 }

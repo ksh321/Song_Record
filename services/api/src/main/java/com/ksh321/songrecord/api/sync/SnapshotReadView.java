@@ -33,9 +33,13 @@ public final class SnapshotReadView {
     /** Records the fixed baseline before extraction batches use separate writer connections. */
     public <T> Captured<T> capture(AccountAccess.Account account, Instant buildStartedAt,
                                   BiConsumer<Long,Instant> baseline,Reader<T> reader) throws SQLException {
+        return capture(SnapshotAuthority.request(access,account),buildStartedAt,baseline,reader);
+    }
+    <T> Captured<T> capture(SnapshotAuthority authority,Instant buildStartedAt,
+                            BiConsumer<Long,Instant> baseline,Reader<T> reader) throws SQLException {
         Objects.requireNonNull(reader);Objects.requireNonNull(buildStartedAt);
         Objects.requireNonNull(baseline);
-        UUID owner=access.revalidate(account).userId();
+        UUID owner=authority.requireActive();
         checkDeadline(buildStartedAt);
         try(Connection connection=source.getConnection()) {
             connection.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
@@ -57,7 +61,7 @@ public final class SnapshotReadView {
                 Instant capturedAt=clock.instant();
                 baseline.accept(cursor,capturedAt);
                 T value=Objects.requireNonNull(reader.read(connection,owner));
-                if(!access.revalidate(account).userId().equals(owner))throw new IllegalStateException("Account changed during snapshot capture");
+                if(!authority.requireActive().equals(owner))throw new IllegalStateException("Account changed during snapshot capture");
                 checkDeadline(buildStartedAt);
                 connection.commit();
                 return new Captured<>(cursor,capturedAt,value);

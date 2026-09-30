@@ -16,7 +16,7 @@ import org.springframework.transaction.support.*;
 
 /** Durable queue. Only trusted domain code calls this; no public job-submission endpoint. */
 public final class JobQueue {
-    public enum Type { UPLOAD_VERIFY, ASSET_DELETE, POLICY_RECALCULATE, BACKUP_RECONCILE }
+    public enum Type { UPLOAD_VERIFY, ASSET_DELETE, POLICY_RECALCULATE, BACKUP_RECONCILE, SNAPSHOT_BUILD }
     public record Lease(UUID id, UUID token, UUID userId, Type type, UUID aggregateId, String payload, int attempt) {
         @Override public String toString(){return "Lease[REDACTED]";}
     }

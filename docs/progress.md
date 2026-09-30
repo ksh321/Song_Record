@@ -18,12 +18,12 @@
 
 | 구분 | 최신 상태와 근거 |
 |---|---|
-| 확인한 제품 Git | CONNECT dab4fd6, P10-05a 7f71d75, P10-05b d06c1397c8afdb861e1d96145539707de22dd2b0 일반 push·각 필수 CI4 PASS |
+| 확인한 제품 Git | CONNECT dab4fd6, P10-05a 7f71d75, b d06c139, c cd22081722b7829306e28328f8f7ff8ce7e37416 일반 push·각 필수 CI4 PASS |
 | 기존 기능 완료 기준 | `eef028dddea87cb0ad02d733808658512dffe431`까지 사용자 검증 완료. P05-08·P06 포함, 문서 부족만으로 되돌리지 않음 |
 | 현재 구현 완료 지점 | P09-07b-C1/D06, P10-02b 해당 메타데이터 범위, WORKFLOW-07, P10-04a v4, P10-04b-DECODER/ATOMIC/GATE. GATE 90 테스트·분석·Astra/xhigh 재검수·정확 SHA CI 통과. 전체 P10-03/P10-04 완료 아님 |
-| 현재 작업 | P10-05c 전체19종 명시적 원본 추출/100행 batch 및 만료 attempt 전체 재시작 기반. 관련 통합31 + 강화 source2 통과, 현재 모델 검토 완료. 커밋/CI 전 |
-| 작업 중 변경 | SnapshotSourceRows, baseline callback, restartExpired, 실제 V1~V16 MySQL 추출/복구 테스트와 CI. 원본 데이터·과거 컨디션 보존. 아직 HTTP 미노출 |
-| 다음 실행 | c 커밋/push/정확 SHA CI. 이어서 job lease 기반 서버 권한·생성 실행/재개, 실패/만료 정리·멱등성 및 HTTP 연결. 사용자 직접 조작 없음 |
+| 현재 작업 | P10-05d job lease 권한·원자 접수(receipt/header/job)·생성 worker. 영향69 및 최종 snapshot38 통과, 현재 모델 검토 완료. 커밋/CI 전 |
+| 작업 중 변경 | SnapshotAuthority/Requests/Worker, JobQueue SNAPSHOT_BUILD type, joined 접수/최종 worker fence·패키지 내부 소유 재시작. 로그인 토큰 DB 저장 없음 |
+| 다음 실행 | d 커밋/push/정확 SHA CI. 이어서 만료/실패 정리·상태/페이지 HTTP/OpenAPI·실행 설정 연결 및 모바일 staging. 사용자 직접 조작 없음 |
 | 실제 차단 | 새 Codex 자료 전달 권한 차단은 절차 폐기로 해제. 실행 환경·필수 CI·실제 기능 선행만 개별 판정. USER020 요청 취소, 현재 직접 사용자 조작 없음 |
 | 실행 환경 | 실행별 socket 경로 옵션으로 APK 빌드 성공. 새 격리 DB/API 준비·health UP, 원래 DB V1/볼륨 보존. 기존 환경 실패 횟수 유지. 새 APK는 2e6bd88 기준으로 고정·새 설치 성공, 현재 HEAD 빌드로 혼동 금지 |
 
