@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "2d6e8178d0e88f0dff6e835c85145a5cc647757c",
+  "baseline_head": "b4fb732de090460b73df46ae77df9aca572dd6ca",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -8,10 +8,7 @@
     "export.integrated",
     "workflow08.reviewed"
   ],
-  "grants": [
-    "review.export",
-    "review.workflow08"
-  ],
+  "grants": [],
   "coverage": {
     "P00-01": {
       "disposition": "preserved_scope",
@@ -1470,10 +1467,10 @@
         "docs",
         "AGENTS.md"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "GitHub 실행 완료 후 AI",
-      "resume": "해당 SHA와 후속 기록 커밋의 필수 CI4를 단발 확인; 실패 시 로그 분석, 모두 PASS면 완료",
-      "blocker": "운영 커밋 2d6e817 필수 CI 중 CI36663110381/MySQL36663110470 실행 중; API/Development workflow PASS"
+      "resume": "완료",
+      "evidence": "운영 변경 포함 b4fb732de090460b73df46ae77df9aca572dd6ca 필수CI4/job PASS 확인"
     },
     {
       "id": "P10-REMAINING-ANALYZE",
@@ -1515,9 +1512,7 @@
       "requires": [
         "export.integrated"
       ],
-      "permissions": [
-        "worker.p10-04b-connect"
-      ],
+      "permissions": [],
       "reads": [
         "apps/mobile/lib/core/sync"
       ],
@@ -1525,8 +1520,8 @@
         "apps/mobile/lib/core/sync/metadata_dispatcher.dart"
       ],
       "state": "pending",
-      "owner": "사용자 승인 후 AI",
-      "resume": "USER020 해당 자료 전달 승인→Astra/high Worker→관련 검증→독립 Reviewer"
+      "owner": "현재 작업 AI",
+      "resume": "EXPORT 필수CI 확인 후 현재 모델이 직접 구현·코드 검토·영향 검증. USER020 요청 취소"
     },
     {
       "id": "P10-02-NEXT",
@@ -1534,16 +1529,14 @@
       "requires": [
         "p10.remaining.analysis"
       ],
-      "permissions": [
-        "worker.p10-02-next"
-      ],
+      "permissions": [],
       "reads": [],
       "writes": [
         "apps/mobile/lib/core/sync"
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
     },
     {
       "id": "P10-05-NEXT",
@@ -1551,16 +1544,14 @@
       "requires": [
         "p10.remaining.analysis"
       ],
-      "permissions": [
-        "worker.p10-05-next"
-      ],
+      "permissions": [],
       "reads": [],
       "writes": [
         "services/api/src/main/java/com/ksh321/songrecord/api/sync"
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
     },
     {
       "id": "P10-06-NEXT",
@@ -1569,16 +1560,14 @@
         "p10.remaining.analysis",
         "p10.receiver"
       ],
-      "permissions": [
-        "worker.p10-06-next"
-      ],
+      "permissions": [],
       "reads": [],
       "writes": [
         "apps/mobile/lib/core/sync"
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
     },
     {
       "id": "P10-07-NEXT",
@@ -1587,16 +1576,14 @@
         "p10.remaining.analysis",
         "p10.receiver"
       ],
-      "permissions": [
-        "worker.p10-07-next"
-      ],
+      "permissions": [],
       "reads": [],
       "writes": [
         "apps/mobile/lib/core/sync"
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
     },
     {
       "id": "P10-08-NEXT",
@@ -1605,16 +1592,14 @@
         "p10.remaining.analysis",
         "p10.receiver"
       ],
-      "permissions": [
-        "worker.p10-08-next"
-      ],
+      "permissions": [],
       "reads": [],
       "writes": [
         "apps/mobile/lib/core/sync"
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
     },
     {
       "id": "P10-09-NEXT",
@@ -1623,16 +1608,14 @@
         "p10.remaining.analysis",
         "p10.receiver"
       ],
-      "permissions": [
-        "worker.p10-09-next"
-      ],
+      "permissions": [],
       "reads": [],
       "writes": [
         "apps/mobile/lib/core/sync"
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
     },
     {
       "id": "P10-10-NEXT",
@@ -1641,16 +1624,14 @@
         "p10.remaining.analysis",
         "p10.receiver"
       ],
-      "permissions": [
-        "worker.p10-10-next"
-      ],
+      "permissions": [],
       "reads": [],
       "writes": [
         "apps/mobile/lib/core/sync"
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
     },
     {
       "id": "P11-PHASE",
@@ -1917,7 +1898,7 @@
       "state": "pending",
       "action": "새 비어 있지 않은 큐 실기에 필요한 안전한 synthetic fixture 구현·검증",
       "owner": "AI",
-      "resume": "계정 데이터 보존 범위와 별도 작업자 자료 전달 권한 확인 후 fixture 작성",
+      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요",
       "reads": [
         "apps/mobile/lib/core/database"
       ],
@@ -1925,9 +1906,7 @@
         "apps/mobile/test"
       ],
       "requires": [],
-      "permissions": [
-        "worker.p10-fixture"
-      ]
+      "permissions": []
     },
     {
       "id": "P10-03b-PHONE-QUEUE",
@@ -1958,5 +1937,6 @@
       ],
       "blocker": "공식 FAQ 무료/호출제한 없음 외 캐시·재표시 범위 미확인. 공개문서 재검색 완료; 같은 검색 반복하지 않음"
     }
-  ]
+  ],
+  "execution_policy": "current-session-only; no delegated CLI workers/reviewers"
 }

@@ -102,21 +102,21 @@ class SelectionTests(unittest.TestCase):
                 self.state['units']=[a,b]
                 self.assertEqual([r['id'] for r in self.result()['blocked']],['b'])
 
-    def test_repository_connect_grant_does_not_release_other_work(self):
+    def test_current_session_work_needs_no_delegation_grant(self):
         import json
         root = Path(__file__).resolve().parents[2]
         state = json.loads((root / 'docs/workflow-state.json').read_text(encoding='utf-8-sig'))
         planned = json.loads((root / 'docs/reference/search/tasks.json').read_text(encoding='utf-8-sig'))
-        connect = next(u for u in state['units'] if u['id'] == 'P10-04b-CONNECT')
-        permissions = set(connect['permissions'])
-        self.assertEqual(permissions, {'worker.p10-04b-connect'})
+        self.assertIn('current-session-only', state['execution_policy'])
+        self.assertEqual(state['grants'], [])
         for u in state['units']:
-            if u['id'] != connect['id']:
-                self.assertFalse(permissions.intersection(u['permissions']))
-        state['grants'] += list(permissions)
-        state['facts'] += ['export.integrated', 'p10.remaining.analysis']
+            if u['state'] != 'done':
+                self.assertFalse(any(p.startswith(('worker.', 'review.')) for p in u['permissions']))
+        state['facts'] += ['export.integrated']
+        # File locks and actual dependencies still apply to direct work.
+        state['units'] = [u for u in state['units'] if u['state'] != 'active']
         result = select(state, [r['id'] for r in planned])
-        self.assertNotIn('P10-05-NEXT', [r['id'] for r in result['ready']])
+        self.assertIn('P10-04b-CONNECT', [r['id'] for r in result['ready']])
 
 
 if __name__ == '__main__':

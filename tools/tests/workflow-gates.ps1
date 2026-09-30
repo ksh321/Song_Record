@@ -38,9 +38,11 @@ Assert-Equal (Get-AgentRunPlan 'Implement' 'LogicError' 3 0).effort 'ultra' 'thi
 Assert-Equal (Get-AgentRunPlan 'Explore' 'LogicError' 4 1).model 'gpt-6-astra' 'escalated model persists'
 Assert-Equal (Get-AgentRunPlan 'Sensitive' 'ReviewBlocker' 5 2).effort 'ultra' 'last additional attempt allowed'
 Assert-Equal (Get-AgentRunPlan 'Sensitive' 'ReviewBlocker' 6 3 $true).effort 'ultra' 'explicit review after confirmed user fix preserves maximum model'
-$blocked=$false
-try { & (Join-Path $root 'tools/run-agent.ps1') -Role Worker -PromptFile 'unused-no-login.txt' -ReviewAfterUserFix } catch { $blocked=$true }
-Assert-Equal $blocked $true 'user fix review exception cannot run a worker'
+foreach($role in @('Worker','Reviewer')) {
+    $reason=''
+    try { & (Join-Path $root 'tools/run-agent.ps1') -Role $role -PromptFile 'unused-no-login.txt' } catch { $reason=$_.Exception.Message }
+    Assert-Equal $reason 'DELEGATION_DISABLED: Use the current task model; new CLI Worker/Reviewer sessions are retired.' 'retired runner blocks before reading input or login'
+}
 foreach($counters in @(@(6,3),@(3,3),@(2,3))) {
     $blocked=$false
     try { Get-AgentRunPlan 'Sensitive' 'LogicError' $counters[0] $counters[1] | Out-Null } catch { $blocked=$true }
