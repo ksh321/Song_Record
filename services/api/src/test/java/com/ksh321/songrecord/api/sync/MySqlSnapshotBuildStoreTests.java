@@ -149,5 +149,22 @@ class MySqlSnapshotBuildStoreTests {
         assertThat(jdbc.queryForObject("SELECT status FROM snapshot_header",String.class)).isEqualTo("BUILDING");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM snapshot_entry",Integer.class)).isEqualTo(1);
     }
+    @Test void expiredAttemptRestartsFromEmptyRowsAndFencesOldWriter(){
+        var op=UUID.randomUUID();var old=store.begin(account,op,1);store.capture(account,old,7,now);
+        store.append(account,old,List.of(entry(1)));
+        code("SNAPSHOT_ATTEMPT_STALE",()->store.restartExpired(account,old));
+        var later=new SnapshotBuildStore(jdbc,access,new DataSourceTransactionManager(source),Clock.fixed(now.plusSeconds(600),ZoneOffset.UTC));
+        var next=later.restartExpired(account,old);
+        assertThat(next.id()).isEqualTo(old.id());assertThat(next.attemptId()).isNotEqualTo(old.attemptId());
+        assertThat(total()).isZero();assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM snapshot_entry",Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT snapshot_cursor FROM snapshot_header",Long.class)).isNull();
+        assertThat(jdbc.queryForObject("SELECT attempt_count FROM snapshot_header",Integer.class)).isEqualTo(2);
+        code("SNAPSHOT_ATTEMPT_STALE",()->later.append(account,old,List.of(entry(2))));
+        code("SNAPSHOT_ATTEMPT_STALE",()->later.restartExpired(account,old));
+        later.capture(account,next,8,now.plusSeconds(600));later.append(account,next,List.of(entry(1)));
+        assertThat(later.publish(account,next,counts(1)).cursor()).isEqualTo(8);
+        assertThat(later.begin(account,op,1).id()).isEqualTo(old.id());
+        code("SNAPSHOT_ATTEMPT_STALE",()->later.restartExpired(account,next));
+    }
     static byte[] bytes(UUID id){return ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();}
 }

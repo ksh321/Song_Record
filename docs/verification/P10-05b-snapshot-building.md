@@ -32,3 +32,5 @@ gradlew.bat test --tests '*SnapshotPageCursorTests' --tests '*SnapshotPagesTests
 전체 업무 엔터티 추출, 생성 실행 조율, 실패/재시작 attempt 전체 폐기·재생성, 5분 정리, durable idempotency와 cleanup 뒤 같은 op 재요청 처리, HTTP/OpenAPI/계정 삭제 연계, 모바일 staging은 아직 미구현이다. READY 게시 내부 검증은 추출기가 모든 엔터티 완료 후 만든 개수표를 받는 계약이며 외부 요청이 이 표를 직접 제공하도록 노출하지 않는다. 전체 P10-05 완료나 실기 통과로 기록하지 않는다. 사용자 확인 대기0건.
 
 커밋/정확 SHA 필수 CI는 후속 기록. 다음은 기존 데이터를 포함한 명시적 엔터티 추출과 실패 복구를 연결한다.
+
+최종: d06c1397c8afdb861e1d96145539707de22dd2b0 커밋/push 및 필수 CI4 PASS. CI36670115445/API contract36670115390/Idempotency MySQL36670115332/Development workflow36670115353. b 기반 범위만 완료, 전체 P10-05는 진행 중.

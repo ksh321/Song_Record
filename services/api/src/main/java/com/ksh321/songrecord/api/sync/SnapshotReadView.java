@@ -5,6 +5,7 @@ import java.nio.ByteBuffer;
 import java.sql.*;
 import java.time.*;
 import java.util.*;
+import java.util.function.BiConsumer;
 import javax.sql.DataSource;
 
 /** D09 source-read boundary. A build must restart this whole view after failure. */
@@ -27,7 +28,13 @@ public final class SnapshotReadView {
         this.source=Objects.requireNonNull(source);this.access=Objects.requireNonNull(access);this.clock=Objects.requireNonNull(clock);
     }
     public <T> Captured<T> capture(AccountAccess.Account account, Instant buildStartedAt, Reader<T> reader) throws SQLException {
+        return capture(account,buildStartedAt,(cursor,time)->{},reader);
+    }
+    /** Records the fixed baseline before extraction batches use separate writer connections. */
+    public <T> Captured<T> capture(AccountAccess.Account account, Instant buildStartedAt,
+                                  BiConsumer<Long,Instant> baseline,Reader<T> reader) throws SQLException {
         Objects.requireNonNull(reader);Objects.requireNonNull(buildStartedAt);
+        Objects.requireNonNull(baseline);
         UUID owner=access.revalidate(account).userId();
         checkDeadline(buildStartedAt);
         try(Connection connection=source.getConnection()) {
@@ -48,6 +55,7 @@ public final class SnapshotReadView {
                     }
                 }
                 Instant capturedAt=clock.instant();
+                baseline.accept(cursor,capturedAt);
                 T value=Objects.requireNonNull(reader.read(connection,owner));
                 if(!access.revalidate(account).userId().equals(owner))throw new IllegalStateException("Account changed during snapshot capture");
                 checkDeadline(buildStartedAt);

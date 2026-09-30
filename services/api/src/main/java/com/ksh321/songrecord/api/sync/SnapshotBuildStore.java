@@ -76,6 +76,29 @@ public final class SnapshotBuildStore {
             if(updated!=1)throw error(HttpStatus.CONFLICT,"SNAPSHOT_CAPTURE_ALREADY_SET");
         });
     }
+    /** Replaces only a lease-expired BUILDING attempt; never continues its old read view. */
+    public Attempt restartExpired(AccountAccess.Account account,Attempt old) {
+        Objects.requireNonNull(old);
+        return transaction.execute(tx->{
+            UUID owner=access.revalidate(account).userId();capacity();
+            var rows=jdbc.query("SELECT attempt_id,status,lease_until,attempt_count FROM snapshot_header WHERE user_id=? AND id=? AND purpose='SYNC' FOR UPDATE",
+                    (rs,n)->{
+                        var lease=rs.getTimestamp(3);
+                        if(!uuid(rs.getBytes(1)).equals(old.attemptId)||!rs.getString(2).equals("BUILDING")||lease==null
+                                ||now().isBefore(lease.toLocalDateTime().toInstant(ZoneOffset.UTC)))
+                            throw error(HttpStatus.CONFLICT,"SNAPSHOT_ATTEMPT_STALE");
+                        return rs.getInt(4);
+                    },bytes(owner),bytes(old.id));
+            if(rows.isEmpty())throw error(HttpStatus.NOT_FOUND,"SNAPSHOT_NOT_FOUND");
+            int count=Math.addExact(rows.getFirst(),1);
+            // These are only this incomplete snapshot's derived rows, never source metadata.
+            jdbc.update("DELETE FROM snapshot_entry WHERE snapshot_id=?",bytes(old.id));
+            UUID attempt=UUID.randomUUID();Instant now=now();
+            jdbc.update("UPDATE snapshot_header SET attempt_id=?,attempt_count=?,snapshot_cursor=NULL,captured_at=NULL,row_count=0,byte_count=0,reserved_bytes=0,build_started_at=?,lease_until=? WHERE id=?",
+                    bytes(attempt),count,utc(now),utc(now.plusSeconds(600)),bytes(old.id));
+            return new Attempt(old.id,attempt,now,"BUILDING");
+        });
+    }
     public void append(AccountAccess.Account account,Attempt attempt,List<Entry> batch) {
         var entries=List.copyOf(batch);
         if(entries.isEmpty()||entries.size()>100)throw new IllegalArgumentException("Expected 1..100 snapshot rows");
