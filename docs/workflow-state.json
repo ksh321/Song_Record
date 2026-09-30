@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "bf2ce110c9ae13bf6fd19bbb329319c2c102998e",
+  "baseline_head": "2d6e8178d0e88f0dff6e835c85145a5cc647757c",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1470,9 +1470,10 @@
         "docs",
         "AGENTS.md"
       ],
-      "state": "active",
-      "owner": "AI",
-      "resume": "이 파일을 포함한 새 운영 커밋의 필수 CI4 결과 확인; 실패 시 해당 영향만 수정"
+      "state": "pending",
+      "owner": "GitHub 실행 완료 후 AI",
+      "resume": "해당 SHA와 후속 기록 커밋의 필수 CI4를 단발 확인; 실패 시 로그 분석, 모두 PASS면 완료",
+      "blocker": "운영 커밋 2d6e817 필수 CI 중 CI36663110381/MySQL36663110470 실행 중; API/Development workflow PASS"
     },
     {
       "id": "P10-REMAINING-ANALYZE",

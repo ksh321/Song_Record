@@ -11,18 +11,18 @@
 
 ## 1. 최신 판정 — 2026-09-30
 
-**사용자 확인 대기 1건 — [내가할일.md](../내가할일.md): USER-020 새 Codex 세션의 P10-04b-CONNECT 구현·검수 자료 전달 여부(기존 맥락 상담 아님).** USER-017 Google 성공, USER-013 Kakao 성공, USER-018 빈 큐 화면/홈 복귀 정상 확인 완료. USER-019는 EXPORT/WORKFLOW-08 별도 검수만 승인하여 현재 두 검수를 실행했다. EXPORT Astra/high PASS→bf2ce11 커밋·일반 push 완료, 필수 CI는 아래 상태로 추적한다. WORKFLOW-08 Sol/high 검수 P2 세 건을 보완해 Astra/ultra 최종 검수 PASS, 운영 커밋/CI 진행이다. 폰 응답 대기는 전체 중단 사유가 아니며 실제 선택기·회귀 검증·전체 작업 대조와 분리 커밋을 진행했다. 자동 시간 동기화는 별도 환경 미해결, 현재 수동 보정으로 로그인 성공. [요청 이력](verification/user-action-records.md) · [운영 검증](verification/WORKFLOW-08-action-checklist.md).
+**사용자 확인 대기 1건 — [내가할일.md](../내가할일.md): USER-020 새 Codex 세션의 P10-04b-CONNECT 구현·검수 자료 전달 여부(기존 맥락 상담 아님).** USER-017 Google 성공, USER-013 Kakao 성공, USER-018 빈 큐 화면/홈 복귀 정상 확인 완료. USER-019는 EXPORT/WORKFLOW-08 별도 검수만 승인하여 현재 두 검수를 실행했다. EXPORT Astra/high PASS→bf2ce11 커밋·일반 push 완료, 필수 CI는 아래 상태로 추적한다. WORKFLOW-08 Sol/high 검수 P2 세 건을 보완해 Astra/ultra 최종 검수 PASS, 2d6e817 커밋·push 완료, 필수 CI 결과 대기이다. 폰 응답 대기는 전체 중단 사유가 아니며 실제 선택기·회귀 검증·전체 작업 대조와 분리 커밋을 진행했다. 자동 시간 동기화는 별도 환경 미해결, 현재 수동 보정으로 로그인 성공. [요청 이력](verification/user-action-records.md) · [운영 검증](verification/WORKFLOW-08-action-checklist.md).
 
 **현재 할 일은 이 절을 기준으로 판단한다. 아래 2026-09-23 기록(4.12 포함)의 “대기/다음/현재”는 당시 상태이며 최신 판정이 아니다.**
 기존 사용자 검증 완료 범위를 문서 누락만으로 되돌리거나 같은 실기를 다시 요청하지 않는다. 새 변경과 그 영향 범위만 별도로 검증한다.
 
 | 구분 | 최신 상태와 근거 |
 |---|---|
-| 확인한 제품 Git | HEAD/origin main `bf2ce110c9ae13bf6fd19bbb329319c2c102998e`. EXPORT 필수 CI 4 PASS: 36661425538 / 36661425541 / 36661425501 / 36661425550. 각 필수 job success 확인 |
+| 확인한 제품 Git | 제품 EXPORT `bf2ce110c9ae13bf6fd19bbb329319c2c102998e` 필수 CI4 PASS. 운영 코드 `2d6e8178d0e88f0dff6e835c85145a5cc647757c` 일반 push 완료, 필수 CI2 PASS/2 실행 중. 후속 상태 기록 커밋은 Git HEAD로 식별 |
 | 기존 기능 완료 기준 | `eef028dddea87cb0ad02d733808658512dffe431`까지 사용자 검증 완료. P05-08·P06 포함, 문서 부족만으로 되돌리지 않음 |
 | 현재 구현 완료 지점 | P09-07b-C1/D06, P10-02b 해당 메타데이터 범위, WORKFLOW-07, P10-04a v4, P10-04b-DECODER/ATOMIC/GATE. GATE 90 테스트·분석·Astra/xhigh 재검수·정확 SHA CI 통과. 전체 P10-03/P10-04 완료 아님 |
-| 현재 작업 | EXPORT 별도 검수/커밋/푸시/정확 SHA 필수 CI 완료. WORKFLOW-08: 실제 작업 선택·차단·종료 검사 및 알림 필수 안내 검증 코드 보완, 19 Python/90 PS 검사 통과, Astra/ultra 최종 검수 PASS, 운영 커밋/CI 진행 |
-| 작업 중 변경 | EXPORT 제품 4파일은 bf2ce11에 분리 커밋. WORKFLOW-08 문서/알림/선택기/테스트 미커밋. 사용자 기존 변경 보존 |
+| 현재 작업 | EXPORT 별도 검수/커밋/푸시/정확 SHA 필수 CI 완료. WORKFLOW-08: 실제 작업 선택·차단·종료 검사 및 알림 필수 안내 검증 코드 보완, 19 Python/90 PS 검사 통과, Astra/ultra 최종 검수 PASS, 2d6e817 커밋·push 완료, 필수 CI 결과 대기 |
+| 작업 중 변경 | EXPORT 제품 4파일은 bf2ce11에 분리 커밋. WORKFLOW-08 문서/알림/선택기/테스트는 2d6e817에 커밋·push. 이후 사실 기록만 후속 문서 커밋. 사용자 기존 변경 보존 |
 | 다음 실행 | EXPORT 별도 검수 후 커밋·push·정확 SHA CI. 이후 receipt 송신 연결/개인 편집 보존을 의존 순서로 진행. 별도 package 실기 하네스는 SDK handshake·실제 앱 격리 근거 확인부터 |
 | 실제 차단 | 서명 불일치 업데이트 거절 후 사용자가 앱 데이터 삭제/새 설치를 명시 승인. dev 앱 삭제·고정 2e6bd88 APK 재설치 성공, 로그인 화면 확인. Kakao 로그인은 사용자 성공 확인. PC 수동 보정은 확인 완료. Google 로그인 성공 확인, 로그인 차단 해소. USER018 빈 큐 화면/복귀 정상. 비어 있지 않은 큐 송신/수동 접수는 이 결과로 검증하지 않음. 실기 대기를 기존 기능 미검증으로 확대하지 않음. USER019 한정 승인으로 두 기존 검수 차단 해소. 다음 CONNECT Worker/Reviewer 전달은 별도 USER020 응답 필요. 필수 검수 생략 없음 |
 | 실행 환경 | 실행별 socket 경로 옵션으로 APK 빌드 성공. 새 격리 DB/API 준비·health UP, 원래 DB V1/볼륨 보존. 기존 환경 실패 횟수 유지. 새 APK는 2e6bd88 기준으로 고정·새 설치 성공, 현재 HEAD 빌드로 혼동 금지 |
@@ -779,3 +779,12 @@ P10-03b 실기 준비: 실행별 socket 경로 옵션으로 새 APK(2e6bd88) 빌
 기존 맥락 상담 대상/연결 방법은 development-workflow의 상담 절에 저장했다. 과거 답변 식별자와 현 코드 대조 근거는 signing-consultation에 보존. 문서의 식별자만으로 현재 접속 권한을 승계했다고 가정하지 않는다.
 
 - WORKFLOW08 최종 독립 검수: Reviewer-20260930-120728-844 Astra/ultra PASS, P1/P2 없음. D06 C1은 기존 완료 근거로 낡은 규칙만 정정. 코드 변경/시험 완료를 추정하지 않음. 이번 운영 변경을 별도 커밋·push 후 새 SHA CI로 확인한다.
+
+
+### 응답 종료 전 재개 지점
+
+운영 커밋 **2d6e8178d0e88f0dff6e835c85145a5cc647757c** 일반 push 완료. 정확 SHA CI 단발 조회: API36663110296/Development workflow36663110730 PASS, CI36663110381/MySQL36663110470 실행 중. 완료로 표시하지 않는다. 최종 Reviewer-20260930-120728-844 Astra/ultra PASS, 누적 보완5/최대2 유지. 새 코드·관련 테스트·필수 검수를 실제 수행했으며 문서 선언만으로 끝내지 않았다.
+
+모든 즉시 실행 가능한 단계는 수행했다. 남은 것은 외부 CI 결과와 작업별 전달 권한/선행이다. select_work.py --check-stop으로 ready가 비었는지 다시 확인하며, 기다리기 위한 sleep/반복 조회는 하지 않는다. 재개 시 Git/프로세스/USER020 답변을 확인하고 **운영 SHA 및 후속 문서 SHA의 필수CI 확인→승인된 다음 제품 작업** 순으로 진행한다. USER020은 ‘과거 맥락 상담’이 아니라 **새 Codex CLI 세션의 코드 구현·검수 자료 전달 승인만** 남았다. 설명 보완 후 같은 요청의 ntfy는 반복 발송하지 않았다. UI 실기 USER018 완료 항목은 사용자 목록에서 제거했다.
+
+별도 작업자/검수자 프로세스는 모두 종료했다. API 개발 서버 및 비공개 로그 수집은 마지막 확인 기준 유지하며 다음 세션에서 실제 프로세스를 재확인한다. 자동 재시작·응답 종료 뒤 AI 계속 실행을 보장하지 않는다. 기록만 남긴 다음 작업을 실행 중이라고 보고하지 않는다.

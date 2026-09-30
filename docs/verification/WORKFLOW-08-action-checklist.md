@@ -49,3 +49,6 @@ P10 남은 작업 원문 p00576~p00604와 실제 코드 분석 결과:
 Astra/ultra 추가2는 오래된 AGENTS D06 미완료 문구와 실제 완료 상태 충돌을 지적했다. C1 ace5703829cfdd5034fcbbdf0857b16147e88fb0의 기존 필수CI4 PASS와 현재 HEAD 조상(exit0)을 확인하여 규칙만 정정했다. 새 D06 미완료 항목을 만들거나 기존 기능을 재구현하지 않았다.
 
 최대추론 추가3 Reviewer-20260930-120728-844 **PASS, P1/P2 없음**. 누적 보완5/최대2 이력은 유지. CLI Astra/ultra 확인, Standard/default·Fast off 요청, 실제 서버 tier 미확인. 최종 실제 검증 Python19·PS90 통과, diff --check 통과. 단순 source index3 + 선택기16이며 테스트 수는 실제 runner 출력 기준이다. 실제 ntfy USER019/020은 서버 접수, 사용자 수신은 추정하지 않음. 새 운영 커밋 SHA와 필수CI는 커밋 후 progress에 기록한다.
+
+
+커밋/푸시: 2d6e8178d0e88f0dff6e835c85145a5cc647757c. 필수 CI2 PASS(API36663110296/workflow36663110730), CI36663110381/MySQL36663110470 실행 중. 새 운영 변경 전체 완료는 아직 아니다. 단발 조회 결과를 저장했으며 남은 외부 실행을 통과로 추정하지 않는다. 새 세션에서는 이 SHA와 후속 문서 커밋 CI를 확인한다.
