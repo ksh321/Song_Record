@@ -997,6 +997,17 @@ final class AccountStore {
     );
   }
 
+  Future<bool> hasCompleteBaseline() => _run(
+    () async =>
+        (await _database
+                .customSelect(
+                  'SELECT baseline_complete FROM sync_cursors WHERE singleton=1',
+                )
+                .getSingle())
+            .read<int>('baseline_complete') ==
+        1,
+  );
+
   Future<String?> readSnapshotResume() => _run(
     () async =>
         (await _database

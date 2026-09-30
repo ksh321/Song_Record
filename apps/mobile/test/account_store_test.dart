@@ -107,6 +107,19 @@ void main() {
     await root.delete(recursive: true);
   });
 
+  test('cursor alone does not mark the snapshot baseline complete', () async {
+    await manager.openAccount(userA);
+    await manager.logout();
+    final database = await raw(userA);
+    await database.customStatement(
+      'UPDATE sync_cursors SET last_change_seq=0 WHERE singleton=1',
+    );
+    await database.close();
+    final store = await manager.openAccount(userA);
+    expect(await store.readCursor(), 0);
+    expect(await store.hasCompleteBaseline(), isFalse);
+  });
+
   test(
     'snapshot request survives restart and rejects stale response writes',
     () async {

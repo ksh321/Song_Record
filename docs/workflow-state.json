@@ -1542,7 +1542,7 @@
     },
     {
       "id": "P10-05-NEXT",
-      "action": "P10-05j — 일관된 초기 스냅샷: HTTP 요청·재개 저장 기반과 수신 실행기",
+      "action": "P10-05k — 일관된 초기 스냅샷: 중단 재개 실행기와 조회 투영·앱 연결",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1555,7 +1555,7 @@
       ],
       "state": "active",
       "owner": "현재 작업 AI",
-      "resume": "g 0241cf5 CI4 PASS. h+WORKFLOW08 통합95a2079 CI4 PASS. i efc80f8 로컬 커밋. j HTTP/재개 기반 통합42 PASS·링크권한1 skip/추가HTTP5 PASS·분석 통과. 95a CI 후 후속 push. 동일 op_id 수신 실행기·메타데이터 투영·앱 연결 계속"
+      "resume": "통합95a2079 CI4 PASS. i+j 통합 d39cc52 push/CI3 PASS·CI 진행. k 실행기 통합50 PASS·링크권한1 skip·분석 통과. d39 CI 후 k push. 기존 메타데이터 투영·앱 연결 계속"
     },
     {
       "id": "P10-06-NEXT",
