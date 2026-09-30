@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "0241cf56340f52a366bec1a49100e61664074a56",
+  "baseline_head": "d39cc52e7888a4851e6a1795f1d62aee278b77ba",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1527,18 +1527,20 @@
     },
     {
       "id": "P10-02-NEXT",
-      "action": "원본 요구사항의 남은 구현·검증",
+      "action": "P10-02c — 의존 순서 전송: 녹음 티어 전용 경로 구현·검증",
       "requires": [
         "p10.remaining.analysis"
       ],
       "permissions": [],
       "reads": [],
       "writes": [
-        "apps/mobile/lib/core/sync"
+        "apps/mobile/lib/core/sync/mutation_request.dart",
+        "apps/mobile/lib/core/sync/metadata_response.dart",
+        "apps/mobile/test/recording_tier_dispatch_test.dart"
       ],
-      "state": "pending",
+      "state": "active",
       "owner": "AI",
-      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
+      "resume": "c 로컬 통합25 PASS·분석·현재 모델 검토 완료. 필수 CI는 계정 환경 차단. 다음 독립 후보는 기존 녹음 song 연결 전용 경로, 선행 곡/파일 보존 검증 필요."
     },
     {
       "id": "P10-05-NEXT",
@@ -1553,9 +1555,10 @@
         "apps/mobile/lib/core/sync",
         "apps/mobile/lib/core/database"
       ],
-      "state": "active",
-      "owner": "현재 작업 AI",
-      "resume": "통합95a2079 CI4 PASS. i+j 통합 d39cc52 push/CI3 PASS·CI 진행. k 실행기 통합50 PASS·링크권한1 skip·분석 통과. d39 CI 후 k push. 기존 메타데이터 투영·앱 연결 계속"
+      "state": "pending",
+      "owner": "AI; USER-021 계정 사용량 확인",
+      "resume": "fd671e0 로컬 통합50 PASS+추가1 PASS/링크1 skip, push. USER021 무료 실행 가능 확인 후 정확 SHA CI 재실행. 조회 투영/앱 연결 잔여.",
+      "blocker": "P10-05k 필수 CI가 GitHub 계정 사용량/결제 안내로 시작 차단됨. 전체 P10-05 완료 아님"
     },
     {
       "id": "P10-06-NEXT",
