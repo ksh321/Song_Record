@@ -142,6 +142,48 @@ final class SnapshotEntry {
   final String entity, resourceId, canonicalPayload;
   final int ordinal;
 
+  /// Revalidate persisted rows before hashing; raw database contents are not a
+  /// substitute for the account and resource checks used for network pages.
+  factory SnapshotEntry.fromStored({
+    required String entity,
+    required int ordinal,
+    required String resourceId,
+    required String canonicalPayload,
+    required String owner,
+    required int snapshotCursor,
+  }) {
+    _check(
+      snapshotEntities.contains(entity) &&
+          ordinal > 0 &&
+          canonicalPayload.length <= 1048576,
+    );
+    _uuid(owner);
+    _uuid(resourceId);
+    final value = jsonDecode(canonicalPayload);
+    _check(value is Map<String, dynamic> && value['user_id'] == owner);
+    const idFields = {
+      'SONG_SOURCE': 'song_id',
+      'RECORDING_FILE_SPEC': 'recording_id',
+      'RECORDING_ASSET': 'recording_id',
+      'RECORDING_TAG': 'recording_id',
+      'USER_ENTITLEMENT': 'user_id',
+      'STORAGE_USAGE': 'user_id',
+      'SONG_CLOUD_SELECTION': 'song_id',
+      'PIN_SLOT': 'user_id',
+      'USER_SYNC_STATE': 'user_id',
+      'CHANGE_LOG': 'entity_id',
+      'DELETION_ITEM': 'entity_id',
+    };
+    _check(value[idFields[entity] ?? 'id'] == resourceId);
+    if (entity == 'USER_SYNC_STATE') {
+      _check(
+        value['last_change_seq'] is int &&
+            value['last_change_seq'] == snapshotCursor,
+      );
+    }
+    return SnapshotEntry._(entity, ordinal, resourceId, canonicalPayload);
+  }
+
   /// Each call returns a detached value; callers cannot mutate stored hash input.
   Map<String, dynamic> get payload =>
       jsonDecode(canonicalPayload) as Map<String, dynamic>;
@@ -220,27 +262,16 @@ final class SnapshotPage {
             _sameJson(value, row['payload']),
       );
       final resource = _uuid(row['resource_id']);
-      const idFields = {
-        'SONG_SOURCE': 'song_id',
-        'RECORDING_FILE_SPEC': 'recording_id',
-        'RECORDING_ASSET': 'recording_id',
-        'RECORDING_TAG': 'recording_id',
-        'USER_ENTITLEMENT': 'user_id',
-        'STORAGE_USAGE': 'user_id',
-        'SONG_CLOUD_SELECTION': 'song_id',
-        'PIN_SLOT': 'user_id',
-        'USER_SYNC_STATE': 'user_id',
-        'CHANGE_LOG': 'entity_id',
-        'DELETION_ITEM': 'entity_id',
-      };
-      _check(value[idFields[entity] ?? 'id'] == resource);
-      if (entity == 'USER_SYNC_STATE') {
-        _check(
-          value['last_change_seq'] is int &&
-              value['last_change_seq'] == manifest.cursor,
-        );
-      }
-      entries.add(SnapshotEntry._(entity, ordinal, resource, canonical));
+      entries.add(
+        SnapshotEntry.fromStored(
+          entity: entity,
+          ordinal: ordinal,
+          resourceId: resource,
+          canonicalPayload: canonical,
+          owner: owner,
+          snapshotCursor: manifest.cursor,
+        ),
+      );
     }
     final next = data['next_cursor'];
     _check(

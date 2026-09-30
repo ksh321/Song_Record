@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "fd5955117e27d4b5f175b727bfdfa9cd5ca50749",
+  "baseline_head": "2b6a980877d07262b29b682f01e52033d06671af",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1542,7 +1542,7 @@
     },
     {
       "id": "P10-05-NEXT",
-      "action": "P10-05g 로컬 v5 이관 및 수신 staging 연결",
+      "action": "P10-05h 계정 수신 저장·재개·검증 및 기준 원자 적용 연결",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1555,7 +1555,7 @@
       ],
       "state": "active",
       "owner": "현재 작업 AI",
-      "resume": "a~d CI4 PASS. f 2b6a980 서버 CI 누락 해소/필수3 PASS·Flutter APK 진행. g v1~v4→v5/보존/재개82 PASS·Windows 링크1 skip·분석 통과. f CI 후 g push, AccountStore 원자 수신/적용 계속"
+      "resume": "f 2b6a980 CI4 PASS. g 0241cf5 push/CI 대기. h 수신/재개/hash42 PASS·링크권한1 skip·분석 통과. g CI 후 h push, 기준 pointer/cursor 원자 적용·HTTP 수신 계속"
     },
     {
       "id": "P10-06-NEXT",

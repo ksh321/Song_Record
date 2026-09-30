@@ -18,8 +18,11 @@ import 'account_paths.dart';
 import 'local_models.dart';
 import 'mapping_eligibility.dart';
 import 'retry_controls.dart';
+import 'snapshot_download_store.dart';
 
 export 'retry_controls.dart' show RetryClock, RetryStatus;
+export 'snapshot_download_store.dart'
+    show SnapshotDownloadState, SnapshotProgress;
 
 typedef SupportDirectory = Future<Directory> Function();
 
@@ -155,6 +158,26 @@ final class AccountStore {
   String get userId => _paths.userId;
 
   Future<T> _run<T>(Future<T> Function() action) => _manager._run(this, action);
+
+  late final SnapshotDownloadStore _snapshots = SnapshotDownloadStore(
+    _database,
+    clock: _manager._clock,
+    requireActive: requireActive,
+  );
+  Future<void> beginSnapshotDownload(String token, String manifest) =>
+      _run(() => _snapshots.begin(token, manifest));
+  Future<SnapshotDownloadState> snapshotDownloadState(String token) =>
+      _run(() => _snapshots.read(token));
+  Future<void> appendSnapshotPage(
+    String token,
+    String entity,
+    int afterOrdinal,
+    String body,
+  ) => _run(() => _snapshots.append(token, entity, afterOrdinal, body));
+  Future<void> verifySnapshotDownload(String token) =>
+      _run(() => _snapshots.verify(token));
+  Future<void> discardSnapshotDownload(String token) =>
+      _run(() => _snapshots.discard(token));
 
   Future<String> recoveryData() => _run(
     () => _database.transaction(() async {

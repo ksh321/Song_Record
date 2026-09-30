@@ -27,3 +27,5 @@ Flutter8 통과, 분석 No issues found. 서버15 통과(source12+HTTP3, 실패/
 서버 API 계약 검사 목록 보완도 포함: ApiContractTests5 실제 통과. e의 CI 실패를 보완하기 위한 변경이며 다른 검사를 제거하지 않는다. 소스/HTTP15와 별도 실행한5를 혼동하지 않는다.
 
 커밋2b6a980877d07262b29b682f01e52033d06671af 일반 push. API contract36674755526/MySQL36674755535/workflow36674755472 PASS. CI36674755647은 Spring/MySQL job success를 확인했고 Flutter APK 생성 중이다. e에서 실패한 ApiContractTests는 서버 CI에서 해소됐다. 전체 CI는 아직 검증 대기.
+
+최종 정확 SHA 재조회: **필수 CI4 전부 PASS**. CI36674755647의 Flutter 분석/테스트/APK까지 success. 위 대기는 중간 기록이다. e의 서버 계약 목록 보완도 이 커밋에서 통과했다.

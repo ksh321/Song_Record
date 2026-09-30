@@ -25,3 +25,5 @@ flutter analyze --no-pub lib/core/database test/snapshot_schema_test.dart test/c
 현재 모델 검토: 사용자 검증된 기존 범위를 되돌리지 않고 신규 추가만 이관하는지, FK/NULL CHECK의 SQLite 의미, OR REPLACE 우회 차단, 동일 계정 기준 pointer, 실제 rollback·재개 결과를 확인했다. 대량 generated diff는 신규 FK 관계 코드 생성 결과다. 신규 스키마로 실제 폰 앱을 설치/이관했다고 기록하지 않는다.
 
 로그 .local/workflow/p10-05-staging-codegen.log, p10-05-staging-schema-test.log, p10-05-staging-integration.log. 로컬 검증 완료; 커밋/정확 SHA CI는 후속 기록. 다음은 AccountStore 경계의 페이지 원자 저장·재개·전체 hash 확인 후 기준/커서 원자 적용. 사용자 확인 대기0건. 전체 P10-05 미완료.
+
+커밋0241cf56340f52a366bec1a49100e61664074a56. f의 필수 CI4 성공 확인 후 일반 push했다. 이 커밋의 필수 CI는 확인 대기이며 완료로 확대하지 않는다.
