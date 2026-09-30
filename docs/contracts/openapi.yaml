@@ -10,6 +10,91 @@ servers:
 security:
 - BearerAuth: []
 paths:
+  /sync/snapshots:
+    post:
+      operationId: createSyncSnapshot
+      summary: 일관된 초기 동기화 사본 생성 접수
+      description: D09. 같은 op_id는 원래 202 접수 결과를 재사용한다. 상태는 status_url에서 조회하며 TTL을 연장하지 않는다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SnapshotCreate'
+      responses:
+        '202':
+          description: 영속 생성 작업 접수 또는 동일 접수 결과 재사용
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotAccepted'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429':
+          $ref: '#/components/responses/Error429'
+  /sync/snapshots/{token}:
+    get:
+      operationId: getSyncSnapshot
+      summary: 사본 상태 또는 불변 엔터티 페이지 조회
+      description: entity 생략 시 상태 조회(생성 중 202, 준비 완료 200). entity 지정 시 생성 중 409, 만료 410, 타인/알 수 없는 토큰 404. 모든 쿼리 키는 한 번만 사용하며 cursor/limit은 entity와 함께 사용한다. 성공 응답은 Cache-Control no-store.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/RequestId'
+      - name: token
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - name: entity
+        in: query
+        schema:
+          $ref: '#/components/schemas/SnapshotEntity'
+      - name: cursor
+        in: query
+        description: 이 계정·사본·entity에 귀속된 sp1 커서. 일반 목록 p1 커서 사용 금지.
+        schema:
+          type: string
+          pattern: '^sp1\.[A-Za-z0-9_-]+$'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: READY 상태 또는 엔터티 페이지
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/SnapshotReady'
+                - $ref: '#/components/schemas/SnapshotPage'
+        '202':
+          description: 상태 조회 전용 BUILDING 결과. 부분 페이지를 반환하지 않음.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotBuilding'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '410':
+          $ref: '#/components/responses/Error410'
   /auth/social:
     post:
       operationId: socialLogin
@@ -1284,6 +1369,106 @@ components:
         $ref: '#/components/schemas/RequestId'
       description: 생략하거나 유효하지 않으면 서버가 새 추적 ID를 발급한다.
   schemas:
+    SnapshotCreate:
+      type: object
+      additionalProperties: false
+      required: [schema_version]
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+    SnapshotEntity:
+      type: string
+      enum: [SONG, SONG_SOURCE, RECORDING, RECORDING_FILE_SPEC, RECORDING_ASSET, PLAYLIST, PLAYLIST_ITEM, TAG, RECORDING_TAG, RECORDING_CONDITION, USER_ENTITLEMENT, STORAGE_USAGE, SONG_CLOUD_SELECTION, PIN_SLOT, USER_SYNC_STATE, CHANGE_LOG, DELETION_BATCH, DELETION_ITEM, DELETION_LEDGER]
+    SnapshotAccepted:
+      type: object
+      additionalProperties: false
+      required: [operation_id, snapshot_token, status, status_url]
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/Uuid'
+        snapshot_token:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          const: BUILDING
+        status_url:
+          type: string
+          pattern: '^/v1/sync/snapshots/[0-9a-f-]{36}$'
+    SnapshotBuilding:
+      type: object
+      additionalProperties: false
+      required: [snapshot_token, status, schema_version]
+      properties:
+        snapshot_token:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          const: BUILDING
+        schema_version:
+          const: 1
+    SnapshotReady:
+      type: object
+      additionalProperties: false
+      required: [snapshot_token, status, schema_version, snapshot_cursor, captured_at, ready_at, expires_at, manifest_hash, entity_counts]
+      properties:
+        snapshot_token:
+          $ref: '#/components/schemas/Uuid'
+        status:
+          const: READY
+        schema_version:
+          const: 1
+        snapshot_cursor:
+          type: integer
+          minimum: 0
+        captured_at:
+          $ref: '#/components/schemas/UtcInstant'
+        ready_at:
+          $ref: '#/components/schemas/UtcInstant'
+        expires_at:
+          $ref: '#/components/schemas/UtcInstant'
+        manifest_hash:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        entity_counts:
+          type: object
+          minProperties: 19
+          maxProperties: 19
+          propertyNames:
+            $ref: '#/components/schemas/SnapshotEntity'
+          additionalProperties:
+            type: integer
+            minimum: 0
+    SnapshotPage:
+      type: object
+      additionalProperties: false
+      required: [snapshot_token, snapshot_cursor, expires_at, entity, entries, next_cursor]
+      properties:
+        snapshot_token:
+          $ref: '#/components/schemas/Uuid'
+        snapshot_cursor:
+          type: integer
+          minimum: 0
+        expires_at:
+          $ref: '#/components/schemas/UtcInstant'
+        entity:
+          $ref: '#/components/schemas/SnapshotEntity'
+        entries:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [ordinal, resource_id, payload]
+            properties:
+              ordinal:
+                type: integer
+                minimum: 1
+              resource_id:
+                $ref: '#/components/schemas/Uuid'
+              payload:
+                type: object
+        next_cursor:
+          type: [string, 'null']
+          pattern: '^sp1\.[A-Za-z0-9_-]+$'
     Uuid:
       type: string
       format: uuid

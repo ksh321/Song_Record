@@ -30,4 +30,6 @@ MySqlIdempotencyTests도 wildcard에 포함돼 기존3306의 해당 테스트가
 
 HTTP/Bean/scheduler는 아직 노출하지 않았다. 실제 설정에서는 스냅샷 전용 JobQueue의 lease를 생성 최대10분에 맞춰야 한다(기존 일반 job2분을 그대로 쓰지 않음). 실패/만료 정리, 청소 후 멱등 재요청/만료 응답, 상태 조회/OpenAPI 및 모바일 staging이 남았다. 실행 중지/재시작을 외부 상시 서비스로 보장하지 않는다. 전체 P10-05 완료 또는 실기 통과로 확대하지 않는다. 사용자 확인 대기0건.
 
-최종 관련 snapshot38 테스트 통과(실제 MySQL24 + H2/커서14), 실패0/오류0/skip0. 명령은 앞선 snapshot 통합 목록에 MySqlSnapshotSourceRowsTests를 포함한 동일 선택. 코드 검토 후 커밋/정확 SHA CI 확인 전.
+최종 관련 snapshot38 테스트 통과(실제 MySQL24 + H2/커서14), 실패0/오류0/skip0. 명령은 앞선 snapshot 통합 목록에 MySqlSnapshotSourceRowsTests를 포함한 동일 선택.
+
+커밋 fd5955117e27d4b5f175b727bfdfa9cd5ca50749 일반 push 완료. 정확 HEAD 필수 CI4 PASS: CI36672504894, API contract36672505005, Idempotency MySQL36672504953, Development workflow36672504944. 위 남은 연결은 당시 상태이며 HTTP/정리 후속은 P10-05e-snapshot-http.md에서 진행한다.

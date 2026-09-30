@@ -239,5 +239,65 @@ class MySqlSnapshotSourceRowsTests {
         assertThat(jdbc.queryForList("SELECT CAST(payload AS CHAR) FROM snapshot_entry WHERE snapshot_id=? AND entity='SONG'",String.class,bytes(old.id())))
                 .singleElement().asString().contains("real source").doesNotContain("discard partial");
     }
+    @Test void queriesAndExpiryCleanupPreserveSourcesReceiptsAndReplay() {
+        UUID owner=owner();song(owner,UUID.randomUUID(),"retained source");
+        var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);
+        when(access.authenticate("fixture-auth","fixture-device")).thenReturn(account);
+        when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,UUID.randomUUID(),UUID.randomUUID()));
+        var manager=new DataSourceTransactionManager(source);var store=new SnapshotBuildStore(jdbc,access,manager,CLOCK);
+        var jobs=new JobQueue(jdbc,access,manager,CLOCK,Duration.ofMinutes(10),5);
+        var receipts=new com.ksh321.songrecord.api.idempotency.IdempotentMutations(jdbc,access,manager,CLOCK);
+        var requests=new SnapshotRequests(access,receipts,store,jobs);String op=UUID.randomUUID().toString();
+        var accepted=requests.create("fixture-auth","fixture-device",op,"{\"schema_version\":1}");
+        String token=new JsonMapper().readTree(accepted.body()).get("snapshot_token").asText();
+        var queries=new SnapshotQueries(jdbc,access,new SnapshotPages(jdbc,access,new SnapshotPageCursor(new byte[32],CLOCK),CLOCK),CLOCK);
+        var empty=new org.springframework.util.LinkedMultiValueMap<String,String>();
+        assertThat(queries.get("fixture-auth","fixture-device",token,empty).status()).isEqualTo(202);
+        var page=new org.springframework.util.LinkedMultiValueMap<String,String>();page.add("entity","SONG");
+        assertThatThrownBy(()->queries.get("fixture-auth","fixture-device",token,page))
+                .isInstanceOfSatisfying(com.ksh321.songrecord.api.web.ApiException.class,e->assertThat(e.code()).isEqualTo("SNAPSHOT_NOT_READY"));
+        assertThat(new SnapshotWorker(jdbc,jobs,store,new SnapshotReadView(source,access,CLOCK),new SnapshotSourceRows(CLOCK),CLOCK).runOnce()).isTrue();
+        var ready=queries.get("fixture-auth","fixture-device",token,empty);
+        assertThat(ready.status()).isEqualTo(200);assertThat(ready.body()).containsEntry("snapshot_cursor",7L).containsEntry("expires_at",NOW.plusSeconds(1800).toString());
+        assertThat((Map<?,?>)ready.body().get("entity_counts")).hasSize(19);
+        var result=queries.get("fixture-auth","fixture-device",token,page);
+        assertThat((List<?>)result.body().get("entries")).hasSize(1);assertThat(result.body().get("next_cursor")).isNull();
+        page.add("entity","TAG");
+        assertThatThrownBy(()->queries.get("fixture-auth","fixture-device",token,page)).isInstanceOf(com.ksh321.songrecord.api.web.ApiException.class);
+        var expired=Clock.fixed(NOW.plusSeconds(1800),ZoneOffset.UTC);
+        var after=new SnapshotQueries(jdbc,access,new SnapshotPages(jdbc,access,new SnapshotPageCursor(new byte[32],expired),expired),expired);
+        assertThatThrownBy(()->after.get("fixture-auth","fixture-device",token,empty))
+                .isInstanceOfSatisfying(com.ksh321.songrecord.api.web.ApiException.class,e->assertThat(e.code()).isEqualTo("SNAPSHOT_EXPIRED"));
+        new SnapshotCleanup(jdbc,manager,expired).runOnce();
+        for(String table:List.of("song","mutation_receipt"))
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM "+table+" WHERE user_id=?",Integer.class,bytes(owner))).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM snapshot_header WHERE id=?",Integer.class,bytes(UUID.fromString(token)))).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM snapshot_entry WHERE snapshot_id=?",Integer.class,bytes(UUID.fromString(token)))).isZero();
+        assertThat(jdbc.queryForObject("SELECT reserved_bytes FROM snapshot_capacity WHERE id=1",Long.class))
+                .isEqualTo(jdbc.queryForObject("SELECT COALESCE(SUM(reserved_bytes),0) FROM snapshot_header",Long.class));
+        assertThat(requests.create("fixture-auth","fixture-device",op,"{\"schema_version\":1}")).isEqualTo(accepted);
+        assertThatThrownBy(()->after.get("fixture-auth","fixture-device",token,empty))
+                .isInstanceOfSatisfying(com.ksh321.songrecord.api.web.ApiException.class,e->assertThat(e.code()).isEqualTo("SNAPSHOT_EXPIRED"));
+        when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner(),UUID.randomUUID(),UUID.randomUUID()));
+        assertThatThrownBy(()->after.get("fixture-auth","fixture-device",token,empty))
+                .isInstanceOfSatisfying(com.ksh321.songrecord.api.web.ApiException.class,e->assertThat(e.code()).isEqualTo("SNAPSHOT_NOT_FOUND"));
+    }
+    @Test void cleanupRetainsDurableRetriesButRemovesOrphansAndDeletingAccounts() {
+        UUID owner=owner();var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);
+        when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,UUID.randomUUID(),UUID.randomUUID()));
+        var manager=new DataSourceTransactionManager(source);var store=new SnapshotBuildStore(jdbc,access,manager,CLOCK);
+        var pending=store.begin(account,UUID.randomUUID(),1);var orphan=store.begin(account,UUID.randomUUID(),1);
+        var jobs=new JobQueue(jdbc,access,manager,CLOCK,Duration.ofMinutes(10),5);
+        var tx=new org.springframework.transaction.support.TransactionTemplate(manager);
+        tx.executeWithoutResult(s->jobs.enqueue(account,JobQueue.Type.SNAPSHOT_BUILD,pending.id(),UUID.randomUUID(),"{}"));
+        var janitor=new SnapshotCleanup(jdbc,manager,Clock.fixed(NOW.plusSeconds(600),ZoneOffset.UTC));
+        janitor.runOnce();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM snapshot_header WHERE id=?",Integer.class,bytes(orphan.id()))).isZero();
+        assertThat(jdbc.queryForObject("SELECT status FROM snapshot_header WHERE id=?",String.class,bytes(pending.id()))).isEqualTo("BUILDING");
+        jdbc.update("UPDATE app_user SET status='DELETING' WHERE id=?",bytes(owner));janitor.runOnce();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM snapshot_header WHERE id=?",Integer.class,bytes(pending.id()))).isZero();
+        assertThat(jdbc.queryForObject("SELECT state FROM job WHERE user_id=?",String.class,bytes(owner))).isEqualTo("CANCELLED");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM app_user WHERE id=?",Integer.class,bytes(owner))).isEqualTo(1);
+    }
     static byte[] bytes(UUID id){return ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();}
 }
