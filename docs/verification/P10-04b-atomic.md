@@ -14,4 +14,5 @@
 
 작업자 Astra/high, 별도 검수자 Astra/high(계정·DB 원자성 위험). 요청 default/Standard·Fast 끔, CLI model/high 확인, 실제 서버 tier 미확인. 1차 정적 검수에서 범위 내 차단 없음. 실제 schema/retry 구현을 추가 제공한 교차 검수에서도 차단 없음. 외래 키·불변 트리거·finish의 동일 트랜잭션 참여를 확인해 근거 공백을 해소했다. 상세 실행 로그는 `.local/workflow/p10-04b-atomic-final-test.log`, 분석 로그는 같은 prefix의 `final-analyze.log`다.
 
-커밋·해당 SHA CI는 아직 대기다. 실제 앱 경로에 연결하지 않았으므로 새 폰 실기는 요청하지 않는다. USER-001 설정 확인 및 P10-03b 새 UI 실기는 별도 유지한다. 기존 사용자 검증 범위를 되돌리지 않는다.
+대상 커밋 `2e6bd8826331caba39b3621e9ee63355fce10583` 일반 push 완료. 해당 SHA 필수 CI 확인 중이며 아직 완료 판정하지 않는다. 실제 앱 경로에 연결하지 않았으므로 새 폰 실기는 요청하지 않는다. USER-001 설정 확인 및 P10-03b 새 UI 실기는 별도 유지한다. 기존 사용자 검증 범위를 되돌리지 않는다.
+2026-09-30 대상 2e6bd8826331caba39b3621e9ee63355fce10583 필수 CI 4개·필수 job 모두 success: CI 36580408273 / API 36580408438 / MySQL 36580408357 / workflow 36580408207. 미연결 저장 기반 완료. 이전 CI 대기는 당시 기록이다.

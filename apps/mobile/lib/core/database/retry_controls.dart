@@ -6,6 +6,7 @@ import '../sync/mutation_request.dart';
 import '../sync/retry_policy.dart';
 import 'account_database.dart';
 import 'local_models.dart';
+import 'mapping_eligibility.dart';
 
 typedef RetryClock = DateTime Function();
 
@@ -18,6 +19,7 @@ final class RetryStatus {
     required this.mode,
     required this.lastAttemptKind,
     required this.nextAttemptAt,
+    this.mappingEligible = true,
   });
 
   final String opId;
@@ -34,11 +36,16 @@ final class RetryStatus {
   final String lastAttemptKind;
   final DateTime? nextAttemptAt;
 
+  /// A read-only mapping gate, independent of the persisted retry mode/budget.
+  final bool mappingEligible;
+
   bool get canRetryManually =>
+      mappingEligible &&
       queueState == 'RETRY' &&
       (mode == 'AUTO' || mode == 'MANUAL_REQUIRED' || mode == 'BLOCKED');
 
   bool eligible(DateTime now, {bool includeFutureAutomatic = false}) {
+    if (!mappingEligible) return false;
     if (mode == 'INITIAL') {
       return queueState == 'PENDING' &&
           attemptCount == 0 &&
@@ -76,9 +83,10 @@ final class RetryControls {
     JOIN mutation_retry_controls c ON c.op_id=m.op_id
   ''';
 
-  RetryStatus _decode(QueryRow row) {
+  RetryStatus _decode(QueryRow row, {bool mappingEligible = true}) {
     final due = row.readNullable<int>('next_attempt_at');
     return RetryStatus(
+      mappingEligible: mappingEligible,
       opId: row.read<String>('op_id'),
       queueState: row.read<String>('queue_state'),
       attemptCount: row.read<int>('attempt_count'),
@@ -97,7 +105,10 @@ final class RetryControls {
     final row = await database
         .customSelect('$_select WHERE m.op_id=?', variables: [Variable(opId)])
         .getSingleOrNull();
-    return row == null ? null : _decode(row);
+    if (row == null) return null;
+
+    final mapping = await readMappingEligibility(database);
+    return _decode(row, mappingEligible: mapping.allows(opId));
   }
 
   Future<int> _change(String sql, List<Object?> args) async {
@@ -126,10 +137,9 @@ final class RetryControls {
       if (control == null) {
         throw StateError('Mutation retry control is missing');
       }
-      final eligible = control.eligible(
-        at,
-        includeFutureAutomatic: includeFutureAutomatic,
-      );
+      final eligible =
+          snapshot.mapping.allows(mutation.opId) &&
+          control.eligible(at, includeFutureAutomatic: includeFutureAutomatic);
       if (eligible && mutation.attemptCount > 0) {
         final frozen = await database
             .customSelect(
@@ -156,6 +166,7 @@ final class RetryControls {
       pending: pending,
       baselines: snapshot.baselines,
       frozenRetries: frozenRetries,
+      mapping: snapshot.mapping,
     );
   }
 
@@ -214,6 +225,12 @@ final class RetryControls {
   }) async {
     if (expectedAttempt < 0) {
       throw ArgumentError.value(expectedAttempt, 'expectedAttempt');
+    }
+    final current = await status(opId);
+    if (current == null ||
+        current.attemptCount != expectedAttempt ||
+        !current.canRetryManually) {
+      return false;
     }
     final changed = await _change(
       '''

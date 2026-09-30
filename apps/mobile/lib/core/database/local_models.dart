@@ -163,12 +163,46 @@ final class ServerBaseline {
   final bool tombstone;
 }
 
-/// Queue and server baselines read in the same account database transaction.
+/// Read-only dispatch projection. It never changes persisted mutation identity,
+/// physical row order, wire data, retry state or retry budgets.
+final class MappingEligibility {
+  MappingEligibility({
+    required Set<String> blocked,
+    required Set<String> superseded,
+    required Map<String, int> logicalOrders,
+    required Map<LocalTarget, LocalTarget> groups,
+  }) : blocked = Set.unmodifiable(blocked),
+       superseded = Set.unmodifiable(superseded),
+       logicalOrders = Map.unmodifiable(logicalOrders),
+       groups = Map.unmodifiable(groups);
+
+  const MappingEligibility.empty()
+    : blocked = const {},
+      superseded = const {},
+      logicalOrders = const {},
+      groups = const {};
+
+  final Set<String> blocked;
+  final Set<String> superseded;
+  final Map<String, int> logicalOrders;
+  final Map<LocalTarget, LocalTarget> groups;
+
+  bool allows(String opId) =>
+      !blocked.contains(opId) && !superseded.contains(opId);
+
+  int orderOf(QueuedMutation mutation) =>
+      logicalOrders[mutation.opId] ?? mutation.localOrder;
+
+  LocalTarget groupOf(LocalTarget target) => groups[target] ?? target;
+}
+
+/// Queue, baselines and mapping eligibility read in one account transaction.
 final class DispatchSnapshot {
   DispatchSnapshot({
     required List<QueuedMutation> pending,
     required Map<LocalTarget, ServerBaseline> baselines,
     Set<String> frozenRetries = const {},
+    this.mapping = const MappingEligibility.empty(),
   }) : pending = List.unmodifiable(pending),
        baselines = Map.unmodifiable(baselines),
        frozenRetries = Set.unmodifiable(frozenRetries);
@@ -176,4 +210,5 @@ final class DispatchSnapshot {
   final List<QueuedMutation> pending;
   final Map<LocalTarget, ServerBaseline> baselines;
   final Set<String> frozenRetries;
+  final MappingEligibility mapping;
 }

@@ -16,6 +16,7 @@ import '../sync/mutation_request.dart';
 import 'account_database.dart' show AccountDatabase;
 import 'account_paths.dart';
 import 'local_models.dart';
+import 'mapping_eligibility.dart';
 import 'retry_controls.dart';
 
 export 'retry_controls.dart' show RetryClock, RetryStatus;
@@ -335,6 +336,7 @@ final class AccountStore {
         .get();
     return DispatchSnapshot(
       pending: pending,
+      mapping: await readMappingEligibility(_database),
       baselines: {
         for (final row in rows)
           LocalTarget(
@@ -368,8 +370,9 @@ final class AccountStore {
     }),
   );
 
-  Future<RetryStatus?> retryStatus(String opId) =>
-      _run(() => _retry.status(UuidValue(opId).value));
+  Future<RetryStatus?> retryStatus(String opId) => _run(
+    () => _database.transaction(() => _retry.status(UuidValue(opId).value)),
+  );
 
   Future<bool> retryMutation(String opId, {required int expectedAttempt}) =>
       _run(
@@ -812,13 +815,27 @@ final class AccountStore {
           )
           .getSingle();
       final payload = canonicalJson(snapshot);
+      // Accept the receipt without overwriting a mapping-held local draft.
       if (!preserveCurrent) {
         await _database.customStatement(
-          'UPDATE metadata_copies SET server_revision=?,server_payload=?,local_payload=CASE WHEN ? THEN local_payload ELSE ? END,updated_at=? WHERE entity_type=? AND entity_id=?',
+          '''
+      UPDATE metadata_copies
+      SET server_revision=?,server_payload=?,
+          local_payload=CASE
+            WHEN ? OR EXISTS(
+              SELECT 1 FROM mutation_mapping_holds
+              WHERE op_id=? AND released_at IS NULL
+            )
+            THEN local_payload ELSE ?
+          END,
+          updated_at=?
+      WHERE entity_type=? AND entity_id=?
+    ''',
           [
             snapshot['revision'],
             payload,
             later.read<int>('count') > 0 ? 1 : 0,
+            m.opId,
             payload,
             DateTime.now().toUtc().millisecondsSinceEpoch,
             m.entity.code,

@@ -3,13 +3,13 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:drift/native.dart';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_database.dart';
 import 'package:song_record/core/database/account_paths.dart';
 import 'package:song_record/core/database/account_store.dart';
 import 'package:song_record/core/database/local_models.dart';
+import 'package:song_record/core/sync/dependency_planner.dart';
 import 'package:song_record/core/sync/mutation_request.dart';
 
 String uid(int n) =>
@@ -296,6 +296,88 @@ void main() {
       sizeBytes: bytes.length,
       recovery: {'song_id': source, 'note': 'journal private'},
     );
+  }
+
+  Future<void> saveSongPatch(String target, String opId, int revision) =>
+      store.saveEdit(
+        LocalEdit(
+          opId: opId,
+          entity: LocalEntity.song,
+          entityId: target,
+          operation: LocalOperation.patch,
+          baseRevision: revision,
+          draft: {
+            ...song(target, revision: revision),
+            'note': opId,
+          },
+          changes: {'base_revision': revision, 'note': opId},
+        ),
+      );
+
+  Future<void> saveUnrelatedTag() => store.saveEdit(
+    LocalEdit(
+      opId: uid(800),
+      entity: LocalEntity.tag,
+      entityId: uid(80),
+      operation: LocalOperation.create,
+      baseRevision: 0,
+      draft: {'id': uid(80), 'name': 'unrelated'},
+      changes: {'id': uid(80), 'name': 'unrelated'},
+    ),
+  );
+
+  // Fixture-only evidence of an explicit resolution. Production code in this
+  // patch never releases a hold or creates a supersession.
+  Future<void> releaseHolds(String opId) async {
+    final db = await raw();
+    try {
+      await db.customStatement(
+        '''
+          UPDATE mutation_mapping_holds
+          SET released_at=2,release_evidence='{"fixture":"explicit resolution"}'
+          WHERE op_id=? AND released_at IS NULL
+        ''',
+        [opId],
+      );
+    } finally {
+      await db.close();
+    }
+  }
+
+  Future<void> addSupersession(String original, String replacement) async {
+    final db = await raw();
+    try {
+      await db.customStatement(
+        '''
+          INSERT INTO mutation_supersessions(
+            original_op_id,replacement_op_id,mapping_source_id,user_id,
+            order_root_op_id,logical_order,created_at
+          )
+          SELECT m.op_id,?,?,?,
+            COALESCE(s.order_root_op_id,m.op_id),
+            COALESCE(s.logical_order,m.rowid),1
+          FROM local_mutations m
+          LEFT JOIN mutation_supersessions s ON s.replacement_op_id=m.op_id
+          WHERE m.op_id=?
+        ''',
+        [replacement, source, owner, original],
+      );
+    } finally {
+      await db.close();
+    }
+  }
+
+  Future<void> seedDirectSupersession({required bool release}) async {
+    final request = await seed();
+    await saveSongPatch(source, uid(701), 0);
+    expect(await store.applyCanonicalSongReceipt(request, receipt()), isTrue);
+
+    // Physical order: original, younger canonical edit, replacement.
+    await saveSongPatch(canonical, uid(702), 5);
+    await saveSongPatch(canonical, uid(703), 5);
+    await addSupersession(uid(701), uid(703));
+
+    if (release) await releaseHolds(uid(701));
   }
 
   setUp(() async {
@@ -672,6 +754,664 @@ void main() {
       expect(await tables(), before);
     },
   );
+
+  for (final disposition in ['BLOCK', 'REPLAY_ORIGINAL']) {
+    test('$disposition blocks frozen retry, manual grant and deadlines '
+        'without spending budget; unrelated work continues', () async {
+      final mappingRequest = await seed();
+      final head = uid(710);
+      await saveSongPatch(canonical, head, 5);
+
+      // Before mapping, the canonical target is independent of the source.
+      final frozen = (await store.claimMutation())!;
+      expect(frozen.mutation.opId, head);
+      expect(
+        await store.deferMutation(frozen, 'RETRY', 'NETWORK_UNAVAILABLE'),
+        isTrue,
+      );
+
+      expect(
+        await store.applyCanonicalSongReceipt(mappingRequest, receipt()),
+        isTrue,
+      );
+
+      if (disposition == 'REPLAY_ORIGINAL') {
+        await releaseHolds(head);
+        final db = await raw();
+        try {
+          await db.customStatement(
+            '''
+                INSERT INTO mutation_mapping_holds(
+                  op_id,mapping_source_id,user_id,reason,
+                  disposition,created_at
+                ) VALUES(?,?,?,'FIXTURE_REPLAY','REPLAY_ORIGINAL',1)
+              ''',
+            [head, source, owner],
+          );
+        } finally {
+          await db.close();
+        }
+      }
+
+      await saveSongPatch(canonical, uid(711), 5);
+      await saveSongPatch(source, uid(712), 0);
+
+      final before = await tables();
+      final status = (await store.retryStatus(head))!;
+      expect(status.mappingEligible, isFalse);
+      expect(status.canRetryManually, isFalse);
+      expect(status.attemptCount, 1);
+      expect(status.automaticRetriesClaimed, 0);
+
+      final plan = const DependencyPlanner().plan(
+        await store.dispatchSnapshot(),
+      );
+      expect(plan.ready, isEmpty);
+      expect(plan.waiting[head]!.reason, DispatchWaitReason.mappingBlocked);
+      expect(
+        plan.waiting[uid(711)]!.reason,
+        DispatchWaitReason.earlierMutation,
+      );
+      expect(
+        plan.waiting[uid(712)]!.reason,
+        DispatchWaitReason.earlierMutation,
+      );
+
+      expect(await store.retryMutation(head, expectedAttempt: 1), isFalse);
+      expect(await store.nextAutomaticRetryAt(), isNull);
+      expect(await store.nextDispatchAt(), isNull);
+      expect(await store.claimMutation(), isNull);
+      expect(await tables(), before);
+
+      await saveUnrelatedTag();
+      expect(await store.nextDispatchAt(), DateTime.utc(2026, 9, 29));
+      expect((await store.claimMutation())!.mutation.opId, uid(800));
+      expect(await store.nextDispatchAt(), isNull);
+
+      // Releasing the fixture's hold restores the existing retry policy.
+      // No budget is reset and the younger alias mutations remain behind it.
+      await releaseHolds(head);
+      final released = (await store.retryStatus(head))!;
+      expect(released.mappingEligible, isTrue);
+      expect(released.canRetryManually, isTrue);
+      expect(released.nextAttemptAt, status.nextAttemptAt);
+      expect(await store.nextAutomaticRetryAt(), status.nextAttemptAt);
+      expect(await store.retryMutation(head, expectedAttempt: 1), isTrue);
+      final replay = (await store.claimMutation())!;
+      expect(replay.mutation.opId, head);
+      expect(replay.attempt, 2);
+      expect(replay.body, frozen.body);
+      expect(replay.hash, frozen.hash);
+      expect((await store.retryStatus(head))!.automaticRetriesClaimed, 0);
+    });
+  }
+
+  test('direct replacement inherits the original logical position', () async {
+    await seedDirectSupersession(release: true);
+
+    final before = await tables();
+    final snapshot = await store.dispatchSnapshot();
+    final original = snapshot.pending.singleWhere((m) => m.opId == uid(701));
+    final younger = snapshot.pending.singleWhere((m) => m.opId == uid(702));
+    final replacement = snapshot.pending.singleWhere((m) => m.opId == uid(703));
+
+    expect(original.localOrder, lessThan(younger.localOrder));
+    expect(younger.localOrder, lessThan(replacement.localOrder));
+    expect(snapshot.mapping.orderOf(replacement), original.localOrder);
+
+    final plan = const DependencyPlanner().plan(snapshot);
+    expect(plan.ready.map((m) => m.opId), [uid(703)]);
+    expect(plan.waiting[uid(701)]!.reason, DispatchWaitReason.superseded);
+    expect(plan.waiting[uid(702)]!.reason, DispatchWaitReason.earlierMutation);
+    expect(await store.nextDispatchAt(), DateTime.utc(2026, 9, 29));
+    expect(await tables(), before);
+
+    final request = (await store.claimMutation())!;
+    expect(request.mutation.opId, uid(703));
+    expect(request.mutation.localOrder, replacement.localOrder);
+
+    expect(
+      await store.deferMutation(request, 'RETRY', 'NETWORK_UNAVAILABLE'),
+      isTrue,
+    );
+    final due = (await store.retryStatus(uid(703)))!.nextAttemptAt;
+    expect(due, isNotNull);
+    expect(await store.nextAutomaticRetryAt(), due);
+    expect(await store.nextDispatchAt(), due);
+    expect(await store.claimMutation(), isNull);
+
+    final after = await tables();
+    for (final table in [
+      'song_aliases',
+      'mutation_supersessions',
+      'mutation_mapping_holds',
+      'canonical_edit_intents',
+    ]) {
+      expect(after[table], before[table], reason: table);
+    }
+    for (final opId in [uid(701), uid(702)]) {
+      expect(
+        rows(after, 'local_mutations').singleWhere((r) => r['op_id'] == opId),
+        rows(before, 'local_mutations').singleWhere((r) => r['op_id'] == opId),
+      );
+    }
+  });
+
+  test(
+    'an original active hold cannot be bypassed by its replacement',
+    () async {
+      await seedDirectSupersession(release: false);
+      final before = await tables();
+
+      expect(await store.claimMutation(), isNull);
+      expect(await store.nextDispatchAt(), isNull);
+      expect(await store.nextAutomaticRetryAt(), isNull);
+      expect((await store.retryStatus(uid(703)))!.mappingEligible, isFalse);
+      expect(await tables(), before);
+
+      await saveUnrelatedTag();
+      expect((await store.claimMutation())!.mutation.opId, uid(800));
+
+      await releaseHolds(uid(701));
+      expect((await store.claimMutation())!.mutation.opId, uid(703));
+    },
+  );
+
+  test(
+    'supersession chain quarantines its group without stopping a tag',
+    () async {
+      await seedDirectSupersession(release: true);
+      await saveSongPatch(canonical, uid(704), 5);
+      await addSupersession(uid(703), uid(704));
+
+      final before = await tables();
+      final snapshot = await store.dispatchSnapshot();
+      for (final opId in [uid(701), uid(702), uid(703), uid(704)]) {
+        expect(snapshot.mapping.allows(opId), isFalse, reason: opId);
+      }
+      expect(const DependencyPlanner().plan(snapshot).ready, isEmpty);
+      expect(await store.claimMutation(), isNull);
+      expect(await store.nextDispatchAt(), isNull);
+      expect(await store.nextAutomaticRetryAt(), isNull);
+      expect(await tables(), before);
+
+      await saveUnrelatedTag();
+      expect((await store.claimMutation())!.mutation.opId, uid(800));
+    },
+  );
+
+  test('source references remain blocked after hold release', () async {
+    final request = await seed();
+    await relatedEdits();
+    expect(await store.applyCanonicalSongReceipt(request, receipt()), isTrue);
+    await releaseHolds(uid(230));
+
+    // This PATCH omits song_id, but its frozen base still references source.
+    // A release alone does not authorize rewriting or replaying that request.
+    final before = await tables();
+    final status = (await store.retryStatus(uid(230)))!;
+    expect(status.mappingEligible, isFalse);
+    expect(status.canRetryManually, isFalse);
+    expect(await store.retryMutation(uid(230), expectedAttempt: 2), isFalse);
+    final plan = const DependencyPlanner().plan(await store.dispatchSnapshot());
+    expect(plan.waiting[uid(230)]!.reason, DispatchWaitReason.mappingBlocked);
+    expect(await tables(), before);
+  });
+
+  test(
+    'alias chain is quarantined without selecting a terminal route',
+    () async {
+      final request = await seed();
+      expect(await store.applyCanonicalSongReceipt(request, receipt()), isTrue);
+
+      final terminal = uid(12);
+      await insertCopy(
+        entity: LocalEntity.song,
+        id: terminal,
+        revision: 1,
+        server: song(terminal, revision: 1),
+        local: song(terminal, revision: 1),
+      );
+
+      final db = await raw();
+      try {
+        await db.customStatement(
+          '''
+          INSERT INTO local_mutations(
+            op_id,user_id,entity_type,entity_id,operation,base_revision,
+            payload,request_hash,queue_state,created_at,updated_at
+          ) VALUES(?,?,'SONG',?,'CREATE',0,?,?,'ACKED',1,1)
+        ''',
+          [
+            uid(750),
+            owner,
+            canonical,
+            canonicalJson({
+              'id': canonical,
+              'source_type': 'TJ',
+              'source_token': 'fixture',
+            }),
+            'a' * 64,
+          ],
+        );
+        await db.customStatement(
+          '''
+          INSERT INTO song_aliases(
+            source_song_id,canonical_song_id,user_id,mapping_op_id,
+            receipt_status,receipt_body,created_at
+          ) VALUES(?,?,?,?,200,?,1)
+        ''',
+          [
+            canonical,
+            terminal,
+            owner,
+            uid(750),
+            jsonEncode({
+              'created': false,
+              'canonical_song_id': terminal,
+              'song': song(terminal, revision: 1),
+            }),
+          ],
+        );
+      } finally {
+        await db.close();
+      }
+
+      await saveSongPatch(terminal, uid(751), 1);
+      final before = await tables();
+      expect((await store.retryStatus(uid(751)))!.mappingEligible, isFalse);
+      expect(await store.claimMutation(), isNull);
+      expect(await store.nextDispatchAt(), isNull);
+      expect(await tables(), before);
+
+      await saveUnrelatedTag();
+      expect((await store.claimMutation())!.mutation.opId, uid(800));
+    },
+  );
+
+  test('attempted original cannot be replaced or reset', () async {
+    final mapping = await seed();
+    await saveSongPatch(canonical, uid(780), 5);
+    final sent = (await store.claimMutation())!;
+    expect(sent.mutation.opId, uid(780));
+    expect(
+      await store.deferMutation(sent, 'RETRY', 'NETWORK_UNAVAILABLE'),
+      isTrue,
+    );
+    expect(await store.applyCanonicalSongReceipt(mapping, receipt()), isTrue);
+    await releaseHolds(uid(780));
+    await saveSongPatch(canonical, uid(781), 5);
+    await addSupersession(uid(780), uid(781));
+    final before = await tables();
+    expect(await store.claimMutation(), isNull);
+    expect(await store.retryMutation(uid(780), expectedAttempt: 1), isFalse);
+    expect(await store.nextDispatchAt(), isNull);
+    expect((await store.retryStatus(uid(780)))!.attemptCount, 1);
+    expect(await tables(), before);
+    await saveUnrelatedTag();
+    expect((await store.claimMutation())!.mutation.opId, uid(800));
+  });
+
+  test('cross target replacement quarantines both targets only', () async {
+    final mapping = await seed();
+    expect(await store.applyCanonicalSongReceipt(mapping, receipt()), isTrue);
+    await saveSongPatch(canonical, uid(790), 5);
+    final other = uid(99);
+    await insertCopy(
+      entity: LocalEntity.song,
+      id: other,
+      revision: 1,
+      server: song(other, revision: 1),
+      local: song(other, revision: 1),
+    );
+    await saveSongPatch(other, uid(791), 1);
+    await addSupersession(uid(790), uid(791));
+    final before = await tables();
+    expect((await store.retryStatus(uid(790)))!.mappingEligible, isFalse);
+    expect((await store.retryStatus(uid(791)))!.mappingEligible, isFalse);
+    expect(await store.claimMutation(), isNull);
+    expect(await store.nextDispatchAt(), isNull);
+    expect(await tables(), before);
+    await saveUnrelatedTag();
+    expect((await store.claimMutation())!.mutation.opId, uid(800));
+  });
+
+  test(
+    'fan in aliases share order without quarantining direct canonical',
+    () async {
+      final mapping = await seed();
+      expect(await store.applyCanonicalSongReceipt(mapping, receipt()), isTrue);
+      final second = uid(13);
+      await insertCopy(
+        entity: LocalEntity.song,
+        id: second,
+        revision: 0,
+        server: null,
+        local: song(second, revision: 0),
+      );
+      final db = await raw();
+      try {
+        await db.customStatement(
+          '''INSERT INTO local_mutations(
+        op_id,user_id,entity_type,entity_id,operation,base_revision,payload,
+        request_hash,queue_state,created_at,updated_at)
+        VALUES(?,?,'SONG',?,'CREATE',0,?,?,'ACKED',1,1)''',
+          [
+            uid(795),
+            owner,
+            second,
+            canonicalJson({
+              'id': second,
+              'source_type': 'TJ',
+              'source_token': 'fixture',
+            }),
+            'a' * 64,
+          ],
+        );
+        await db.customStatement(
+          '''INSERT INTO song_aliases(
+        source_song_id,canonical_song_id,user_id,mapping_op_id,receipt_status,receipt_body,created_at)
+        VALUES(?,?,?,?,200,?,1)''',
+          [
+            second,
+            canonical,
+            owner,
+            uid(795),
+            jsonEncode({
+              'created': false,
+              'canonical_song_id': canonical,
+              'song': song(canonical, revision: 5),
+            }),
+          ],
+        );
+      } finally {
+        await db.close();
+      }
+      await saveSongPatch(second, uid(796), 0);
+      await saveSongPatch(canonical, uid(797), 5);
+      final before = await tables();
+      expect((await store.retryStatus(uid(797)))!.mappingEligible, isTrue);
+      final plan = const DependencyPlanner().plan(
+        await store.dispatchSnapshot(),
+      );
+      expect(plan.waiting[uid(796)]!.reason, DispatchWaitReason.mappingBlocked);
+      expect(
+        plan.waiting[uid(797)]!.reason,
+        DispatchWaitReason.earlierMutation,
+      );
+      expect(await store.claimMutation(), isNull);
+      expect(await tables(), before);
+      await saveUnrelatedTag();
+      expect((await store.claimMutation())!.mutation.opId, uid(800));
+    },
+  );
+
+  // apps/mobile/test/canonical_song_store_test.dart
+  // 기존 main() 내부에 추가. 기존 SQLite fixture와 helper를 사용한다.
+  // dispatcher 연결, hold 해제, 스키마 변경은 없다.
+
+  for (final variant in [
+    (mapped: true, revision: 3, tombstone: false),
+    (mapped: true, revision: 7, tombstone: false),
+    (mapped: true, revision: 3, tombstone: true),
+    (mapped: false, revision: 3, tombstone: false),
+  ]) {
+    test('늦은 ACK의 로컬 매핑·서버 기준 보호: $variant', () async {
+      final recordingId = uid(840);
+      final patchOp = uid(841);
+      final downstreamOp = uid(842);
+      final baseline = <String, Object?>{
+        'id': recordingId,
+        'song_id': source,
+        'revision': 3,
+        'note': 'server',
+      };
+      final draft = <String, Object?>{
+        ...baseline,
+        'note': 'private',
+        'unknown_local_field': {'keep': true},
+      };
+
+      await insertCopy(
+        entity: LocalEntity.recording,
+        id: recordingId,
+        revision: 3,
+        server: baseline,
+        local: draft,
+      );
+      await store.saveEdit(
+        LocalEdit(
+          opId: patchOp,
+          entity: LocalEntity.recording,
+          entityId: recordingId,
+          operation: LocalOperation.patch,
+          baseRevision: 3,
+          draft: draft,
+          changes: {'base_revision': 3, 'note': 'private'},
+        ),
+      );
+
+      // 소스 CREATE를 넣기 전에 실제 claim으로 PATCH를 전송 중으로 만든다.
+      // queue_state나 frozen wire를 SQL로 조작하지 않는다.
+      final request = (await store.claimMutation())!;
+      expect(request.mutation.opId, patchOp);
+      expect(request.mutation.entity, LocalEntity.recording);
+      expect(request.mutation.operation, LocalOperation.patch);
+      expect(request.attempt, 1);
+
+      final inFlight = (await store.pendingMutations()).single;
+      expect(inFlight.state, 'SENDING');
+      expect(inFlight.attemptCount, request.attempt);
+
+      if (variant.mapped) {
+        final mappingRequest = await seed();
+        expect(
+          await store.applyCanonicalSongReceipt(mappingRequest, receipt()),
+          isTrue,
+        );
+      }
+
+      if (variant.revision > 3 || variant.tombstone) {
+        // ACK 전에 도착한 서버 상태만 모사한다. 로컬 projection은 유지한다.
+        // tombstone 사례는 revision 3으로, revision 비교와 독립적으로 검사한다.
+        final db = await raw();
+        try {
+          await db.customStatement(
+            '''
+            UPDATE metadata_copies
+            SET server_revision=?,server_payload=?,tombstone=?,updated_at=2
+            WHERE entity_type='RECORDING' AND entity_id=?
+          ''',
+            [
+              variant.revision,
+              canonicalJson({
+                ...baseline,
+                'revision': variant.revision,
+                'note': variant.tombstone
+                    ? 'deleted on server'
+                    : 'newer server',
+              }),
+              variant.tombstone ? 1 : 0,
+              recordingId,
+            ],
+          );
+        } finally {
+          await db.close();
+        }
+      }
+
+      final before = await tables();
+      final beforeCopy = rows(before, 'metadata_copies').singleWhere(
+        (row) =>
+            row['entity_type'] == 'RECORDING' &&
+            row['entity_id'] == recordingId,
+      );
+      final beforeMutation = rows(
+        before,
+        'local_mutations',
+      ).singleWhere((row) => row['op_id'] == patchOp);
+      final beforeControl = rows(
+        before,
+        'mutation_retry_controls',
+      ).singleWhere((row) => row['op_id'] == patchOp);
+      final holds = rows(
+        before,
+        'mutation_mapping_holds',
+      ).where((row) => row['op_id'] == patchOp).toList();
+
+      expect(beforeMutation['queue_state'], 'SENDING');
+      expect(jsonDecode(beforeCopy['local_payload'] as String), {
+        ...draft,
+        'song_id': variant.mapped ? canonical : source,
+      });
+      if (variant.mapped) {
+        expect(holds, hasLength(1));
+        expect(holds.single['disposition'], 'BLOCK');
+        expect(holds.single['released_at'], isNull);
+      } else {
+        expect(holds, isEmpty);
+      }
+
+      // ACK 전 후속 mutation이 없어야 기존 later-count 분기가 결함을 가리지 않는다.
+      expect(
+        rows(before, 'local_mutations')
+            .where(
+              (row) =>
+                  row['entity_type'] == 'RECORDING' &&
+                  row['entity_id'] == recordingId &&
+                  row['queue_state'] != 'ACKED',
+            )
+            .map((row) => row['op_id']),
+        [patchOp],
+      );
+
+      final ack = <String, Object?>{
+        ...baseline,
+        'revision': 4,
+        'note': 'private',
+      };
+      final ackJson = canonicalJson(ack);
+
+      // 활성 hold가 있어도 attempt·frozen body 검증은 그대로 적용해야 한다.
+      for (final invalid in [
+        MutationRequest(
+          mutation: request.mutation,
+          method: request.method,
+          path: request.path,
+          body: request.body,
+          attempt: request.attempt + 1,
+        ),
+        MutationRequest(
+          mutation: request.mutation,
+          method: request.method,
+          path: request.path,
+          body: '${request.body} ',
+          attempt: request.attempt,
+        ),
+      ]) {
+        expect(await store.acknowledgeMutation(invalid, ack), isFalse);
+        expect(await tables(), before);
+      }
+
+      expect(await store.acknowledgeMutation(request, ack), isTrue);
+      final after = await tables();
+      final afterCopy = rows(after, 'metadata_copies').singleWhere(
+        (row) =>
+            row['entity_type'] == 'RECORDING' &&
+            row['entity_id'] == recordingId,
+      );
+
+      if (variant.tombstone || variant.revision > 4) {
+        // 최신 서버 상태 또는 tombstone은 행 전체를 유지한다.
+        expect(afterCopy, beforeCopy);
+      } else {
+        // hold가 있어도 서버 snapshot은 저장한다.
+        // hold가 없고 후속 수정도 없으면 기존처럼 로컬까지 ACK로 교체한다.
+        expect(afterCopy, {
+          ...beforeCopy,
+          'server_revision': 4,
+          'server_payload': ackJson,
+          'local_payload': variant.mapped
+              ? beforeCopy['local_payload']
+              : ackJson,
+          'updated_at': afterCopy['updated_at'],
+        });
+      }
+
+      final afterMutation = rows(
+        after,
+        'local_mutations',
+      ).singleWhere((row) => row['op_id'] == patchOp);
+      expect(afterMutation, {
+        ...beforeMutation,
+        'queue_state': 'ACKED',
+        'server_response': ackJson,
+        'updated_at': afterMutation['updated_at'],
+      });
+      expect(
+        rows(
+          after,
+          'mutation_retry_controls',
+        ).singleWhere((row) => row['op_id'] == patchOp),
+        {...beforeControl, 'retry_mode': 'BLOCKED'},
+      );
+
+      for (final table in [
+        'mutation_mapping_holds',
+        'mutation_wire_requests',
+        'song_aliases',
+        'canonical_edit_intents',
+        'mutation_supersessions',
+      ]) {
+        expect(after[table], before[table], reason: table);
+      }
+
+      expect(await store.acknowledgeMutation(request, ack), isFalse);
+      expect(await tables(), after);
+
+      if (variant.mapped && variant.revision == 3 && !variant.tombstone) {
+        // 핵심 회귀 사례에서 ACK를 먼저 끝낸 뒤 후속 작업을 만든다.
+        final mappedDraft = jsonDecode(
+          afterCopy['local_payload'] as String,
+        ) as Map<String, dynamic>;
+        expect(mappedDraft['song_id'], canonical);
+
+        await store.saveEdit(
+          LocalEdit(
+            opId: downstreamOp,
+            entity: LocalEntity.recording,
+            entityId: recordingId,
+            operation: LocalOperation.patch,
+            baseRevision: 4,
+            draft: {...mappedDraft, 'revision': 4, 'note': 'next edit'},
+            changes: {'base_revision': 4, 'note': 'next edit'},
+          ),
+        );
+
+        final beforeDispatch = await tables();
+        final plan = const DependencyPlanner().plan(
+          await store.dispatchSnapshot(),
+        );
+        expect(plan.ready, isEmpty);
+        expect(
+          plan.waiting[downstreamOp]!.reason,
+          DispatchWaitReason.mappingBlocked,
+        );
+        expect(
+          (await store.retryStatus(downstreamOp))!.mappingEligible,
+          isFalse,
+        );
+        expect(await store.nextAutomaticRetryAt(), isNull);
+        expect(await store.nextDispatchAt(), isNull);
+        expect(await store.claimMutation(), isNull);
+        expect(await tables(), beforeDispatch);
+        expect(
+          beforeDispatch['mutation_mapping_holds'],
+          before['mutation_mapping_holds'],
+        );
+      }
+    });
+  }
 
   final failures = <String, String>{
     'canonical insert': '''

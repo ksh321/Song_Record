@@ -11,6 +11,8 @@ enum DispatchWaitReason {
   staleBaseline,
   unsupported,
   invalidPayload,
+  mappingBlocked,
+  superseded,
 }
 
 final class DispatchWait {
@@ -36,20 +38,39 @@ final class DependencyPlanner {
   const DependencyPlanner();
 
   DispatchPlan plan(DispatchSnapshot snapshot) {
-    final ordered = [...snapshot.pending]
-      ..sort((a, b) => a.localOrder.compareTo(b.localOrder));
+    final mapping = snapshot.mapping;
+
+    int compareOrder(QueuedMutation a, QueuedMutation b) {
+      final logical = mapping.orderOf(a).compareTo(mapping.orderOf(b));
+      return logical != 0 ? logical : a.localOrder.compareTo(b.localOrder);
+    }
+
+    final ordered = [...snapshot.pending]..sort(compareOrder);
     final firstByTarget = <LocalTarget>{};
     final ready = <QueuedMutation>[];
     final waiting = <String, DispatchWait>{};
+
     for (final mutation in ordered) {
       if (mutation.state == 'ACKED') continue;
+
+      if (mapping.superseded.contains(mutation.opId)) {
+        waiting[mutation.opId] = const DispatchWait(
+          DispatchWaitReason.superseded,
+        );
+        continue;
+      }
+
       final target = LocalTarget(mutation.entity, mutation.entityId);
-      if (!firstByTarget.add(target)) {
+      final group = mapping.groupOf(target);
+      if (!firstByTarget.add(group)) {
         waiting[mutation.opId] = const DispatchWait(
           DispatchWaitReason.earlierMutation,
         );
         continue;
       }
+
+      // Reserve the group's head before evaluating a hold. Filtering a held
+      // mutation out of the input would incorrectly release younger aliases.
       final wait = _wait(mutation, target, snapshot);
       if (wait == null) {
         ready.add(mutation);
@@ -57,9 +78,10 @@ final class DependencyPlanner {
         waiting[mutation.opId] = wait;
       }
     }
+
     ready.sort((a, b) {
       final phase = _phase(a.entity).compareTo(_phase(b.entity));
-      return phase != 0 ? phase : a.localOrder.compareTo(b.localOrder);
+      return phase != 0 ? phase : compareOrder(a, b);
     });
     return DispatchPlan(ready: ready, waiting: waiting);
   }
@@ -69,6 +91,9 @@ final class DependencyPlanner {
     LocalTarget target,
     DispatchSnapshot snapshot,
   ) {
+    if (!snapshot.mapping.allows(mutation.opId)) {
+      return const DispatchWait(DispatchWaitReason.mappingBlocked);
+    }
     if (mutation.state != 'PENDING') {
       return const DispatchWait(DispatchWaitReason.queueState);
     }
