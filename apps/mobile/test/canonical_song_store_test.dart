@@ -1516,7 +1516,10 @@ void main() {
         // change SENDING to RETRY before the rollback assertion.
         final after = <String, Object?>{};
         for (final table in before.keys) {
-          after[table] = (await db.customSelect('SELECT * FROM $table').get())
+          final query = table == 'local_mutations'
+              ? 'SELECT rowid AS local_order,* FROM local_mutations ORDER BY rowid'
+              : 'SELECT * FROM $table';
+          after[table] = (await db.customSelect(query).get())
               .map((row) => row.data)
               .toList();
         }

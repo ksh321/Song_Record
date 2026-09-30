@@ -159,28 +159,38 @@ final class AccountStore {
   Future<String> recoveryData() => _run(
     () => _database.transaction(() async {
       final tables = <String, Object?>{};
-      for (final table in [
-        'local_account',
-        'metadata_copies',
-        'local_mutations',
-        'mutation_wire_requests',
-        'mutation_retry_controls',
-        'song_aliases',
-        'mutation_supersessions',
-        'canonical_edit_intents',
-        'mutation_mapping_holds',
-        'local_recording_files',
-        'recording_journals',
-        'import_jobs',
-        'import_items',
-        'sync_cursors',
-      ]) {
-        final rows = await _database.customSelect('SELECT * FROM $table').get();
+      const orderBy = <String, String>{
+        'local_account': 'singleton',
+        'metadata_copies': 'entity_type,entity_id',
+        'local_mutations': 'rowid',
+        'mutation_wire_requests': 'op_id',
+        'mutation_retry_controls': 'op_id',
+        'song_aliases': 'source_song_id',
+        'mutation_supersessions': 'original_op_id',
+        'canonical_edit_intents': 'intent_id',
+        'mutation_mapping_holds': 'op_id,mapping_source_id,reason',
+        'local_recording_files': 'recording_id',
+        'recording_journals': 'recording_id',
+        'import_jobs': 'import_job_id',
+        'import_items': 'import_job_id,ordinal',
+        'sync_cursors': 'singleton',
+      };
+      for (final entry in orderBy.entries) {
+        final table = entry.key;
+        final projection = table == 'local_mutations'
+            ? 'rowid AS local_order,*'
+            : '*';
+        final rows = await _database
+            .customSelect(
+              'SELECT $projection FROM $table ORDER BY ${entry.value}',
+            )
+            .get();
         tables[table] = rows.map((row) => row.data).toList();
       }
       return jsonEncode({
         'format': 'song-record-local-recovery',
-        'version': 1,
+        'version': 2,
+        'schema_version': _database.schemaVersion,
         'source_user_id': userId,
         'environment': _paths.environment.name,
         'created_at': DateTime.now().toUtc().toIso8601String(),

@@ -120,6 +120,30 @@ void main() {
       final tables = snapshot['tables'] as Map<String, dynamic>;
       expect(tables['local_mutations'], hasLength(1));
       expect(tables['local_recording_files'], hasLength(1));
+      expect(snapshot['version'], 2);
+      expect(snapshot['schema_version'], 4);
+
+      final exportedFile =
+          (tables['local_recording_files'] as List).single
+              as Map<String, dynamic>;
+      expect(exportedFile['recording_id'], recording);
+      expect(exportedFile['user_id'], userA);
+      expect(exportedFile['relative_path'], 'audio/$recording.m4a');
+      expect(exportedFile['sha256'], digest);
+      expect(exportedFile['size_bytes'], audio.length);
+      expect(exportedFile['local_state'], 'SAVED');
+
+      final journal =
+          (tables['recording_journals'] as List).single as Map<String, dynamic>;
+      expect(journal['operation_id'], id(21));
+      expect(journal['pending_path'], 'pending/$recording.m4a.part');
+      expect(journal['final_path'], 'audio/$recording.m4a');
+      expect(journal['phase'], 'COMMITTED');
+      expect(jsonDecode(journal['recovery_payload'] as String), {
+        'input': 'preserved',
+        'native_phase': 'completed',
+      });
+      expect(await a.readLocalAudio(recording), audio);
       expect(await a.pendingMutations(), hasLength(1));
       final b = await manager.openAccount(userB);
       expect(await b.recoveryData(), isNot(contains('private-a')));

@@ -479,6 +479,37 @@ void main() {
         );
       }
     }
+    // Explicit gaps; physical order differs from op_id order.
+    for (final pair in [(100, uid(100)), (200, uid(99))]) {
+      await db.customStatement(
+        '''
+    INSERT INTO local_mutations(
+      rowid,op_id,user_id,entity_type,entity_id,operation,
+      base_revision,payload,request_hash,created_at,updated_at
+    ) VALUES(?,?,?,'SONG',?,'CREATE',0,'{}',?,0,0)
+    ''',
+        [pair.$1, pair.$2, uid(1), uid(3), 'a' * 64],
+      );
+    }
+    await db.customStatement(
+      '''
+  INSERT INTO mutation_supersessions(
+    original_op_id,replacement_op_id,mapping_source_id,
+    user_id,order_root_op_id,logical_order,created_at
+  ) VALUES(?,?,?,?,?,?,0)
+  ''',
+      [uid(100), uid(99), uid(2), uid(1), uid(100), 100],
+    );
+    Future<List<Map<String, Object?>>> mutationRows() async =>
+        (await db
+                .customSelect(
+                  'SELECT rowid AS local_order,* FROM local_mutations ORDER BY rowid',
+                )
+                .get())
+            .map((row) => row.data)
+            .toList();
+
+    final mutationsBefore = await mutationRows();
     final expected = <String, Object?>{};
     for (final table in added) {
       expected[table] = (await db.customSelect('SELECT * FROM $table').get())
@@ -498,6 +529,43 @@ void main() {
       for (final table in added) {
         expect(tables[table], expected[table]);
       }
+      expect(exported['format'], 'song-record-local-recovery');
+      expect(exported['version'], 2);
+      expect(exported['schema_version'], 4);
+      expect(tables['local_mutations'], mutationsBefore);
+
+      final mutations = (tables['local_mutations'] as List)
+          .cast<Map<String, dynamic>>();
+      expect(mutations.map((row) => row['local_order']).toList(), [
+        1,
+        2,
+        3,
+        4,
+        100,
+        200,
+      ]);
+      expect(mutations.map((row) => row['op_id']).toList(), [
+        uid(4),
+        uid(5),
+        uid(8),
+        uid(9),
+        uid(100),
+        uid(99),
+      ]);
+
+      final byOp = {for (final row in mutations) row['op_id'] as String: row};
+      for (final edge in tables['mutation_supersessions'] as List) {
+        expect(
+          edge['logical_order'],
+          byOp[edge['order_root_op_id']]!['local_order'],
+        );
+      }
+
+      final again =
+          jsonDecode(await store.recoveryData()) as Map<String, dynamic>;
+      expect(again['tables'], tables); // created_at is intentionally excluded.
+      expect(await mutationRows(), mutationsBefore);
+      expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
     } finally {
       await manager.logout();
     }
