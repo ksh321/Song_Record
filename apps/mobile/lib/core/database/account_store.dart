@@ -1007,6 +1007,31 @@ final class AccountStore {
             .readNullable<String>('snapshot_resume'),
   );
 
+  /// Persist the request before sending it, or advance only the observed request.
+  /// A late HTTP response cannot replace a newer download (or an applied one).
+  Future<bool> compareAndSetSnapshotResume({
+    required String? expected,
+    required Map<String, Object?>? replacement,
+  }) {
+    final encoded = replacement == null ? null : canonicalJson(replacement);
+    return _run(
+      () => _database.transaction(() async {
+        requireActive();
+        final changed = await _database.customUpdate(
+          '''UPDATE sync_cursors SET snapshot_resume=?,updated_at=?
+           WHERE singleton=1 AND snapshot_resume IS ?''',
+          variables: [
+            Variable<String>(encoded),
+            Variable(_manager._clock().toUtc().millisecondsSinceEpoch),
+            Variable<String>(expected),
+          ],
+        );
+        requireActive();
+        return changed == 1;
+      }),
+    );
+  }
+
   Future<void> recordFileAndJournal({
     required String recordingId,
     required String operationId,

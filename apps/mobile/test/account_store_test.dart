@@ -108,6 +108,69 @@ void main() {
   });
 
   test(
+    'snapshot request survives restart and rejects stale response writes',
+    () async {
+      var store = await manager.openAccount(userA);
+      final request = {'op_id': id(700), 'phase': 'REQUESTED'};
+      expect(
+        await store.compareAndSetSnapshotResume(
+          expected: null,
+          replacement: request,
+        ),
+        isTrue,
+      );
+      final saved = await store.readSnapshotResume();
+      await manager.logout();
+      store = await manager.openAccount(userA);
+      expect(await store.readSnapshotResume(), saved);
+      expect(
+        await store.compareAndSetSnapshotResume(
+          expected: null,
+          replacement: {'op_id': id(701)},
+        ),
+        isFalse,
+      );
+      expect(
+        await store.compareAndSetSnapshotResume(
+          expected: saved,
+          replacement: {...request, 'phase': 'BUILDING'},
+        ),
+        isTrue,
+      );
+      final advanced = await store.readSnapshotResume();
+      expect(
+        await store.compareAndSetSnapshotResume(
+          expected: saved,
+          replacement: {'op_id': id(701)},
+        ),
+        isFalse,
+      );
+      expect(await store.readSnapshotResume(), advanced);
+      expect(
+        await store.compareAndSetSnapshotResume(
+          expected: advanced,
+          replacement: null,
+        ),
+        isTrue,
+      );
+      expect(
+        await store.compareAndSetSnapshotResume(
+          expected: advanced,
+          replacement: request,
+        ),
+        isFalse,
+      );
+      expect(await store.readSnapshotResume(), isNull);
+      final other = await manager.openAccount(userB);
+      await expectLater(
+        store.compareAndSetSnapshotResume(expected: null, replacement: request),
+        throwsStateError,
+      );
+      expect(await other.readSnapshotResume(), isNull);
+    },
+  );
+
+  test(
     'recovery snapshot retains pending edits and excludes other accounts',
     () async {
       final a = await manager.openAccount(userA);
