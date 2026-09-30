@@ -22,7 +22,7 @@ import 'snapshot_download_store.dart';
 
 export 'retry_controls.dart' show RetryClock, RetryStatus;
 export 'snapshot_download_store.dart'
-    show SnapshotDownloadState, SnapshotProgress;
+    show SnapshotDownloadState, SnapshotProgress, SnapshotBaselinePage;
 
 typedef SupportDirectory = Future<Directory> Function();
 
@@ -178,6 +178,21 @@ final class AccountStore {
       _run(() => _snapshots.verify(token));
   Future<void> discardSnapshotDownload(String token) =>
       _run(() => _snapshots.discard(token));
+  Future<void> applySnapshotDownload(String token) =>
+      _run(() => _snapshots.apply(token));
+  Future<SnapshotBaselinePage> snapshotBaselinePage(
+    String entity, {
+    String? expectedToken,
+    int after = 0,
+    int limit = 50,
+  }) => _run(
+    () => _snapshots.baselinePage(
+      entity,
+      expectedToken: expectedToken,
+      after: after,
+      limit: limit,
+    ),
+  );
 
   Future<String> recoveryData() => _run(
     () => _database.transaction(() async {

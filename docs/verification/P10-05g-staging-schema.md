@@ -27,3 +27,5 @@ flutter analyze --no-pub lib/core/database test/snapshot_schema_test.dart test/c
 로그 .local/workflow/p10-05-staging-codegen.log, p10-05-staging-schema-test.log, p10-05-staging-integration.log. 로컬 검증 완료; 커밋/정확 SHA CI는 후속 기록. 다음은 AccountStore 경계의 페이지 원자 저장·재개·전체 hash 확인 후 기준/커서 원자 적용. 사용자 확인 대기0건. 전체 P10-05 미완료.
 
 커밋0241cf56340f52a366bec1a49100e61664074a56. f의 필수 CI4 성공 확인 후 일반 push했다. 이 커밋의 필수 CI는 확인 대기이며 완료로 확대하지 않는다.
+
+최종 정확 SHA 필수 CI4 PASS: CI36675906181, API contract36675906301, MySQL36675906163, Development workflow36675906110. 위 대기는 중간 기록이다.

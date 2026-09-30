@@ -20,12 +20,12 @@
 
 | 구분 | 최신 상태와 근거 |
 |---|---|
-| 확인한 제품 Git | CONNECT dab4fd6, P10-05a~d, e 보완 포함 f 2b6a980877d07262b29b682f01e52033d06671af 필수 CI4 PASS. g 0241cf5 일반 push·CI 확인 대기 |
+| 확인한 제품 Git | CONNECT dab4fd6, P10-05a~d, e 보완 포함 f 2b6a980, g 0241cf56340f52a366bec1a49100e61664074a56 필수 CI4 PASS. h c1b9a4c+운영 문서 통합 HEAD95a2079 push·CI 대기 |
 | 기존 기능 완료 기준 | `eef028dddea87cb0ad02d733808658512dffe431`까지 사용자 검증 완료. P05-08·P06 포함, 문서 부족만으로 되돌리지 않음 |
 | 현재 구현 완료 지점 | P09-07b-C1/D06, P10-02b 해당 메타데이터 범위, WORKFLOW-07, P10-04a v4, P10-04b-DECODER/ATOMIC/GATE. GATE 90 테스트·분석·Astra/xhigh 재검수·정확 SHA CI 통과. 전체 P10-03/P10-04 완료 아님 |
-| 현재 작업 | P10-05h AccountStore 수신 저장·재개·전체 hash 검증. 관련42 통과/Windows 링크 권한1 skip·분석 통과, 현재 모델 검토 완료 |
-| 작업 중 변경 | SnapshotDownloadStore와 AccountStore lease 연결, 저장 행 재검증. 수신 페이지와 progress 원자 commit, 변조/계정 이탈 rollback. 현재 baseline/cursor는 아직 바꾸지 않음 |
-| 다음 실행 | g 필수 CI 확인 후 h push/CI. 검증된 사본 기준 pointer/cursor 원자 적용·HTTP 수신 연결 계속. 사용자 직접 조작 없음 |
+| 현재 작업 | P10-05i — 일관된 초기 스냅샷의 기준 사본·커서 원자 적용. 영향93 통과/Windows 링크 권한1 skip·분석 통과, 현재 모델 검토 완료 |
+| 작업 중 변경 | 검증 사본 pointer/state/cursor 원자 commit, 실패 rollback·후퇴 차단, 만료 후 로컬 기준 유지·고정 세대 페이지 조회. 기존 미전송/파일 보존 |
+| 다음 실행 | 95a2079 필수 CI 확인 후 i push/CI. 동일 op_id 접수·상태/페이지 HTTP 수신과 기존 메타데이터 조회 투영·앱 흐름 연결을 계속 진행. 사용자 직접 조작 없음 |
 | 실제 차단 | 새 Codex 자료 전달 권한 차단은 절차 폐기로 해제. 실행 환경·필수 CI·실제 기능 선행만 개별 판정. USER020 요청 취소, 현재 직접 사용자 조작 없음 |
 | 실행 환경 | 실행별 socket 경로 옵션으로 APK 빌드 성공. 새 격리 DB/API 준비·health UP, 원래 DB V1/볼륨 보존. 기존 환경 실패 횟수 유지. 새 APK는 2e6bd88 기준으로 고정·새 설치 성공, 현재 HEAD 빌드로 혼동 금지 |
 

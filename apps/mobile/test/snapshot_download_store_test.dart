@@ -8,6 +8,7 @@ import 'package:song_record/core/database/account_database.dart';
 import 'package:song_record/core/database/account_store.dart';
 import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/database/snapshot_download_store.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -170,6 +171,177 @@ void main() {
     await expectLater(store.snapshotDownloadState(token), throwsStateError);
     store = await manager.openAccount(owner);
     expect((await store.snapshotDownloadState(token)).state, 'RECEIVING');
+  });
+  test('only verified snapshot switches baseline and cursor and keeps local drafts', () async {
+    await store.saveEdit(
+      LocalEdit(
+        opId: '44444444-4444-4444-8444-444444444444',
+        entity: LocalEntity.song,
+        entityId: '33333333-3333-4333-8333-333333333333',
+        operation: LocalOperation.create,
+        baseRevision: 0,
+        draft: {'title': 'unsubmitted'},
+        changes: {'title': 'unsubmitted'},
+      ),
+    );
+    await pages();
+    await expectLater(store.applySnapshotDownload(token), throwsStateError);
+    expect(await store.readCursor(), isNull);
+    await store.verifySnapshotDownload(token);
+    await store.applySnapshotDownload(token);
+    expect(await store.readCursor(), 7);
+    final baseline = await store.snapshotBaselinePage('SONG');
+    expect(baseline.token, token);
+    expect(baseline.cursor, 7);
+    expect(baseline.entries.single.payload['note'], '한글 🎵');
+    expect(baseline.hasMore, isFalse);
+    expect(
+      (await store.pendingMutations()).single.payload,
+      contains('unsubmitted'),
+    );
+    expect(
+      (await store.readMetadata(
+        LocalEntity.song,
+        '33333333-3333-4333-8333-333333333333',
+      ))!.localJson,
+      contains('unsubmitted'),
+    );
+    await expectLater(
+      store.snapshotBaselinePage('SONG', expectedToken: owner),
+      throwsStateError,
+    );
+    await expectLater(
+      store.snapshotBaselinePage('SONG', after: 1),
+      throwsStateError,
+    );
+    now = now.add(const Duration(hours: 1));
+    await manager.logout();
+    store = await manager.openAccount(owner);
+    expect(
+      (await store.snapshotBaselinePage('SONG', expectedToken: token)).entries,
+      hasLength(1),
+    );
+    await store.applySnapshotDownload(token);
+    await store.discardSnapshotDownload(token);
+    expect((await store.snapshotBaselinePage('SONG')).token, token);
+  });
+  test(
+    'final apply failure rolls back pointer, state and cursor atomically',
+    () async {
+      final native = sqlite.sqlite3.openInMemory();
+      final db = AccountDatabase(
+        NativeDatabase.opened(native),
+        userId: owner,
+        environment: AppEnvironment.dev,
+      );
+      var revokeAfterWrite = false;
+      final downloads = SnapshotDownloadStore(
+        db,
+        clock: () => now,
+        requireActive: () {
+          if (revokeAfterWrite &&
+              native
+                      .select('SELECT state FROM snapshot_downloads')
+                      .single['state'] ==
+                  'APPLIED') {
+            throw StateError('synthetic account revocation after writes');
+          }
+        },
+      );
+      try {
+        await db.verifyReady();
+        await downloads.begin(token, jsonEncode(fixture['manifest']));
+        for (final page in fixture['pages'] as List) {
+          await downloads.append(
+            token,
+            page['entity'] as String,
+            0,
+            jsonEncode(page),
+          );
+        }
+        await downloads.verify(token);
+        revokeAfterWrite = true;
+        await expectLater(downloads.apply(token), throwsStateError);
+        expect(
+          await db.customSelect('SELECT * FROM snapshot_baseline').get(),
+          isEmpty,
+        );
+        expect(
+          (await db
+                  .customSelect('SELECT state FROM snapshot_downloads')
+                  .getSingle())
+              .read<String>('state'),
+          'VERIFIED',
+        );
+        expect(
+          (await db
+                  .customSelect('SELECT last_change_seq FROM sync_cursors')
+                  .getSingle())
+              .readNullable<int>('last_change_seq'),
+          isNull,
+        );
+        revokeAfterWrite = false;
+        await downloads.apply(token);
+        expect(
+          (await db
+                  .customSelect('SELECT last_change_seq FROM sync_cursors')
+                  .getSingle())
+              .read<int>('last_change_seq'),
+          7,
+        );
+      } finally {
+        await db.close();
+      }
+    },
+  );
+  test('older baseline never rewinds an already acknowledged cursor', () async {
+    final db = AccountDatabase(
+      NativeDatabase.memory(),
+      userId: owner,
+      environment: AppEnvironment.dev,
+    );
+    final downloads = SnapshotDownloadStore(
+      db,
+      clock: () => now,
+      requireActive: () {},
+    );
+    try {
+      await db.verifyReady();
+      await downloads.begin(token, jsonEncode(fixture['manifest']));
+      for (final page in fixture['pages'] as List) {
+        await downloads.append(
+          token,
+          page['entity'] as String,
+          0,
+          jsonEncode(page),
+        );
+      }
+      await downloads.verify(token);
+      await db.customStatement(
+        'UPDATE sync_cursors SET last_change_seq=8,baseline_complete=1',
+      );
+      await expectLater(downloads.apply(token), throwsStateError);
+      expect(
+        await db.customSelect('SELECT * FROM snapshot_baseline').get(),
+        isEmpty,
+      );
+      expect(
+        (await db
+                .customSelect('SELECT state FROM snapshot_downloads')
+                .getSingle())
+            .read<String>('state'),
+        'VERIFIED',
+      );
+      expect(
+        (await db
+                .customSelect('SELECT last_change_seq FROM sync_cursors')
+                .getSingle())
+            .read<int>('last_change_seq'),
+        8,
+      );
+    } finally {
+      await db.close();
+    }
   });
   test(
     'lost final account fence rolls back page and progress together',

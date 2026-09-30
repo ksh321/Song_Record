@@ -21,3 +21,5 @@ flutter analyze --no-pub lib/core/database/snapshot_download_store.dart lib/core
 현재 모델 검토: 네트워크/DB 행 모두 같은 검증 생성자를 거치고, 저장 코드가 원본 업무/파일 표를 갱신하지 않는지 실제 SQL과 비교했다. 최종 commit 직전 계정/시간 재확인을 유지한다. 필수 hash/count 검증을 상태 표식만으로 대체하지 않는다.
 
 로그 .local/workflow/p10-05-staging-store-test.log, p10-05-staging-store-integration.log. 커밋/정확 SHA CI는 후속 기록. 다음은 검증 완료 사본의 기준 pointer/cursor 원자 적용과 실제 HTTP 수신 연결. 전체 P10-05 미완료, 사용자 확인 대기0건.
+
+코드 커밋 c1b9a4c는 새 한글 커밋 지시 전에 생성했다. 운영 문서 커밋95a2079와 함께 일반 push했으며 검증 대상 통합 HEAD는95a2079다. 이 대상의 필수 CI 확인 대기이며 c1b9a4c 자체에 별도 CI가 실행됐다고 기록하지 않는다.

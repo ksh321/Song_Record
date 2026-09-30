@@ -29,6 +29,21 @@ final class SnapshotDownloadState {
   String toString() => 'SnapshotDownloadState[REDACTED]';
 }
 
+final class SnapshotBaselinePage {
+  SnapshotBaselinePage(
+    this.token,
+    this.cursor,
+    List<SnapshotEntry> entries,
+    this.hasMore,
+  ) : entries = List.unmodifiable(entries);
+  final String token;
+  final int cursor;
+  final List<SnapshotEntry> entries;
+  final bool hasMore;
+  @override
+  String toString() => 'SnapshotBaselinePage[REDACTED]';
+}
+
 /// Internal persistence service. AccountStore serializes calls and supplies the
 /// live account fence, including the final check inside every transaction.
 final class SnapshotDownloadStore {
@@ -230,6 +245,98 @@ final class SnapshotDownloadStore {
       [token],
     );
     _fence(state.manifest);
+  });
+
+  /// Swap all 19 entity baselines and the acknowledged cursor together.
+  /// Local command/history/file tables remain overlays and are never replaced.
+  Future<void> apply(String token) => db.transaction(() async {
+    requireActive();
+    _token(token);
+    final pointer = await db
+        .customSelect(
+          'SELECT snapshot_token FROM snapshot_baseline WHERE singleton=1 AND user_id=?',
+          variables: [Variable(db.userId)],
+        )
+        .getSingleOrNull();
+    if (pointer?.read<String>('snapshot_token') == token) {
+      requireActive();
+      return;
+    }
+    final state = await _read(token);
+    _check(state.state == 'VERIFIED');
+    final cursor =
+        (await db
+                .customSelect(
+                  'SELECT last_change_seq FROM sync_cursors WHERE singleton=1',
+                )
+                .getSingle())
+            .readNullable<int>('last_change_seq');
+    _check(cursor == null || state.manifest.cursor >= cursor);
+    await db.customStatement(
+      "UPDATE snapshot_downloads SET state='APPLIED' WHERE snapshot_token=?",
+      [token],
+    );
+    await db.customStatement(
+      'INSERT INTO snapshot_baseline(singleton,snapshot_token,user_id) VALUES(1,?,?) ON CONFLICT(singleton) DO UPDATE SET snapshot_token=excluded.snapshot_token',
+      [token, db.userId],
+    );
+    await db.customStatement(
+      'UPDATE sync_cursors SET last_change_seq=?,baseline_complete=1,snapshot_resume=NULL,updated_at=? WHERE singleton=1',
+      [state.manifest.cursor, clock().toUtc().millisecondsSinceEpoch],
+    );
+    _fence(state.manifest);
+  });
+
+  /// TTL governs downloading, not the lifetime of an already applied baseline.
+  /// Subsequent pages must pin the baseline token to avoid mixing generations.
+  Future<SnapshotBaselinePage> baselinePage(
+    String entity, {
+    String? expectedToken,
+    int after = 0,
+    int limit = 50,
+  }) => db.transaction(() async {
+    requireActive();
+    _check(
+      snapshotEntities.contains(entity) &&
+          after >= 0 &&
+          limit >= 1 &&
+          limit <= 100 &&
+          (after == 0 || expectedToken != null),
+    );
+    final header = await db
+        .customSelect(
+          "SELECT h.snapshot_token,h.snapshot_cursor FROM snapshot_baseline b JOIN snapshot_downloads h ON h.snapshot_token=b.snapshot_token AND h.user_id=b.user_id WHERE b.singleton=1 AND b.user_id=? AND h.state='APPLIED'",
+          variables: [Variable(db.userId)],
+        )
+        .getSingleOrNull();
+    _check(header != null);
+    final token = header!.read<String>('snapshot_token'),
+        cursor = header.read<int>('snapshot_cursor');
+    _check(expectedToken == null || token == expectedToken);
+    final rows = await db
+        .customSelect(
+          'SELECT ordinal,resource_id,canonical_payload FROM snapshot_download_rows WHERE snapshot_token=? AND entity=? AND ordinal>? ORDER BY ordinal LIMIT ?',
+          variables: [
+            Variable(token),
+            Variable(entity),
+            Variable(after),
+            Variable(limit + 1),
+          ],
+        )
+        .get();
+    final entries = [
+      for (final row in rows.take(limit))
+        SnapshotEntry.fromStored(
+          entity: entity,
+          ordinal: row.read<int>('ordinal'),
+          resourceId: row.read<String>('resource_id'),
+          canonicalPayload: row.read<String>('canonical_payload'),
+          owner: db.userId,
+          snapshotCursor: cursor,
+        ),
+    ];
+    requireActive();
+    return SnapshotBaselinePage(token, cursor, entries, rows.length > limit);
   });
 
   /// Discard only an un-applied derived download, including an expired one.
