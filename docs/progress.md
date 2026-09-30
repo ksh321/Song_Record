@@ -18,12 +18,12 @@
 
 | 구분 | 최신 상태와 근거 |
 |---|---|
-| 확인한 제품 Git | CONNECT ab5dd81 + 운영 fixture 보정 dab4fd6d447b1fdb7f3a6996bf3c62eef61a3141 일반 push·필수 CI4 PASS. 앞선 ab5dd81 운영 CI 실패는 보정으로 해소. 기존 사용자 검증 기준은 유지 |
+| 확인한 제품 Git | CONNECT dab4fd6 및 스냅샷 페이지/읽기뷰 기반 7f71d757b9962a77e98e4ad116f5d9caf006a592 일반 push·각 필수 CI4 PASS |
 | 기존 기능 완료 기준 | `eef028dddea87cb0ad02d733808658512dffe431`까지 사용자 검증 완료. P05-08·P06 포함, 문서 부족만으로 되돌리지 않음 |
 | 현재 구현 완료 지점 | P09-07b-C1/D06, P10-02b 해당 메타데이터 범위, WORKFLOW-07, P10-04a v4, P10-04b-DECODER/ATOMIC/GATE. GATE 90 테스트·분석·Astra/xhigh 재검수·정확 SHA CI 통과. 전체 P10-03/P10-04 완료 아님 |
-| 현재 작업 | P10-05a 초기 스냅샷 페이지 조회/동일 읽기뷰 기반 구현·현재 모델 검토 완료. 서버19(실제 InnoDB5 포함)/운영 Python19 통과. 커밋/필수 CI 전 |
-| 작업 중 변경 | SnapshotPageCursor/SnapshotPages/SnapshotReadView, 관련 H2/MySQL 테스트, 필수 MySQL CI에 회귀 추가. 생성·게시·API·모바일 staging은 아직 미구현 |
-| 다음 실행 | P10-05a 커밋/push/정확 SHA CI. 이어서 전체 entity 추출·분할 저장·완결성 검증/READY 게시 구현. 사용자 확인 대기0건 |
+| 현재 작업 | P10-05b BUILDING 슬롯/바이트 예약·분할 저장·완결성 검증/READY 게시 기반. 원본 V7 제약·trigger 실제 MySQL 회귀9 및 관련 통합28 통과, 현재 모델 검토 완료. 커밋/CI 전 |
+| 작업 중 변경 | SnapshotBuildStore, MySqlSnapshotBuildStoreTests, 필수 MySQL CI 실행 목록. 기존 개발 DB·볼륨 보존. HTTP/전체 엔터티 추출/복구는 아직 미완료 |
+| 다음 실행 | P10-05b 커밋/push/정확 SHA CI. 이어서 전체 entity 추출·실행 연결 및 실패/재시작 보존·정리. 사용자 직접 조작 없음 |
 | 실제 차단 | 새 Codex 자료 전달 권한 차단은 절차 폐기로 해제. 실행 환경·필수 CI·실제 기능 선행만 개별 판정. USER020 요청 취소, 현재 직접 사용자 조작 없음 |
 | 실행 환경 | 실행별 socket 경로 옵션으로 APK 빌드 성공. 새 격리 DB/API 준비·health UP, 원래 DB V1/볼륨 보존. 기존 환경 실패 횟수 유지. 새 APK는 2e6bd88 기준으로 고정·새 설치 성공, 현재 HEAD 빌드로 혼동 금지 |
 

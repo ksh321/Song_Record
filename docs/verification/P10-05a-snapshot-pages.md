@@ -38,3 +38,5 @@ gradlew.bat test --tests '*SnapshotPageCursorTests' --tests '*SnapshotPagesTests
 실행: `gradlew.bat test --tests '*SnapshotPageCursorTests' --tests '*SnapshotPagesTests' --tests '*SnapshotReadViewTests' --offline --no-daemon`. 최초 **17 통과** 후 deadline 중도 도달 검사를 추가했다. 최종 결과는 아래에 이어 기록한다. 동시 writer commit 이후에도 첫 capture는 cursor7/before, 다음 capture는 cursor8/after를 확인했다. 이 검증은 읽기뷰 기반의 증거이며 전체 엔터티 추출·분할 저장·용량·READY 게시 검증을 대신하지 않는다.
 
 최종: 커서5/페이지5/H2 읽기뷰4/실제 MySQL 읽기뷰5, **19 테스트 통과, 실패0/오류0/skip0**. Python 운영 검사19도 통과. 현재 모델 검토에서 SQL 매개변수·읽기 연결 종료·고정 TTL·재인증·데이터 미노출을 대조했다. 새 커밋의 필수 CI는 아직 확인 전이다.
+
+통합 완료: 7f71d757b9962a77e98e4ad116f5d9caf006a592 일반 push, 필수 CI4 PASS. CI36669212997/API contract36669212978/Idempotency MySQL36669213029/Development workflow36669212995. P10-05a 기반 범위만 완료, P10-05 전체는 진행 중.
