@@ -1,12 +1,13 @@
 {
   "schema": 1,
-  "baseline_head": "b4fb732de090460b73df46ae77df9aca572dd6ca",
+  "baseline_head": "dab4fd6d447b1fdb7f3a6996bf3c62eef61a3141",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
     "p10.remaining.analysis",
     "export.integrated",
-    "workflow08.reviewed"
+    "workflow08.reviewed",
+    "canonical.dispatch.connected"
   ],
   "grants": [],
   "coverage": {
@@ -1519,9 +1520,10 @@
       "writes": [
         "apps/mobile/lib/core/sync/metadata_dispatcher.dart"
       ],
-      "state": "active",
+      "state": "done",
       "owner": "현재 작업 AI",
-      "resume": "dispatcher 원자 매핑 연결 적용 중. 실제 SQLite 회귀 테스트→현재 모델 코드 검토→커밋/push/정확 SHA CI. USER020 요청 취소"
+      "resume": "완료. 개인 편집 해결/안전한 hold 해제는 후속 범위",
+      "evidence": "dab4fd6d447b1fdb7f3a6996bf3c62eef61a3141 CI4 PASS; Flutter115/analyze PASS; workflow fixture Python19 PASS"
     },
     {
       "id": "P10-02-NEXT",
@@ -1540,7 +1542,7 @@
     },
     {
       "id": "P10-05-NEXT",
-      "action": "원본 요구사항의 남은 구현·검증",
+      "action": "P10-05a 사본 페이지 조회 기반 구현·테스트 및 D09 생성 엔진 연결",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1549,9 +1551,9 @@
       "writes": [
         "services/api/src/main/java/com/ksh321/songrecord/api/sync"
       ],
-      "state": "pending",
-      "owner": "AI",
-      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
+      "state": "active",
+      "owner": "현재 작업 AI",
+      "resume": "P10-05a 페이지/읽기뷰 기반 19 테스트(실제 InnoDB5 포함) 통과. 현재 모델 코드 검토 완료. 커밋/CI 뒤 전체 entity 추출·분할 저장·게시 엔진 구현"
     },
     {
       "id": "P10-06-NEXT",

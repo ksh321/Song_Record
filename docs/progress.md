@@ -18,12 +18,12 @@
 
 | 구분 | 최신 상태와 근거 |
 |---|---|
-| 확인한 제품 Git | 제품 EXPORT `bf2ce110c9ae13bf6fd19bbb329319c2c102998e` 필수 CI4 PASS. 운영 변경 `6e18956` 필수 CI4 PASS(36666841877/854/934/946). 현재 제품 변경은 아래 CONNECT 미커밋 범위 |
+| 확인한 제품 Git | CONNECT ab5dd81 + 운영 fixture 보정 dab4fd6d447b1fdb7f3a6996bf3c62eef61a3141 일반 push·필수 CI4 PASS. 앞선 ab5dd81 운영 CI 실패는 보정으로 해소. 기존 사용자 검증 기준은 유지 |
 | 기존 기능 완료 기준 | `eef028dddea87cb0ad02d733808658512dffe431`까지 사용자 검증 완료. P05-08·P06 포함, 문서 부족만으로 되돌리지 않음 |
 | 현재 구현 완료 지점 | P09-07b-C1/D06, P10-02b 해당 메타데이터 범위, WORKFLOW-07, P10-04a v4, P10-04b-DECODER/ATOMIC/GATE. GATE 90 테스트·분석·Astra/xhigh 재검수·정확 SHA CI 통과. 전체 P10-03/P10-04 완료 아님 |
-| 현재 작업 | P10-04b-CONNECT: 검증된 canonical receipt를 기존 원자 보존 트랜잭션에 연결. EXPORT/GATE 선행 완료 근거로 선정. 현재 모델 직접 구현·회귀 검증·코드 검토 중 |
-| 작업 중 변경 | metadata_dispatcher 연결 및 AccountStore 주석, canonical_song_store_test의 송신 통합 회귀. 기존 사용자 미커밋 변경은 시작 시 없음. 커밋/CI 전이며 전체 완료 아님 |
-| 다음 실행 | CONNECT 영향 테스트·현재 모델 코드 검토→커밋/push→정확 SHA 필수 CI. 이후 작업 선택기로 남은 독립/후속 단계 선정. 과거 EXPORT 재검수·자료 전달 승인 요청은 재실행하지 않음 |
+| 현재 작업 | P10-05a 초기 스냅샷 페이지 조회/동일 읽기뷰 기반 구현·현재 모델 검토 완료. 서버19(실제 InnoDB5 포함)/운영 Python19 통과. 커밋/필수 CI 전 |
+| 작업 중 변경 | SnapshotPageCursor/SnapshotPages/SnapshotReadView, 관련 H2/MySQL 테스트, 필수 MySQL CI에 회귀 추가. 생성·게시·API·모바일 staging은 아직 미구현 |
+| 다음 실행 | P10-05a 커밋/push/정확 SHA CI. 이어서 전체 entity 추출·분할 저장·완결성 검증/READY 게시 구현. 사용자 확인 대기0건 |
 | 실제 차단 | 새 Codex 자료 전달 권한 차단은 절차 폐기로 해제. 실행 환경·필수 CI·실제 기능 선행만 개별 판정. USER020 요청 취소, 현재 직접 사용자 조작 없음 |
 | 실행 환경 | 실행별 socket 경로 옵션으로 APK 빌드 성공. 새 격리 DB/API 준비·health UP, 원래 DB V1/볼륨 보존. 기존 환경 실패 횟수 유지. 새 APK는 2e6bd88 기준으로 고정·새 설치 성공, 현재 HEAD 빌드로 혼동 금지 |
 
