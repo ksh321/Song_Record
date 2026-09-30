@@ -45,6 +45,24 @@ final class MutationRequest {
     final decoded = jsonDecode(m.payload);
     if (decoded is! Map<String, dynamic>) return null;
     final create = m.operation == LocalOperation.create;
+    if (m.entity == LocalEntity.recording &&
+        !create &&
+        decoded.containsKey('tier')) {
+      if (decoded.length != 2 ||
+          decoded['base_revision'] != m.baseRevision ||
+          m.baseRevision < 1 ||
+          (decoded['tier'] != null &&
+              !{'S', 'A', 'B', 'C', 'D'}.contains(decoded['tier']))) {
+        return null;
+      }
+      return MutationRequest(
+        mutation: m,
+        method: 'PATCH',
+        path: '/v1/recordings/${m.entityId}/tier',
+        body: m.payload,
+        attempt: m.attemptCount + 1,
+      );
+    }
     final allowed = switch ((m.entity, create)) {
       (LocalEntity.song, true) => {
         'id',

@@ -173,6 +173,14 @@ Map<String, Object?> decodeMetadataSnapshot(
           }),
         );
         string('tier', nullable: true);
+        if (!conflict && request.path.endsWith('/tier')) {
+          final requested = jsonDecode(request.body) as Map<String, dynamic>;
+          require(value['tier'] == requested['tier']);
+          require(
+            value['metadata_state'] == 'SAVED' &&
+                value['lifecycle_state'] == 'ACTIVE',
+          );
+        }
         require(value['tags'] is List);
         for (final entry in value['tags'] as List) {
           require(
