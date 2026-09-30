@@ -30,3 +30,5 @@ gradlew.bat test --tests '*Snapshot*Tests' --offline --no-daemon
 D09 원본, V7 trigger/FK, 실제 diff, HTTP 보안 경로, account revalidation, lease/cleanup 경쟁, 원본 보존과 실제 결과를 대조했다. READY는 불변이고 조회 전후 재확인하며 부분 사본을 노출하지 않는다. cleanup은 capacity를 먼저 잠가 builder와 예약 환급을 직렬화한다. 현재 모델 검토이며 독립 에이전트 검수 아님.
 
 서버 기반 연결의 로컬 검증 완료; 커밋/정확 SHA 필수 CI는 후속 기록으로 확정한다. 기존 실행 중인 개발 API는 이전 빌드이며 이번 코드를 재시작 배포한 것으로 보지 않는다. 다음은 모바일 응답 검증·영속 staging·manifest 완결성 검증·미전송/파일 보존 원자 적용. 전체 P10-05는 아직 완료가 아니다. 사용자 확인 대기0건.
+
+커밋 bde5b1a02285a948ec1d835b9bf954493fe21e20 일반 push. API contract36673798303/MySQL36673798388/workflow36673798337 PASS. CI36673798308의 Spring job은 ApiContractTests.implementedPathsExactlyMatchControllers에서 실패: 명시적 실제 컨트롤러 검사 목록에 새 SnapshotController가 빠졌다. Flutter APK는 당시 진행 중이었다. 전체 CI 통과로 기록하지 않는다. 검사 목록에 실제 컨트롤러를 추가하고 기존 정확 일치 assertion을 유지했다. 로컬 ApiContractTests5 통과. 보완과 P10-05f를 포함한 다음 커밋에서 필수 CI 전체를 다시 확인한다. 해당 누락 수정1회, 테스트 삭제/약화 없음.

@@ -299,5 +299,30 @@ class MySqlSnapshotSourceRowsTests {
         assertThat(jdbc.queryForObject("SELECT state FROM job WHERE user_id=?",String.class,bytes(owner))).isEqualTo("CANCELLED");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM app_user WHERE id=?",Integer.class,bytes(owner))).isEqualTo(1);
     }
+    @Test void sharedMobileFixtureRetainsExactCanonicalNumbersAndManifestBytes() throws Exception {
+        var fixture=new JsonMapper().readTree(java.nio.file.Files.readString(java.nio.file.Path.of("../../fixtures/contracts/snapshot-wire.json")));
+        UUID owner=UUID.fromString(fixture.get("owner").asText());jdbc.update("INSERT INTO app_user(id) VALUES(?)",bytes(owner));
+        var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);
+        when(access.authenticate("fixture-auth","fixture-device")).thenReturn(account);
+        when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,UUID.randomUUID(),UUID.randomUUID()));
+        var store=new SnapshotBuildStore(jdbc,access,new DataSourceTransactionManager(source),CLOCK);
+        var attempt=store.begin(account,UUID.randomUUID(),1);store.capture(account,attempt,7,NOW);
+        var counts=new EnumMap<SnapshotPages.Entity,Long>(SnapshotPages.Entity.class);
+        for(var page:fixture.get("pages")) {
+            var entity=SnapshotPages.Entity.valueOf(page.get("entity").asText());counts.put(entity,(long)page.get("entries").size());
+            for(var entry:page.get("entries")) {
+                String canonical=entry.get("canonical_payload").asText();
+                assertThat(com.ksh321.songrecord.api.idempotency.CanonicalRequest.canonical(entry.get("payload").toString())).isEqualTo(canonical);
+                store.append(account,attempt,List.of(new SnapshotBuildStore.Entry(entity,entry.get("ordinal").asLong(),UUID.fromString(entry.get("resource_id").asText()),canonical)));
+            }
+        }
+        assertThat(store.publish(account,attempt,counts).manifestHash()).isEqualTo(fixture.get("manifest").get("manifest_hash").asText());
+        var queries=new SnapshotQueries(jdbc,access,new SnapshotPages(jdbc,access,new SnapshotPageCursor(new byte[32],CLOCK),CLOCK),CLOCK);
+        var params=new org.springframework.util.LinkedMultiValueMap<String,String>();params.add("entity","SONG");
+        var reply=queries.get("fixture-auth","fixture-device",attempt.id().toString(),params);
+        String serialized=new JsonMapper().writeValueAsString(reply.body());
+        assertThat(new JsonMapper().readTree(serialized).get("entries").get(0).get("canonical_payload").asText())
+                .contains("1E+2","한글 🎵");
+    }
     static byte[] bytes(UUID id){return ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();}
 }

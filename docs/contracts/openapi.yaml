@@ -1457,7 +1457,7 @@ components:
           items:
             type: object
             additionalProperties: false
-            required: [ordinal, resource_id, payload]
+            required: [ordinal, resource_id, payload, canonical_payload]
             properties:
               ordinal:
                 type: integer
@@ -1466,6 +1466,9 @@ components:
                 $ref: '#/components/schemas/Uuid'
               payload:
                 type: object
+              canonical_payload:
+                type: string
+                description: manifest 해시에 사용한 UTF-8 JSON 원문. 숫자 정밀도·지수 표기를 클라이언트 JSON 재직렬화로 바꾸지 않고 그대로 검증·staging 보관한다. JSON 객체 의미는 payload와 같아야 한다.
         next_cursor:
           type: [string, 'null']
           pattern: '^sp1\.[A-Za-z0-9_-]+$'

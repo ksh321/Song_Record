@@ -1,0 +1,211 @@
+{
+  "owner": "11111111-1111-4111-8111-111111111111",
+  "manifest": {
+    "snapshot_token": "22222222-2222-4222-8222-222222222222",
+    "status": "READY",
+    "schema_version": 1,
+    "snapshot_cursor": 7,
+    "captured_at": "2026-09-30T00:00:00Z",
+    "ready_at": "2026-09-30T00:00:00Z",
+    "expires_at": "2026-09-30T00:30:00Z",
+    "manifest_hash": "1e9d8a9fdeb58d318d763f19a75e77f7a465e74cb059d6da1a7a35fc727171dc",
+    "entity_counts": {
+      "CHANGE_LOG": 0,
+      "DELETION_BATCH": 0,
+      "DELETION_ITEM": 0,
+      "DELETION_LEDGER": 0,
+      "PIN_SLOT": 0,
+      "PLAYLIST": 0,
+      "PLAYLIST_ITEM": 0,
+      "RECORDING": 0,
+      "RECORDING_ASSET": 0,
+      "RECORDING_CONDITION": 0,
+      "RECORDING_FILE_SPEC": 0,
+      "RECORDING_TAG": 0,
+      "SONG": 1,
+      "SONG_CLOUD_SELECTION": 0,
+      "SONG_SOURCE": 0,
+      "STORAGE_USAGE": 0,
+      "TAG": 0,
+      "USER_ENTITLEMENT": 0,
+      "USER_SYNC_STATE": 1
+    }
+  },
+  "pages": [
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "CHANGE_LOG",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "DELETION_BATCH",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "DELETION_ITEM",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "DELETION_LEDGER",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "PIN_SLOT",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "PLAYLIST",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "PLAYLIST_ITEM",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "RECORDING",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "RECORDING_ASSET",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "RECORDING_CONDITION",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "RECORDING_FILE_SPEC",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "RECORDING_TAG",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "SONG",
+      "entries": [
+        {
+          "ordinal": 1,
+          "resource_id": "33333333-3333-4333-8333-333333333333",
+          "payload": {
+            "id": "33333333-3333-4333-8333-333333333333",
+            "note": "한글 🎵",
+            "number": 100.0,
+            "ratio": 1.23,
+            "user_id": "11111111-1111-4111-8111-111111111111"
+          },
+          "canonical_payload": "{\"id\":\"33333333-3333-4333-8333-333333333333\",\"note\":\"한글 🎵\",\"number\":1E+2,\"ratio\":1.23,\"user_id\":\"11111111-1111-4111-8111-111111111111\"}"
+        }
+      ],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "SONG_CLOUD_SELECTION",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "SONG_SOURCE",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "STORAGE_USAGE",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "TAG",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "USER_ENTITLEMENT",
+      "entries": [],
+      "next_cursor": null
+    },
+    {
+      "snapshot_token": "22222222-2222-4222-8222-222222222222",
+      "snapshot_cursor": 7,
+      "expires_at": "2026-09-30T00:30:00Z",
+      "entity": "USER_SYNC_STATE",
+      "entries": [
+        {
+          "ordinal": 1,
+          "resource_id": "11111111-1111-4111-8111-111111111111",
+          "payload": {
+            "last_change_seq": 7,
+            "user_id": "11111111-1111-4111-8111-111111111111"
+          },
+          "canonical_payload": "{\"last_change_seq\":7,\"user_id\":\"11111111-1111-4111-8111-111111111111\"}"
+        }
+      ],
+      "next_cursor": null
+    }
+  ]
+}

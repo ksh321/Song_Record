@@ -1,6 +1,7 @@
 package com.ksh321.songrecord.api.sync;
 
 import com.ksh321.songrecord.api.auth.AccountAccess;
+import com.ksh321.songrecord.api.idempotency.CanonicalRequest;
 import com.ksh321.songrecord.api.web.ApiException;
 import java.nio.ByteBuffer;
 import java.time.*;
@@ -43,7 +44,8 @@ public final class SnapshotQueries {
         var body=new LinkedHashMap<String,Object>();
         body.put("snapshot_token",id.toString());body.put("snapshot_cursor",page.snapshotCursor());
         body.put("expires_at",page.expiresAt().toString());body.put("entity",entity.name());
-        body.put("entries",page.entries().stream().map(entry->Map.of("ordinal",entry.ordinal(),"resource_id",entry.resourceId().toString(),"payload",json.readTree(entry.payload()))).toList());
+        body.put("entries",page.entries().stream().map(entry->Map.of("ordinal",entry.ordinal(),"resource_id",entry.resourceId().toString(),
+                "payload",json.readTree(entry.payload()),"canonical_payload",CanonicalRequest.canonical(entry.payload()))).toList());
         body.put("next_cursor",page.nextCursor());
         return new Reply(200,Collections.unmodifiableMap(body));
     }
