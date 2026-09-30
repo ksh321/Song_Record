@@ -10,12 +10,29 @@ import 'package:song_record/core/database/account_paths.dart';
 import 'package:song_record/core/database/account_store.dart';
 import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/sync/dependency_planner.dart';
+import 'package:song_record/core/sync/metadata_dispatcher.dart';
 import 'package:song_record/core/sync/mutation_request.dart';
+import 'package:song_record/core/sync/mutation_transport.dart';
+import 'package:song_record/features/auth/auth_session.dart';
 
 String uid(int n) =>
     '00000000-0000-4000-8000-${n.toRadixString(16).padLeft(12, '0')}';
 
 const timestamp = '2026-09-29T00:00:00Z';
+
+final class ReceiptTransport implements MutationTransport {
+  ReceiptTransport(this.respond);
+  final Future<MutationResponse> Function(MutationRequest) respond;
+  @override
+  Future<MutationResponse> send(
+    MutationRequest request,
+    AuthSession session,
+    void Function() requireActive,
+  ) {
+    requireActive();
+    return respond(request);
+  }
+}
 
 Map<String, Object?> song(String id, {int revision = 2}) => {
   'id': id,
@@ -46,6 +63,15 @@ void main() {
   late AccountStoreManager manager;
   late AccountStore store;
   void Function()? onClock;
+
+  Future<AuthSession> session() async => AuthSession(
+    userId: owner,
+    deviceId: uid(2),
+    accessToken: 'test-access',
+    refreshToken: 'test-refresh',
+    accessExpiresAt: DateTime.now().add(const Duration(hours: 1)),
+    refreshExpiresAt: DateTime.now().add(const Duration(days: 1)),
+  );
 
   MutationResponse receipt() => MutationResponse(
     200,
@@ -401,6 +427,124 @@ void main() {
     await manager.logout();
     await directory.delete(recursive: true);
   });
+
+  test(
+    'dispatcher maps receipt before next claim and preserves held edits',
+    () async {
+      await saveSource();
+      await saveSongPatch(source, uid(111), 0);
+      await saveUnrelatedTag();
+      final before = await tables();
+      final sent = <String>[];
+      final dispatcher = MetadataDispatcher(
+        store,
+        ReceiptTransport((request) async {
+          sent.add(request.mutation.opId);
+          if (request.mutation.opId == createOp) return receipt();
+          expect(request.mutation.opId, uid(800));
+          return MutationResponse(
+            201,
+            jsonEncode({
+              'id': uid(80),
+              'name': 'unrelated',
+              'revision': 1,
+              'archived_at': null,
+              'updated_at': timestamp,
+            }),
+          );
+        }),
+        session,
+      );
+      expect(await dispatcher.dispatch(), 2);
+      expect(sent, [createOp, uid(800)]);
+      final after = await tables();
+      expect(
+        rows(after, 'song_aliases').single['receipt_body'],
+        receipt().body,
+      );
+      expect(rows(after, 'canonical_edit_intents'), isNotEmpty);
+      final original = rows(before, 'local_mutations');
+      final current = rows(after, 'local_mutations');
+      for (final old in original.where((row) => row['op_id'] == uid(111))) {
+        expect(current.singleWhere((row) => row['op_id'] == old['op_id']), old);
+      }
+      expect(
+        current.singleWhere((row) => row['op_id'] == createOp)['queue_state'],
+        'ACKED',
+      );
+      expect(
+        rows(
+          after,
+          'metadata_copies',
+        ).singleWhere((row) => row['entity_id'] == source),
+        rows(
+          before,
+          'metadata_copies',
+        ).singleWhere((row) => row['entity_id'] == source),
+      );
+      expect(rows(after, 'mutation_mapping_holds').single['op_id'], uid(111));
+      expect(await dispatcher.dispatch(), 0);
+      expect(sent, [createOp, uid(800)]);
+    },
+  );
+
+  for (final scenario in [
+    'wrong-status',
+    'bad-envelope',
+    'manual',
+    'same-id',
+  ]) {
+    test('dispatcher preserves source for $scenario receipt', () async {
+      await saveSource();
+      final before = await tables();
+      final snapshot = song(scenario == 'same-id' ? source : canonical);
+      if (scenario == 'manual') {
+        snapshot['source_type'] = 'MANUAL';
+        snapshot['tj_number'] = null;
+      }
+      final response = MutationResponse(
+        scenario == 'wrong-status' ? 201 : 200,
+        jsonEncode({
+          'created': false,
+          'canonical_song_id': scenario == 'bad-envelope'
+              ? uid(99)
+              : snapshot['id'],
+          'song': snapshot,
+        }),
+      );
+      final dispatcher = MetadataDispatcher(
+        store,
+        ReceiptTransport((_) async => response),
+        session,
+      );
+      expect(await dispatcher.dispatch(), 0);
+      final after = await tables();
+      expect(after['song_aliases'], isEmpty);
+      expect(after['canonical_edit_intents'], isEmpty);
+      expect(after['metadata_copies'], before['metadata_copies']);
+      final mutation = (await store.pendingMutations()).single;
+      expect(mutation.state, scenario == 'same-id' ? 'CONFLICT' : 'RETRY');
+      expect(mutation.attemptCount, 1);
+    });
+  }
+
+  test(
+    'dispatcher cannot map an attempt superseded during transport',
+    () async {
+      await saveSource();
+      final dispatcher = MetadataDispatcher(
+        store,
+        ReceiptTransport((request) async {
+          await store.deferMutation(request, 'RETRY', 'TEST_SUPERSEDED');
+          return receipt();
+        }),
+        session,
+      );
+      expect(await dispatcher.dispatch(), 0);
+      expect((await tables())['song_aliases'], isEmpty);
+      expect((await store.pendingMutations()).single.state, 'RETRY');
+    },
+  );
 
   test(
     'atomic mapping preserves drafts, wire, budgets, files and evidence',

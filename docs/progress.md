@@ -18,12 +18,12 @@
 
 | 구분 | 최신 상태와 근거 |
 |---|---|
-| 확인한 제품 Git | 제품 EXPORT `bf2ce110c9ae13bf6fd19bbb329319c2c102998e` 필수 CI4 PASS. 운영 코드 `2d6e8178d0e88f0dff6e835c85145a5cc647757c` 일반 push 완료, 필수 CI2 PASS/2 실행 중. 후속 상태 기록 커밋은 Git HEAD로 식별 |
+| 확인한 제품 Git | 제품 EXPORT `bf2ce110c9ae13bf6fd19bbb329319c2c102998e` 필수 CI4 PASS. 운영 변경 `6e18956` 필수 CI4 PASS(36666841877/854/934/946). 현재 제품 변경은 아래 CONNECT 미커밋 범위 |
 | 기존 기능 완료 기준 | `eef028dddea87cb0ad02d733808658512dffe431`까지 사용자 검증 완료. P05-08·P06 포함, 문서 부족만으로 되돌리지 않음 |
 | 현재 구현 완료 지점 | P09-07b-C1/D06, P10-02b 해당 메타데이터 범위, WORKFLOW-07, P10-04a v4, P10-04b-DECODER/ATOMIC/GATE. GATE 90 테스트·분석·Astra/xhigh 재검수·정확 SHA CI 통과. 전체 P10-03/P10-04 완료 아님 |
-| 현재 작업 | EXPORT 별도 검수/커밋/푸시/정확 SHA 필수 CI 완료. WORKFLOW-08: 실제 작업 선택·차단·종료 검사 및 알림 필수 안내 검증 코드 보완, 19 Python/90 PS 검사 통과, Astra/ultra 최종 검수 PASS, 2d6e817 커밋·push 완료, 필수 CI 결과 대기 |
-| 작업 중 변경 | EXPORT 제품 4파일은 bf2ce11에 분리 커밋. WORKFLOW-08 문서/알림/선택기/테스트는 2d6e817에 커밋·push. 이후 사실 기록만 후속 문서 커밋. 사용자 기존 변경 보존 |
-| 다음 실행 | EXPORT 별도 검수 후 커밋·push·정확 SHA CI. 이후 receipt 송신 연결/개인 편집 보존을 의존 순서로 진행. 별도 package 실기 하네스는 SDK handshake·실제 앱 격리 근거 확인부터 |
+| 현재 작업 | P10-04b-CONNECT: 검증된 canonical receipt를 기존 원자 보존 트랜잭션에 연결. EXPORT/GATE 선행 완료 근거로 선정. 현재 모델 직접 구현·회귀 검증·코드 검토 중 |
+| 작업 중 변경 | metadata_dispatcher 연결 및 AccountStore 주석, canonical_song_store_test의 송신 통합 회귀. 기존 사용자 미커밋 변경은 시작 시 없음. 커밋/CI 전이며 전체 완료 아님 |
+| 다음 실행 | CONNECT 영향 테스트·현재 모델 코드 검토→커밋/push→정확 SHA 필수 CI. 이후 작업 선택기로 남은 독립/후속 단계 선정. 과거 EXPORT 재검수·자료 전달 승인 요청은 재실행하지 않음 |
 | 실제 차단 | 새 Codex 자료 전달 권한 차단은 절차 폐기로 해제. 실행 환경·필수 CI·실제 기능 선행만 개별 판정. USER020 요청 취소, 현재 직접 사용자 조작 없음 |
 | 실행 환경 | 실행별 socket 경로 옵션으로 APK 빌드 성공. 새 격리 DB/API 준비·health UP, 원래 DB V1/볼륨 보존. 기존 환경 실패 횟수 유지. 새 APK는 2e6bd88 기준으로 고정·새 설치 성공, 현재 HEAD 빌드로 혼동 금지 |
 

@@ -434,8 +434,8 @@ final class AccountStore {
     }),
   );
 
-  /// Mapper API only. The dispatcher must not call this until mapping holds
-  /// participate in dispatch eligibility and claim fencing.
+  /// Atomically maps a validated receipt with attempt fencing. Mapping holds
+  /// participate in dispatch eligibility before the next mutation is claimed.
   ///
   /// true: committed a new mapping.
   /// false: no longer owns this attempt, including an already applied receipt.

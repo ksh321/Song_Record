@@ -7,7 +7,7 @@ import 'metadata_response.dart';
 import 'mutation_request.dart';
 import 'mutation_transport.dart';
 
-/// One bounded pass; retry scheduling, rebasing and canonical mapping are later steps.
+/// One bounded pass, including atomic canonical mapping; no automatic rebasing.
 final class MetadataDispatcher {
   MetadataDispatcher(this.store, this.transport, this.session);
   final AccountStore store;
@@ -66,13 +66,22 @@ final class MetadataDispatcher {
         if (response.status == 200 || response.status == 201) {
           final snapshot = decodeMetadataSnapshot(request, response);
           if (snapshot['id'] != request.mutation.entityId) {
-            await store.deferMutation(
-              request,
-              'CONFLICT',
-              'CANONICAL_MAPPING_REQUIRED',
-              status: response.status,
-              serverSnapshot: snapshot,
-            );
+            if (request.mutation.entity == LocalEntity.song &&
+                request.mutation.operation == LocalOperation.create) {
+              // The store validates the raw receipt again and fences this
+              // attempt inside the same transaction as references and holds.
+              if (await store.applyCanonicalSongReceipt(request, response)) {
+                acknowledged++;
+              }
+            } else {
+              await store.deferMutation(
+                request,
+                'CONFLICT',
+                'CANONICAL_MAPPING_REQUIRED',
+                status: response.status,
+                serverSnapshot: snapshot,
+              );
+            }
           } else if (request.mutation.operation == LocalOperation.create &&
               response.status == 200) {
             await store.deferMutation(

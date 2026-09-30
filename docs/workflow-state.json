@@ -1519,9 +1519,9 @@
       "writes": [
         "apps/mobile/lib/core/sync/metadata_dispatcher.dart"
       ],
-      "state": "pending",
+      "state": "active",
       "owner": "현재 작업 AI",
-      "resume": "EXPORT 필수CI 확인 후 현재 모델이 직접 구현·코드 검토·영향 검증. USER020 요청 취소"
+      "resume": "dispatcher 원자 매핑 연결 적용 중. 실제 SQLite 회귀 테스트→현재 모델 코드 검토→커밋/push/정확 SHA CI. USER020 요청 취소"
     },
     {
       "id": "P10-02-NEXT",
