@@ -1,5 +1,7 @@
 # P10-03b — 동기화 실행 연결과 수동 화면 (진행 중)
 
+2026-09-30 최신 실기 준비: 고정 2e6bd88 dev 1.0.0+1 설치 완료, Google/Kakao 로그인 모두 사용자 성공 확인. 아래 빌드 설정 미확보·로그인 준비 대기는 과거 이력이다. USER-018 새 화면 표시/Android 홈 이탈·복귀만 요청했다. 빈 큐 결과를 실제 송신/수동 접수 검증으로 확대하지 않는다. 자동 시간 동기화는 별도 환경 미해결.
+
 최신 운영 판정: **사용자 수동 보완 후 별도 Astra/ultra 검수에서 기존 P2 해소·추가 차단 결함 없음**. 과거 누적 실패 6회·최대 수준 실패 3회는 보존한다. 사용자 직접 수정 후 명시적인 별도 검수 요청으로 재개한 것이며 자동 추가 Worker 시도가 아니다. 요청 Standard/default·Fast 끔과 실제 runtime tier 미확인을 구분한다. 코드 커밋/필수 CI와 새 폰 실기는 별도 판정한다.
 
 사용자 실행 근거: 사용자가 Patch applied / +73 All tests passed / No issues found / Validation passed를 보고했고 master가 저장된 두 로그와 실제 코드를 대조했다. 지연된 401/403 × foreground/enabled 이탈·복귀 4개 회귀가 전송 1회·항목별 attempt `[1,0]`·예약 0회를 확인한다. RepositorySyncBackend의 automaticFollowupAllowed가 controller finally까지 전달돼 해당 회차의 queued wake를 억제한다. 명시적 수동 권한/DB 예산은 유지한다. 사용자 직접 실행은 PC 자동 테스트이며 폰 실기 완료가 아니다.
@@ -66,3 +68,6 @@ P10-04 core 보존 설계는 이 대기와 독립적으로 진행한다. 파일�
 대상 커밋 a5d0e4423e84e804d9b2552d0bea4f9ad7556381 일반 push 완료. 별도 Astra/ultra 검수는 지연 401/403 × foreground/enabled 전환의 4회귀에서 전송 1회·attempt [1,0]·예약 0을 확인하고 추가 차단 없음으로 판정했다. 저장된 사용자 실행 로그는 73 통과·분석 문제 없음이며 폰 실기로 확대하지 않는다. 해당 SHA 필수 CI 4개 모두 success: [CI 36568514644](https://github.com/ksh321/Song_Record/actions/runs/36568514644), API 36568514544, Idempotency MySQL 36568514568, Development workflow 36568514512. 각 필수 job도 모두 success.
 
 실기 준비 요청 ntfy 서버 접수 확인. 이후 사용자는 USB 연결만 답했고 실제 device를 확인했다. 기존 로그인 설정 경로는 미확인이다. 새 빌드 없이 오래된 설치 앱을 이번 변경 실기 근거로 쓰지 않는다.
+
+
+USER-018 결과: “대기 중인 정보가 없어요 뜨고 다 정상 작동”. 현재 설치 2e6bd88 dev의 빈 큐 화면·상태 확인·Android 홈 이탈/복귀 정상 사용자 확인. 비어 있지 않은 큐 송신·수동 접수·계정 격리 실기로 확대하지 않는다. 해당 새 변경 영향의 남은 fixture 준비/검증은 workflow-state의 P10-03b-FIXTURE/P10-03b-PHONE-QUEUE에서 추적하며 사용자 할 일에는 준비 후 실제 필요한 조작만 올린다.

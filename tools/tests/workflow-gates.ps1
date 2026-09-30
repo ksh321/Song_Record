@@ -117,19 +117,51 @@ try {
     Assert-Equal $global:SongRecordTestHttpCalls $before 'locked sender never calls HTTP'
 } finally { $held.Dispose() }
 $global:SongRecordTestHttpFail=$false
-"### USER-099 — synthetic escalation`n- 상태: **확인 필요**`n- 작업 ID: WORKFLOW-02`n- 요청 판본: 1`n- 알림 종류: Escalation`n- 알림 행동: Details`n" | Set-Content (Join-Path $fixture '내가할일.md')
+New-Item -ItemType Directory -Force (Join-Path $fixture 'docs/verification') | Out-Null
+$recordFile=Join-Path $fixture 'docs/verification/user-action-records.md'
+"- [ ] USER-099 — WORKFLOW-02: synthetic escalation`n  - 준비: fixture`n  - 순서: synthetic`n  - 정상 결과: expected`n  - AI에게 알려줄 결과: result" | Set-Content (Join-Path $fixture '내가할일.md')
+"### USER-099 — synthetic escalation`n- 상태: **확인 필요**`n- 작업 ID: WORKFLOW-02`n- 요청 판본: 1`n- 알림 종류: Escalation`n- 알림 행동: Details`n" | Set-Content $recordFile
 $global:SongRecordTestTitle='WORKFLOW-02 USER-099'
 & $sender -Mode Send -Kind Escalation -ItemId USER-099 -BeforeModel Sol -BeforeReasoning high -AfterReasoning ultra -FailureCode SchedulerRecovery
 Assert-Equal ($global:SongRecordTestMessage -match 'Sol/high.*Astra/ultra') $true 'escalation models included'
 Assert-Equal ($global:SongRecordTestMessage -match '복귀 후 재시도 예약 문제.*판단 필요') $true 'failure and requested action included'
 Assert-Equal ((Get-Content (Join-Path $phoneDir 'receipt.json') -Raw|ConvertFrom-Json).status) 'SERVER_ACCEPTED' 'escalation acceptance not receipt'
 $before=$global:SongRecordTestHttpCalls
-$failed=$false
-try { & $sender -Mode Send -ItemId USER-001 -Kind Intervention -Action LoginSetup } catch { $failed=$true }
-Assert-Equal $failed $true 'document must exist before item notification'
+@{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='NOT_SENT'}|ConvertTo-Json|Set-Content $attemptFile
+$reason=''
+try { & $sender -Mode Send -ItemId USER-001 -Kind Intervention -Action LoginSetup } catch { $reason=$_.Exception.Message }
+Assert-Equal $reason 'Expected exactly one unchecked user action before notifying.' 'document must exist before item notification'
 Assert-Equal $global:SongRecordTestHttpCalls $before 'missing document does not call HTTP'
 $itemText="### USER-001 — synthetic request`n- 상태: **확인 필요**`n- 작업 ID: WORKFLOW-02`n- 요청 판본: 1`n- 알림 종류: Intervention`n- 알림 행동: LoginSetup`n"
-$itemText | Set-Content (Join-Path $fixture '내가할일.md')
+$itemText | Set-Content $recordFile
+# Stale metadata alone must not authorize a notification after a user replies.
+$sampleTodo="- [ ] USER-001 — WORKFLOW-02: synthetic request`n  - 준비: fixture`n  - 순서: synthetic`n  - 정상 결과: expected`n  - AI에게 알려줄 결과: result"
+foreach($todoText in @('현재 직접 할 일 없음', $sampleTodo.Replace('[ ]','[x]'), "$sampleTodo`n$sampleTodo")) {
+    @{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='NOT_SENT'}|ConvertTo-Json|Set-Content $attemptFile
+    $todoText | Set-Content (Join-Path $fixture '내가할일.md')
+    $reason=''
+    try { & $sender -Mode Send -ItemId USER-001 -Kind Intervention -Action LoginSetup } catch { $reason=$_.Exception.Message }
+    Assert-Equal $reason 'Expected exactly one unchecked user action before notifying.' 'absent completed or duplicate checklist item refused for correct reason'
+    Assert-Equal $global:SongRecordTestHttpCalls $before 'invalid checklist never calls HTTP'
+}
+$validTodo="- [ ] USER-001 — WORKFLOW-02: synthetic request`n  - 준비: fixture`n  - 순서: synthetic`n  - 정상 결과: expected`n  - AI에게 알려줄 결과: result"
+$invalidCases=@(
+    @($validTodo.Replace('WORKFLOW-02','WORKFLOW-03'), 'User action title must include the matching task ID.'),
+    @($validTodo.Replace('WORKFLOW-02:','WORKFLOW-03: WORKFLOW-02 reference'), 'User action title must include the matching task ID.')
+)
+foreach($label in @('준비','순서','정상 결과','AI에게 알려줄 결과')) {
+    $invalidCases += ,@(($validTodo -replace "(?m)^  - $([regex]::Escape($label)): [^`r`n]*", ''), "User action is missing required guidance: $label")
+}
+foreach ($case in $invalidCases) {
+    @{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='NOT_SENT'}|ConvertTo-Json|Set-Content $attemptFile
+    $case[0] | Set-Content (Join-Path $fixture '내가할일.md')
+    $reason=''
+    try { & $sender -Mode Send -ItemId USER-001 -Kind Intervention -Action LoginSetup } catch { $reason=$_.Exception.Message }
+    Assert-Equal $reason $case[1] 'specific guidance error not cooldown or other failure'
+    Assert-Equal $global:SongRecordTestHttpCalls $before 'invalid guidance never sends HTTP'
+}
+$validTodo | Set-Content (Join-Path $fixture '내가할일.md')
+
 @{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='NOT_SENT'}|ConvertTo-Json|Set-Content $attemptFile
 $global:SongRecordTestTitle='WORKFLOW-02 USER-001'
 $failed=$false
@@ -149,27 +181,41 @@ $failed=$false
 try { & $sender -Mode Send -ItemId USER-001 -Revision 2 -Kind Intervention -Action LoginSetup } catch { $failed=$true }
 Assert-Equal $failed $true 'unrecorded revision rejected'
 Assert-Equal $global:SongRecordTestHttpCalls $before 'unrecorded revision does not call HTTP'
-$itemText.Replace('요청 판본: 1','요청 판본: 2') | Set-Content (Join-Path $fixture '내가할일.md')
-$failed=$false
-try { & $sender -Mode Send -ItemId USER-001 -Revision 2 -Kind Intervention -Action LoginSetup } catch { $failed=$true }
-Assert-Equal $failed $true 'revision change reason required'
-($itemText.Replace('요청 판본: 1','요청 판본: 2')+"- 변경 이유: synthetic target change`n") | Set-Content (Join-Path $fixture '내가할일.md')
+$itemText.Replace('요청 판본: 1','요청 판본: 2') | Set-Content $recordFile
+$reason=''
+try { & $sender -Mode Send -ItemId USER-001 -Revision 2 -Kind Intervention -Action LoginSetup } catch { $reason=$_.Exception.Message }
+Assert-Equal $reason 'Record the pending state, matching task/revision and revision change reason before notifying.' 'revision change reason required specifically'
+Assert-Equal $global:SongRecordTestHttpCalls $before 'missing reason rejects before HTTP'
+(($itemText.Replace('요청 판본: 1','요청 판본: 2')+"- 변경 이유: synthetic target change`n").Replace("`n","`r`n")) | Set-Content $recordFile
 try { & $sender -Mode Send -ItemId USER-001 -Revision 2 -Kind Intervention -Action LoginSetup } catch { }
+Assert-Equal $global:SongRecordTestHttpCalls ($before+1) 'CRLF revision reason reaches HTTP exactly once'
 $before=$global:SongRecordTestHttpCalls
 @{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='NOT_SENT'}|ConvertTo-Json|Set-Content $attemptFile
 $failed=$false
 try { & $sender -Mode Send -ItemId USER-001 -Revision 2 -Kind Intervention -Action LoginSetup } catch { $failed=$true }
 Assert-Equal $failed $true 'uncertain item revision also remains deduplicated'
 Assert-Equal $global:SongRecordTestHttpCalls $before 'uncertain item never automatically resends'
+# Distinct request after uncertain delivery is not a retry of that request.
+@{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='UNKNOWN';task='WORKFLOW-02';kind='Intervention';item_id='USER-001';revision=2}|ConvertTo-Json|Set-Content $attemptFile
+$validTodo.Replace('USER-001','USER-002') | Set-Content (Join-Path $fixture '내가할일.md')
+$itemText.Replace('USER-001','USER-002') | Set-Content $recordFile
+$global:SongRecordTestTitle='WORKFLOW-02 USER-002'
+$global:SongRecordTestHttpFail=$false
+& $sender -Mode Send -ItemId USER-002 -Kind Intervention -Action LoginSetup
+Assert-Equal $global:SongRecordTestHttpCalls ($before+1) 'distinct request sends after uncertain previous item'
+$before=$global:SongRecordTestHttpCalls
+$validTodo | Set-Content (Join-Path $fixture '내가할일.md')
+$global:SongRecordTestTitle='WORKFLOW-02 USER-001'
 foreach($kind in @('Intervention','PhoneTest','Escalation')) {
     $failed=$false
     try { & $sender -Mode Send -Kind $kind } catch { $failed=$true }
     Assert-Equal $failed $true 'every user-action kind requires recorded item ID'
 }
-($itemText.Replace('확인 필요','완료').Replace('요청 판본: 1','요청 판본: 3')+"- 변경 이유: synthetic closed request`n") | Set-Content (Join-Path $fixture '내가할일.md')
-$failed=$false
-try { & $sender -Mode Send -ItemId USER-001 -Revision 3 -Kind Intervention -Action LoginSetup } catch { $failed=$true }
-Assert-Equal $failed $true 'completed item cannot trigger action notification'
+($itemText.Replace('확인 필요','완료').Replace('요청 판본: 1','요청 판본: 3')+"- 변경 이유: synthetic closed request`n") | Set-Content $recordFile
+@{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='NOT_SENT'}|ConvertTo-Json|Set-Content $attemptFile
+$reason=''
+try { & $sender -Mode Send -ItemId USER-001 -Revision 3 -Kind Intervention -Action LoginSetup } catch { $reason=$_.Exception.Message }
+Assert-Equal $reason 'Record the pending state, matching task/revision and revision change reason before notifying.' 'completed item rejects for recorded status'
 Assert-Equal $global:SongRecordTestHttpCalls $before 'rejected requests never call HTTP'
 Remove-Item Function:Invoke-RestMethod
 Remove-Variable SongRecordTestHttpCalls,SongRecordTestHttpFail,SongRecordTestMessage,SongRecordTestTitle -Scope Global

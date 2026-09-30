@@ -1,0 +1,1961 @@
+{
+  "schema": 1,
+  "baseline_head": "bf2ce110c9ae13bf6fd19bbb329319c2c102998e",
+  "facts": [
+    "workflow08.validated",
+    "export.reviewed",
+    "p10.remaining.analysis",
+    "export.integrated",
+    "workflow08.reviewed"
+  ],
+  "grants": [
+    "review.export",
+    "review.workflow08"
+  ],
+  "coverage": {
+    "P00-01": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P00-02": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P00-03": {
+      "disposition": "tracked",
+      "basis": "기존 기술 채택/사용자 확인 유지. D12 이용 조건 확인은 별도 잔여 범위; 2026-09-30 공식 FAQ 조사",
+      "units": [
+        "P00-03-TERMS"
+      ]
+    },
+    "P00-04": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P00-05": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P00-06": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P00-07": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P00-08": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P01-01": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P01-02": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P01-03": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P01-04": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P01-05": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P01-06": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P01-07": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P01-08": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P02-01": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P02-02": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P02-03": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P02-04": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P02-05": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P02-06": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P02-07": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P02-08": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P03-01": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P03-02": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P03-03": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P03-04": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P03-05": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P03-06": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P03-07": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P03-08": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P04-01": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P04-02": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P04-03": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P04-04": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P04-05": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P04-06": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P04-07": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P04-08": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P04-09": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P05-01": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P05-02": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P05-03": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P05-04": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P05-05": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P05-06": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P05-07": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P05-08": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P06-01": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P06-02": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P06-03": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P06-04": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P06-05": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P06-06": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P06-07": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P06-08": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P07-01": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P07-02": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P07-03": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P07-04": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P07-05": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P07-06": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P07-07": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P07-08": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P07-09": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P08-01": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P08-02": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P08-03": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P08-04": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P08-05": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P08-06": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P08-07": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P08-08": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P08-09": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P09-01": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P09-02": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P09-03": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P09-04": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P09-05": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P09-06": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P09-07": {
+      "disposition": "preserved_scope",
+      "basis": "기존 사용자 확인 유지 + P09-07b-C1 ace5703829cfdd5034fcbbdf0857b16147e88fb0 현재 HEAD 조상, 별도 검증 문서 최종 필수CI4 PASS. 오래된 AGENTS 대기 문구 정정; 새 미완료 보정 근거 없음."
+    },
+    "P09-08": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P10-01": {
+      "disposition": "preserved_scope",
+      "basis": "docs/progress.md 기존 커밋 기능 사용자 확인 및 개별 진행 기록 보존. 이 분류는 작업의 미구현 후속까지 완료로 확대하지 않음."
+    },
+    "P10-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P10-02-NEXT"
+      ]
+    },
+    "P10-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P10-03b-REMAINING",
+        "P10-03b-FIXTURE",
+        "P10-03b-PHONE-QUEUE"
+      ]
+    },
+    "P10-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "EXPORT-REVIEW",
+        "P10-04b-CONNECT"
+      ]
+    },
+    "P10-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P10-05-NEXT"
+      ]
+    },
+    "P10-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P10-06-NEXT"
+      ]
+    },
+    "P10-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P10-07-NEXT"
+      ]
+    },
+    "P10-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P10-08-NEXT"
+      ]
+    },
+    "P10-09": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P10-09-NEXT"
+      ]
+    },
+    "P10-10": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P10-10-NEXT"
+      ]
+    },
+    "P11-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P11-PHASE"
+      ]
+    },
+    "P11-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P11-PHASE"
+      ]
+    },
+    "P11-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P11-PHASE"
+      ]
+    },
+    "P11-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P11-PHASE"
+      ]
+    },
+    "P11-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P11-PHASE"
+      ]
+    },
+    "P11-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P11-PHASE"
+      ]
+    },
+    "P11-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P11-PHASE"
+      ]
+    },
+    "P11-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P11-PHASE"
+      ]
+    },
+    "P11-09": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P11-PHASE"
+      ]
+    },
+    "P12-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P12-PHASE"
+      ]
+    },
+    "P12-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P12-PHASE"
+      ]
+    },
+    "P12-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P12-PHASE"
+      ]
+    },
+    "P12-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P12-PHASE"
+      ]
+    },
+    "P12-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P12-PHASE"
+      ]
+    },
+    "P12-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P12-PHASE"
+      ]
+    },
+    "P12-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P12-PHASE"
+      ]
+    },
+    "P12-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P12-PHASE"
+      ]
+    },
+    "P12-09": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P12-PHASE"
+      ]
+    },
+    "P12-10": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P12-PHASE"
+      ]
+    },
+    "P12-11": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P12-PHASE"
+      ]
+    },
+    "P12-12": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P12-PHASE"
+      ]
+    },
+    "P13-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P13-PHASE"
+      ]
+    },
+    "P13-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P13-PHASE"
+      ]
+    },
+    "P13-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P13-PHASE"
+      ]
+    },
+    "P13-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P13-PHASE"
+      ]
+    },
+    "P13-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P13-PHASE"
+      ]
+    },
+    "P13-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P13-PHASE"
+      ]
+    },
+    "P13-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P13-PHASE"
+      ]
+    },
+    "P13-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P13-PHASE"
+      ]
+    },
+    "P13-09": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P13-PHASE"
+      ]
+    },
+    "P13-10": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P13-PHASE"
+      ]
+    },
+    "P14-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P14-PHASE"
+      ]
+    },
+    "P14-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P14-PHASE"
+      ]
+    },
+    "P14-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P14-PHASE"
+      ]
+    },
+    "P14-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P14-PHASE"
+      ]
+    },
+    "P14-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P14-PHASE"
+      ]
+    },
+    "P14-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P14-PHASE"
+      ]
+    },
+    "P14-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P14-PHASE"
+      ]
+    },
+    "P14-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P14-PHASE"
+      ]
+    },
+    "P15-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P15-PHASE"
+      ]
+    },
+    "P15-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P15-PHASE"
+      ]
+    },
+    "P15-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P15-PHASE"
+      ]
+    },
+    "P15-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P15-PHASE"
+      ]
+    },
+    "P15-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P15-PHASE"
+      ]
+    },
+    "P15-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P15-PHASE"
+      ]
+    },
+    "P15-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P15-PHASE"
+      ]
+    },
+    "P15-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P15-PHASE"
+      ]
+    },
+    "P16-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P16-PHASE"
+      ]
+    },
+    "P16-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P16-PHASE"
+      ]
+    },
+    "P16-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P16-PHASE"
+      ]
+    },
+    "P16-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P16-PHASE"
+      ]
+    },
+    "P16-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P16-PHASE"
+      ]
+    },
+    "P16-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P16-PHASE"
+      ]
+    },
+    "P16-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P16-PHASE"
+      ]
+    },
+    "P16-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P16-PHASE"
+      ]
+    },
+    "P17-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P17-PHASE"
+      ]
+    },
+    "P17-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P17-PHASE"
+      ]
+    },
+    "P17-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P17-PHASE"
+      ]
+    },
+    "P17-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P17-PHASE"
+      ]
+    },
+    "P17-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P17-PHASE"
+      ]
+    },
+    "P17-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P17-PHASE"
+      ]
+    },
+    "P17-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P17-PHASE"
+      ]
+    },
+    "P17-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P17-PHASE"
+      ]
+    },
+    "P18-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P18-PHASE"
+      ]
+    },
+    "P18-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P18-PHASE"
+      ]
+    },
+    "P18-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P18-PHASE"
+      ]
+    },
+    "P18-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P18-PHASE"
+      ]
+    },
+    "P18-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P18-PHASE"
+      ]
+    },
+    "P18-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P18-PHASE"
+      ]
+    },
+    "P18-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P18-PHASE"
+      ]
+    },
+    "P18-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P18-PHASE"
+      ]
+    },
+    "P18-09": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P18-PHASE"
+      ]
+    },
+    "P18-10": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P18-PHASE"
+      ]
+    },
+    "P19-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P19-PHASE"
+      ]
+    },
+    "P19-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P19-PHASE"
+      ]
+    },
+    "P19-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P19-PHASE"
+      ]
+    },
+    "P19-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P19-PHASE"
+      ]
+    },
+    "P19-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P19-PHASE"
+      ]
+    },
+    "P19-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P19-PHASE"
+      ]
+    },
+    "P19-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P19-PHASE"
+      ]
+    },
+    "P19-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P19-PHASE"
+      ]
+    },
+    "P19-09": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P19-PHASE"
+      ]
+    },
+    "P20-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P20-PHASE"
+      ]
+    },
+    "P20-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P20-PHASE"
+      ]
+    },
+    "P20-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P20-PHASE"
+      ]
+    },
+    "P20-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P20-PHASE"
+      ]
+    },
+    "P20-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P20-PHASE"
+      ]
+    },
+    "P20-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P20-PHASE"
+      ]
+    },
+    "P20-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P20-PHASE"
+      ]
+    },
+    "P20-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P20-PHASE"
+      ]
+    },
+    "P20-09": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P20-PHASE"
+      ]
+    },
+    "P20-10": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P20-PHASE"
+      ]
+    },
+    "P21-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P21-PHASE"
+      ]
+    },
+    "P21-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P21-PHASE"
+      ]
+    },
+    "P21-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P21-PHASE"
+      ]
+    },
+    "P21-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P21-PHASE"
+      ]
+    },
+    "P21-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P21-PHASE"
+      ]
+    },
+    "P21-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P21-PHASE"
+      ]
+    },
+    "P21-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P21-PHASE"
+      ]
+    },
+    "P21-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P21-PHASE"
+      ]
+    },
+    "P21-09": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P21-PHASE"
+      ]
+    },
+    "P22-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P22-PHASE"
+      ]
+    },
+    "P22-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P22-PHASE"
+      ]
+    },
+    "P22-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P22-PHASE"
+      ]
+    },
+    "P22-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P22-PHASE"
+      ]
+    },
+    "P22-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P22-PHASE"
+      ]
+    },
+    "P22-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P22-PHASE"
+      ]
+    },
+    "P22-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P22-PHASE"
+      ]
+    },
+    "P22-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P22-PHASE"
+      ]
+    },
+    "P22-09": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P22-PHASE"
+      ]
+    },
+    "P22-10": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P22-PHASE"
+      ]
+    },
+    "P22-11": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P22-PHASE"
+      ]
+    },
+    "P23-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P23-PHASE"
+      ]
+    },
+    "P23-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P23-PHASE"
+      ]
+    },
+    "P23-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P23-PHASE"
+      ]
+    },
+    "P23-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P23-PHASE"
+      ]
+    },
+    "P23-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P23-PHASE"
+      ]
+    },
+    "P23-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P23-PHASE"
+      ]
+    },
+    "P23-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P23-PHASE"
+      ]
+    },
+    "P23-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P23-PHASE"
+      ]
+    },
+    "P24-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P24-PHASE"
+      ]
+    },
+    "P24-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P24-PHASE"
+      ]
+    },
+    "P24-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P24-PHASE"
+      ]
+    },
+    "P24-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P24-PHASE"
+      ]
+    },
+    "P24-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P24-PHASE"
+      ]
+    },
+    "P24-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P24-PHASE"
+      ]
+    },
+    "P24-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P24-PHASE"
+      ]
+    },
+    "P24-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P24-PHASE"
+      ]
+    },
+    "P24-09": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P24-PHASE"
+      ]
+    },
+    "P24-10": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P24-PHASE"
+      ]
+    },
+    "P25-01": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P25-PHASE"
+      ]
+    },
+    "P25-02": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P25-PHASE"
+      ]
+    },
+    "P25-03": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P25-PHASE"
+      ]
+    },
+    "P25-04": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P25-PHASE"
+      ]
+    },
+    "P25-05": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P25-PHASE"
+      ]
+    },
+    "P25-06": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P25-PHASE"
+      ]
+    },
+    "P25-07": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P25-PHASE"
+      ]
+    },
+    "P25-08": {
+      "disposition": "tracked",
+      "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
+      "units": [
+        "P25-PHASE"
+      ]
+    }
+  },
+  "units": [
+    {
+      "id": "WORKFLOW-08-VALIDATE",
+      "action": "작업 선택기 회귀 테스트와 기존 자동화 검사 실행",
+      "requires": [],
+      "permissions": [],
+      "reads": [
+        "docs/workflow-state.json"
+      ],
+      "writes": [
+        "tools/select_work.py",
+        "tools/tests/test_work_selection.py"
+      ],
+      "state": "done",
+      "owner": "AI",
+      "resume": "선행 근거 확인 후 해당 단계 실행",
+      "evidence": "15 Python tests + 75 PowerShell cases PASS; stop gate exit1 on runnable work"
+    },
+    {
+      "id": "WORKFLOW-08-REVIEW",
+      "action": "한정 승인된 별도 검수 실행",
+      "requires": [
+        "workflow08.validated"
+      ],
+      "permissions": [
+        "review.workflow08"
+      ],
+      "reads": [
+        "tools",
+        "AGENTS.md",
+        "docs/development-workflow.md"
+      ],
+      "writes": [],
+      "state": "done",
+      "owner": "AI",
+      "resume": "Astra/xhigh 재검수 결과 수신; 수정 있으면 영향 검사",
+      "evidence": "Reviewer-20260930-120728-844 Astra/ultra PASS; prior fails5/max2 retained"
+    },
+    {
+      "id": "EXPORT-REVIEW",
+      "action": "진행 중인 EXPORT 독립 검수 결과 수신",
+      "requires": [],
+      "permissions": [
+        "review.export"
+      ],
+      "reads": [
+        "apps/mobile/lib/core/database/account_store.dart",
+        "apps/mobile/test"
+      ],
+      "writes": [],
+      "state": "done",
+      "owner": "AI",
+      "resume": "실행 session11645 결과 수신 및 지적 대조",
+      "evidence": "Reviewer-20260930-114320-226 Astra/high PASS, no P1/P2"
+    },
+    {
+      "id": "EXPORT-INTEGRATE",
+      "action": "검수 통과 변경만 커밋·푸시·정확 SHA CI",
+      "requires": [
+        "export.reviewed"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/database/account_store.dart",
+        "apps/mobile/test"
+      ],
+      "state": "done",
+      "owner": "AI",
+      "resume": "bf2ce110c9ae13bf6fd19bbb329319c2c102998e 필수 CI 남은 결과 확인",
+      "evidence": "bf2ce110c9ae13bf6fd19bbb329319c2c102998e pushed; required CI4 PASS 36661425538/541/501/550"
+    },
+    {
+      "id": "WORKFLOW-08-INTEGRATE",
+      "action": "운영 변경 검수 후 커밋·푸시·정확 SHA CI",
+      "requires": [
+        "workflow08.reviewed"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [
+        "tools",
+        "docs",
+        "AGENTS.md"
+      ],
+      "state": "active",
+      "owner": "AI",
+      "resume": "이 파일을 포함한 새 운영 커밋의 필수 CI4 결과 확인; 실패 시 해당 영향만 수정"
+    },
+    {
+      "id": "P10-REMAINING-ANALYZE",
+      "action": "P10-02/04/05~10 실제 코드와 원본 요구사항의 실행 가능한 분리 범위 분석",
+      "requires": [],
+      "permissions": [],
+      "reads": [
+        "apps/mobile/lib/core/sync",
+        "services/api/src/main/java",
+        "docs/reference/search/plan.txt"
+      ],
+      "writes": [],
+      "state": "done",
+      "owner": "AI",
+      "resume": "선행 근거 확인 후 해당 단계 실행",
+      "evidence": "plan p00576~p00604 + D09 + Java sync/controllers + V7 + mobile dispatcher/AccountStore static analysis; docs/verification/WORKFLOW-08-action-checklist.md"
+    },
+    {
+      "id": "P10-03b-REMAINING",
+      "action": "실제 큐 수동 접수/계정 영향의 남은 실기 필요 범위 결정",
+      "requires": [
+        "p10.remaining.analysis"
+      ],
+      "permissions": [],
+      "reads": [
+        "apps/mobile/lib/features/sync",
+        "apps/mobile/test"
+      ],
+      "writes": [],
+      "state": "done",
+      "owner": "AI",
+      "resume": "선행 근거 확인 후 해당 단계 실행",
+      "evidence": "USER018 empty queue screen/foreground pass only; nonempty queue/manual/account physical not executed; request deferred until fixture safe preparation",
+      "blocker": null
+    },
+    {
+      "id": "P10-04b-CONNECT",
+      "action": "canonical receipt를 dispatcher에 연결",
+      "requires": [
+        "export.integrated"
+      ],
+      "permissions": [
+        "worker.p10-04b-connect"
+      ],
+      "reads": [
+        "apps/mobile/lib/core/sync"
+      ],
+      "writes": [
+        "apps/mobile/lib/core/sync/metadata_dispatcher.dart"
+      ],
+      "state": "pending",
+      "owner": "사용자 승인 후 AI",
+      "resume": "USER020 해당 자료 전달 승인→Astra/high Worker→관련 검증→독립 Reviewer"
+    },
+    {
+      "id": "P10-02-NEXT",
+      "action": "원본 요구사항의 남은 구현·검증",
+      "requires": [
+        "p10.remaining.analysis"
+      ],
+      "permissions": [
+        "worker.p10-02-next"
+      ],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/sync"
+      ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+    },
+    {
+      "id": "P10-05-NEXT",
+      "action": "원본 요구사항의 남은 구현·검증",
+      "requires": [
+        "p10.remaining.analysis"
+      ],
+      "permissions": [
+        "worker.p10-05-next"
+      ],
+      "reads": [],
+      "writes": [
+        "services/api/src/main/java/com/ksh321/songrecord/api/sync"
+      ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+    },
+    {
+      "id": "P10-06-NEXT",
+      "action": "원본 요구사항의 남은 구현·검증",
+      "requires": [
+        "p10.remaining.analysis",
+        "p10.receiver"
+      ],
+      "permissions": [
+        "worker.p10-06-next"
+      ],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/sync"
+      ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+    },
+    {
+      "id": "P10-07-NEXT",
+      "action": "원본 요구사항의 남은 구현·검증",
+      "requires": [
+        "p10.remaining.analysis",
+        "p10.receiver"
+      ],
+      "permissions": [
+        "worker.p10-07-next"
+      ],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/sync"
+      ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+    },
+    {
+      "id": "P10-08-NEXT",
+      "action": "원본 요구사항의 남은 구현·검증",
+      "requires": [
+        "p10.remaining.analysis",
+        "p10.receiver"
+      ],
+      "permissions": [
+        "worker.p10-08-next"
+      ],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/sync"
+      ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+    },
+    {
+      "id": "P10-09-NEXT",
+      "action": "원본 요구사항의 남은 구현·검증",
+      "requires": [
+        "p10.remaining.analysis",
+        "p10.receiver"
+      ],
+      "permissions": [
+        "worker.p10-09-next"
+      ],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/sync"
+      ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+    },
+    {
+      "id": "P10-10-NEXT",
+      "action": "원본 요구사항의 남은 구현·검증",
+      "requires": [
+        "p10.remaining.analysis",
+        "p10.receiver"
+      ],
+      "permissions": [
+        "worker.p10-10-next"
+      ],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/sync"
+      ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "분리 범위 분석 후 필요 worker 권한을 작업별 구체화; USER-019 승인 확대 금지"
+    },
+    {
+      "id": "P11-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P07.complete",
+        "phase.P09.complete",
+        "phase.P10.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P12-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P07.complete",
+        "phase.P11.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P13-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P11.complete",
+        "phase.P12.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P14-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P02.complete",
+        "phase.P09.complete",
+        "phase.P12.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P15-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P00.complete",
+        "phase.P05.complete",
+        "phase.P08.complete",
+        "phase.P10.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P16-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P00.complete",
+        "phase.P05.complete",
+        "phase.P15.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P17-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P05.complete",
+        "phase.P08.complete",
+        "phase.P10.complete",
+        "phase.P11.complete",
+        "phase.P14.complete",
+        "phase.P15.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P18-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P02.complete",
+        "phase.P05.complete",
+        "phase.P09.complete",
+        "phase.P10.complete",
+        "phase.P14.complete",
+        "phase.P17.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P19-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P05.complete",
+        "phase.P08.complete",
+        "phase.P10.complete",
+        "phase.P15.complete",
+        "phase.P17.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P20-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P10.complete",
+        "phase.P13.complete",
+        "phase.P19.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P21-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P10.complete",
+        "phase.P14.complete",
+        "phase.P19.complete",
+        "phase.P20.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P22-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P08.complete",
+        "phase.P10.complete",
+        "phase.P20.complete",
+        "phase.P21.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P23-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P06.complete",
+        "phase.P13.complete",
+        "phase.P18.complete",
+        "phase.P20.complete",
+        "phase.P22.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P24-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P12.complete",
+        "phase.P13.complete",
+        "phase.P16.complete",
+        "phase.P20.complete",
+        "phase.P23.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P25-PHASE",
+      "action": "해당 단계 원본 세부 작업 구현",
+      "requires": [
+        "phase.P00.complete",
+        "phase.P01.complete",
+        "phase.P02.complete",
+        "phase.P03.complete",
+        "phase.P04.complete",
+        "phase.P05.complete",
+        "phase.P06.complete",
+        "phase.P07.complete",
+        "phase.P08.complete",
+        "phase.P09.complete",
+        "phase.P10.complete",
+        "phase.P11.complete",
+        "phase.P12.complete",
+        "phase.P13.complete",
+        "phase.P14.complete",
+        "phase.P15.complete",
+        "phase.P16.complete",
+        "phase.P17.complete",
+        "phase.P18.complete",
+        "phase.P19.complete",
+        "phase.P20.complete",
+        "phase.P21.complete",
+        "phase.P22.complete",
+        "phase.P23.complete",
+        "phase.P24.complete"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계획서 필수 선행 단계 완료 근거를 확인한 뒤 세부 작업으로 분리"
+    },
+    {
+      "id": "P10-03b-FIXTURE",
+      "state": "pending",
+      "action": "새 비어 있지 않은 큐 실기에 필요한 안전한 synthetic fixture 구현·검증",
+      "owner": "AI",
+      "resume": "계정 데이터 보존 범위와 별도 작업자 자료 전달 권한 확인 후 fixture 작성",
+      "reads": [
+        "apps/mobile/lib/core/database"
+      ],
+      "writes": [
+        "apps/mobile/test"
+      ],
+      "requires": [],
+      "permissions": [
+        "worker.p10-fixture"
+      ]
+    },
+    {
+      "id": "P10-03b-PHONE-QUEUE",
+      "state": "pending",
+      "action": "새 변경 수동 접수/계정 영향 중 자동 검증으로 대체 불가 범위만 실기",
+      "owner": "AI 준비 후 사용자",
+      "resume": "fixture 검증 후 정확 APK/절차를 새 사용자 항목으로 요청",
+      "reads": [],
+      "writes": [],
+      "requires": [
+        "p10.fixture.validated"
+      ],
+      "permissions": []
+    },
+    {
+      "id": "P00-03-TERMS",
+      "state": "pending",
+      "action": "캐시/보관/상업 앱 표시 범위의 제공자 근거 확보",
+      "owner": "AI가 문의 범위 작성 후 사용자 전송 승인/제공자",
+      "resume": "명시 이용조건 공개 또는 제공자 확인 근거 확보; 기존 기술 채택은 유지",
+      "reads": [
+        "docs/research/external-data.md"
+      ],
+      "writes": [],
+      "requires": [],
+      "permissions": [
+        "provider-contact"
+      ],
+      "blocker": "공식 FAQ 무료/호출제한 없음 외 캐시·재표시 범위 미확인. 공개문서 재검색 완료; 같은 검색 반복하지 않음"
+    }
+  ]
+}

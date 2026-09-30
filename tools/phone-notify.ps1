@@ -58,7 +58,21 @@ if ($ItemId) {
     if (-not (Test-Path $todo)) {
         throw 'Update the user action document before sending an item notification.'
     }
-    $sections=[regex]::Matches((Get-Content $todo -Raw), "(?ms)^### $ItemId —[^\r\n]*\r?\n(?<body>.*?)(?=^#{1,3} |\z)")
+    $active=[regex]::Matches((Get-Content $todo -Raw), "(?m)^- \[ \] $ItemId —[^\r\n]+\r?$")
+    if ($active.Count -ne 1) { throw 'Expected exactly one unchecked user action before notifying.' }
+    $todoText=Get-Content $todo -Raw
+    $taskTitlePattern="(?m)^- \[ \] $ItemId — $([regex]::Escape($TaskId)):[^\r\n]+\r?$"
+    if ($todoText -notmatch $taskTitlePattern) { throw 'User action title must include the matching task ID.' }
+    $actionSections=[regex]::Matches($todoText,"(?ms)^- \[ \] $ItemId —[^\r\n]*\r?\n(?<body>.*?)(?=^- \[[ x]\] USER-\d{3} —|\z)")
+    if ($actionSections.Count -ne 1) { throw 'Expected one user action section.' }
+    foreach ($label in @('준비','순서','정상 결과','AI에게 알려줄 결과')) {
+        if ($actionSections[0].Groups['body'].Value -notmatch "(?m)^  - $([regex]::Escape($label)): \S[^\r\n]*\r?$") {
+            throw "User action is missing required guidance: $label"
+        }
+    }
+    $records=Join-Path (Split-Path $PSScriptRoot -Parent) 'docs/verification/user-action-records.md'
+    if (-not (Test-Path $records)) { throw 'Record request metadata before notifying.' }
+    $sections=[regex]::Matches((Get-Content $records -Raw), "(?ms)^### $ItemId —[^\r\n]*\r?\n(?<body>.*?)(?=^#{1,3} |\z)")
     if ($sections.Count -ne 1) { throw 'Expected exactly one matching item in the user action document.' }
     $body=$sections[0].Groups['body'].Value
     if ($body -notmatch '(?m)^- 상태: \*\*확인 필요\*\*\s*$' -or
@@ -66,7 +80,7 @@ if ($ItemId) {
         $body -notmatch "(?m)^- 요청 판본: $Revision\s*$" -or
         $body -notmatch "(?m)^- 알림 종류: $Kind\s*$" -or
         $body -notmatch "(?m)^- 알림 행동: $Action\s*$" -or
-        ($Revision -gt 1 -and $body -notmatch '(?m)^- 변경 이유: \S[^\r\n]*$')) {
+        ($Revision -gt 1 -and $body -notmatch '(?m)^- 변경 이유: \S[^\r\n]*\r?$')) {
         throw 'Record the pending state, matching task/revision and revision change reason before notifying.'
     }
     $items=Join-Path $dir 'items'
@@ -77,7 +91,8 @@ if ($ItemId) {
 if (Test-Path $attempt) {
     $previous=Get-Content $attempt -Raw | ConvertFrom-Json
     if (([DateTime]::UtcNow-[DateTime]$previous.utc).TotalSeconds -lt 60) { throw 'Wait at least 60 seconds between notifications.' }
-    if ($previous.status -eq 'UNKNOWN' -and $previous.task -eq $TaskId -and $previous.kind -eq $Kind) {
+    if ($previous.status -eq 'UNKNOWN' -and $previous.task -eq $TaskId -and $previous.kind -eq $Kind -and
+        ((-not $ItemId) -or (-not $previous.item_id) -or ($previous.item_id -eq $ItemId -and $previous.revision -eq $Revision))) {
         throw 'Previous matching notification has unknown delivery. Check it with the user; do not automatically resend.'
     }
 }

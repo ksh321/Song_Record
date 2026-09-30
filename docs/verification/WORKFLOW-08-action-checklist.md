@@ -1,0 +1,51 @@
+# WORKFLOW-08 — 직접 할 일 목록 정리
+
+요구사항: 사용자 최신 지시에 따라 루트 내가할일.md를 직접 할 미완료 행동만 남기는 체크리스트로 바꾸고, 답변 수신 즉시 제거한다. 없으면 현재 직접 할 일 없음 한 줄이다.
+
+- 기존 USER-001~005 요청/답변 이력을 docs/verification/user-action-records.md로 보존했다. USER-005는 키 위치 모름 답변을 받았으므로 사용자 할 일에서 제거했다. 서명 차단/실기 미완료는 별도 유지한다.
+- AGENTS.md 및 development-workflow.md를 최신 규칙으로 통합했다. 외부 상담의 기술 자료는 작업별 검증 문서로 두고 실제 전달 행동이 필요한 때만 목록에 링크/방법을 둔다.
+- phone-notify.ps1은 체크리스트의 유일한 미체크 ID와 별도 기록의 상태/작업/판본/종류/행동을 모두 검사한다. 기존 중복·불확실 전송 차단을 보존한다.
+- 검증 명령: 번들 PowerShell 7의 tools/tests/workflow-gates.ps1. 결과 **75개 모의 검사 통과**. 완료/삭제/중복 체크박스가 남은 metadata만으로 알림을 보내지 못하는 6개 단언 추가. 실제 외부 HTTP는 mock이며 휴대폰 수신 근거가 아니다.
+- git diff --check 통과. 앱 제품 테스트를 이 문서 변경 때문에 반복하지 않았다.
+- 별도 작업자: Sol/medium 예정(명확한 스크립트 형식 변경). 호출은 자동 승인 심사에서 비공개 코드 외부 전달 사유로 **실행 전 거절**. 모델 실행/별도 검수 완료를 주장하지 않는다. 사용자에게 구체적 자료/대상을 USER-006으로 승인 요청했다. 코드 수정 실패 횟수가 아닌 권한 문제다.
+- 실제 USER-006 ntfy 1회 서버 접수 확인, 실제 휴대폰 수신 미확인. 반복 전송하지 않는다.
+- 대상 기준 HEAD: 5fd3e126c71dcedfd9598d9defbe0a98e772b614. 이번 변경은 미커밋이며 별도 검수·커밋·push·새 SHA CI 미완료. 기존 HEAD CI 4개 PASS를 새 변경에 확대하지 않는다.
+
+현재 재개: USER-006은 취소 상태를 유지한다. USER-019로 두 작업의 별도 Reviewer 자료 전달만 승인받았다. Worker와 다른 작업 전달에는 확대하지 않는다. EXPORT는 기존 Astra/high 작업안·69 통과/1 skip·분석 통과를 보존하며 별도 검수부터 재개한다. 실제 Git 변경과 프로세스를 먼저 확인한다.
+
+
+## 작업 선택 실행 절차 보완
+
+요구: 사용자 대기 중 독립 작업 계속. 실제 tools/select_work.py와 회귀 테스트 추가. 원본 작업 전체 coverage, 단계별 선행·권한·읽기/쓰기 충돌을 확인하고 실행 가능한 단계가 있으면 종료 검사 실패. 운영 문서의 취소된 USER-006 재개 지시와 철회된 리셋권 실행 절차 제거. 새 규칙 선언만 추가한 것이 아님. 검수는 변경 완성본과 실제 테스트 결과로 요청하며 아직 통과 전.
+
+
+## 전체 작업 선택 적용과 실제 분석
+
+원본 tasks.json 전체를 workflow-state.json coverage로 대응시켰다. 기존 사용자 확인 범위는 보존 분류이며 각 작업의 미구현 후속까지 완료시킨 것이 아니다. P10 전체 미완료, P11~P25는 plan p00159~p00236 필수 선행을 그대로 기록했다. 이미 구현된 스키마를 기능 완료로 취급하지 않는다.
+
+P10 남은 작업 원문 p00576~p00604와 실제 코드 분석 결과:
+- P10-02: dispatcher는 songs/recordings/tags 메타데이터 송신 일부. 목록·관계·파일 전체 전송 완료가 아니다.
+- P10-03b: USER018 빈 큐 화면/홈 복귀 정상 사용자 확인. 지연401/403+[1,0]은 기존 자동 회귀 근거, 비어 있는 실기로 중복 송신 없음/수동 접수 성공을 주장하지 않는다. 비어 있지 않은 큐 실기는 안전한 데이터 준비가 먼저이며 현재 사용자에게 추가 조작을 요청하지 않음.
+- P10-04: decoder/atomic/gate 구현·검수·CI 완료 근거가 있으나 metadata_dispatcher.dart는 여전히 다른 ID receipt를 CANONICAL_MAPPING_REQUIRED로 보관한다. EXPORT는 이번 별도 검수 PASS 및 분리 커밋 단계. 다음 실제 제품 변경은 receipt 연결로 선정한다.
+- P10-05: D09가 계정별 READY 사본·30분 TTL·동일 읽기뷰·부분 적용 금지를 이미 결정했다. V7 snapshot_header/entry 및 trigger는 존재하나 main Java에 snapshot engine/controller가 없고 OpenAPI에 /sync snapshot 경로도 미발견. 따라서 P10-04 폰 결과와 무관한 서버 구현 후보지만 인증/DB 위험 작업자 및 별도 검수 범위 승인이 필요하며 USER019 두 검수 승인으로 확대하지 않는다.
+- P10-06~09: AccountStore의 cursor/resume 저장 기반은 존재하나 전체 pull·충돌·만료 사본 교체 구현 증거는 없다. P10-05 수신 계약 및 보존 연결 이후 실제 구현으로 분리해야 한다.
+- P10-10: 전체 송수신/관계 보존 완료 후 통합 검증. 기존 사용자 검증 범위를 되돌리지 않음.
+
+실행: Python unittest discover 15 통과(선택기12+기존source3), PowerShell workflow-gates 75 모의 검사 통과. 모의 알림 출력은 실제 사용자 알림 수신 아님. select_work.py --check-stop은 실행 가능한 검증/분석이 남아 exit1로 종료 거절. 그 분석을 이번에 실제 수행했으며 동일 준비 분석 반복은 하지 않는다.
+
+현재 검수 전달: USER019는 EXPORT/WORKFLOW08 Reviewer만 승인. EXPORT Astra/high PASS. WORKFLOW08 Sol/high(권한·파일충돌·종료 판정 연결 복잡성) 별도 검수 실행 중. default/Standard·Fast off 요청, 실제 tier 미확인. 향후 제품 Worker나 다른 작업 전달은 미승인으로 유지.
+
+
+추가 독립 조사: P00-03의 기술 채택은 보존하되 D12의 공급자 이용 조건 확인은 미완료여서 coverage에서 별도 P00-03-TERMS로 연결했다. 2026-09-30 [공식 FAQ](https://api.manana.kr/)와 [노래 API](https://api.manana.kr/karaoke), 공식 사이트 내 license/terms/cache 검색을 실제 확인했다. FAQ에는 무료·호출 제한 없음 안내가 있으나 확인한 공개 페이지에서 앱 재표시/곡별 저장/장기 캐시 범위를 확정할 구체 조건은 찾지 못했다. 검색 미발견은 불허 판정이 아니다. 외부 메시지 전송/허가 확보는 하지 않았다. 이 조건은 차트 출시 근거이며 기존 앱 기능 검증을 되돌리지 않는다. 새 코드 작업과 무관한 공개 자료 읽기였고 새 Codex에 자료 전달하지 않았다.
+
+세 번째 WORKFLOW08 검수(Astra/xhigh Reviewer-20260930-115600-559): 다른 ItemId의 요청까지 이전 UNKNOWN으로 차단, 기존 부정 테스트 cooldown 거짓 양성 2 P2. 같은 항목/판본은 계속 중복 금지하면서 새 항목을 분리하고 정확 오류/HTTP 횟수로 회귀를 보완했다. PS89 및 Python18 통과. 누적3/최대0→Astra/ultra 첫 추가 검수(session79946)로 자동 상향. 코드 수정/검수 횟수는 환경 실패와 구분.
+
+
+최대 추론 추가1(Astra/ultra Reviewer-20260930-120108-543) P2 두 건: 작업별 grant 공유의 승인 확장 위험, 판본 사유/완료 상태 부정 검사의 다른 예외 통과 가능성. 모든 다음 작업 grant를 작업 ID별로 분리하고 CONNECT가 P10-05를 해제하지 않는 실제 state 회귀 추가. 부정 테스트는 정확 오류/즉시 HTTP 호출 불변을 검사. Python19/PS90 통과. 누적4/최대1 유지, 최대추론 추가2 session16442 진행.
+
+
+## 최종 검수 통과
+
+Astra/ultra 추가2는 오래된 AGENTS D06 미완료 문구와 실제 완료 상태 충돌을 지적했다. C1 ace5703829cfdd5034fcbbdf0857b16147e88fb0의 기존 필수CI4 PASS와 현재 HEAD 조상(exit0)을 확인하여 규칙만 정정했다. 새 D06 미완료 항목을 만들거나 기존 기능을 재구현하지 않았다.
+
+최대추론 추가3 Reviewer-20260930-120728-844 **PASS, P1/P2 없음**. 누적 보완5/최대2 이력은 유지. CLI Astra/ultra 확인, Standard/default·Fast off 요청, 실제 서버 tier 미확인. 최종 실제 검증 Python19·PS90 통과, diff --check 통과. 단순 source index3 + 선택기16이며 테스트 수는 실제 runner 출력 기준이다. 실제 ntfy USER019/020은 서버 접수, 사용자 수신은 추정하지 않음. 새 운영 커밋 SHA와 필수CI는 커밋 후 progress에 기록한다.
