@@ -112,11 +112,18 @@ class SelectionTests(unittest.TestCase):
         for u in state['units']:
             if u['state'] != 'done':
                 self.assertFalse(any(p.startswith(('worker.', 'review.')) for p in u['permissions']))
-        state['facts'] += ['export.integrated']
-        # File locks and actual dependencies still apply to direct work.
-        state['units'] = [u for u in state['units'] if u['state'] != 'active']
-        result = select(state, [r['id'] for r in planned])
+        # Validate the live inventory without deleting active units referenced
+        # by plan coverage. Runtime progress must not corrupt this fixture.
+        select(state, [r['id'] for r in planned])
+        connect = next(u.copy() for u in state['units'] if u['id'] == 'P10-04b-CONNECT')
+        connect['state'] = 'pending'
+        self.state['units'] = [connect]
+        self.state['facts'] = ['export.integrated']
+        result = self.result()
         self.assertIn('P10-04b-CONNECT', [r['id'] for r in result['ready']])
+        self.state['facts'] = []
+        self.assertEqual(self.result()['ready'], [])
+        self.assertIn('prerequisite: export.integrated', self.result()['blocked'][0]['reasons'])
 
 
 if __name__ == '__main__':

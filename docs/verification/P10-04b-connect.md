@@ -28,3 +28,5 @@ flutter analyze --no-pub
 ## 커밋/CI와 다음
 
 이 문서를 포함하는 CONNECT 커밋은 Git history로 식별한다. 현재 로컬 검증·코드 검토 통과, 커밋/push/정확 SHA CI 확인 전이다. CI 완료 근거는 후속 기록으로 추가한다. 전체 P10-04 완료가 아니며 개인 편집 선택/안전한 hold 해제 등 후속 계약은 남아 있다. 사용자 확인 대기 0건. 다음은 CI 진행 중에도 공유 파일이 겹치지 않는 P10-05의 서버 변경 조회 구현을 실제 코드/원본과 대조해 수행한다.
+
+후속 실제 결과: ab5dd8173c29456c9eab28d27b1bd93418cdc854 커밋/push. Development workflow run36667867244의 Check source provenance and failure handling 실패. 로컬 Python19 재현에서 기존 운영 테스트가 active 작업을 fixture에서 삭제해 coverage 참조 무결성을 깨는 ValueError 확인. 제품 테스트 실패가 아니다. 실제 inventory 검증을 유지하고 준비 상태는 격리 fixture로 검증하도록 수정, 선행 export.integrated 누락 시 차단 검사도 추가했다. Python19 재실행 통과. 테스트/CI 삭제·약화 없음. 보정 후 정확 SHA CI를 다시 확인한다. P10-05는 ‘초기 스냅샷’이며 증분 변경 조회(P10-06)와 구분한다.
