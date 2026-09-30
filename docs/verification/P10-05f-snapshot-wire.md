@@ -25,3 +25,5 @@ Flutter8 통과, 분석 No issues found. 서버15 통과(source12+HTTP3, 실패/
 로그: .local/workflow/p10-05-mobile-wire-test.log, p10-05-wire-server-test.log. 현재 로컬 검증·검토 완료, 커밋/정확 SHA CI는 후속 기록. 다음은 로컬 v5 비파괴 migration·영속 staging/재개·기존 미전송/파일 보존 원자 적용. 전체 P10-05 미완료.
 
 서버 API 계약 검사 목록 보완도 포함: ApiContractTests5 실제 통과. e의 CI 실패를 보완하기 위한 변경이며 다른 검사를 제거하지 않는다. 소스/HTTP15와 별도 실행한5를 혼동하지 않는다.
+
+커밋2b6a980877d07262b29b682f01e52033d06671af 일반 push. API contract36674755526/MySQL36674755535/workflow36674755472 PASS. CI36674755647은 Spring/MySQL job success를 확인했고 Flutter APK 생성 중이다. e에서 실패한 ApiContractTests는 서버 CI에서 해소됐다. 전체 CI는 아직 검증 대기.

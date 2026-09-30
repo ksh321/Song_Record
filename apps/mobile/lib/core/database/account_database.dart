@@ -18,7 +18,7 @@ class AccountDatabase extends _$AccountDatabase {
   final AppEnvironment environment;
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -37,7 +37,7 @@ class AccountDatabase extends _$AccountDatabase {
     // No destructive fallback. Every future version needs an explicit,
     // data-preserving migration and a checked-in schema snapshot.
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 3 || to != 4) {
+      if (from < 1 || from > 4 || to != 5) {
         throw StateError('Unsupported local schema migration: $from -> $to');
       }
       if (from < 2) {
@@ -74,32 +74,47 @@ class AccountDatabase extends _$AccountDatabase {
           WHERE queue_state IN ('PENDING','RETRY','SENDING')
         """);
       }
-      await migrator.createTrigger(mutationRowidImmutable);
-      await migrator.createTrigger(mutationHistoryNoReplace);
-      await migrator.createTrigger(mutationOrderPositive);
-      await migrator.createTrigger(mutationHistoryNoDelete);
-      await migrator.createTable(songAliases);
-      await migrator.createTable(mutationSupersessions);
-      await migrator.createTable(canonicalEditIntents);
-      await migrator.createTable(mutationMappingHolds);
-      await migrator.createIndex(songAliasDestination);
-      await migrator.createIndex(canonicalIntentTarget);
-      await migrator.createIndex(mutationMappingActiveHolds);
-      await migrator.createTrigger(songAliasValidInsert);
-      await migrator.createTrigger(songAliasNoUpdate);
-      await migrator.createTrigger(songAliasNoDelete);
-      await migrator.createTrigger(mutationSupersessionValidInsert);
-      await migrator.createTrigger(mutationSupersessionNoUpdate);
-      await migrator.createTrigger(mutationSupersessionNoDelete);
-      await migrator.createTrigger(supersededMutationNoClaim);
-      await migrator.createTrigger(canonicalIntentEvidenceImmutable);
-      await migrator.createTrigger(canonicalIntentNoDelete);
-      await migrator.createTrigger(mappingHoldReleaseOnly);
-      await migrator.createTrigger(mappingHoldNoDelete);
-      await migrator.createTrigger(songAliasNoReplace);
-      await migrator.createTrigger(mutationSupersessionNoReplace);
-      await migrator.createTrigger(canonicalIntentNoReplace);
-      await migrator.createTrigger(mappingHoldNoReplace);
+      if (from < 4) {
+        await migrator.createTrigger(mutationRowidImmutable);
+        await migrator.createTrigger(mutationHistoryNoReplace);
+        await migrator.createTrigger(mutationOrderPositive);
+        await migrator.createTrigger(mutationHistoryNoDelete);
+        await migrator.createTable(songAliases);
+        await migrator.createTable(mutationSupersessions);
+        await migrator.createTable(canonicalEditIntents);
+        await migrator.createTable(mutationMappingHolds);
+        await migrator.createIndex(songAliasDestination);
+        await migrator.createIndex(canonicalIntentTarget);
+        await migrator.createIndex(mutationMappingActiveHolds);
+        await migrator.createTrigger(songAliasValidInsert);
+        await migrator.createTrigger(songAliasNoUpdate);
+        await migrator.createTrigger(songAliasNoDelete);
+        await migrator.createTrigger(mutationSupersessionValidInsert);
+        await migrator.createTrigger(mutationSupersessionNoUpdate);
+        await migrator.createTrigger(mutationSupersessionNoDelete);
+        await migrator.createTrigger(supersededMutationNoClaim);
+        await migrator.createTrigger(canonicalIntentEvidenceImmutable);
+        await migrator.createTrigger(canonicalIntentNoDelete);
+        await migrator.createTrigger(mappingHoldReleaseOnly);
+        await migrator.createTrigger(mappingHoldNoDelete);
+        await migrator.createTrigger(songAliasNoReplace);
+        await migrator.createTrigger(mutationSupersessionNoReplace);
+        await migrator.createTrigger(canonicalIntentNoReplace);
+        await migrator.createTrigger(mappingHoldNoReplace);
+      }
+      await migrator.createTable(snapshotDownloads);
+      await migrator.createTable(snapshotDownloadRows);
+      await migrator.createTable(snapshotDownloadProgress);
+      await migrator.createTable(snapshotBaseline);
+      await migrator.createTrigger(snapshotDownloadIdentity);
+      await migrator.createTrigger(snapshotDownloadNoReplace);
+      await migrator.createTrigger(snapshotRowInsert);
+      await migrator.createTrigger(snapshotRowNoUpdate);
+      await migrator.createTrigger(snapshotRowDelete);
+      await migrator.createTrigger(snapshotProgressInsert);
+      await migrator.createTrigger(snapshotProgressUpdate);
+      await migrator.createTrigger(snapshotBaselineInsert);
+      await migrator.createTrigger(snapshotBaselineUpdate);
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');

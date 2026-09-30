@@ -174,6 +174,10 @@ final class AccountStore {
         'import_jobs': 'import_job_id',
         'import_items': 'import_job_id,ordinal',
         'sync_cursors': 'singleton',
+        'snapshot_downloads': 'snapshot_token',
+        'snapshot_download_rows': 'snapshot_token,entity,ordinal',
+        'snapshot_download_progress': 'snapshot_token,entity',
+        'snapshot_baseline': 'singleton',
       };
       for (final entry in orderBy.entries) {
         final table = entry.key;

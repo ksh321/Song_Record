@@ -21,9 +21,9 @@
 | 확인한 제품 Git | CONNECT dab4fd6, P10-05a 7f71d75, b d06c139, c cd22081, d fd5955117e27d4b5f175b727bfdfa9cd5ca50749 일반 push·각 필수 CI4 PASS |
 | 기존 기능 완료 기준 | `eef028dddea87cb0ad02d733808658512dffe431`까지 사용자 검증 완료. P05-08·P06 포함, 문서 부족만으로 되돌리지 않음 |
 | 현재 구현 완료 지점 | P09-07b-C1/D06, P10-02b 해당 메타데이터 범위, WORKFLOW-07, P10-04a v4, P10-04b-DECODER/ATOMIC/GATE. GATE 90 테스트·분석·Astra/xhigh 재검수·정확 SHA CI 통과. 전체 P10-03/P10-04 완료 아님 |
-| 현재 작업 | P10-05f 모바일 사본 응답·스트리밍 manifest 검증. Flutter8/분석·서버15·계약134 통과. e bde5b1a CI에서 누락된 컨트롤러 검사 목록 보완·ApiContractTests5 통과 |
-| 작업 중 변경 | snapshot_response.dart와 테스트/서버 공통 fixture, canonical_payload 원문 전송, ApiContractTests 실제 controller 목록 보완. e 전체 CI는 실패이며 통과로 확대하지 않음 |
-| 다음 실행 | f와 e 보완 커밋/push/정확 SHA CI. 로컬 v5 비파괴 migration·영속 staging/재개·미전송/파일 보존 원자 적용 진행. 사용자 직접 조작 없음 |
+| 현재 작업 | P10-05g 로컬 v5 비파괴 이관·수신 저장 표. 관련82 통과/Windows 링크 권한1 skip·분석 통과. f 2b6a980은 필수3 PASS, CI 서버/MySQL 성공·Flutter APK 진행 중 |
+| 작업 중 변경 | 로컬 snapshot_downloads/rows/progress/baseline, v1~v4→v5 추가 이관·복구 내보내기, 재개/제약/보존 테스트. 기존 DB·파일 유지 |
+| 다음 실행 | f 전체 CI 완료 확인 후 g push/필수 CI. 현재 모델이 AccountStore 페이지 저장·재개·완결성 검증·기준/커서 원자 적용을 계속 구현. 사용자 직접 조작 없음 |
 | 실제 차단 | 새 Codex 자료 전달 권한 차단은 절차 폐기로 해제. 실행 환경·필수 CI·실제 기능 선행만 개별 판정. USER020 요청 취소, 현재 직접 사용자 조작 없음 |
 | 실행 환경 | 실행별 socket 경로 옵션으로 APK 빌드 성공. 새 격리 DB/API 준비·health UP, 원래 DB V1/볼륨 보존. 기존 환경 실패 횟수 유지. 새 APK는 2e6bd88 기준으로 고정·새 설치 성공, 현재 HEAD 빌드로 혼동 금지 |
 

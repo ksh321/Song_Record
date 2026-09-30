@@ -1542,7 +1542,7 @@
     },
     {
       "id": "P10-05-NEXT",
-      "action": "P10-05f 모바일 응답/manifest 검증 및 로컬 staging",
+      "action": "P10-05g 로컬 v5 이관 및 수신 staging 연결",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1555,7 +1555,7 @@
       ],
       "state": "active",
       "owner": "현재 작업 AI",
-      "resume": "a~d CI4 PASS. e CI에서 새 controller 검사 목록 누락 실패 후 보완5 통과. f Flutter8/분석·서버15·계약134 통과. f+e보완 commit/CI 후 v5/staging·원자 적용 계속"
+      "resume": "a~d CI4 PASS. f 2b6a980 서버 CI 누락 해소/필수3 PASS·Flutter APK 진행. g v1~v4→v5/보존/재개82 PASS·Windows 링크1 skip·분석 통과. f CI 후 g push, AccountStore 원자 수신/적용 계속"
     },
     {
       "id": "P10-06-NEXT",

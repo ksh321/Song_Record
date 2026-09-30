@@ -7743,6 +7743,1599 @@ class MutationMappingHoldsCompanion
   }
 }
 
+class SnapshotDownloads extends Table
+    with TableInfo<SnapshotDownloads, SnapshotDownload> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  SnapshotDownloads(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _snapshotTokenMeta = const VerificationMeta(
+    'snapshotToken',
+  );
+  late final GeneratedColumn<String> snapshotToken = GeneratedColumn<String>(
+    'snapshot_token',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL PRIMARY KEY CHECK (length(snapshot_token) = 36)',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_account(user_id)',
+  );
+  static const VerificationMeta _manifestJsonMeta = const VerificationMeta(
+    'manifestJson',
+  );
+  late final GeneratedColumn<String> manifestJson = GeneratedColumn<String>(
+    'manifest_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (json_valid(manifest_json) AND json_type(manifest_json) = \'object\')',
+  );
+  static const VerificationMeta _snapshotCursorMeta = const VerificationMeta(
+    'snapshotCursor',
+  );
+  late final GeneratedColumn<int> snapshotCursor = GeneratedColumn<int>(
+    'snapshot_cursor',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (snapshot_cursor >= 0)',
+  );
+  static const VerificationMeta _expiresAtMeta = const VerificationMeta(
+    'expiresAt',
+  );
+  late final GeneratedColumn<int> expiresAt = GeneratedColumn<int>(
+    'expires_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'NOT NULL DEFAULT \'RECEIVING\' CHECK (state IN (\'RECEIVING\', \'VERIFIED\', \'APPLIED\'))',
+    defaultValue: const CustomExpression('\'RECEIVING\''),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    snapshotToken,
+    userId,
+    manifestJson,
+    snapshotCursor,
+    expiresAt,
+    state,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'snapshot_downloads';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SnapshotDownload> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('snapshot_token')) {
+      context.handle(
+        _snapshotTokenMeta,
+        snapshotToken.isAcceptableOrUnknown(
+          data['snapshot_token']!,
+          _snapshotTokenMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_snapshotTokenMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('manifest_json')) {
+      context.handle(
+        _manifestJsonMeta,
+        manifestJson.isAcceptableOrUnknown(
+          data['manifest_json']!,
+          _manifestJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_manifestJsonMeta);
+    }
+    if (data.containsKey('snapshot_cursor')) {
+      context.handle(
+        _snapshotCursorMeta,
+        snapshotCursor.isAcceptableOrUnknown(
+          data['snapshot_cursor']!,
+          _snapshotCursorMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_snapshotCursorMeta);
+    }
+    if (data.containsKey('expires_at')) {
+      context.handle(
+        _expiresAtMeta,
+        expiresAt.isAcceptableOrUnknown(data['expires_at']!, _expiresAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_expiresAtMeta);
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {snapshotToken};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {snapshotToken, userId},
+  ];
+  @override
+  SnapshotDownload map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SnapshotDownload(
+      snapshotToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}snapshot_token'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      manifestJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}manifest_json'],
+      )!,
+      snapshotCursor: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}snapshot_cursor'],
+      )!,
+      expiresAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expires_at'],
+      )!,
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  SnapshotDownloads createAlias(String alias) {
+    return SnapshotDownloads(attachedDatabase, alias);
+  }
+
+  @override
+  List<String> get customConstraints => const [
+    'UNIQUE(snapshot_token, user_id)',
+    'CHECK(json_extract(manifest_json, \'\$.snapshot_token\') IS snapshot_token)',
+    'CHECK(json_extract(manifest_json, \'\$.snapshot_cursor\') IS snapshot_cursor)',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class SnapshotDownload extends DataClass
+    implements Insertable<SnapshotDownload> {
+  final String snapshotToken;
+  final String userId;
+  final String manifestJson;
+  final int snapshotCursor;
+  final int expiresAt;
+  final String state;
+  final int createdAt;
+  const SnapshotDownload({
+    required this.snapshotToken,
+    required this.userId,
+    required this.manifestJson,
+    required this.snapshotCursor,
+    required this.expiresAt,
+    required this.state,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['snapshot_token'] = Variable<String>(snapshotToken);
+    map['user_id'] = Variable<String>(userId);
+    map['manifest_json'] = Variable<String>(manifestJson);
+    map['snapshot_cursor'] = Variable<int>(snapshotCursor);
+    map['expires_at'] = Variable<int>(expiresAt);
+    map['state'] = Variable<String>(state);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  SnapshotDownloadsCompanion toCompanion(bool nullToAbsent) {
+    return SnapshotDownloadsCompanion(
+      snapshotToken: Value(snapshotToken),
+      userId: Value(userId),
+      manifestJson: Value(manifestJson),
+      snapshotCursor: Value(snapshotCursor),
+      expiresAt: Value(expiresAt),
+      state: Value(state),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory SnapshotDownload.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SnapshotDownload(
+      snapshotToken: serializer.fromJson<String>(json['snapshot_token']),
+      userId: serializer.fromJson<String>(json['user_id']),
+      manifestJson: serializer.fromJson<String>(json['manifest_json']),
+      snapshotCursor: serializer.fromJson<int>(json['snapshot_cursor']),
+      expiresAt: serializer.fromJson<int>(json['expires_at']),
+      state: serializer.fromJson<String>(json['state']),
+      createdAt: serializer.fromJson<int>(json['created_at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'snapshot_token': serializer.toJson<String>(snapshotToken),
+      'user_id': serializer.toJson<String>(userId),
+      'manifest_json': serializer.toJson<String>(manifestJson),
+      'snapshot_cursor': serializer.toJson<int>(snapshotCursor),
+      'expires_at': serializer.toJson<int>(expiresAt),
+      'state': serializer.toJson<String>(state),
+      'created_at': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  SnapshotDownload copyWith({
+    String? snapshotToken,
+    String? userId,
+    String? manifestJson,
+    int? snapshotCursor,
+    int? expiresAt,
+    String? state,
+    int? createdAt,
+  }) => SnapshotDownload(
+    snapshotToken: snapshotToken ?? this.snapshotToken,
+    userId: userId ?? this.userId,
+    manifestJson: manifestJson ?? this.manifestJson,
+    snapshotCursor: snapshotCursor ?? this.snapshotCursor,
+    expiresAt: expiresAt ?? this.expiresAt,
+    state: state ?? this.state,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  SnapshotDownload copyWithCompanion(SnapshotDownloadsCompanion data) {
+    return SnapshotDownload(
+      snapshotToken: data.snapshotToken.present
+          ? data.snapshotToken.value
+          : this.snapshotToken,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      manifestJson: data.manifestJson.present
+          ? data.manifestJson.value
+          : this.manifestJson,
+      snapshotCursor: data.snapshotCursor.present
+          ? data.snapshotCursor.value
+          : this.snapshotCursor,
+      expiresAt: data.expiresAt.present ? data.expiresAt.value : this.expiresAt,
+      state: data.state.present ? data.state.value : this.state,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SnapshotDownload(')
+          ..write('snapshotToken: $snapshotToken, ')
+          ..write('userId: $userId, ')
+          ..write('manifestJson: $manifestJson, ')
+          ..write('snapshotCursor: $snapshotCursor, ')
+          ..write('expiresAt: $expiresAt, ')
+          ..write('state: $state, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    snapshotToken,
+    userId,
+    manifestJson,
+    snapshotCursor,
+    expiresAt,
+    state,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SnapshotDownload &&
+          other.snapshotToken == this.snapshotToken &&
+          other.userId == this.userId &&
+          other.manifestJson == this.manifestJson &&
+          other.snapshotCursor == this.snapshotCursor &&
+          other.expiresAt == this.expiresAt &&
+          other.state == this.state &&
+          other.createdAt == this.createdAt);
+}
+
+class SnapshotDownloadsCompanion extends UpdateCompanion<SnapshotDownload> {
+  final Value<String> snapshotToken;
+  final Value<String> userId;
+  final Value<String> manifestJson;
+  final Value<int> snapshotCursor;
+  final Value<int> expiresAt;
+  final Value<String> state;
+  final Value<int> createdAt;
+  final Value<int> rowid;
+  const SnapshotDownloadsCompanion({
+    this.snapshotToken = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.manifestJson = const Value.absent(),
+    this.snapshotCursor = const Value.absent(),
+    this.expiresAt = const Value.absent(),
+    this.state = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SnapshotDownloadsCompanion.insert({
+    required String snapshotToken,
+    required String userId,
+    required String manifestJson,
+    required int snapshotCursor,
+    required int expiresAt,
+    this.state = const Value.absent(),
+    required int createdAt,
+    this.rowid = const Value.absent(),
+  }) : snapshotToken = Value(snapshotToken),
+       userId = Value(userId),
+       manifestJson = Value(manifestJson),
+       snapshotCursor = Value(snapshotCursor),
+       expiresAt = Value(expiresAt),
+       createdAt = Value(createdAt);
+  static Insertable<SnapshotDownload> custom({
+    Expression<String>? snapshotToken,
+    Expression<String>? userId,
+    Expression<String>? manifestJson,
+    Expression<int>? snapshotCursor,
+    Expression<int>? expiresAt,
+    Expression<String>? state,
+    Expression<int>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (snapshotToken != null) 'snapshot_token': snapshotToken,
+      if (userId != null) 'user_id': userId,
+      if (manifestJson != null) 'manifest_json': manifestJson,
+      if (snapshotCursor != null) 'snapshot_cursor': snapshotCursor,
+      if (expiresAt != null) 'expires_at': expiresAt,
+      if (state != null) 'state': state,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SnapshotDownloadsCompanion copyWith({
+    Value<String>? snapshotToken,
+    Value<String>? userId,
+    Value<String>? manifestJson,
+    Value<int>? snapshotCursor,
+    Value<int>? expiresAt,
+    Value<String>? state,
+    Value<int>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return SnapshotDownloadsCompanion(
+      snapshotToken: snapshotToken ?? this.snapshotToken,
+      userId: userId ?? this.userId,
+      manifestJson: manifestJson ?? this.manifestJson,
+      snapshotCursor: snapshotCursor ?? this.snapshotCursor,
+      expiresAt: expiresAt ?? this.expiresAt,
+      state: state ?? this.state,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (snapshotToken.present) {
+      map['snapshot_token'] = Variable<String>(snapshotToken.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (manifestJson.present) {
+      map['manifest_json'] = Variable<String>(manifestJson.value);
+    }
+    if (snapshotCursor.present) {
+      map['snapshot_cursor'] = Variable<int>(snapshotCursor.value);
+    }
+    if (expiresAt.present) {
+      map['expires_at'] = Variable<int>(expiresAt.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SnapshotDownloadsCompanion(')
+          ..write('snapshotToken: $snapshotToken, ')
+          ..write('userId: $userId, ')
+          ..write('manifestJson: $manifestJson, ')
+          ..write('snapshotCursor: $snapshotCursor, ')
+          ..write('expiresAt: $expiresAt, ')
+          ..write('state: $state, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class SnapshotDownloadRows extends Table
+    with TableInfo<SnapshotDownloadRows, SnapshotDownloadRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  SnapshotDownloadRows(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _snapshotTokenMeta = const VerificationMeta(
+    'snapshotToken',
+  );
+  late final GeneratedColumn<String> snapshotToken = GeneratedColumn<String>(
+    'snapshot_token',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_account(user_id)',
+  );
+  static const VerificationMeta _entityMeta = const VerificationMeta('entity');
+  late final GeneratedColumn<String> entity = GeneratedColumn<String>(
+    'entity',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (entity IN (\'SONG\', \'SONG_SOURCE\', \'RECORDING\', \'RECORDING_FILE_SPEC\', \'RECORDING_ASSET\', \'PLAYLIST\', \'PLAYLIST_ITEM\', \'TAG\', \'RECORDING_TAG\', \'RECORDING_CONDITION\', \'USER_ENTITLEMENT\', \'STORAGE_USAGE\', \'SONG_CLOUD_SELECTION\', \'PIN_SLOT\', \'USER_SYNC_STATE\', \'CHANGE_LOG\', \'DELETION_BATCH\', \'DELETION_ITEM\', \'DELETION_LEDGER\'))',
+  );
+  static const VerificationMeta _ordinalMeta = const VerificationMeta(
+    'ordinal',
+  );
+  late final GeneratedColumn<int> ordinal = GeneratedColumn<int>(
+    'ordinal',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (ordinal > 0)',
+  );
+  static const VerificationMeta _resourceIdMeta = const VerificationMeta(
+    'resourceId',
+  );
+  late final GeneratedColumn<String> resourceId = GeneratedColumn<String>(
+    'resource_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (length(resource_id) = 36)',
+  );
+  static const VerificationMeta _canonicalPayloadMeta = const VerificationMeta(
+    'canonicalPayload',
+  );
+  late final GeneratedColumn<String> canonicalPayload = GeneratedColumn<String>(
+    'canonical_payload',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (json_valid(canonical_payload) AND json_type(canonical_payload) = \'object\')',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    snapshotToken,
+    userId,
+    entity,
+    ordinal,
+    resourceId,
+    canonicalPayload,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'snapshot_download_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SnapshotDownloadRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('snapshot_token')) {
+      context.handle(
+        _snapshotTokenMeta,
+        snapshotToken.isAcceptableOrUnknown(
+          data['snapshot_token']!,
+          _snapshotTokenMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_snapshotTokenMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('entity')) {
+      context.handle(
+        _entityMeta,
+        entity.isAcceptableOrUnknown(data['entity']!, _entityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityMeta);
+    }
+    if (data.containsKey('ordinal')) {
+      context.handle(
+        _ordinalMeta,
+        ordinal.isAcceptableOrUnknown(data['ordinal']!, _ordinalMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_ordinalMeta);
+    }
+    if (data.containsKey('resource_id')) {
+      context.handle(
+        _resourceIdMeta,
+        resourceId.isAcceptableOrUnknown(data['resource_id']!, _resourceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_resourceIdMeta);
+    }
+    if (data.containsKey('canonical_payload')) {
+      context.handle(
+        _canonicalPayloadMeta,
+        canonicalPayload.isAcceptableOrUnknown(
+          data['canonical_payload']!,
+          _canonicalPayloadMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_canonicalPayloadMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {snapshotToken, entity, ordinal};
+  @override
+  SnapshotDownloadRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SnapshotDownloadRow(
+      snapshotToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}snapshot_token'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      entity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity'],
+      )!,
+      ordinal: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ordinal'],
+      )!,
+      resourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resource_id'],
+      )!,
+      canonicalPayload: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}canonical_payload'],
+      )!,
+    );
+  }
+
+  @override
+  SnapshotDownloadRows createAlias(String alias) {
+    return SnapshotDownloadRows(attachedDatabase, alias);
+  }
+
+  @override
+  List<String> get customConstraints => const [
+    'PRIMARY KEY(snapshot_token, entity, ordinal)',
+    'FOREIGN KEY(snapshot_token, user_id)REFERENCES snapshot_downloads(snapshot_token, user_id)ON DELETE CASCADE',
+    'CHECK(json_extract(canonical_payload, \'\$.user_id\') IS user_id)',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class SnapshotDownloadRow extends DataClass
+    implements Insertable<SnapshotDownloadRow> {
+  final String snapshotToken;
+  final String userId;
+  final String entity;
+  final int ordinal;
+  final String resourceId;
+  final String canonicalPayload;
+  const SnapshotDownloadRow({
+    required this.snapshotToken,
+    required this.userId,
+    required this.entity,
+    required this.ordinal,
+    required this.resourceId,
+    required this.canonicalPayload,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['snapshot_token'] = Variable<String>(snapshotToken);
+    map['user_id'] = Variable<String>(userId);
+    map['entity'] = Variable<String>(entity);
+    map['ordinal'] = Variable<int>(ordinal);
+    map['resource_id'] = Variable<String>(resourceId);
+    map['canonical_payload'] = Variable<String>(canonicalPayload);
+    return map;
+  }
+
+  SnapshotDownloadRowsCompanion toCompanion(bool nullToAbsent) {
+    return SnapshotDownloadRowsCompanion(
+      snapshotToken: Value(snapshotToken),
+      userId: Value(userId),
+      entity: Value(entity),
+      ordinal: Value(ordinal),
+      resourceId: Value(resourceId),
+      canonicalPayload: Value(canonicalPayload),
+    );
+  }
+
+  factory SnapshotDownloadRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SnapshotDownloadRow(
+      snapshotToken: serializer.fromJson<String>(json['snapshot_token']),
+      userId: serializer.fromJson<String>(json['user_id']),
+      entity: serializer.fromJson<String>(json['entity']),
+      ordinal: serializer.fromJson<int>(json['ordinal']),
+      resourceId: serializer.fromJson<String>(json['resource_id']),
+      canonicalPayload: serializer.fromJson<String>(json['canonical_payload']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'snapshot_token': serializer.toJson<String>(snapshotToken),
+      'user_id': serializer.toJson<String>(userId),
+      'entity': serializer.toJson<String>(entity),
+      'ordinal': serializer.toJson<int>(ordinal),
+      'resource_id': serializer.toJson<String>(resourceId),
+      'canonical_payload': serializer.toJson<String>(canonicalPayload),
+    };
+  }
+
+  SnapshotDownloadRow copyWith({
+    String? snapshotToken,
+    String? userId,
+    String? entity,
+    int? ordinal,
+    String? resourceId,
+    String? canonicalPayload,
+  }) => SnapshotDownloadRow(
+    snapshotToken: snapshotToken ?? this.snapshotToken,
+    userId: userId ?? this.userId,
+    entity: entity ?? this.entity,
+    ordinal: ordinal ?? this.ordinal,
+    resourceId: resourceId ?? this.resourceId,
+    canonicalPayload: canonicalPayload ?? this.canonicalPayload,
+  );
+  SnapshotDownloadRow copyWithCompanion(SnapshotDownloadRowsCompanion data) {
+    return SnapshotDownloadRow(
+      snapshotToken: data.snapshotToken.present
+          ? data.snapshotToken.value
+          : this.snapshotToken,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      entity: data.entity.present ? data.entity.value : this.entity,
+      ordinal: data.ordinal.present ? data.ordinal.value : this.ordinal,
+      resourceId: data.resourceId.present
+          ? data.resourceId.value
+          : this.resourceId,
+      canonicalPayload: data.canonicalPayload.present
+          ? data.canonicalPayload.value
+          : this.canonicalPayload,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SnapshotDownloadRow(')
+          ..write('snapshotToken: $snapshotToken, ')
+          ..write('userId: $userId, ')
+          ..write('entity: $entity, ')
+          ..write('ordinal: $ordinal, ')
+          ..write('resourceId: $resourceId, ')
+          ..write('canonicalPayload: $canonicalPayload')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    snapshotToken,
+    userId,
+    entity,
+    ordinal,
+    resourceId,
+    canonicalPayload,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SnapshotDownloadRow &&
+          other.snapshotToken == this.snapshotToken &&
+          other.userId == this.userId &&
+          other.entity == this.entity &&
+          other.ordinal == this.ordinal &&
+          other.resourceId == this.resourceId &&
+          other.canonicalPayload == this.canonicalPayload);
+}
+
+class SnapshotDownloadRowsCompanion
+    extends UpdateCompanion<SnapshotDownloadRow> {
+  final Value<String> snapshotToken;
+  final Value<String> userId;
+  final Value<String> entity;
+  final Value<int> ordinal;
+  final Value<String> resourceId;
+  final Value<String> canonicalPayload;
+  final Value<int> rowid;
+  const SnapshotDownloadRowsCompanion({
+    this.snapshotToken = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.entity = const Value.absent(),
+    this.ordinal = const Value.absent(),
+    this.resourceId = const Value.absent(),
+    this.canonicalPayload = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SnapshotDownloadRowsCompanion.insert({
+    required String snapshotToken,
+    required String userId,
+    required String entity,
+    required int ordinal,
+    required String resourceId,
+    required String canonicalPayload,
+    this.rowid = const Value.absent(),
+  }) : snapshotToken = Value(snapshotToken),
+       userId = Value(userId),
+       entity = Value(entity),
+       ordinal = Value(ordinal),
+       resourceId = Value(resourceId),
+       canonicalPayload = Value(canonicalPayload);
+  static Insertable<SnapshotDownloadRow> custom({
+    Expression<String>? snapshotToken,
+    Expression<String>? userId,
+    Expression<String>? entity,
+    Expression<int>? ordinal,
+    Expression<String>? resourceId,
+    Expression<String>? canonicalPayload,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (snapshotToken != null) 'snapshot_token': snapshotToken,
+      if (userId != null) 'user_id': userId,
+      if (entity != null) 'entity': entity,
+      if (ordinal != null) 'ordinal': ordinal,
+      if (resourceId != null) 'resource_id': resourceId,
+      if (canonicalPayload != null) 'canonical_payload': canonicalPayload,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SnapshotDownloadRowsCompanion copyWith({
+    Value<String>? snapshotToken,
+    Value<String>? userId,
+    Value<String>? entity,
+    Value<int>? ordinal,
+    Value<String>? resourceId,
+    Value<String>? canonicalPayload,
+    Value<int>? rowid,
+  }) {
+    return SnapshotDownloadRowsCompanion(
+      snapshotToken: snapshotToken ?? this.snapshotToken,
+      userId: userId ?? this.userId,
+      entity: entity ?? this.entity,
+      ordinal: ordinal ?? this.ordinal,
+      resourceId: resourceId ?? this.resourceId,
+      canonicalPayload: canonicalPayload ?? this.canonicalPayload,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (snapshotToken.present) {
+      map['snapshot_token'] = Variable<String>(snapshotToken.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (entity.present) {
+      map['entity'] = Variable<String>(entity.value);
+    }
+    if (ordinal.present) {
+      map['ordinal'] = Variable<int>(ordinal.value);
+    }
+    if (resourceId.present) {
+      map['resource_id'] = Variable<String>(resourceId.value);
+    }
+    if (canonicalPayload.present) {
+      map['canonical_payload'] = Variable<String>(canonicalPayload.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SnapshotDownloadRowsCompanion(')
+          ..write('snapshotToken: $snapshotToken, ')
+          ..write('userId: $userId, ')
+          ..write('entity: $entity, ')
+          ..write('ordinal: $ordinal, ')
+          ..write('resourceId: $resourceId, ')
+          ..write('canonicalPayload: $canonicalPayload, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class SnapshotDownloadProgress extends Table
+    with TableInfo<SnapshotDownloadProgress, SnapshotDownloadProgressData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  SnapshotDownloadProgress(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _snapshotTokenMeta = const VerificationMeta(
+    'snapshotToken',
+  );
+  late final GeneratedColumn<String> snapshotToken = GeneratedColumn<String>(
+    'snapshot_token',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES snapshot_downloads(snapshot_token)ON DELETE CASCADE',
+  );
+  static const VerificationMeta _entityMeta = const VerificationMeta('entity');
+  late final GeneratedColumn<String> entity = GeneratedColumn<String>(
+    'entity',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (entity IN (\'SONG\', \'SONG_SOURCE\', \'RECORDING\', \'RECORDING_FILE_SPEC\', \'RECORDING_ASSET\', \'PLAYLIST\', \'PLAYLIST_ITEM\', \'TAG\', \'RECORDING_TAG\', \'RECORDING_CONDITION\', \'USER_ENTITLEMENT\', \'STORAGE_USAGE\', \'SONG_CLOUD_SELECTION\', \'PIN_SLOT\', \'USER_SYNC_STATE\', \'CHANGE_LOG\', \'DELETION_BATCH\', \'DELETION_ITEM\', \'DELETION_LEDGER\'))',
+  );
+  static const VerificationMeta _lastOrdinalMeta = const VerificationMeta(
+    'lastOrdinal',
+  );
+  late final GeneratedColumn<int> lastOrdinal = GeneratedColumn<int>(
+    'last_ordinal',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (last_ordinal >= 0)',
+  );
+  static const VerificationMeta _nextCursorMeta = const VerificationMeta(
+    'nextCursor',
+  );
+  late final GeneratedColumn<String> nextCursor = GeneratedColumn<String>(
+    'next_cursor',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: '',
+  );
+  static const VerificationMeta _finishedMeta = const VerificationMeta(
+    'finished',
+  );
+  late final GeneratedColumn<int> finished = GeneratedColumn<int>(
+    'finished',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (finished IN (0, 1))',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    snapshotToken,
+    entity,
+    lastOrdinal,
+    nextCursor,
+    finished,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'snapshot_download_progress';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SnapshotDownloadProgressData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('snapshot_token')) {
+      context.handle(
+        _snapshotTokenMeta,
+        snapshotToken.isAcceptableOrUnknown(
+          data['snapshot_token']!,
+          _snapshotTokenMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_snapshotTokenMeta);
+    }
+    if (data.containsKey('entity')) {
+      context.handle(
+        _entityMeta,
+        entity.isAcceptableOrUnknown(data['entity']!, _entityMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_entityMeta);
+    }
+    if (data.containsKey('last_ordinal')) {
+      context.handle(
+        _lastOrdinalMeta,
+        lastOrdinal.isAcceptableOrUnknown(
+          data['last_ordinal']!,
+          _lastOrdinalMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_lastOrdinalMeta);
+    }
+    if (data.containsKey('next_cursor')) {
+      context.handle(
+        _nextCursorMeta,
+        nextCursor.isAcceptableOrUnknown(data['next_cursor']!, _nextCursorMeta),
+      );
+    }
+    if (data.containsKey('finished')) {
+      context.handle(
+        _finishedMeta,
+        finished.isAcceptableOrUnknown(data['finished']!, _finishedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_finishedMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {snapshotToken, entity};
+  @override
+  SnapshotDownloadProgressData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SnapshotDownloadProgressData(
+      snapshotToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}snapshot_token'],
+      )!,
+      entity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entity'],
+      )!,
+      lastOrdinal: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_ordinal'],
+      )!,
+      nextCursor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}next_cursor'],
+      ),
+      finished: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}finished'],
+      )!,
+    );
+  }
+
+  @override
+  SnapshotDownloadProgress createAlias(String alias) {
+    return SnapshotDownloadProgress(attachedDatabase, alias);
+  }
+
+  @override
+  List<String> get customConstraints => const [
+    'PRIMARY KEY(snapshot_token, entity)',
+    'CHECK((finished = 1 AND next_cursor IS NULL)OR(finished = 0 AND next_cursor IS NOT NULL AND next_cursor LIKE \'sp1.%\' AND last_ordinal > 0))',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class SnapshotDownloadProgressData extends DataClass
+    implements Insertable<SnapshotDownloadProgressData> {
+  final String snapshotToken;
+  final String entity;
+  final int lastOrdinal;
+  final String? nextCursor;
+  final int finished;
+  const SnapshotDownloadProgressData({
+    required this.snapshotToken,
+    required this.entity,
+    required this.lastOrdinal,
+    this.nextCursor,
+    required this.finished,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['snapshot_token'] = Variable<String>(snapshotToken);
+    map['entity'] = Variable<String>(entity);
+    map['last_ordinal'] = Variable<int>(lastOrdinal);
+    if (!nullToAbsent || nextCursor != null) {
+      map['next_cursor'] = Variable<String>(nextCursor);
+    }
+    map['finished'] = Variable<int>(finished);
+    return map;
+  }
+
+  SnapshotDownloadProgressCompanion toCompanion(bool nullToAbsent) {
+    return SnapshotDownloadProgressCompanion(
+      snapshotToken: Value(snapshotToken),
+      entity: Value(entity),
+      lastOrdinal: Value(lastOrdinal),
+      nextCursor: nextCursor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextCursor),
+      finished: Value(finished),
+    );
+  }
+
+  factory SnapshotDownloadProgressData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SnapshotDownloadProgressData(
+      snapshotToken: serializer.fromJson<String>(json['snapshot_token']),
+      entity: serializer.fromJson<String>(json['entity']),
+      lastOrdinal: serializer.fromJson<int>(json['last_ordinal']),
+      nextCursor: serializer.fromJson<String?>(json['next_cursor']),
+      finished: serializer.fromJson<int>(json['finished']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'snapshot_token': serializer.toJson<String>(snapshotToken),
+      'entity': serializer.toJson<String>(entity),
+      'last_ordinal': serializer.toJson<int>(lastOrdinal),
+      'next_cursor': serializer.toJson<String?>(nextCursor),
+      'finished': serializer.toJson<int>(finished),
+    };
+  }
+
+  SnapshotDownloadProgressData copyWith({
+    String? snapshotToken,
+    String? entity,
+    int? lastOrdinal,
+    Value<String?> nextCursor = const Value.absent(),
+    int? finished,
+  }) => SnapshotDownloadProgressData(
+    snapshotToken: snapshotToken ?? this.snapshotToken,
+    entity: entity ?? this.entity,
+    lastOrdinal: lastOrdinal ?? this.lastOrdinal,
+    nextCursor: nextCursor.present ? nextCursor.value : this.nextCursor,
+    finished: finished ?? this.finished,
+  );
+  SnapshotDownloadProgressData copyWithCompanion(
+    SnapshotDownloadProgressCompanion data,
+  ) {
+    return SnapshotDownloadProgressData(
+      snapshotToken: data.snapshotToken.present
+          ? data.snapshotToken.value
+          : this.snapshotToken,
+      entity: data.entity.present ? data.entity.value : this.entity,
+      lastOrdinal: data.lastOrdinal.present
+          ? data.lastOrdinal.value
+          : this.lastOrdinal,
+      nextCursor: data.nextCursor.present
+          ? data.nextCursor.value
+          : this.nextCursor,
+      finished: data.finished.present ? data.finished.value : this.finished,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SnapshotDownloadProgressData(')
+          ..write('snapshotToken: $snapshotToken, ')
+          ..write('entity: $entity, ')
+          ..write('lastOrdinal: $lastOrdinal, ')
+          ..write('nextCursor: $nextCursor, ')
+          ..write('finished: $finished')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(snapshotToken, entity, lastOrdinal, nextCursor, finished);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SnapshotDownloadProgressData &&
+          other.snapshotToken == this.snapshotToken &&
+          other.entity == this.entity &&
+          other.lastOrdinal == this.lastOrdinal &&
+          other.nextCursor == this.nextCursor &&
+          other.finished == this.finished);
+}
+
+class SnapshotDownloadProgressCompanion
+    extends UpdateCompanion<SnapshotDownloadProgressData> {
+  final Value<String> snapshotToken;
+  final Value<String> entity;
+  final Value<int> lastOrdinal;
+  final Value<String?> nextCursor;
+  final Value<int> finished;
+  final Value<int> rowid;
+  const SnapshotDownloadProgressCompanion({
+    this.snapshotToken = const Value.absent(),
+    this.entity = const Value.absent(),
+    this.lastOrdinal = const Value.absent(),
+    this.nextCursor = const Value.absent(),
+    this.finished = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SnapshotDownloadProgressCompanion.insert({
+    required String snapshotToken,
+    required String entity,
+    required int lastOrdinal,
+    this.nextCursor = const Value.absent(),
+    required int finished,
+    this.rowid = const Value.absent(),
+  }) : snapshotToken = Value(snapshotToken),
+       entity = Value(entity),
+       lastOrdinal = Value(lastOrdinal),
+       finished = Value(finished);
+  static Insertable<SnapshotDownloadProgressData> custom({
+    Expression<String>? snapshotToken,
+    Expression<String>? entity,
+    Expression<int>? lastOrdinal,
+    Expression<String>? nextCursor,
+    Expression<int>? finished,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (snapshotToken != null) 'snapshot_token': snapshotToken,
+      if (entity != null) 'entity': entity,
+      if (lastOrdinal != null) 'last_ordinal': lastOrdinal,
+      if (nextCursor != null) 'next_cursor': nextCursor,
+      if (finished != null) 'finished': finished,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SnapshotDownloadProgressCompanion copyWith({
+    Value<String>? snapshotToken,
+    Value<String>? entity,
+    Value<int>? lastOrdinal,
+    Value<String?>? nextCursor,
+    Value<int>? finished,
+    Value<int>? rowid,
+  }) {
+    return SnapshotDownloadProgressCompanion(
+      snapshotToken: snapshotToken ?? this.snapshotToken,
+      entity: entity ?? this.entity,
+      lastOrdinal: lastOrdinal ?? this.lastOrdinal,
+      nextCursor: nextCursor ?? this.nextCursor,
+      finished: finished ?? this.finished,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (snapshotToken.present) {
+      map['snapshot_token'] = Variable<String>(snapshotToken.value);
+    }
+    if (entity.present) {
+      map['entity'] = Variable<String>(entity.value);
+    }
+    if (lastOrdinal.present) {
+      map['last_ordinal'] = Variable<int>(lastOrdinal.value);
+    }
+    if (nextCursor.present) {
+      map['next_cursor'] = Variable<String>(nextCursor.value);
+    }
+    if (finished.present) {
+      map['finished'] = Variable<int>(finished.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SnapshotDownloadProgressCompanion(')
+          ..write('snapshotToken: $snapshotToken, ')
+          ..write('entity: $entity, ')
+          ..write('lastOrdinal: $lastOrdinal, ')
+          ..write('nextCursor: $nextCursor, ')
+          ..write('finished: $finished, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class SnapshotBaseline extends Table
+    with TableInfo<SnapshotBaseline, SnapshotBaselineData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  SnapshotBaseline(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _singletonMeta = const VerificationMeta(
+    'singleton',
+  );
+  late final GeneratedColumn<int> singleton = GeneratedColumn<int>(
+    'singleton',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NOT NULL PRIMARY KEY CHECK (singleton = 1)',
+  );
+  static const VerificationMeta _snapshotTokenMeta = const VerificationMeta(
+    'snapshotToken',
+  );
+  late final GeneratedColumn<String> snapshotToken = GeneratedColumn<String>(
+    'snapshot_token',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_account(user_id)',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [singleton, snapshotToken, userId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'snapshot_baseline';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SnapshotBaselineData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('singleton')) {
+      context.handle(
+        _singletonMeta,
+        singleton.isAcceptableOrUnknown(data['singleton']!, _singletonMeta),
+      );
+    }
+    if (data.containsKey('snapshot_token')) {
+      context.handle(
+        _snapshotTokenMeta,
+        snapshotToken.isAcceptableOrUnknown(
+          data['snapshot_token']!,
+          _snapshotTokenMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_snapshotTokenMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {singleton};
+  @override
+  SnapshotBaselineData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SnapshotBaselineData(
+      singleton: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}singleton'],
+      )!,
+      snapshotToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}snapshot_token'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+    );
+  }
+
+  @override
+  SnapshotBaseline createAlias(String alias) {
+    return SnapshotBaseline(attachedDatabase, alias);
+  }
+
+  @override
+  List<String> get customConstraints => const [
+    'FOREIGN KEY(snapshot_token, user_id)REFERENCES snapshot_downloads(snapshot_token, user_id)',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class SnapshotBaselineData extends DataClass
+    implements Insertable<SnapshotBaselineData> {
+  final int singleton;
+  final String snapshotToken;
+  final String userId;
+  const SnapshotBaselineData({
+    required this.singleton,
+    required this.snapshotToken,
+    required this.userId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['singleton'] = Variable<int>(singleton);
+    map['snapshot_token'] = Variable<String>(snapshotToken);
+    map['user_id'] = Variable<String>(userId);
+    return map;
+  }
+
+  SnapshotBaselineCompanion toCompanion(bool nullToAbsent) {
+    return SnapshotBaselineCompanion(
+      singleton: Value(singleton),
+      snapshotToken: Value(snapshotToken),
+      userId: Value(userId),
+    );
+  }
+
+  factory SnapshotBaselineData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SnapshotBaselineData(
+      singleton: serializer.fromJson<int>(json['singleton']),
+      snapshotToken: serializer.fromJson<String>(json['snapshot_token']),
+      userId: serializer.fromJson<String>(json['user_id']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'singleton': serializer.toJson<int>(singleton),
+      'snapshot_token': serializer.toJson<String>(snapshotToken),
+      'user_id': serializer.toJson<String>(userId),
+    };
+  }
+
+  SnapshotBaselineData copyWith({
+    int? singleton,
+    String? snapshotToken,
+    String? userId,
+  }) => SnapshotBaselineData(
+    singleton: singleton ?? this.singleton,
+    snapshotToken: snapshotToken ?? this.snapshotToken,
+    userId: userId ?? this.userId,
+  );
+  SnapshotBaselineData copyWithCompanion(SnapshotBaselineCompanion data) {
+    return SnapshotBaselineData(
+      singleton: data.singleton.present ? data.singleton.value : this.singleton,
+      snapshotToken: data.snapshotToken.present
+          ? data.snapshotToken.value
+          : this.snapshotToken,
+      userId: data.userId.present ? data.userId.value : this.userId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SnapshotBaselineData(')
+          ..write('singleton: $singleton, ')
+          ..write('snapshotToken: $snapshotToken, ')
+          ..write('userId: $userId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(singleton, snapshotToken, userId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SnapshotBaselineData &&
+          other.singleton == this.singleton &&
+          other.snapshotToken == this.snapshotToken &&
+          other.userId == this.userId);
+}
+
+class SnapshotBaselineCompanion extends UpdateCompanion<SnapshotBaselineData> {
+  final Value<int> singleton;
+  final Value<String> snapshotToken;
+  final Value<String> userId;
+  const SnapshotBaselineCompanion({
+    this.singleton = const Value.absent(),
+    this.snapshotToken = const Value.absent(),
+    this.userId = const Value.absent(),
+  });
+  SnapshotBaselineCompanion.insert({
+    this.singleton = const Value.absent(),
+    required String snapshotToken,
+    required String userId,
+  }) : snapshotToken = Value(snapshotToken),
+       userId = Value(userId);
+  static Insertable<SnapshotBaselineData> custom({
+    Expression<int>? singleton,
+    Expression<String>? snapshotToken,
+    Expression<String>? userId,
+  }) {
+    return RawValuesInsertable({
+      if (singleton != null) 'singleton': singleton,
+      if (snapshotToken != null) 'snapshot_token': snapshotToken,
+      if (userId != null) 'user_id': userId,
+    });
+  }
+
+  SnapshotBaselineCompanion copyWith({
+    Value<int>? singleton,
+    Value<String>? snapshotToken,
+    Value<String>? userId,
+  }) {
+    return SnapshotBaselineCompanion(
+      singleton: singleton ?? this.singleton,
+      snapshotToken: snapshotToken ?? this.snapshotToken,
+      userId: userId ?? this.userId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (singleton.present) {
+      map['singleton'] = Variable<int>(singleton.value);
+    }
+    if (snapshotToken.present) {
+      map['snapshot_token'] = Variable<String>(snapshotToken.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SnapshotBaselineCompanion(')
+          ..write('singleton: $singleton, ')
+          ..write('snapshotToken: $snapshotToken, ')
+          ..write('userId: $userId')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AccountDatabase extends GeneratedDatabase {
   _$AccountDatabase(QueryExecutor e) : super(e);
   $AccountDatabaseManager get managers => $AccountDatabaseManager(this);
@@ -7890,6 +9483,49 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     'CREATE TRIGGER mutation_history_no_delete BEFORE DELETE ON local_mutations BEGIN SELECT RAISE (ABORT, \'Mutation ordering history must be retained\');END',
     'mutation_history_no_delete',
   );
+  late final SnapshotDownloads snapshotDownloads = SnapshotDownloads(this);
+  late final SnapshotDownloadRows snapshotDownloadRows = SnapshotDownloadRows(
+    this,
+  );
+  late final SnapshotDownloadProgress snapshotDownloadProgress =
+      SnapshotDownloadProgress(this);
+  late final SnapshotBaseline snapshotBaseline = SnapshotBaseline(this);
+  late final Trigger snapshotDownloadIdentity = Trigger(
+    'CREATE TRIGGER snapshot_download_identity BEFORE UPDATE ON snapshot_downloads WHEN NEW.snapshot_token IS NOT OLD.snapshot_token OR NEW.user_id IS NOT OLD.user_id OR NEW.manifest_json IS NOT OLD.manifest_json OR NEW.snapshot_cursor IS NOT OLD.snapshot_cursor OR NEW.expires_at IS NOT OLD.expires_at OR NEW.created_at IS NOT OLD.created_at OR NOT((OLD.state = \'RECEIVING\' AND NEW.state = \'VERIFIED\')OR(OLD.state = \'VERIFIED\' AND NEW.state = \'APPLIED\'))BEGIN SELECT RAISE (ABORT, \'Snapshot manifest and forward state are immutable\');END',
+    'snapshot_download_identity',
+  );
+  late final Trigger snapshotDownloadNoReplace = Trigger(
+    'CREATE TRIGGER snapshot_download_no_replace BEFORE INSERT ON snapshot_downloads WHEN NEW.state <> \'RECEIVING\' OR EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token) BEGIN SELECT RAISE (ABORT, \'Snapshot manifest cannot be replaced\');END',
+    'snapshot_download_no_replace',
+  );
+  late final Trigger snapshotRowInsert = Trigger(
+    'CREATE TRIGGER snapshot_row_insert BEFORE INSERT ON snapshot_download_rows WHEN NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND user_id = NEW.user_id AND state = \'RECEIVING\') OR EXISTS (SELECT 1 FROM snapshot_download_rows WHERE snapshot_token = NEW.snapshot_token AND entity = NEW.entity AND ordinal = NEW.ordinal) BEGIN SELECT RAISE (ABORT, \'Only new receiving snapshot rows may be inserted\');END',
+    'snapshot_row_insert',
+  );
+  late final Trigger snapshotRowNoUpdate = Trigger(
+    'CREATE TRIGGER snapshot_row_no_update BEFORE UPDATE ON snapshot_download_rows BEGIN SELECT RAISE (ABORT, \'Snapshot rows are immutable\');END',
+    'snapshot_row_no_update',
+  );
+  late final Trigger snapshotRowDelete = Trigger(
+    'CREATE TRIGGER snapshot_row_delete BEFORE DELETE ON snapshot_download_rows WHEN EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = OLD.snapshot_token AND state <> \'RECEIVING\') BEGIN SELECT RAISE (ABORT, \'Verified snapshot rows must remain intact\');END',
+    'snapshot_row_delete',
+  );
+  late final Trigger snapshotProgressInsert = Trigger(
+    'CREATE TRIGGER snapshot_progress_insert BEFORE INSERT ON snapshot_download_progress WHEN NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND state = \'RECEIVING\') OR EXISTS (SELECT 1 FROM snapshot_download_progress WHERE snapshot_token = NEW.snapshot_token AND entity = NEW.entity) BEGIN SELECT RAISE (ABORT, \'Snapshot progress cannot be replaced\');END',
+    'snapshot_progress_insert',
+  );
+  late final Trigger snapshotProgressUpdate = Trigger(
+    'CREATE TRIGGER snapshot_progress_update BEFORE UPDATE ON snapshot_download_progress WHEN NEW.snapshot_token IS NOT OLD.snapshot_token OR NEW.entity IS NOT OLD.entity OR OLD.finished = 1 OR NEW.last_ordinal <= OLD.last_ordinal OR NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND state = \'RECEIVING\') BEGIN SELECT RAISE (ABORT, \'Snapshot progress must advance while receiving\');END',
+    'snapshot_progress_update',
+  );
+  late final Trigger snapshotBaselineInsert = Trigger(
+    'CREATE TRIGGER snapshot_baseline_insert BEFORE INSERT ON snapshot_baseline WHEN NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND user_id = NEW.user_id AND state = \'APPLIED\') BEGIN SELECT RAISE (ABORT, \'Only an applied snapshot may become baseline\');END',
+    'snapshot_baseline_insert',
+  );
+  late final Trigger snapshotBaselineUpdate = Trigger(
+    'CREATE TRIGGER snapshot_baseline_update BEFORE UPDATE ON snapshot_baseline WHEN NEW.singleton IS NOT OLD.singleton OR NEW.user_id IS NOT OLD.user_id OR NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND user_id = NEW.user_id AND state = \'APPLIED\') BEGIN SELECT RAISE (ABORT, \'Only an applied snapshot may become baseline\');END',
+    'snapshot_baseline_update',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7939,6 +9575,19 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     mutationHistoryNoReplace,
     mutationOrderPositive,
     mutationHistoryNoDelete,
+    snapshotDownloads,
+    snapshotDownloadRows,
+    snapshotDownloadProgress,
+    snapshotBaseline,
+    snapshotDownloadIdentity,
+    snapshotDownloadNoReplace,
+    snapshotRowInsert,
+    snapshotRowNoUpdate,
+    snapshotRowDelete,
+    snapshotProgressInsert,
+    snapshotProgressUpdate,
+    snapshotBaselineInsert,
+    snapshotBaselineUpdate,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -8114,6 +9763,85 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
       on: TableUpdateQuery.onTableName(
         'local_mutations',
         limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'snapshot_downloads',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('snapshot_download_rows', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'snapshot_downloads',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('snapshot_download_progress', kind: UpdateKind.delete),
+      ],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'snapshot_downloads',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'snapshot_downloads',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'snapshot_download_rows',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'snapshot_download_rows',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'snapshot_download_rows',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'snapshot_download_progress',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'snapshot_download_progress',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'snapshot_baseline',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'snapshot_baseline',
+        limitUpdateKind: UpdateKind.update,
       ),
       result: [],
     ),
@@ -8314,6 +10042,72 @@ final class $LocalAccountReferences
 
     final cache = $_typedResult.readTableOrNull(
       _mutationMappingHoldsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<SnapshotDownloads, List<SnapshotDownload>>
+  _snapshotDownloadsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.snapshotDownloads,
+        aliasName: 'local_account__user_id__snapshot_downloads__user_id',
+      );
+
+  $SnapshotDownloadsProcessedTableManager get snapshotDownloadsRefs {
+    final manager = $SnapshotDownloadsTableManager($_db, $_db.snapshotDownloads)
+        .filter(
+          (f) => f.userId.userId.sqlEquals($_itemColumn<String>('user_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _snapshotDownloadsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<SnapshotDownloadRows, List<SnapshotDownloadRow>>
+  _snapshotDownloadRowsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.snapshotDownloadRows,
+        aliasName: 'local_account__user_id__snapshot_download_rows__user_id',
+      );
+
+  $SnapshotDownloadRowsProcessedTableManager get snapshotDownloadRowsRefs {
+    final manager =
+        $SnapshotDownloadRowsTableManager(
+          $_db,
+          $_db.snapshotDownloadRows,
+        ).filter(
+          (f) => f.userId.userId.sqlEquals($_itemColumn<String>('user_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _snapshotDownloadRowsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<SnapshotBaseline, List<SnapshotBaselineData>>
+  _snapshotBaselineRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.snapshotBaseline,
+        aliasName: 'local_account__user_id__snapshot_baseline__user_id',
+      );
+
+  $SnapshotBaselineProcessedTableManager get snapshotBaselineRefs {
+    final manager = $SnapshotBaselineTableManager($_db, $_db.snapshotBaseline)
+        .filter(
+          (f) => f.userId.userId.sqlEquals($_itemColumn<String>('user_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _snapshotBaselineRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -8566,6 +10360,81 @@ class $LocalAccountFilterComposer
           }) => $MutationMappingHoldsFilterComposer(
             $db: $db,
             $table: $db.mutationMappingHolds,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> snapshotDownloadsRefs(
+    Expression<bool> Function($SnapshotDownloadsFilterComposer f) f,
+  ) {
+    final $SnapshotDownloadsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.snapshotDownloads,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SnapshotDownloadsFilterComposer(
+            $db: $db,
+            $table: $db.snapshotDownloads,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> snapshotDownloadRowsRefs(
+    Expression<bool> Function($SnapshotDownloadRowsFilterComposer f) f,
+  ) {
+    final $SnapshotDownloadRowsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.snapshotDownloadRows,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SnapshotDownloadRowsFilterComposer(
+            $db: $db,
+            $table: $db.snapshotDownloadRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> snapshotBaselineRefs(
+    Expression<bool> Function($SnapshotBaselineFilterComposer f) f,
+  ) {
+    final $SnapshotBaselineFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.snapshotBaseline,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SnapshotBaselineFilterComposer(
+            $db: $db,
+            $table: $db.snapshotBaseline,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -8853,6 +10722,81 @@ class $LocalAccountAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> snapshotDownloadsRefs<T extends Object>(
+    Expression<T> Function($SnapshotDownloadsAnnotationComposer a) f,
+  ) {
+    final $SnapshotDownloadsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.snapshotDownloads,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SnapshotDownloadsAnnotationComposer(
+            $db: $db,
+            $table: $db.snapshotDownloads,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> snapshotDownloadRowsRefs<T extends Object>(
+    Expression<T> Function($SnapshotDownloadRowsAnnotationComposer a) f,
+  ) {
+    final $SnapshotDownloadRowsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.snapshotDownloadRows,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SnapshotDownloadRowsAnnotationComposer(
+            $db: $db,
+            $table: $db.snapshotDownloadRows,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> snapshotBaselineRefs<T extends Object>(
+    Expression<T> Function($SnapshotBaselineAnnotationComposer a) f,
+  ) {
+    final $SnapshotBaselineAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.snapshotBaseline,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SnapshotBaselineAnnotationComposer(
+            $db: $db,
+            $table: $db.snapshotBaseline,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $LocalAccountTableManager
@@ -8878,6 +10822,9 @@ class $LocalAccountTableManager
             bool mutationSupersessionsRefs,
             bool canonicalEditIntentsRefs,
             bool mutationMappingHoldsRefs,
+            bool snapshotDownloadsRefs,
+            bool snapshotDownloadRowsRefs,
+            bool snapshotBaselineRefs,
           })
         > {
   $LocalAccountTableManager(_$AccountDatabase db, LocalAccount table)
@@ -8934,6 +10881,9 @@ class $LocalAccountTableManager
                 mutationSupersessionsRefs = false,
                 canonicalEditIntentsRefs = false,
                 mutationMappingHoldsRefs = false,
+                snapshotDownloadsRefs = false,
+                snapshotDownloadRowsRefs = false,
+                snapshotBaselineRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -8947,6 +10897,9 @@ class $LocalAccountTableManager
                     if (mutationSupersessionsRefs) db.mutationSupersessions,
                     if (canonicalEditIntentsRefs) db.canonicalEditIntents,
                     if (mutationMappingHoldsRefs) db.mutationMappingHolds,
+                    if (snapshotDownloadsRefs) db.snapshotDownloads,
+                    if (snapshotDownloadRowsRefs) db.snapshotDownloadRows,
+                    if (snapshotBaselineRefs) db.snapshotBaseline,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -9140,6 +11093,69 @@ class $LocalAccountTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (snapshotDownloadsRefs)
+                        await $_getPrefetchedData<
+                          LocalAccountData,
+                          LocalAccount,
+                          SnapshotDownload
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalAccountReferences
+                              ._snapshotDownloadsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalAccountReferences(
+                                db,
+                                table,
+                                p0,
+                              ).snapshotDownloadsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.userId == item.userId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (snapshotDownloadRowsRefs)
+                        await $_getPrefetchedData<
+                          LocalAccountData,
+                          LocalAccount,
+                          SnapshotDownloadRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalAccountReferences
+                              ._snapshotDownloadRowsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalAccountReferences(
+                                db,
+                                table,
+                                p0,
+                              ).snapshotDownloadRowsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.userId == item.userId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (snapshotBaselineRefs)
+                        await $_getPrefetchedData<
+                          LocalAccountData,
+                          LocalAccount,
+                          SnapshotBaselineData
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalAccountReferences
+                              ._snapshotBaselineRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalAccountReferences(
+                                db,
+                                table,
+                                p0,
+                              ).snapshotBaselineRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.userId == item.userId,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -9170,6 +11186,9 @@ typedef $LocalAccountProcessedTableManager =
         bool mutationSupersessionsRefs,
         bool canonicalEditIntentsRefs,
         bool mutationMappingHoldsRefs,
+        bool snapshotDownloadsRefs,
+        bool snapshotDownloadRowsRefs,
+        bool snapshotBaselineRefs,
       })
     >;
 typedef $MetadataCopiesCreateCompanionBuilder =
@@ -16083,6 +18102,1443 @@ typedef $MutationMappingHoldsProcessedTableManager =
         bool intentId,
       })
     >;
+typedef $SnapshotDownloadsCreateCompanionBuilder =
+    SnapshotDownloadsCompanion Function({
+      required String snapshotToken,
+      required String userId,
+      required String manifestJson,
+      required int snapshotCursor,
+      required int expiresAt,
+      Value<String> state,
+      required int createdAt,
+      Value<int> rowid,
+    });
+typedef $SnapshotDownloadsUpdateCompanionBuilder =
+    SnapshotDownloadsCompanion Function({
+      Value<String> snapshotToken,
+      Value<String> userId,
+      Value<String> manifestJson,
+      Value<int> snapshotCursor,
+      Value<int> expiresAt,
+      Value<String> state,
+      Value<int> createdAt,
+      Value<int> rowid,
+    });
+
+final class $SnapshotDownloadsReferences
+    extends
+        BaseReferences<_$AccountDatabase, SnapshotDownloads, SnapshotDownload> {
+  $SnapshotDownloadsReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static LocalAccount _userIdTable(_$AccountDatabase db) => db.localAccount
+      .createAlias('snapshot_downloads__user_id__local_account__user_id');
+
+  $LocalAccountProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $LocalAccountTableManager(
+      $_db,
+      $_db.localAccount,
+    ).filter((f) => f.userId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    SnapshotDownloadProgress,
+    List<SnapshotDownloadProgressData>
+  >
+  _snapshotDownloadProgressRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.snapshotDownloadProgress,
+        aliasName: 'snapshot_downloads__snapshot_token__snapshot_download_progress__snapshot_token',
+      );
+
+  $SnapshotDownloadProgressProcessedTableManager
+  get snapshotDownloadProgressRefs {
+    final manager =
+        $SnapshotDownloadProgressTableManager(
+          $_db,
+          $_db.snapshotDownloadProgress,
+        ).filter(
+          (f) => f.snapshotToken.snapshotToken.sqlEquals(
+            $_itemColumn<String>('snapshot_token')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _snapshotDownloadProgressRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $SnapshotDownloadsFilterComposer
+    extends Composer<_$AccountDatabase, SnapshotDownloads> {
+  $SnapshotDownloadsFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get snapshotToken => $composableBuilder(
+    column: $table.snapshotToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get manifestJson => $composableBuilder(
+    column: $table.manifestJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get snapshotCursor => $composableBuilder(
+    column: $table.snapshotCursor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalAccountFilterComposer get userId {
+    final $LocalAccountFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountFilterComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> snapshotDownloadProgressRefs(
+    Expression<bool> Function($SnapshotDownloadProgressFilterComposer f) f,
+  ) {
+    final $SnapshotDownloadProgressFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.snapshotToken,
+      referencedTable: $db.snapshotDownloadProgress,
+      getReferencedColumn: (t) => t.snapshotToken,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SnapshotDownloadProgressFilterComposer(
+            $db: $db,
+            $table: $db.snapshotDownloadProgress,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $SnapshotDownloadsOrderingComposer
+    extends Composer<_$AccountDatabase, SnapshotDownloads> {
+  $SnapshotDownloadsOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get snapshotToken => $composableBuilder(
+    column: $table.snapshotToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get manifestJson => $composableBuilder(
+    column: $table.manifestJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get snapshotCursor => $composableBuilder(
+    column: $table.snapshotCursor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalAccountOrderingComposer get userId {
+    final $LocalAccountOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountOrderingComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SnapshotDownloadsAnnotationComposer
+    extends Composer<_$AccountDatabase, SnapshotDownloads> {
+  $SnapshotDownloadsAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get snapshotToken => $composableBuilder(
+    column: $table.snapshotToken,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get manifestJson => $composableBuilder(
+    column: $table.manifestJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get snapshotCursor => $composableBuilder(
+    column: $table.snapshotCursor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expiresAt =>
+      $composableBuilder(column: $table.expiresAt, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $LocalAccountAnnotationComposer get userId {
+    final $LocalAccountAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountAnnotationComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> snapshotDownloadProgressRefs<T extends Object>(
+    Expression<T> Function($SnapshotDownloadProgressAnnotationComposer a) f,
+  ) {
+    final $SnapshotDownloadProgressAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.snapshotToken,
+          referencedTable: $db.snapshotDownloadProgress,
+          getReferencedColumn: (t) => t.snapshotToken,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $SnapshotDownloadProgressAnnotationComposer(
+                $db: $db,
+                $table: $db.snapshotDownloadProgress,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $SnapshotDownloadsTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          SnapshotDownloads,
+          SnapshotDownload,
+          $SnapshotDownloadsFilterComposer,
+          $SnapshotDownloadsOrderingComposer,
+          $SnapshotDownloadsAnnotationComposer,
+          $SnapshotDownloadsCreateCompanionBuilder,
+          $SnapshotDownloadsUpdateCompanionBuilder,
+          (SnapshotDownload, $SnapshotDownloadsReferences),
+          SnapshotDownload,
+          PrefetchHooks Function({
+            bool userId,
+            bool snapshotDownloadProgressRefs,
+          })
+        > {
+  $SnapshotDownloadsTableManager(_$AccountDatabase db, SnapshotDownloads table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $SnapshotDownloadsFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $SnapshotDownloadsOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $SnapshotDownloadsAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> snapshotToken = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> manifestJson = const Value.absent(),
+                Value<int> snapshotCursor = const Value.absent(),
+                Value<int> expiresAt = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SnapshotDownloadsCompanion(
+                snapshotToken: snapshotToken,
+                userId: userId,
+                manifestJson: manifestJson,
+                snapshotCursor: snapshotCursor,
+                expiresAt: expiresAt,
+                state: state,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String snapshotToken,
+                required String userId,
+                required String manifestJson,
+                required int snapshotCursor,
+                required int expiresAt,
+                Value<String> state = const Value.absent(),
+                required int createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SnapshotDownloadsCompanion.insert(
+                snapshotToken: snapshotToken,
+                userId: userId,
+                manifestJson: manifestJson,
+                snapshotCursor: snapshotCursor,
+                expiresAt: expiresAt,
+                state: state,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<SnapshotDownloads, SnapshotDownload>(table),
+                  $SnapshotDownloadsReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({userId = false, snapshotDownloadProgressRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (snapshotDownloadProgressRefs)
+                      db.snapshotDownloadProgress,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (userId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.userId,
+                            referencedTable: $SnapshotDownloadsReferences
+                                ._userIdTable(db),
+                            referencedColumn: $SnapshotDownloadsReferences
+                                ._userIdTable(db)
+                                .userId,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (snapshotDownloadProgressRefs)
+                        await $_getPrefetchedData<
+                          SnapshotDownload,
+                          SnapshotDownloads,
+                          SnapshotDownloadProgressData
+                        >(
+                          currentTable: table,
+                          referencedTable: $SnapshotDownloadsReferences
+                              ._snapshotDownloadProgressRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $SnapshotDownloadsReferences(
+                                db,
+                                table,
+                                p0,
+                              ).snapshotDownloadProgressRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.snapshotToken == item.snapshotToken,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $SnapshotDownloadsProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      SnapshotDownloads,
+      SnapshotDownload,
+      $SnapshotDownloadsFilterComposer,
+      $SnapshotDownloadsOrderingComposer,
+      $SnapshotDownloadsAnnotationComposer,
+      $SnapshotDownloadsCreateCompanionBuilder,
+      $SnapshotDownloadsUpdateCompanionBuilder,
+      (SnapshotDownload, $SnapshotDownloadsReferences),
+      SnapshotDownload,
+      PrefetchHooks Function({bool userId, bool snapshotDownloadProgressRefs})
+    >;
+typedef $SnapshotDownloadRowsCreateCompanionBuilder =
+    SnapshotDownloadRowsCompanion Function({
+      required String snapshotToken,
+      required String userId,
+      required String entity,
+      required int ordinal,
+      required String resourceId,
+      required String canonicalPayload,
+      Value<int> rowid,
+    });
+typedef $SnapshotDownloadRowsUpdateCompanionBuilder =
+    SnapshotDownloadRowsCompanion Function({
+      Value<String> snapshotToken,
+      Value<String> userId,
+      Value<String> entity,
+      Value<int> ordinal,
+      Value<String> resourceId,
+      Value<String> canonicalPayload,
+      Value<int> rowid,
+    });
+
+final class $SnapshotDownloadRowsReferences
+    extends
+        BaseReferences<
+          _$AccountDatabase,
+          SnapshotDownloadRows,
+          SnapshotDownloadRow
+        > {
+  $SnapshotDownloadRowsReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static LocalAccount _userIdTable(_$AccountDatabase db) => db.localAccount
+      .createAlias('snapshot_download_rows__user_id__local_account__user_id');
+
+  $LocalAccountProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $LocalAccountTableManager(
+      $_db,
+      $_db.localAccount,
+    ).filter((f) => f.userId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $SnapshotDownloadRowsFilterComposer
+    extends Composer<_$AccountDatabase, SnapshotDownloadRows> {
+  $SnapshotDownloadRowsFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get snapshotToken => $composableBuilder(
+    column: $table.snapshotToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ordinal => $composableBuilder(
+    column: $table.ordinal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resourceId => $composableBuilder(
+    column: $table.resourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get canonicalPayload => $composableBuilder(
+    column: $table.canonicalPayload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalAccountFilterComposer get userId {
+    final $LocalAccountFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountFilterComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SnapshotDownloadRowsOrderingComposer
+    extends Composer<_$AccountDatabase, SnapshotDownloadRows> {
+  $SnapshotDownloadRowsOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get snapshotToken => $composableBuilder(
+    column: $table.snapshotToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ordinal => $composableBuilder(
+    column: $table.ordinal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resourceId => $composableBuilder(
+    column: $table.resourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get canonicalPayload => $composableBuilder(
+    column: $table.canonicalPayload,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalAccountOrderingComposer get userId {
+    final $LocalAccountOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountOrderingComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SnapshotDownloadRowsAnnotationComposer
+    extends Composer<_$AccountDatabase, SnapshotDownloadRows> {
+  $SnapshotDownloadRowsAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get snapshotToken => $composableBuilder(
+    column: $table.snapshotToken,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entity =>
+      $composableBuilder(column: $table.entity, builder: (column) => column);
+
+  GeneratedColumn<int> get ordinal =>
+      $composableBuilder(column: $table.ordinal, builder: (column) => column);
+
+  GeneratedColumn<String> get resourceId => $composableBuilder(
+    column: $table.resourceId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get canonicalPayload => $composableBuilder(
+    column: $table.canonicalPayload,
+    builder: (column) => column,
+  );
+
+  $LocalAccountAnnotationComposer get userId {
+    final $LocalAccountAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountAnnotationComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SnapshotDownloadRowsTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          SnapshotDownloadRows,
+          SnapshotDownloadRow,
+          $SnapshotDownloadRowsFilterComposer,
+          $SnapshotDownloadRowsOrderingComposer,
+          $SnapshotDownloadRowsAnnotationComposer,
+          $SnapshotDownloadRowsCreateCompanionBuilder,
+          $SnapshotDownloadRowsUpdateCompanionBuilder,
+          (SnapshotDownloadRow, $SnapshotDownloadRowsReferences),
+          SnapshotDownloadRow,
+          PrefetchHooks Function({bool userId})
+        > {
+  $SnapshotDownloadRowsTableManager(
+    _$AccountDatabase db,
+    SnapshotDownloadRows table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $SnapshotDownloadRowsFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $SnapshotDownloadRowsOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $SnapshotDownloadRowsAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> snapshotToken = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> entity = const Value.absent(),
+                Value<int> ordinal = const Value.absent(),
+                Value<String> resourceId = const Value.absent(),
+                Value<String> canonicalPayload = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SnapshotDownloadRowsCompanion(
+                snapshotToken: snapshotToken,
+                userId: userId,
+                entity: entity,
+                ordinal: ordinal,
+                resourceId: resourceId,
+                canonicalPayload: canonicalPayload,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String snapshotToken,
+                required String userId,
+                required String entity,
+                required int ordinal,
+                required String resourceId,
+                required String canonicalPayload,
+                Value<int> rowid = const Value.absent(),
+              }) => SnapshotDownloadRowsCompanion.insert(
+                snapshotToken: snapshotToken,
+                userId: userId,
+                entity: entity,
+                ordinal: ordinal,
+                resourceId: resourceId,
+                canonicalPayload: canonicalPayload,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<SnapshotDownloadRows, SnapshotDownloadRow>(table),
+                  $SnapshotDownloadRowsReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({userId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (userId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.userId,
+                        referencedTable: $SnapshotDownloadRowsReferences
+                            ._userIdTable(db),
+                        referencedColumn: $SnapshotDownloadRowsReferences
+                            ._userIdTable(db)
+                            .userId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $SnapshotDownloadRowsProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      SnapshotDownloadRows,
+      SnapshotDownloadRow,
+      $SnapshotDownloadRowsFilterComposer,
+      $SnapshotDownloadRowsOrderingComposer,
+      $SnapshotDownloadRowsAnnotationComposer,
+      $SnapshotDownloadRowsCreateCompanionBuilder,
+      $SnapshotDownloadRowsUpdateCompanionBuilder,
+      (SnapshotDownloadRow, $SnapshotDownloadRowsReferences),
+      SnapshotDownloadRow,
+      PrefetchHooks Function({bool userId})
+    >;
+typedef $SnapshotDownloadProgressCreateCompanionBuilder =
+    SnapshotDownloadProgressCompanion Function({
+      required String snapshotToken,
+      required String entity,
+      required int lastOrdinal,
+      Value<String?> nextCursor,
+      required int finished,
+      Value<int> rowid,
+    });
+typedef $SnapshotDownloadProgressUpdateCompanionBuilder =
+    SnapshotDownloadProgressCompanion Function({
+      Value<String> snapshotToken,
+      Value<String> entity,
+      Value<int> lastOrdinal,
+      Value<String?> nextCursor,
+      Value<int> finished,
+      Value<int> rowid,
+    });
+
+final class $SnapshotDownloadProgressReferences
+    extends
+        BaseReferences<
+          _$AccountDatabase,
+          SnapshotDownloadProgress,
+          SnapshotDownloadProgressData
+        > {
+  $SnapshotDownloadProgressReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static SnapshotDownloads _snapshotTokenTable(_$AccountDatabase db) =>
+      db.snapshotDownloads.createAlias(
+        'snapshot_download_progress__snapshot_token__snapshot_downloads__snapshot_token',
+      );
+
+  $SnapshotDownloadsProcessedTableManager get snapshotToken {
+    final $_column = $_itemColumn<String>('snapshot_token')!;
+
+    final manager = $SnapshotDownloadsTableManager(
+      $_db,
+      $_db.snapshotDownloads,
+    ).filter((f) => f.snapshotToken.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_snapshotTokenTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $SnapshotDownloadProgressFilterComposer
+    extends Composer<_$AccountDatabase, SnapshotDownloadProgress> {
+  $SnapshotDownloadProgressFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastOrdinal => $composableBuilder(
+    column: $table.lastOrdinal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nextCursor => $composableBuilder(
+    column: $table.nextCursor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get finished => $composableBuilder(
+    column: $table.finished,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $SnapshotDownloadsFilterComposer get snapshotToken {
+    final $SnapshotDownloadsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.snapshotToken,
+      referencedTable: $db.snapshotDownloads,
+      getReferencedColumn: (t) => t.snapshotToken,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SnapshotDownloadsFilterComposer(
+            $db: $db,
+            $table: $db.snapshotDownloads,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SnapshotDownloadProgressOrderingComposer
+    extends Composer<_$AccountDatabase, SnapshotDownloadProgress> {
+  $SnapshotDownloadProgressOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get entity => $composableBuilder(
+    column: $table.entity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastOrdinal => $composableBuilder(
+    column: $table.lastOrdinal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get nextCursor => $composableBuilder(
+    column: $table.nextCursor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get finished => $composableBuilder(
+    column: $table.finished,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $SnapshotDownloadsOrderingComposer get snapshotToken {
+    final $SnapshotDownloadsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.snapshotToken,
+      referencedTable: $db.snapshotDownloads,
+      getReferencedColumn: (t) => t.snapshotToken,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SnapshotDownloadsOrderingComposer(
+            $db: $db,
+            $table: $db.snapshotDownloads,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SnapshotDownloadProgressAnnotationComposer
+    extends Composer<_$AccountDatabase, SnapshotDownloadProgress> {
+  $SnapshotDownloadProgressAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get entity =>
+      $composableBuilder(column: $table.entity, builder: (column) => column);
+
+  GeneratedColumn<int> get lastOrdinal => $composableBuilder(
+    column: $table.lastOrdinal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get nextCursor => $composableBuilder(
+    column: $table.nextCursor,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get finished =>
+      $composableBuilder(column: $table.finished, builder: (column) => column);
+
+  $SnapshotDownloadsAnnotationComposer get snapshotToken {
+    final $SnapshotDownloadsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.snapshotToken,
+      referencedTable: $db.snapshotDownloads,
+      getReferencedColumn: (t) => t.snapshotToken,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $SnapshotDownloadsAnnotationComposer(
+            $db: $db,
+            $table: $db.snapshotDownloads,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SnapshotDownloadProgressTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          SnapshotDownloadProgress,
+          SnapshotDownloadProgressData,
+          $SnapshotDownloadProgressFilterComposer,
+          $SnapshotDownloadProgressOrderingComposer,
+          $SnapshotDownloadProgressAnnotationComposer,
+          $SnapshotDownloadProgressCreateCompanionBuilder,
+          $SnapshotDownloadProgressUpdateCompanionBuilder,
+          (SnapshotDownloadProgressData, $SnapshotDownloadProgressReferences),
+          SnapshotDownloadProgressData,
+          PrefetchHooks Function({bool snapshotToken})
+        > {
+  $SnapshotDownloadProgressTableManager(
+    _$AccountDatabase db,
+    SnapshotDownloadProgress table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $SnapshotDownloadProgressFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $SnapshotDownloadProgressOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $SnapshotDownloadProgressAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> snapshotToken = const Value.absent(),
+                Value<String> entity = const Value.absent(),
+                Value<int> lastOrdinal = const Value.absent(),
+                Value<String?> nextCursor = const Value.absent(),
+                Value<int> finished = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SnapshotDownloadProgressCompanion(
+                snapshotToken: snapshotToken,
+                entity: entity,
+                lastOrdinal: lastOrdinal,
+                nextCursor: nextCursor,
+                finished: finished,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String snapshotToken,
+                required String entity,
+                required int lastOrdinal,
+                Value<String?> nextCursor = const Value.absent(),
+                required int finished,
+                Value<int> rowid = const Value.absent(),
+              }) => SnapshotDownloadProgressCompanion.insert(
+                snapshotToken: snapshotToken,
+                entity: entity,
+                lastOrdinal: lastOrdinal,
+                nextCursor: nextCursor,
+                finished: finished,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    SnapshotDownloadProgress,
+                    SnapshotDownloadProgressData
+                  >(table),
+                  $SnapshotDownloadProgressReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({snapshotToken = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (snapshotToken) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.snapshotToken,
+                        referencedTable: $SnapshotDownloadProgressReferences
+                            ._snapshotTokenTable(db),
+                        referencedColumn: $SnapshotDownloadProgressReferences
+                            ._snapshotTokenTable(db)
+                            .snapshotToken,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $SnapshotDownloadProgressProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      SnapshotDownloadProgress,
+      SnapshotDownloadProgressData,
+      $SnapshotDownloadProgressFilterComposer,
+      $SnapshotDownloadProgressOrderingComposer,
+      $SnapshotDownloadProgressAnnotationComposer,
+      $SnapshotDownloadProgressCreateCompanionBuilder,
+      $SnapshotDownloadProgressUpdateCompanionBuilder,
+      (SnapshotDownloadProgressData, $SnapshotDownloadProgressReferences),
+      SnapshotDownloadProgressData,
+      PrefetchHooks Function({bool snapshotToken})
+    >;
+typedef $SnapshotBaselineCreateCompanionBuilder =
+    SnapshotBaselineCompanion Function({
+      Value<int> singleton,
+      required String snapshotToken,
+      required String userId,
+    });
+typedef $SnapshotBaselineUpdateCompanionBuilder =
+    SnapshotBaselineCompanion Function({
+      Value<int> singleton,
+      Value<String> snapshotToken,
+      Value<String> userId,
+    });
+
+final class $SnapshotBaselineReferences
+    extends
+        BaseReferences<
+          _$AccountDatabase,
+          SnapshotBaseline,
+          SnapshotBaselineData
+        > {
+  $SnapshotBaselineReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static LocalAccount _userIdTable(_$AccountDatabase db) => db.localAccount
+      .createAlias('snapshot_baseline__user_id__local_account__user_id');
+
+  $LocalAccountProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $LocalAccountTableManager(
+      $_db,
+      $_db.localAccount,
+    ).filter((f) => f.userId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $SnapshotBaselineFilterComposer
+    extends Composer<_$AccountDatabase, SnapshotBaseline> {
+  $SnapshotBaselineFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get singleton => $composableBuilder(
+    column: $table.singleton,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get snapshotToken => $composableBuilder(
+    column: $table.snapshotToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalAccountFilterComposer get userId {
+    final $LocalAccountFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountFilterComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SnapshotBaselineOrderingComposer
+    extends Composer<_$AccountDatabase, SnapshotBaseline> {
+  $SnapshotBaselineOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get singleton => $composableBuilder(
+    column: $table.singleton,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get snapshotToken => $composableBuilder(
+    column: $table.snapshotToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalAccountOrderingComposer get userId {
+    final $LocalAccountOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountOrderingComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SnapshotBaselineAnnotationComposer
+    extends Composer<_$AccountDatabase, SnapshotBaseline> {
+  $SnapshotBaselineAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get singleton =>
+      $composableBuilder(column: $table.singleton, builder: (column) => column);
+
+  GeneratedColumn<String> get snapshotToken => $composableBuilder(
+    column: $table.snapshotToken,
+    builder: (column) => column,
+  );
+
+  $LocalAccountAnnotationComposer get userId {
+    final $LocalAccountAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountAnnotationComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $SnapshotBaselineTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          SnapshotBaseline,
+          SnapshotBaselineData,
+          $SnapshotBaselineFilterComposer,
+          $SnapshotBaselineOrderingComposer,
+          $SnapshotBaselineAnnotationComposer,
+          $SnapshotBaselineCreateCompanionBuilder,
+          $SnapshotBaselineUpdateCompanionBuilder,
+          (SnapshotBaselineData, $SnapshotBaselineReferences),
+          SnapshotBaselineData,
+          PrefetchHooks Function({bool userId})
+        > {
+  $SnapshotBaselineTableManager(_$AccountDatabase db, SnapshotBaseline table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $SnapshotBaselineFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $SnapshotBaselineOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $SnapshotBaselineAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> singleton = const Value.absent(),
+                Value<String> snapshotToken = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+              }) => SnapshotBaselineCompanion(
+                singleton: singleton,
+                snapshotToken: snapshotToken,
+                userId: userId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> singleton = const Value.absent(),
+                required String snapshotToken,
+                required String userId,
+              }) => SnapshotBaselineCompanion.insert(
+                singleton: singleton,
+                snapshotToken: snapshotToken,
+                userId: userId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<SnapshotBaseline, SnapshotBaselineData>(table),
+                  $SnapshotBaselineReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({userId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (userId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.userId,
+                        referencedTable: $SnapshotBaselineReferences
+                            ._userIdTable(db),
+                        referencedColumn: $SnapshotBaselineReferences
+                            ._userIdTable(db)
+                            .userId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $SnapshotBaselineProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      SnapshotBaseline,
+      SnapshotBaselineData,
+      $SnapshotBaselineFilterComposer,
+      $SnapshotBaselineOrderingComposer,
+      $SnapshotBaselineAnnotationComposer,
+      $SnapshotBaselineCreateCompanionBuilder,
+      $SnapshotBaselineUpdateCompanionBuilder,
+      (SnapshotBaselineData, $SnapshotBaselineReferences),
+      SnapshotBaselineData,
+      PrefetchHooks Function({bool userId})
+    >;
 
 class $AccountDatabaseManager {
   final _$AccountDatabase _db;
@@ -16115,4 +19571,12 @@ class $AccountDatabaseManager {
       $CanonicalEditIntentsTableManager(_db, _db.canonicalEditIntents);
   $MutationMappingHoldsTableManager get mutationMappingHolds =>
       $MutationMappingHoldsTableManager(_db, _db.mutationMappingHolds);
+  $SnapshotDownloadsTableManager get snapshotDownloads =>
+      $SnapshotDownloadsTableManager(_db, _db.snapshotDownloads);
+  $SnapshotDownloadRowsTableManager get snapshotDownloadRows =>
+      $SnapshotDownloadRowsTableManager(_db, _db.snapshotDownloadRows);
+  $SnapshotDownloadProgressTableManager get snapshotDownloadProgress =>
+      $SnapshotDownloadProgressTableManager(_db, _db.snapshotDownloadProgress);
+  $SnapshotBaselineTableManager get snapshotBaseline =>
+      $SnapshotBaselineTableManager(_db, _db.snapshotBaseline);
 }

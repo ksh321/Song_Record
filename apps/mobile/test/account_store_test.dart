@@ -121,7 +121,7 @@ void main() {
       expect(tables['local_mutations'], hasLength(1));
       expect(tables['local_recording_files'], hasLength(1));
       expect(snapshot['version'], 2);
-      expect(snapshot['schema_version'], 4);
+      expect(snapshot['schema_version'], 5);
 
       final exportedFile =
           (tables['local_recording_files'] as List).single
@@ -488,7 +488,7 @@ void main() {
     future.close();
     await expectLater(
       manager.openAccount(userA),
-      remoteFailure('Unsupported local schema migration: 99 -> 4'),
+      remoteFailure('Unsupported local schema migration: 99 -> 5'),
     );
     final inspect = sqlite.sqlite3.open(file.path);
     try {
