@@ -58,6 +58,7 @@ class _SyncScreenState extends State<SyncScreen> {
               ),
               const SizedBox(height: AppSpacing.md),
               if (state.message != null) Text(state.message!),
+              if (state.statusMessage != null) Text(state.statusMessage!),
               if (state.needsResume)
                 const Text('자동 전송을 잠시 멈췄어요. 연결과 로그인 상태를 확인한 뒤 전송을 다시 시도해 주세요.'),
               if (state.needsResume)
@@ -67,7 +68,10 @@ class _SyncScreenState extends State<SyncScreen> {
                 ),
               if (!state.loaded && state.message == null)
                 const Center(child: CircularProgressIndicator()),
-              if (state.loaded && state.items.isEmpty && state.message == null)
+              if (state.loaded &&
+                  state.items.isEmpty &&
+                  state.message == null &&
+                  state.statusMessage == null)
                 const Text('대기 중인 정보가 없어요.'),
               for (final item in state.items)
                 Card(

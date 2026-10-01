@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:song_record/core/domain/identifiers.dart';
 import 'package:song_record/core/sync/snapshot_receiver.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/sync/snapshot_sync_backend.dart';
 import 'package:song_record/features/sync/sync_controller.dart';
+import 'package:song_record/features/sync/sync_screen.dart';
 
 class Sender implements SyncBackend {
   int sends = 0;
@@ -34,6 +37,12 @@ class Receiver implements SnapshotStepper {
 }
 
 void main() {
+  test('new operation identifiers use canonical UUID v4 bytes', () {
+    final id = UuidValue.random();
+    expect(id.bytes[6] >> 4, 4);
+    expect(id.bytes[8] >> 6, 2);
+    expect(UuidValue(id.value).value, id.value);
+  });
   final auth = AuthSession(
     userId: 'synthetic',
     deviceId: 'synthetic',
@@ -41,6 +50,32 @@ void main() {
     refreshToken: 'unused',
     accessExpiresAt: DateTime.utc(2030),
     refreshExpiresAt: DateTime.utc(2030),
+  );
+  testWidgets(
+    'initial receiving and authentication rejection are never shown as empty queue',
+    (tester) async {
+      final receiver = Receiver(), sender = Sender();
+      receiver.action = () async => SnapshotStep.authenticationRequired;
+      final backend = SnapshotSyncBackend(
+        outgoing: sender,
+        receiver: receiver,
+        session: () async => auth,
+      );
+      final controller = SyncController(backend, schedule: (_, _) => () {});
+      await tester.pumpWidget(
+        MaterialApp(home: SyncScreen(controller: controller)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('초기 정보를 받고'), findsOneWidget);
+      expect(find.text('대기 중인 정보가 없어요.'), findsNothing);
+      controller.setEnabled(true);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('다시 로그인'), findsOneWidget);
+      expect(find.text('대기 중인 정보가 없어요.'), findsNothing);
+      expect(sender.sends, 0);
+      await tester.pumpWidget(const SizedBox());
+      controller.dispose();
+    },
   );
   for (final status in [401, 403]) {
     test(

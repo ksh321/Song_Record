@@ -22,6 +22,10 @@ abstract interface class SyncBackend {
   Future<DateTime?> nextAttempt();
 }
 
+abstract interface class SyncStatusSource {
+  String? get statusMessage;
+}
+
 final class RepositorySyncBackend implements SyncBackend {
   RepositorySyncBackend(this.repository, this.transport, this.session);
   final LocalRepository repository;
@@ -75,6 +79,9 @@ final class SyncController extends ChangeNotifier {
   }) : _now = now ?? DateTime.now,
        _schedule = schedule ?? _timer;
   final SyncBackend backend;
+  String? get statusMessage => backend is SyncStatusSource
+      ? (backend as SyncStatusSource).statusMessage
+      : null;
   final DateTime Function() _now;
   final SyncSchedule _schedule;
   static VoidCallback _timer(Duration delay, VoidCallback action) {

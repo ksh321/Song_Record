@@ -4,7 +4,7 @@ import 'sync_controller.dart';
 
 /// Composes initial receiving with the existing foreground scheduler. No timer
 /// or queued follow-up lives here; the controller remains the single scheduler.
-final class SnapshotSyncBackend implements SyncBackend {
+final class SnapshotSyncBackend implements SyncBackend, SyncStatusSource {
   SnapshotSyncBackend({
     required this.outgoing,
     required this.receiver,
@@ -18,6 +18,17 @@ final class SnapshotSyncBackend implements SyncBackend {
   bool _complete = false, _authBlocked = false;
   DateTime? _due;
   SnapshotStep? lastStep;
+
+  @override
+  String? get statusMessage {
+    if (_authBlocked) return '초기 정보를 받으려면 다시 로그인해 주세요.';
+    if (_complete) return null;
+    return switch (lastStep) {
+      SnapshotStep.waiting => '서버에서 초기 정보를 준비하고 있어요.',
+      SnapshotStep.retryLater => '초기 정보를 받지 못했어요. 연결 상태를 확인해 주세요.',
+      _ => '초기 정보를 받고 있어요. 기존 입력은 보존돼요.',
+    };
+  }
 
   @override
   bool get automaticFollowupAllowed =>

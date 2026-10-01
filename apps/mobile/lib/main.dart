@@ -3,11 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_store.dart';
+import 'package:song_record/core/domain/identifiers.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/sync/mutation_transport.dart';
+import 'package:song_record/core/sync/snapshot_receiver.dart';
+import 'package:song_record/core/sync/snapshot_transport.dart';
 import 'package:song_record/features/auth/auth_adapters.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/auth/login_gate.dart';
+import 'package:song_record/features/sync/snapshot_sync_backend.dart';
 import 'package:song_record/features/sync/sync_controller.dart';
 
 Future<void> main() async {
@@ -61,20 +65,35 @@ Future<void> main() async {
         activeStore = store;
         activeSync?.dispose();
         late final SyncController sync;
+        Future<AuthSession> currentSession() async {
+          if (!sync.maySend) throw const AuthFailure('전송이 일시 중지됐어요.');
+          final session = await controller.validSession();
+          if (!sync.maySend) throw const AuthFailure('전송이 일시 중지됐어요.');
+          return session;
+        }
+
         sync = SyncController(
-          RepositorySyncBackend(
-            LocalRepository(store),
-            HttpMutationTransport(
-              config.apiBaseUrl,
-              allowLocalHttp:
-                  kDebugMode && config.environment == AppEnvironment.dev,
+          SnapshotSyncBackend(
+            receiver: SnapshotReceiver(
+              store: store,
+              transport: HttpSnapshotTransport(
+                config.apiBaseUrl,
+                allowLocalHttp:
+                    kDebugMode && config.environment == AppEnvironment.dev,
+              ),
+              newOperationId: () => UuidValue.random().value,
+              clock: DateTime.now,
             ),
-            () async {
-              if (!sync.maySend) throw const AuthFailure('전송이 일시 중지됐어요.');
-              final session = await controller.validSession();
-              if (!sync.maySend) throw const AuthFailure('전송이 일시 중지됐어요.');
-              return session;
-            },
+            session: currentSession,
+            outgoing: RepositorySyncBackend(
+              LocalRepository(store),
+              HttpMutationTransport(
+                config.apiBaseUrl,
+                allowLocalHttp:
+                    kDebugMode && config.environment == AppEnvironment.dev,
+              ),
+              currentSession,
+            ),
           ),
         );
         sync.setForeground(
