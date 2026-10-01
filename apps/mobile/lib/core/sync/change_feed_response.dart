@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../database/local_models.dart';
 import '../domain/identifiers.dart';
+import 'wire_json.dart';
 
 void _valid(bool condition) {
   if (!condition) throw const FormatException('Invalid change feed');
@@ -79,6 +80,10 @@ final class ChangeFeedPage {
     _valid(root['has_more'] is bool && root['changes'] is List);
     final more = root['has_more'] as bool;
     final values = root['changes'] as List;
+    // The feed envelope is not canonicalized by the server; retain its strict
+    // cursor/revision types. Only stored domain payloads use exponent spelling.
+    final normalizedValues =
+        (decodeWireJson(body) as Map<String, dynamic>)['changes'] as List;
     _valid(values.length <= limit);
     const types = {
       'SONG': LocalEntity.song,
@@ -91,7 +96,8 @@ final class ChangeFeedPage {
     };
     var previous = after;
     final entries = <ChangeFeedEntry>[];
-    for (final value in values) {
+    for (var index = 0; index < values.length; index++) {
+      final value = values[index];
       final row = _object(value, {
         'change_seq',
         'entity_type',
@@ -114,7 +120,7 @@ final class ChangeFeedPage {
       final operation = row['operation'];
       _valid(operation == 'UPSERT' || operation == 'DELETE');
       _valid(row['payload'] is Map<String, dynamic>);
-      final payload = row['payload'] as Map<String, dynamic>;
+      final payload = normalizedValues[index]['payload'] as Map<String, dynamic>;
       _valid(!payload.containsKey('user_id') || payload['user_id'] == owner);
       _valid(!payload.containsKey('id') || payload['id'] == id);
       _valid(
@@ -122,7 +128,7 @@ final class ChangeFeedPage {
             payload['revision'] == revision && payload['revision'] is int,
       );
       // Some change payloads represent related state and have their own revision
-      // names. Preserve them; never invent or silently coerce domain fields.
+      // names. Preserve them; numeric spelling does not create missing fields.
       entries.add(
         ChangeFeedEntry._(
           sequence,

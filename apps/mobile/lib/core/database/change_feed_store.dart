@@ -7,6 +7,7 @@ import '../sync/change_payload_validation.dart';
 import '../sync/permanent_deletion.dart';
 import '../sync/recording_asset_projection.dart';
 import '../sync/recording_change_projection.dart';
+import '../sync/wire_json.dart';
 import 'account_database.dart';
 import 'asset_deletion_store.dart';
 import 'local_models.dart';
@@ -296,7 +297,7 @@ final class ChangeFeedStore {
           final id = row.read<String>('resource_id');
           if (!seen.add(id)) throw StateError('Ambiguous initial metadata');
           if (permanent.containsKey('${entity.code}:$id')) continue;
-          final source = jsonDecode(row.read<String>('canonical_payload'));
+          final source = decodeWireJson(row.read<String>('canonical_payload'));
           if (source is! Map<String, dynamic>) {
             throw const FormatException('Invalid initial metadata');
           }
@@ -397,7 +398,7 @@ final class ChangeFeedStore {
     if (rows.length != 1) {
       throw StateError('Missing or ambiguous relation parent');
     }
-    return jsonDecode(rows.single.read<String>('canonical_payload'))
+    return decodeWireJson(rows.single.read<String>('canonical_payload'))
         as Map<String, dynamic>;
   }
 
@@ -416,7 +417,7 @@ final class ChangeFeedStore {
     final result = <String, int>{};
     for (final row in rows) {
       requireActive();
-      final raw = jsonDecode(row.read<String>('canonical_payload'));
+      final raw = decodeWireJson(row.read<String>('canonical_payload'));
       if (raw is! Map<String, dynamic> ||
           raw['entity_type'] is! String ||
           raw['entity_id'] is! String) {

@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 
 import '../domain/identifiers.dart';
+import 'wire_json.dart';
 
 const snapshotEntities = <String>[
   'CHANGE_LOG',
@@ -85,7 +86,7 @@ final class SnapshotManifest {
     required String expectedToken,
     required DateTime now,
   }) {
-    final data = _object(jsonDecode(body), {
+    final data = _object(decodeWireJson(body), {
       'snapshot_token',
       'status',
       'schema_version',
@@ -159,8 +160,9 @@ final class SnapshotEntry {
     );
     _uuid(owner);
     _uuid(resourceId);
-    final value = jsonDecode(canonicalPayload);
-    _check(value is Map<String, dynamic> && value['user_id'] == owner);
+    final decoded = decodeWireJson(canonicalPayload);
+    _check(decoded is Map<String, dynamic> && decoded['user_id'] == owner);
+    final value = decoded as Map<String, dynamic>;
     const idFields = {
       'SONG_SOURCE': 'song_id',
       'RECORDING_FILE_SPEC': 'recording_id',
@@ -186,7 +188,7 @@ final class SnapshotEntry {
 
   /// Each call returns a detached value; callers cannot mutate stored hash input.
   Map<String, dynamic> get payload =>
-      jsonDecode(canonicalPayload) as Map<String, dynamic>;
+      decodeWireJson(canonicalPayload) as Map<String, dynamic>;
   @override
   String toString() => 'SnapshotEntry[REDACTED]';
 }
@@ -226,7 +228,7 @@ final class SnapshotPage {
           now.isBefore(manifest.expiresAt),
     );
     _uuid(owner);
-    final data = _object(jsonDecode(body), {
+    final data = _object(decodeWireJson(body), {
       'snapshot_token',
       'snapshot_cursor',
       'expires_at',
@@ -255,7 +257,7 @@ final class SnapshotPage {
       _check(_integer(row['ordinal'], minimum: 1) == ++ordinal);
       final canonical = row['canonical_payload'];
       _check(canonical is String && canonical.length <= 1048576);
-      final value = jsonDecode(canonical as String);
+      final value = decodeWireJson(canonical as String);
       _check(
         value is Map<String, dynamic> &&
             value['user_id'] == owner &&

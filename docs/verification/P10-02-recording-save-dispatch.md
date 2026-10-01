@@ -69,3 +69,6 @@ P10-02 / R002: 기록만이 아니라 곡·태그의 CREATE ACK 뒤 기준 revis
 93d1661의 CI 36836566652는 Flutter 스키마 생성 비교 실패, API contract/Idempotency MySQL/Development workflow는 PASS. 이전 같은 문제 이력을 유지하며 이번 CI 재발 1회(기존 1회 포함 누적 2회)를 기록한다. 원인은 로컬 스크립트가 .drift를 CRLF로 다시 써 Git의 LF 속성만으로 작업 폴더 생성 입력이 정규화되지 않은 것이다.
 
 원본 .drift를 LF로 정규화했다. v7 스냅샷은 SQL 문자열47곳의 CRLF→LF만 수정했으며 파싱한 JSON을 대조해 SQL 줄바꿈 이외 차이가 없음을 확인했다. v1~v6는 그대로다. 새 v8도 같은 LF 기준으로 생성했다. build_runner 및 make-migrations --no-test가 Linux와 같은 LF 입력으로 성공했다. canonical_schema_test에 현재 원본/스냅샷 SQL의 LF 검사를 추가하여 로컬에서도 생성 입력 문제를 감지한다. 검사 비활성화/완화 없음. 최종 수정 SHA의 CI 결과는 후속 기록으로 판정한다.
+
+
+02268882dd57afa60b510f760ec40a032e2a2928 필수 CI4 PASS: 36838603955/36838603995/36838604019/36838603865. 스키마 LF 보정 및 곡/태그 후속 연결의 해당 범위 검증 완료. 전체 P10-02 완료로 확대하지 않는다. 이어진 P10-10 서버 계약 교차 검증에서 숫자 응답 표기 결함을 발견해 보완 중이며 P10-10-two-device-flow.md에 근거를 연결한다.

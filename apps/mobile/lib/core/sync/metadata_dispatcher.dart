@@ -6,6 +6,7 @@ import '../database/local_models.dart';
 import 'metadata_response.dart';
 import 'mutation_request.dart';
 import 'mutation_transport.dart';
+import 'wire_json.dart';
 
 /// One bounded pass, including atomic canonical mapping; no automatic rebasing.
 final class MetadataDispatcher {
@@ -103,7 +104,7 @@ final class MetadataDispatcher {
           var reason = 'HTTP_${response.status}';
           Map<String, Object?>? current;
           try {
-            final envelope = jsonDecode(response.body);
+            final envelope = decodeWireJson(response.body);
             final error = envelope is Map ? envelope['error'] : null;
             if (error is Map &&
                 error['code'] is String &&

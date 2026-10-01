@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "93d1661c5e035353e02cb809b7e41d40370364bf",
+  "baseline_head": "02268882dd57afa60b510f760ec40a032e2a2928",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -9,7 +9,8 @@
     "workflow08.reviewed",
     "canonical.dispatch.connected",
     "p10.initial.core.validated",
-    "p10.delta.control.validated"
+    "p10.delta.control.validated",
+    "p10.receiver"
   ],
   "grants": [],
   "coverage": {
@@ -1563,9 +1564,9 @@
         "apps/mobile/lib/core/sync/metadata_followup_plan.dart",
         "apps/mobile/test/metadata_followup_dispatch_test.dart"
       ],
-      "state": "active",
+      "state": "pending",
       "owner": "AI",
-      "resume": "곡/태그 누락을 재현·보완. 통합58 PASS/skip1, 강화된 HTTP/이관/후속38 PASS. 93d1661 CI는 SQL 줄바꿈 실패를 확인해 LF 보정. 수정 묶음 커밋 및 정확 SHA CI 후 공통 송수신 통합으로 이어간다. P19 목록 API/P12 파일/P18 UI를 선행으로 역추가하지 않는다.",
+      "resume": "0226888 후속 연결 및 LF 보정 CI4 PASS. 현재 P10-10 실제 서버 계약 교차 검증에서 발견한 숫자 응답 보완·통합이 진행 중. 해당 결과를 반영한 최종 범위 대조가 남음.",
       "blocker": null
     },
     {
@@ -1660,7 +1661,7 @@
     },
     {
       "id": "P10-10-NEXT",
-      "action": "원본 요구사항의 남은 구현·검증",
+      "action": "P10-10 — 두 기기 정보 흐름: 실제 서버 계약·두 로컬 저장소 통합 및 숫자 응답 보완",
       "requires": [
         "p10.remaining.analysis",
         "p10.receiver"
@@ -1668,11 +1669,17 @@
       "permissions": [],
       "reads": [],
       "writes": [
-        "apps/mobile/lib/core/sync"
+        "apps/mobile/lib/core/sync",
+        "apps/mobile/lib/core/database/change_feed_store.dart",
+        "apps/mobile/test/two_device_information_flow_test.dart",
+        "apps/mobile/test/wire_json_test.dart",
+        "apps/mobile/test/support/business_snapshot_fixture.dart",
+        "services/api/src/test/java/com/ksh321/songrecord/api/auth/TwoDeviceInformationFlowTests.java",
+        "fixtures/contracts/two-device-recording.json"
       ],
-      "state": "pending",
+      "state": "active",
       "owner": "AI",
-      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
+      "resume": "서버4 PASS, Flutter 송수신180 PASS+스냅샷27 PASS. 숫자 해석 결함 보완 및 현재 모델 검토 완료. 묶음 커밋/정확 SHA CI 후 V22 등 남은 P10 요구사항 대조. 실물 두 기기 완료로 간주하지 않음. docs/verification/P10-10-two-device-flow.md"
     },
     {
       "id": "P11-PHASE",

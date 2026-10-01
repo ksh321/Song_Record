@@ -14,7 +14,6 @@ Map<String, dynamic> businessSnapshotFixture() {
   final fixture = jsonDecode(
     File('../../fixtures/contracts/snapshot-wire.json').readAsStringSync(),
   ) as Map<String, dynamic>;
-  final manifest = fixture['manifest'] as Map<String, dynamic>;
   final pages = fixture['pages'] as List<dynamic>;
   final row =
       (pages.firstWhere((dynamic p) => p['entity'] == 'SONG')['entries']
@@ -28,6 +27,14 @@ Map<String, dynamic> businessSnapshotFixture() {
   };
   row['payload'] = payload;
   row['canonical_payload'] = canonicalJson(payload);
+  refreshSnapshotHash(fixture);
+  return fixture;
+}
+
+/// Recompute the real framed manifest hash after changing synthetic rows/cursor.
+void refreshSnapshotHash(Map<String, dynamic> fixture) {
+  final manifest = fixture['manifest'] as Map<String, dynamic>;
+  final pages = fixture['pages'] as List<dynamic>;
   final bytes = BytesBuilder();
   void number(int value, int length) {
     final buffer = ByteData(length);
@@ -54,5 +61,4 @@ Map<String, dynamic> businessSnapshotFixture() {
     }
   }
   manifest['manifest_hash'] = sha256.convert(bytes.takeBytes()).toString();
-  return fixture;
 }

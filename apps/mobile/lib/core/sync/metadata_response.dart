@@ -7,6 +7,7 @@ import 'change_payload_validation.dart';
 import 'mutation_request.dart';
 import 'recording_change_projection.dart';
 import 'recording_save_contract.dart';
+import 'wire_json.dart';
 
 /// Shared mutation response validation; no database writes.
 Map<String, Object?> decodeMetadataSnapshot(
@@ -15,7 +16,7 @@ Map<String, Object?> decodeMetadataSnapshot(
   bool conflict = false,
 }) {
   final m = request.mutation;
-  final decoded = jsonDecode(response.body);
+  final decoded = decodeWireJson(response.body);
   if (decoded is! Map<String, dynamic>) {
     throw const FormatException('Expected object');
   }
