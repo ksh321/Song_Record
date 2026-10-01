@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "28c3c0db488e1f36329d92ddcf835b231dff0dfe",
+  "baseline_head": "12c6fcb5f01415bbc7f9f30b3a99bf3733860bb2",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1573,7 +1573,7 @@
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "원본 P10-05/P10-06 수신: 과거 컨디션35 PASS, 목록 기본정보38 PASS+삭제2 PASS, 분석 정상. 지정 기존 대화의 관계 버전 계약 상담 답변 대조 및 통합 CI 후 계속"
+      "resume": "12c6fcb 푸시. 컨디션35/목록38+2 PASS. 상담답변83ec7983 확인·원본/코드 대조: 상세 관계 계약 미확인. P10-06 수신 계약과 적용기 구현으로 계속. 사용자 차단 없음"
     },
     {
       "id": "P10-06-NEXT",
@@ -2177,10 +2177,10 @@
         "apps/mobile/lib/core/database/conflict_resolution_store.dart",
         "apps/mobile/test/conflict_resolution_store_test.dart"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "계정 보존 트랜잭션11 PASS+기존 전송85 PASS/분석 정상, UI 후속",
-      "blocker": "089713c2948d72c8803f82495586780bccb410c4 통합 푸시, 정확 SHA 필수 CI 확인 대기"
+      "evidence": "089713c2948d72c8803f82495586780bccb410c4 필수 CI4 PASS(36815636933/36815636966/36815636941/36815636959). 저장/화면 구현 범위이며 P10-10 V25 실기로 확대하지 않음"
     },
     {
       "id": "P10-07h",
@@ -2201,10 +2201,10 @@
         "apps/mobile/lib/main.dart",
         "apps/mobile/test"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "원본 P10-07로 묶어 진행. UI/스케줄러/저장46 PASS+태그/목록 보완19 PASS, 분석 정상",
-      "blocker": "089713c2948d72c8803f82495586780bccb410c4 통합 푸시, 정확 SHA 필수 CI 확인 대기"
+      "evidence": "089713c2948d72c8803f82495586780bccb410c4 필수 CI4 PASS(36815636933/36815636966/36815636941/36815636959). 저장/화면 구현 범위이며 P10-10 V25 실기로 확대하지 않음"
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers"
