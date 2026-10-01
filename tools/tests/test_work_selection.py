@@ -19,6 +19,24 @@ class SelectionTests(unittest.TestCase):
     def result(self):
         return select(self.state, ['P10-03'])
 
+    def test_priority_survives_partial_completion_and_skips_only_blocked(self):
+        a, b, c = unit('a'), unit('b'), unit('c')
+        self.state['units'] = [c, b, a]
+        self.state['priority_order'] = ['a', 'b', 'c']
+        self.assertEqual([r['id'] for r in self.result()['ready']], ['a', 'b', 'c'])
+        a['blocker'] = 'phone result'
+        self.assertEqual([r['id'] for r in self.result()['ready']], ['b', 'c'])
+        del a['blocker']
+        self.assertEqual(self.result()['ready'][0]['id'], 'a')
+        a.update(state='done', evidence='verified')
+        self.assertEqual(self.result()['ready'][0]['id'], 'b')
+
+    def test_priority_rejects_unknown_or_duplicate_units(self):
+        self.state['units'] = [unit('a')]
+        for priority in [['missing'], ['a', 'a']]:
+            self.state['priority_order'] = priority
+            with self.assertRaises(ValueError): self.result()
+
     def test_phone_wait_does_not_stop_independent_work(self):
         self.state['units'] = [unit('phone', blocker='USER result'), unit('test')]
         self.assertEqual(self.result()['decision'], 'CONTINUE')

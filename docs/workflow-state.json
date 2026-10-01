@@ -2231,5 +2231,30 @@
       "evidence": "089713c2948d72c8803f82495586780bccb410c4 필수 CI4 PASS(36815636933/36815636966/36815636941/36815636959). 저장/화면 구현 범위이며 P10-10 V25 실기로 확대하지 않음"
     }
   ],
-  "execution_policy": "current-session-only; no delegated CLI workers/reviewers"
+  "execution_policy": "current-session-only; no delegated CLI workers/reviewers",
+  "priority_order": [
+    "P10-10-NEXT",
+    "P10-07-NEXT",
+    "P10-02-NEXT",
+    "P10-05-NEXT",
+    "P10-06-NEXT",
+    "P10-08-NEXT",
+    "P10-09-NEXT",
+    "P11-PHASE",
+    "P12-PHASE",
+    "P13-PHASE",
+    "P14-PHASE",
+    "P15-PHASE",
+    "P16-PHASE",
+    "P17-PHASE",
+    "P18-PHASE",
+    "P19-PHASE",
+    "P20-PHASE",
+    "P21-PHASE",
+    "P22-PHASE",
+    "P23-PHASE",
+    "P24-PHASE",
+    "P25-PHASE",
+    "P00-03-TERMS"
+  ]
 }

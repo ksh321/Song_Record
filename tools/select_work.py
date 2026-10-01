@@ -32,6 +32,11 @@ def select(state, planned_ids):
     by_id = {unit['id']: unit for unit in units}
     if len(by_id) != len(units):
         raise ValueError('Duplicate work unit')
+    priority = state.get('priority_order', [])
+    if len(set(priority)) != len(priority) or any(key not in by_id for key in priority):
+        raise ValueError('Priority order requires unique existing work units')
+    rank = {key: index for index, key in enumerate(priority)}
+    units = sorted(units, key=lambda u: rank.get(u['id'], len(rank)))
     for assessment in coverage.values():
         if assessment['disposition'] == 'tracked' and (not assessment.get('units') or
                 any(key not in by_id for key in assessment['units'])):
