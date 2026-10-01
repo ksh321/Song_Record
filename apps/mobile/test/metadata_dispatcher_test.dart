@@ -751,9 +751,15 @@ void main() {
     final edit = await createTag(10);
     final started = Completer<void>();
     final response = Completer<MutationResponse>();
+    final followupStarted = Completer<MutationRequest>();
+    final followupResponse = Completer<MutationResponse>();
     final transport = FakeTransport((r) {
-      started.complete();
-      return response.future;
+      if (r.method == 'POST') {
+        started.complete();
+        return response.future;
+      }
+      followupStarted.complete(r);
+      return followupResponse.future;
     });
     final first = repo.dispatch(transport: transport, session: session);
     await started.future;
@@ -768,12 +774,29 @@ void main() {
       ),
     );
     response.complete(MutationResponse(201, jsonEncode(tag(edit.entityId))));
-    expect(await first, 1);
-    expect(transport.calls, 1);
+    final followup = await followupStarted.future;
+    // Inspect the original ACK before letting the new followup finish.
     final copy = (await repo.read(LocalEntity.tag, edit.entityId))!;
     expect(jsonDecode(copy.localJson!)['name'], 'later');
     expect(copy.revision, 1);
-    expect((await repo.pending()).single.baseRevision, 0);
+    final original = (await repo.pending()).singleWhere(
+      (m) => m.opId != followup.mutation.opId,
+    );
+    expect(original.baseRevision, 0);
+    expect(original.attemptCount, 0);
+    expect(jsonDecode(followup.body), {'base_revision': 1, 'name': 'later'});
+    expect(await repo.dispatch(transport: transport, session: session), 0);
+    followupResponse.complete(
+      MutationResponse(
+        200,
+        jsonEncode(tag(edit.entityId, name: 'later', revision: 2)),
+      ),
+    );
+    expect(await first, 2);
+    expect(transport.calls, 2);
+    expect(await repo.pendingWork(), isEmpty);
+    expect((await repo.read(LocalEntity.tag, edit.entityId))!.revision, 2);
+    expect((await repo.pending()).single.opId, original.opId);
   });
 
   test(

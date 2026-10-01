@@ -73,6 +73,34 @@ Future<void> assertOrderProtected(AccountDatabase db) async {
 }
 
 void main() {
+  test(
+    'current Drift source and snapshot use portable SQL line endings',
+    () async {
+      // Git eol attributes do not normalize a file rewritten by a local script.
+      // Detect that mismatch locally before Linux regeneration rejects the snapshot.
+      final source = await File('lib/core/database/local_schema.drift')
+          .readAsString();
+      expect(source, isNot(contains('\r')));
+      final db = AccountDatabase(
+        NativeDatabase.memory(),
+        userId: uid(1),
+        environment: AppEnvironment.dev,
+      );
+      try {
+        final schema = jsonDecode(
+          await File(
+            'drift_schemas/account/drift_schema_v${db.schemaVersion}.json',
+          ).readAsString(),
+        ) as Map;
+        for (final entity in schema['entities'] as List) {
+          final sql = (entity['data'] as Map)['sql'];
+          if (sql is String) expect(sql, isNot(contains('\r')));
+        }
+      } finally {
+        await db.close();
+      }
+    },
+  );
   test('recovery export includes every new preservation table', () async {
     final directory = await Directory.systemTemp.createTemp(
       'sr-canonical-export-',
@@ -95,8 +123,8 @@ void main() {
       await directory.delete(recursive: true);
     }
   });
-  for (final version in [1, 2, 3, 4, 5, 6]) {
-    test('v$version to v7 preserves old rows, wire, budget, cursor and synthetic file', () async {
+  for (final version in [1, 2, 3, 4, 5, 6, 7]) {
+    test('v$version to v8 preserves old rows, wire, budget, cursor and synthetic file', () async {
       final directory = await Directory.systemTemp.createTemp(
         'sr-canonical-migration-',
       );
@@ -204,6 +232,41 @@ void main() {
           owner,
         ]);
       }
+      if (version == 7) {
+        // Nonempty v7 history must survive the trigger-only v8 migration.
+        final recorded = jsonEncode({'id': recording, 'revision': 1});
+        old.execute(
+          "INSERT INTO metadata_copies(user_id,entity_type,entity_id,server_revision,server_payload,updated_at) VALUES(?,'RECORDING',?,1,?,1)",
+          [owner, recording, recorded],
+        );
+        for (final index in [0, 1, 2]) {
+          old.execute(
+            'INSERT INTO local_mutations(op_id,user_id,entity_type,entity_id,operation,base_revision,base_payload,payload,request_hash,queue_state,attempt_count,server_response,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,1,1)',
+            [
+              uid(80 + index),
+              owner,
+              'RECORDING',
+              recording,
+              index == 0 ? 'CREATE' : 'PATCH',
+              index == 2 ? 1 : 0,
+              index == 2 ? recorded : null,
+              jsonEncode(
+                index == 0
+                    ? {'id': recording}
+                    : {'base_revision': index == 2 ? 1 : 0, 'note': 'retained'},
+              ),
+              'c' * 64,
+              index == 0 ? 'ACKED' : 'PENDING',
+              index == 0 ? 1 : 0,
+              index == 0 ? recorded : null,
+            ],
+          );
+        }
+        old.execute(
+          'INSERT INTO recording_followups SELECT ?,?,?,?,rowid,1 FROM local_mutations WHERE op_id=?',
+          [uid(81), uid(82), uid(80), owner, uid(81)],
+        );
+      }
       if (version == 3) {
         // Preserve an unusual legacy negative rowid; new v4 inserts reject it.
         old.execute(
@@ -251,7 +314,7 @@ void main() {
               .data
               .values
               .single,
-          7,
+          8,
         );
         for (final entry in before.entries) {
           expect(
@@ -569,7 +632,7 @@ void main() {
       }
       expect(exported['format'], 'song-record-local-recovery');
       expect(exported['version'], 2);
-      expect(exported['schema_version'], 7);
+      expect(exported['schema_version'], 8);
       expect(tables['local_mutations'], mutationsBefore);
 
       final mutations = (tables['local_mutations'] as List)

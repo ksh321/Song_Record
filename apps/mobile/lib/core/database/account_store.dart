@@ -22,7 +22,7 @@ import 'change_feed_store.dart';
 import 'conflict_resolution_store.dart';
 import 'local_models.dart';
 import 'mapping_eligibility.dart';
-import 'recording_followup_store.dart';
+import 'metadata_followup_store.dart';
 import 'retry_controls.dart';
 import 'snapshot_download_store.dart';
 
@@ -604,7 +604,7 @@ final class AccountStore {
 
   Future<MutationRequest?> claimMutation() => _run(
     () => _database.transaction(() async {
-      await materializeRecordingFollowup(
+      await materializeMetadataFollowup(
         _database,
         await readMappingEligibility(_database),
       );
@@ -650,7 +650,7 @@ final class AccountStore {
   Future<DateTime?> _nextDispatchAt({required bool includeReady}) => _run(
     () => _database.transaction(() async {
       if (includeReady &&
-          await materializeRecordingFollowup(
+          await materializeMetadataFollowup(
             _database,
             await readMappingEligibility(_database),
             previewOnly: true,

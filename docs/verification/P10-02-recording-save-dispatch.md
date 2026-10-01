@@ -44,3 +44,28 @@
 - ACK에는 원래 HTTP status가 보존되지 않으므로 201을 지어내 revision1로 강제하지 않는다. 이미 검증·저장된 자원 snapshot의 성공 형식으로 재검증하며 잘못된 후보는 해당 대상만 보류한다.
 - v7 스냅샷은 이번 미커밋 생성본만 .local에 보관 후 재생성했다. 기존 v1~v6 스냅샷 보존. 테스트용 v6 SQL은 변경 전 HEAD의 원본 schema에서 가져왔다.
 - 원본 계획 대조로 범위를 정정: 녹음 화면/네이티브 저널과 DRAFT 큐 저장은 P18-02, 필수 입력·SAVED UI는 P18-04, 실제 파일 업로드 큐는 P12-05다. 앞서 이를 P10-02에서 즉시 UI까지 구현한다고 설명한 것은 범위가 과했다. 이번 작업은 P10-02 전송 계층의 생성→후속 수정/저장 연결이며, 후속 계획 작업의 미구현을 완료로 간주하지 않는다. 다음은 같은 P10-02의 목록·관계 전송 선행 계약/서버 위치 대조다.
+
+### 93d1661 커밋·전송 경계 확인 — 2026-10-01
+
+- 대상 SHA: 93d1661c5e035353e02cb809b7e41d40370364bf, 일반 푸시 완료. WORKFLOW-08 기능 흐름 우선 규칙을 함께 보존했다.
+- 최초 CI 조회: API contract 36836566600 / Development workflow 36836566509 PASS. CI 36836566652 / Idempotency MySQL 36836566628 진행 중. 전체 CI 통과로 판정하지 않는다.
+- P10-02 다음 분석: plan.txt p00578~580의 의존 전송 순서와 실제 dependency_planner.dart를 대조했다. 분류·곡·녹음·관계 순서 검사가 존재한다. MutationRequest.prepare는 song/recording/tag만 전송하며 목록 HTTP 경로를 임의 추측하지 않는다.
+- 목록 CRUD 및 항목 쓰기는 원본 P19-01~04(p00869~880), P19는 P10을 선행으로 둔다(p00866). 따라서 P10 완료를 위해 P19 전체 기능을 먼저 구현하는 순환 의존관계를 만들지 않는다. 다음은 기존 planner/dispatcher의 미지원 목록 보존·독립 대상 진행 근거를 검토하고 P10 공통 계약과 후속 P19 어댑터 경계를 구분하는 것이다. 이 분석만으로 전체 P10 완료를 선언하지 않는다.
+
+
+### 곡·태그까지 오프라인 후속 연결 — 2026-10-01
+
+P10-02 / R002: 기록만이 아니라 곡·태그의 CREATE ACK 뒤 기준 revision=0인 PATCH도 이어져야 한다. `metadata_followup_dispatch_test.dart`에서 실제 계정 SQLite와 전송 실행기를 사용해 6사례를 검사했다. 보완 전 정상/응답 유실 4사례는 후속 미전송으로 실패하고 부모 실패 격리 2사례는 통과했다. 최초 로그 경로 오기는 테스트가 시작되지 않은 명령 오류이며 코드 수정 실패 횟수에 넣지 않는다.
+
+- `metadata_followup_plan.dart` / `metadata_followup_store.dart`로 이름을 일반화하고 SONG/TAG/RECORDING의 동일 대상 ACK 및 현재 사본 일치 근거를 공통으로 사용한다. 새 op_id/기준 revision만 생성하고 원본 payload·시도0·파일·논리 순서는 보존한다. Song 생성 ACK에 저장된 자원 사본은 응답 봉투 모양만 복원해 검증하며 원래 HTTP 상태를 추정해 기록하지 않는다.
+- v8은 기존 recording_followups 테이블 이름과 모든 행을 보존하고 삽입 검증 트리거의 허용 entity만 넓힌다. v7의 비어 있지 않은 후속 원장까지 이관 전후 동일함을 확인했다. 사용자 DB/볼륨 초기화 없음. 로컬 스키마 fixture v7은 보완 전 커밋의 원본이다.
+- 정상 전송, 응답 손실 후 동일 op_id/body/hash 재시도, 부모 실패 시 자식 대기·다른 대상 진행, 재시작, 미지원 P19 목록 요청과 합성 파일 보존을 확인했다. 이는 실제 폰 조작이나 실제 Spring 서버 연동 결과가 아니다.
+- 관련4파일(`metadata_followup_dispatch_test`, `recording_save_dispatch_test`, `recording_followup_conflict_test`, `recording_followup_plan_test`) 20 PASS. 계정/이관/충돌/새 후속 관련5파일 통합58 PASS / 기존 Windows 심볼릭 링크 권한 skip1. 로그 p10-02-metadata-followup-after.log 및 p10-02-metadata-followup-integration.log.
+- 확대 검증에서 기존 동시 전송 테스트가 ‘CREATE 뒤에는 더 보내지 않음’을 전제로 한 Completer를 다시 완료해 실패했다. CREATE ACK 직후 원본 보존 검사를 유지하고 이어지는 PATCH 중복 방지/ACK/원본 시도0까지 검증하도록 강화했다. 테스트를 제거하거나 예외를 무시하지 않았다. 최종 HTTP 실행기·이관·곡/태그 후속3파일 38 PASS(p10-02-metadata-followup-review.log). 위 실행들은 중복 범위가 있으므로 합산하지 않는다.
+- 변경9파일 analyze No issues found. 현재 모델이 동일 대상/계정·canonical 보류·기존 충돌 순서·불변 원본을 직접 대조했다. 별도 에이전트 검수 아님. 새 코드 CI와 전체 P10 통합은 아직 미완료.
+
+#### P10-CI-SCHEMA 재발 보완
+
+93d1661의 CI 36836566652는 Flutter 스키마 생성 비교 실패, API contract/Idempotency MySQL/Development workflow는 PASS. 이전 같은 문제 이력을 유지하며 이번 CI 재발 1회(기존 1회 포함 누적 2회)를 기록한다. 원인은 로컬 스크립트가 .drift를 CRLF로 다시 써 Git의 LF 속성만으로 작업 폴더 생성 입력이 정규화되지 않은 것이다.
+
+원본 .drift를 LF로 정규화했다. v7 스냅샷은 SQL 문자열47곳의 CRLF→LF만 수정했으며 파싱한 JSON을 대조해 SQL 줄바꿈 이외 차이가 없음을 확인했다. v1~v6는 그대로다. 새 v8도 같은 LF 기준으로 생성했다. build_runner 및 make-migrations --no-test가 Linux와 같은 LF 입력으로 성공했다. canonical_schema_test에 현재 원본/스냅샷 SQL의 LF 검사를 추가하여 로컬에서도 생성 입력 문제를 감지한다. 검사 비활성화/완화 없음. 최종 수정 SHA의 CI 결과는 후속 기록으로 판정한다.

@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/core/database/local_models.dart';
+import 'package:song_record/core/sync/metadata_followup_plan.dart';
 import 'package:song_record/core/sync/mutation_request.dart';
-import 'package:song_record/core/sync/recording_followup_plan.dart';
 
 import 'recording_save_dispatch_test.dart' show draft, body;
 import 'recording_tier_dispatch_test.dart' show rec, op;
@@ -60,13 +60,13 @@ MutationRequest created({String state = 'ACKED', int attempts = 1}) {
 }
 
 void main() {
-  RecordingFollowupPlan? derive({
+  MetadataFollowupPlan? derive({
     QueuedMutation? original,
     MutationRequest? prior,
     Map<String, dynamic>? current,
     bool tombstone = false,
     int order = 1,
-  }) => RecordingFollowupPlan.derive(
+  }) => MetadataFollowupPlan.derive(
     original: original ?? followup(),
     predecessor: prior ?? created(),
     receipt: MutationResponse(201, jsonEncode(draft())),

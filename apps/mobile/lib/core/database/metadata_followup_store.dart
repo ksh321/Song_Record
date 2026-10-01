@@ -5,8 +5,8 @@ import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 
 import '../domain/identifiers.dart';
+import '../sync/metadata_followup_plan.dart';
 import '../sync/mutation_request.dart';
-import '../sync/recording_followup_plan.dart';
 import 'account_database.dart';
 import 'local_models.dart';
 
@@ -30,7 +30,7 @@ QueuedMutation _mutation(QueryRow row) => QueuedMutation(
 
 /// Must run within the caller's account transaction. Validate history before
 /// hiding an original or assigning its logical position to a replacement.
-Future<MappingEligibility> recordingFollowupEligibility(
+Future<MappingEligibility> metadataFollowupEligibility(
   AccountDatabase db,
   MappingEligibility mapping,
 ) async {
@@ -68,7 +68,11 @@ Future<MappingEligibility> recordingFollowupEligibility(
           ? null
           : jsonDecode(prior.serverResponse!);
       valid =
-          original.entity == LocalEntity.recording &&
+          {
+            LocalEntity.recording,
+            LocalEntity.song,
+            LocalEntity.tag,
+          }.contains(original.entity) &&
           next.entity == original.entity &&
           prior.entity == original.entity &&
           original.entityId == next.entityId &&
@@ -107,7 +111,7 @@ Future<MappingEligibility> recordingFollowupEligibility(
 
 /// Add one replacement at a time; the next claim re-evaluates the same ordered
 /// account snapshot. Neither local draft nor original request history changes.
-Future<bool> materializeRecordingFollowup(
+Future<bool> materializeMetadataFollowup(
   AccountDatabase db,
   MappingEligibility mapping, {
   bool previewOnly = false,
@@ -120,7 +124,11 @@ Future<bool> materializeRecordingFollowup(
   final all = rows.map(_mutation).toList()
     ..sort((a, b) => mapping.orderOf(a).compareTo(mapping.orderOf(b)));
   for (final original in all) {
-    if (original.entity != LocalEntity.recording ||
+    if (!{
+          LocalEntity.recording,
+          LocalEntity.song,
+          LocalEntity.tag,
+        }.contains(original.entity) ||
         original.operation != LocalOperation.patch ||
         original.baseRevision != 0 ||
         original.state != 'PENDING' ||
@@ -150,8 +158,11 @@ Future<bool> materializeRecordingFollowup(
         .getSingleOrNull();
     final copy = await db
         .customSelect(
-          "SELECT * FROM metadata_copies WHERE entity_type='RECORDING' AND entity_id=?",
-          variables: [Variable(original.entityId)],
+          'SELECT * FROM metadata_copies WHERE entity_type=? AND entity_id=?',
+          variables: [
+            Variable(original.entity.code),
+            Variable(original.entityId),
+          ],
         )
         .getSingleOrNull();
     if (wire == null ||
@@ -171,9 +182,21 @@ Future<bool> materializeRecordingFollowup(
         request.body != prior.payload) {
       continue;
     }
-    RecordingFollowupPlan? plan;
+    MetadataFollowupPlan? plan;
     try {
-      plan = RecordingFollowupPlan.derive(
+      final priorSnapshot = jsonDecode(prior.serverResponse!);
+      // Song CREATE ACKs persist the validated resource, not its wire envelope.
+      // Rebuild only the envelope shape; the original snapshot stays unchanged.
+      final receipt =
+          prior.entity == LocalEntity.song &&
+              prior.operation == LocalOperation.create
+          ? jsonEncode({
+              'created': false,
+              'canonical_song_id': prior.entityId,
+              'song': priorSnapshot,
+            })
+          : prior.serverResponse!;
+      plan = MetadataFollowupPlan.derive(
         original: original,
         predecessor: request,
         receipt: MutationResponse(
@@ -181,7 +204,7 @@ Future<bool> materializeRecordingFollowup(
           // Validate as a successful existing-resource snapshot; do not invent
           // 201 or force revision 1 for a recovered CREATE that returned 200.
           200,
-          prior.serverResponse!,
+          receipt,
         ),
         predecessorLogicalOrder: mapping.orderOf(prior),
         current: jsonDecode(
@@ -217,10 +240,11 @@ Future<bool> materializeRecordingFollowup(
         .toString();
     await db.customStatement(
       '''INSERT INTO local_mutations(op_id,user_id,entity_type,entity_id,operation,base_revision,base_payload,payload,request_hash,created_at,updated_at)
-      VALUES(?,?,'RECORDING',?,'PATCH',?,?,?,?,?,?)''',
+      VALUES(?,?,?,?,'PATCH',?,?,?,?,?,?)''',
       [
         id,
         db.userId,
+        original.entity.code,
         original.entityId,
         plan.revision,
         plan.baselineJson,

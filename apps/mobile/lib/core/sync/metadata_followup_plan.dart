@@ -7,8 +7,8 @@ import 'mutation_request.dart';
 /// A proposal only. The account transaction must verify ordering/ownership,
 /// persist a fresh op_id and its evidence, and retire the original atomically.
 /// It must never update the original payload or an existing frozen wire.
-final class RecordingFollowupPlan {
-  RecordingFollowupPlan._(
+final class MetadataFollowupPlan {
+  MetadataFollowupPlan._(
     this.originalOpId,
     this.predecessorOpId,
     this.revision,
@@ -20,7 +20,7 @@ final class RecordingFollowupPlan {
   final int revision;
   final String baselineJson, payloadJson;
 
-  static RecordingFollowupPlan? derive({
+  static MetadataFollowupPlan? derive({
     required QueuedMutation original,
     required MutationRequest predecessor,
     required MutationResponse receipt,
@@ -29,7 +29,11 @@ final class RecordingFollowupPlan {
     required bool tombstone,
   }) {
     final prior = predecessor.mutation;
-    if (original.entity != LocalEntity.recording ||
+    if (!{
+          LocalEntity.recording,
+          LocalEntity.song,
+          LocalEntity.tag,
+        }.contains(original.entity) ||
         original.operation != LocalOperation.patch ||
         original.baseRevision != 0 ||
         original.basePayload != null ||
@@ -76,7 +80,7 @@ final class RecordingFollowupPlan {
     // Unsupported routes remain intact; never resolve a dependency by dropping
     // request fields. Caller will allocate a different ID when committing.
     if (MutationRequest.prepare(candidate) == null) return null;
-    return RecordingFollowupPlan._(
+    return MetadataFollowupPlan._(
       original.opId,
       prior.opId,
       revision,
@@ -86,5 +90,5 @@ final class RecordingFollowupPlan {
   }
 
   @override
-  String toString() => 'RecordingFollowupPlan[REDACTED]';
+  String toString() => 'MetadataFollowupPlan[REDACTED]';
 }

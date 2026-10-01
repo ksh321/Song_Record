@@ -5,7 +5,7 @@ import 'package:drift/drift.dart';
 import 'account_database.dart';
 import 'conflict_eligibility.dart';
 import 'local_models.dart';
-import 'recording_followup_store.dart';
+import 'metadata_followup_store.dart';
 
 /// Requires the caller's account transaction.
 ///
@@ -35,7 +35,7 @@ Future<MappingEligibility> readMappingEligibility(
   if (aliases.isEmpty && supersessions.isEmpty && holds.isEmpty) {
     return applyConflictEligibility(
       database,
-      await recordingFollowupEligibility(
+      await metadataFollowupEligibility(
         database,
         const MappingEligibility.empty(),
       ),
@@ -224,7 +224,7 @@ Future<MappingEligibility> readMappingEligibility(
 
   return applyConflictEligibility(
     database,
-    await recordingFollowupEligibility(
+    await metadataFollowupEligibility(
       database,
       MappingEligibility(
         blocked: blocked,

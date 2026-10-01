@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "f608be1c1e1425a11af8f64a229a7c26bb6ec781",
+  "baseline_head": "93d1661c5e035353e02cb809b7e41d40370364bf",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1542,7 +1542,7 @@
     },
     {
       "id": "P10-02-NEXT",
-      "action": "P10-02 — 의존 순서 전송: 녹음 저장 완료 및 오프라인 후속 요청 연결",
+      "action": "P10-02 — 의존 순서 전송: 곡·태그·녹음 오프라인 후속 연결과 통합 검증",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1556,14 +1556,16 @@
         "apps/mobile/lib/core/sync/dependency_planner.dart",
         "apps/mobile/lib/core/database/account_store.dart",
         "apps/mobile/test/recording_save_dispatch_test.dart",
-        "apps/mobile/lib/core/database/recording_followup_store.dart",
+        "apps/mobile/lib/core/database/metadata_followup_store.dart",
         "apps/mobile/lib/core/database/local_schema.drift",
         "apps/mobile/lib/core/database/conflict_eligibility.dart",
-        "apps/mobile/lib/core/database/conflict_resolution_store.dart"
+        "apps/mobile/lib/core/database/conflict_resolution_store.dart",
+        "apps/mobile/lib/core/sync/metadata_followup_plan.dart",
+        "apps/mobile/test/metadata_followup_dispatch_test.dart"
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "오프라인 CREATE→후속 수정/저장·응답 유실/재시작/충돌 순서 연결97 PASS/skip1·분석 정상. 묶음 커밋과 정확 SHA CI 후 목록·관계 전송 선행 계약 확인. UI P18-02/04 및 파일업로드 P12-05와 구분.",
+      "resume": "곡/태그 누락을 재현·보완. 통합58 PASS/skip1, 강화된 HTTP/이관/후속38 PASS. 93d1661 CI는 SQL 줄바꿈 실패를 확인해 LF 보정. 수정 묶음 커밋 및 정확 SHA CI 후 공통 송수신 통합으로 이어간다. P19 목록 API/P12 파일/P18 UI를 선행으로 역추가하지 않는다.",
       "blocker": null
     },
     {

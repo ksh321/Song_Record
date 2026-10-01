@@ -134,8 +134,6 @@ END;
 
 -- P10-02b: freeze the HTTP contract independently of the local edit fingerprint.
 -- P10-02: preserve offline PATCH intent while materializing an acknowledged baseline.
--- v8: historical table name retained; evidence now covers SONG and TAG too.
--- No table recreation, row rewrite or loss of v7 recording followups.
 CREATE TABLE recording_followups (
   original_op_id TEXT NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id),
   replacement_op_id TEXT NOT NULL UNIQUE REFERENCES local_mutations(op_id),
@@ -149,12 +147,12 @@ CREATE TABLE recording_followups (
 ) WITHOUT ROWID;
 
 CREATE TRIGGER recording_followup_valid_insert BEFORE INSERT ON recording_followups BEGIN
-  SELECT RAISE(ABORT, 'Invalid metadata followup') WHERE NOT EXISTS (
+  SELECT RAISE(ABORT, 'Invalid recording followup') WHERE NOT EXISTS (
     SELECT 1 FROM local_mutations o JOIN local_mutations r ON r.op_id=NEW.replacement_op_id
     JOIN local_mutations p ON p.op_id=NEW.predecessor_op_id
     WHERE o.op_id=NEW.original_op_id AND o.user_id=NEW.user_id
       AND r.user_id=o.user_id AND p.user_id=o.user_id
-      AND o.entity_type IN ('RECORDING','SONG','TAG') AND r.entity_type=o.entity_type AND p.entity_type=o.entity_type
+      AND o.entity_type='RECORDING' AND r.entity_type=o.entity_type AND p.entity_type=o.entity_type
       AND r.entity_id=o.entity_id AND p.entity_id=o.entity_id
       AND o.operation='PATCH' AND r.operation='PATCH'
       AND o.base_revision=0 AND o.attempt_count=0 AND o.queue_state='PENDING'
