@@ -10,6 +10,7 @@ import 'package:song_record/core/sync/change_feed_transport.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 
 import 'change_payload_validation_test.dart' show songChange;
+import 'support/business_snapshot_fixture.dart';
 
 class FeedTransport implements ChangeFeedTransport {
   late Future<ChangeFeedResponse> Function(ChangeFeedRequest) respond;
@@ -71,9 +72,7 @@ void main() {
     await dir.delete(recursive: true);
   });
   Future<void> baseline() async {
-    final fixture = jsonDecode(
-      File('../../fixtures/contracts/snapshot-wire.json').readAsStringSync(),
-    ) as Map;
+    final fixture = businessSnapshotFixture();
     await store.beginSnapshotDownload(token, jsonEncode(fixture['manifest']));
     for (final page in fixture['pages'] as List) {
       await store.appendSnapshotPage(

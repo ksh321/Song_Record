@@ -17,6 +17,7 @@ import 'package:song_record/features/sync/snapshot_sync_backend.dart';
 import 'change_feed_receiver_test.dart' show FeedTransport;
 import 'snapshot_receiver_test.dart' show FakeTransport;
 import 'snapshot_sync_backend_test.dart' show Sender;
+import 'support/business_snapshot_fixture.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -38,8 +39,7 @@ void main() {
     );
     try {
       final store = await manager.openAccount(owner);
-      final text = File('../../fixtures/contracts/snapshot-wire.json')
-          .readAsStringSync();
+      final text = jsonEncode(businessSnapshotFixture());
       final initial = jsonDecode(text) as Map;
       await store.beginSnapshotDownload(
         oldToken,
@@ -167,10 +167,35 @@ void main() {
           (jsonDecode(await store.recoveryData()) as Map)['tables'] as Map;
       for (final table in before.keys) {
         if (table != 'sync_cursors' &&
+            table != 'metadata_copies' &&
             !(table as String).startsWith('snapshot_')) {
           expect(after[table], before[table], reason: 'Preserve $table');
         }
       }
+      final copy = (await store.readMetadata(LocalEntity.song, id))!;
+      final oldCopies = before['metadata_copies'] as List;
+      final newCopies = after['metadata_copies'] as List;
+      expect(newCopies.length, oldCopies.length);
+      for (var index = 0; index < oldCopies.length; index++) {
+        final oldCopy = oldCopies[index] as Map;
+        final newCopy = newCopies[index] as Map;
+        for (final key in oldCopy.keys) {
+          if (!{
+            'server_revision',
+            'server_payload',
+            'updated_at',
+          }.contains(key)) {
+            expect(
+              newCopy[key],
+              oldCopy[key],
+              reason: 'Preserve metadata $key',
+            );
+          }
+        }
+      }
+      expect(copy.revision, 1);
+      expect(jsonDecode(copy.localJson!)['title'], 'offline draft');
+      expect(jsonDecode(copy.serverJson!)['note'], '한글 🎵');
       expect(await audio.readAsBytes(), [1, 2, 3, 4]);
     } finally {
       await manager.logout();

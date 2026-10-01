@@ -9,6 +9,7 @@ import '../sync/recording_change_projection.dart';
 import 'account_database.dart';
 import 'local_models.dart';
 import 'snapshot_download_store.dart';
+import 'snapshot_metadata_projection.dart';
 import 'snapshot_recording_projection.dart';
 
 final class ChangeFeedPosition {
@@ -83,6 +84,9 @@ final class ChangeFeedStore {
       throw StateError('Change feed baseline changed');
     }
     final permanent = await _initialDeletions(snapshotToken);
+    // Also covers an app upgrade whose old receiver already advanced beyond
+    // the baseline cursor without materializing these business copies.
+    await _initialMetadata(snapshotToken, permanent);
     for (final entry in page.entries) {
       requireActive();
       // Relation rows and cloud assets have different revision/generation
@@ -196,6 +200,84 @@ final class ChangeFeedStore {
     // A logout while SQLite awaited must roll back both entities and cursor.
     requireActive();
   });
+
+  /// A baseline can contain changes older than the first delta. Install these
+  /// even for an empty page, without replacing a newer receipt or a local draft.
+  Future<void> _initialMetadata(
+    String token,
+    Map<String, int> permanent,
+  ) async {
+    for (final entity in [
+      LocalEntity.song,
+      LocalEntity.tag,
+      LocalEntity.recording,
+    ]) {
+      var after = 0;
+      final seen = <String>{};
+      while (true) {
+        final rows = await db
+            .customSelect(
+              'SELECT ordinal,resource_id,canonical_payload FROM snapshot_download_rows WHERE snapshot_token=? AND user_id=? AND entity=? AND ordinal>? ORDER BY ordinal LIMIT 100',
+              variables: [
+                Variable(token),
+                Variable(db.userId),
+                Variable(entity.code),
+                Variable(after),
+              ],
+            )
+            .get();
+        if (rows.isEmpty) break;
+        for (final row in rows) {
+          requireActive();
+          after = row.read<int>('ordinal');
+          final id = row.read<String>('resource_id');
+          if (!seen.add(id)) throw StateError('Ambiguous initial metadata');
+          if (permanent.containsKey('${entity.code}:$id')) continue;
+          final source = jsonDecode(row.read<String>('canonical_payload'));
+          if (source is! Map<String, dynamic>) {
+            throw const FormatException('Invalid initial metadata');
+          }
+          final Map<String, dynamic> projected;
+          if (entity == LocalEntity.recording) {
+            final bundle = await SnapshotDownloadStore(
+              db,
+              requireActive: requireActive,
+              clock: clock,
+            ).recordingBaseline(id, expectedToken: token);
+            if (bundle == null || bundle.recording == null) {
+              throw StateError('Initial recording changed');
+            }
+            projected = projectSnapshotRecording(bundle)!;
+          } else {
+            projected = projectSnapshotMetadata(
+              entity,
+              source,
+              owner: db.userId,
+              id: id,
+            );
+          }
+          final revision = projected['revision'] as int;
+          final current = await db
+              .customSelect(
+                'SELECT server_revision,tombstone FROM metadata_copies WHERE entity_type=? AND entity_id=?',
+                variables: [Variable(entity.code), Variable(id)],
+              )
+              .getSingleOrNull();
+          if (current?.read<int>('tombstone') == 1 ||
+              (current?.read<int>('server_revision') ?? 0) >= revision) {
+            continue;
+          }
+          await _writeCopy(
+            entity.code,
+            id,
+            revision,
+            canonicalJson(projected),
+            false,
+          );
+        }
+      }
+    }
+  }
 
   /// A page may be empty: baseline UUID tombstones must still hide stale
   /// local copies before its cursor is accepted. All writes share apply's TX.

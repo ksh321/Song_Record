@@ -285,9 +285,8 @@ void main() {
     'snapshot replacement at identical cursor fences an old response',
     () async {
       final latest = await replaceBaseline('SONG', {
-        'id': id,
+        ...songChange(id, 5),
         'user_id': owner,
-        'revision': 5,
       });
       await expectLater(
         store.apply(page([entry(8, id)]), snapshotToken: token),
@@ -295,8 +294,11 @@ void main() {
       );
       await store.apply(page([entry(8, id)]), snapshotToken: latest);
       expect(
-        await db.customSelect('SELECT * FROM metadata_copies').get(),
-        isEmpty,
+        (await db
+                .customSelect('SELECT server_revision FROM metadata_copies')
+                .getSingle())
+            .read<int>('server_revision'),
+        5,
       );
       expect(await cursor(), 8);
     },
@@ -588,6 +590,142 @@ void main() {
       };
       await expectLater(
         store.apply(page([entry(8, other), delta]), snapshotToken: activeToken),
+        throwsFormatException,
+      );
+      expect(
+        await db.customSelect('SELECT * FROM metadata_copies').get(),
+        isEmpty,
+      );
+      expect(await cursor(), 7);
+    },
+  );
+  test(
+    'empty delta projects initial song and retains unacknowledged local draft',
+    () async {
+      await seed(local: 'unsent');
+      final latest = await replaceBaseline('SONG', {
+        ...songChange(id, 5, title: 'fresh baseline'),
+        'user_id': owner,
+      });
+      final rawBefore =
+          (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+              .map((r) => r.data)
+              .toList();
+      await store.apply(page([]), snapshotToken: latest);
+      final copy =
+          (await db.customSelect('SELECT * FROM metadata_copies').getSingle())
+              .data;
+      expect(copy['server_revision'], 5);
+      expect(
+        jsonDecode(copy['server_payload'] as String)['title'],
+        'fresh baseline',
+      );
+      expect(jsonDecode(copy['local_payload'] as String)['title'], 'unsent');
+      expect(
+        (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+            .map((r) => r.data)
+            .toList(),
+        rawBefore,
+      );
+      expect(await cursor(), 7);
+      await store.apply(page([]), snapshotToken: latest);
+      expect(
+        (await db.customSelect('SELECT * FROM metadata_copies').getSingle())
+            .data,
+        copy,
+      );
+    },
+  );
+  test(
+    'upgrade projects baseline even if old receiver already advanced cursor',
+    () async {
+      await seed(local: 'unsent');
+      final latest = await replaceBaseline('SONG', {
+        ...songChange(id, 5),
+        'user_id': owner,
+      });
+      await db.customStatement('UPDATE sync_cursors SET last_change_seq=8');
+      await store.apply(page([], after: 8), snapshotToken: latest);
+      final copy =
+          (await db.customSelect('SELECT * FROM metadata_copies').getSingle())
+              .data;
+      expect(copy['server_revision'], 5);
+      expect(jsonDecode(copy['local_payload'] as String)['title'], 'unsent');
+      expect(await cursor(), 8);
+    },
+  );
+  test(
+    'initial tag projection strips raw metadata and preserves archive state',
+    () async {
+      final latest = await replaceBaseline('TAG', {
+        'id': id,
+        'user_id': owner,
+        'revision': 2,
+        'name': 'archived',
+        'archived_at': '2026-10-01T00:00:00Z',
+        'created_at': '2026-09-30T00:00:00Z',
+        'updated_at': '2026-10-01T00:00:00Z',
+      });
+      await store.apply(page([]), snapshotToken: latest);
+      final copy =
+          (await db.customSelect('SELECT * FROM metadata_copies').getSingle())
+              .data;
+      final payload = jsonDecode(copy['server_payload'] as String) as Map;
+      expect(payload['archived_at'], '2026-10-01T00:00:00Z');
+      expect(payload.containsKey('user_id'), isFalse);
+      expect(payload.containsKey('created_at'), isFalse);
+      expect(copy['local_payload'], copy['server_payload']);
+    },
+  );
+  test(
+    'initial projection neither rewinds newer receipt nor revives tombstone',
+    () async {
+      await seed(revision: 9);
+      final latest = await replaceBaseline('SONG', {
+        ...songChange(id, 5),
+        'user_id': owner,
+      });
+      final before =
+          (await db.customSelect('SELECT * FROM metadata_copies').getSingle())
+              .data;
+      await store.apply(page([]), snapshotToken: latest);
+      expect(
+        (await db.customSelect('SELECT * FROM metadata_copies').getSingle())
+            .data,
+        before,
+      );
+      await db.customStatement(
+        'UPDATE metadata_copies SET server_revision=1,tombstone=1',
+      );
+      await store.apply(page([]), snapshotToken: latest);
+      final row =
+          (await db.customSelect('SELECT * FROM metadata_copies').getSingle())
+              .data;
+      expect(row['tombstone'], 1);
+      expect(row['server_revision'], 1);
+    },
+  );
+  test(
+    'invalid later initial tag rolls back earlier song and cursor writes',
+    () async {
+      final latest = await replaceBaseline(
+        'SONG',
+        {...songChange(id, 5), 'user_id': owner},
+        relations: {
+          'TAG': [
+            {
+              'id': id,
+              'user_id': owner,
+              'revision': 1,
+              'name': '',
+              'archived_at': null,
+              'updated_at': '2026-10-01T00:00:00Z',
+            },
+          ],
+        },
+      );
+      await expectLater(
+        store.apply(page([]), snapshotToken: latest),
         throwsFormatException,
       );
       expect(

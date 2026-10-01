@@ -388,7 +388,8 @@
       "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
       "units": [
         "P10-06-NEXT",
-        "P10-06k-PHONE"
+        "P10-06k-PHONE",
+        "P10-06m"
       ]
     },
     "P10-07": {
@@ -2036,9 +2037,28 @@
         "apps/mobile/lib/core/sync/metadata_conflict.dart",
         "apps/mobile/test/metadata_conflict_test.dart"
       ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계약 어댑터27 PASS/분석/현재 모델 검토 완료",
+      "blocker": "df4c106 정확 SHA CI 진행"
+    },
+    {
+      "id": "P10-06m",
+      "action": "초기 사본의 곡·태그·녹음 업무 사본 보존 투영",
+      "requires": [
+        "p10.initial.core.validated",
+        "p10.delta.control.validated"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/database/change_feed_store.dart",
+        "apps/mobile/lib/core/database/snapshot_metadata_projection.dart",
+        "apps/mobile/test"
+      ],
       "state": "active",
       "owner": "AI",
-      "resume": "독립 순수 비교 연결: 실제 PATCH 계약/REVISION_CONFLICT를 대조하며 큐 상태·전송·UI를 변경하지 않음"
+      "resume": "초기 사본 후 빈 증분에서도 업무 사본을 갱신; 로컬 입력/큐/원본/파일 보존, 관계 전체 완료로 확대하지 않음"
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers"

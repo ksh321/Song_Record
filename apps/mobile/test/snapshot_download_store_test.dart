@@ -13,6 +13,7 @@ import 'package:song_record/core/sync/change_feed_response.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'change_payload_validation_test.dart' show songChange;
+import 'support/business_snapshot_fixture.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -32,9 +33,7 @@ void main() {
       temporaryDirectory: () async => directory,
       clock: () => now,
     );
-    fixture = jsonDecode(
-      File('../../fixtures/contracts/snapshot-wire.json').readAsStringSync(),
-    ) as Map<String, dynamic>;
+    fixture = businessSnapshotFixture();
     store = await manager.openAccount(owner);
     await store.beginSnapshotDownload(token, jsonEncode(fixture['manifest']));
   });
