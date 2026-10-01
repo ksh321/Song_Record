@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 
 import '../sync/change_feed_response.dart';
 import '../sync/change_payload_validation.dart';
+import '../sync/permanent_deletion.dart';
 import '../sync/recording_change_projection.dart';
 import 'account_database.dart';
 import 'local_models.dart';
@@ -81,6 +82,7 @@ final class ChangeFeedStore {
         position.read<String>('snapshot_token') != snapshotToken) {
       throw StateError('Change feed baseline changed');
     }
+    final permanent = await _initialDeletions(snapshotToken);
     for (final entry in page.entries) {
       requireActive();
       // Relation rows and cloud assets have different revision/generation
@@ -102,34 +104,6 @@ final class ChangeFeedStore {
         throw const FormatException('Change payload is not an entity snapshot');
       }
       final code = entry.entity.code;
-      // A permanent deletion in the initial baseline always wins. This does
-      // not delete pending drafts/files or resurrect an old UUID.
-      final deletion = await db
-          .customSelect(
-            '''
-            SELECT 1 FROM snapshot_download_rows WHERE snapshot_token=?
-              AND user_id=? AND entity='DELETION_LEDGER'
-              AND json_extract(canonical_payload,'\$.entity_id')=?
-              AND json_extract(canonical_payload,'\$.entity_type') IN (?,?) LIMIT 1
-          ''',
-            variables: [
-              Variable(snapshotToken),
-              Variable(db.userId),
-              Variable(entry.id),
-              Variable(code),
-              Variable(
-                entry.entity == LocalEntity.recordingCondition
-                    ? 'CONDITION'
-                    : code,
-              ),
-            ],
-          )
-          .getSingleOrNull();
-      if (deletion != null) {
-        // Do not advance past a deletion that has not yet been projected into
-        // the metadata view. Its ledger revision is not a generic entity DTO.
-        throw StateError('Permanent deletion projection required');
-      }
       final current = await db
           .customSelect(
             '''
@@ -139,6 +113,13 @@ final class ChangeFeedStore {
             variables: [Variable(code), Variable(entry.id)],
           )
           .getSingleOrNull();
+      final markerRevision = permanent['$code:${entry.id}'];
+      if (markerRevision != null) {
+        if (entry.revision > markerRevision) {
+          throw StateError('Change conflicts with permanent deletion revision');
+        }
+        continue;
+      }
       if (current?.read<int>('tombstone') == 1) continue;
       final baseline = await db
           .customSelect(
@@ -204,8 +185,73 @@ final class ChangeFeedStore {
         }
         continue;
       }
-      await db.customStatement(
-        '''
+      await _writeCopy(code, entry.id, entry.revision, encoded, entry.deleted);
+    }
+    await db.customStatement(
+      '''
+          UPDATE sync_cursors SET last_change_seq=?,updated_at=? WHERE singleton=1
+        ''',
+      [page.nextSequence, clock().toUtc().millisecondsSinceEpoch],
+    );
+    // A logout while SQLite awaited must roll back both entities and cursor.
+    requireActive();
+  });
+
+  /// A page may be empty: baseline UUID tombstones must still hide stale
+  /// local copies before its cursor is accepted. All writes share apply's TX.
+  Future<Map<String, int>> _initialDeletions(String snapshotToken) async {
+    final rows = await db
+        .customSelect(
+          "SELECT canonical_payload FROM snapshot_download_rows WHERE snapshot_token=? AND user_id=? AND entity='DELETION_LEDGER' ORDER BY ordinal",
+          variables: [Variable(snapshotToken), Variable(db.userId)],
+        )
+        .get();
+    final result = <String, int>{};
+    for (final row in rows) {
+      requireActive();
+      final raw = jsonDecode(row.read<String>('canonical_payload'));
+      if (raw is! Map<String, dynamic> ||
+          raw['entity_type'] is! String ||
+          raw['entity_id'] is! String) {
+        throw const FormatException('Invalid permanent deletion identity');
+      }
+      final code = raw['entity_type'] as String,
+          id = raw['entity_id'] as String;
+      final marker = permanentDeletionPayload(
+        raw,
+        owner: db.userId,
+        entity: code,
+        id: id,
+      );
+      final revision = marker['revision'] as int, key = '$code:$id';
+      if (result.containsKey(key))
+        throw StateError('Ambiguous permanent deletion');
+      result[key] = revision;
+      final current = await db
+          .customSelect(
+            'SELECT server_revision FROM metadata_copies WHERE entity_type=? AND entity_id=?',
+            variables: [Variable(code), Variable(id)],
+          )
+          .getSingleOrNull();
+      if ((current?.read<int>('server_revision') ?? 0) > revision) {
+        throw StateError(
+          'Cached state conflicts with permanent deletion revision',
+        );
+      }
+      await _writeCopy(code, id, revision, canonicalJson(marker), true);
+    }
+    return result;
+  }
+
+  Future<void> _writeCopy(
+    String code,
+    String id,
+    int revision,
+    String encoded,
+    bool deleted,
+  ) async {
+    await db.customStatement(
+      '''
             INSERT INTO metadata_copies(user_id,entity_type,entity_id,server_revision,
               server_payload,local_payload,tombstone,updated_at)
             VALUES(?,?,?,?,?,?,?,?)
@@ -223,25 +269,16 @@ final class ChangeFeedStore {
               THEN metadata_copies.local_payload ELSE excluded.local_payload END,
               tombstone=excluded.tombstone,updated_at=excluded.updated_at
           ''',
-        [
-          db.userId,
-          code,
-          entry.id,
-          entry.revision,
-          encoded,
-          entry.deleted ? null : encoded,
-          entry.deleted ? 1 : 0,
-          clock().toUtc().millisecondsSinceEpoch,
-        ],
-      );
-    }
-    await db.customStatement(
-      '''
-          UPDATE sync_cursors SET last_change_seq=?,updated_at=? WHERE singleton=1
-        ''',
-      [page.nextSequence, clock().toUtc().millisecondsSinceEpoch],
+      [
+        db.userId,
+        code,
+        id,
+        revision,
+        encoded,
+        deleted ? null : encoded,
+        deleted ? 1 : 0,
+        clock().toUtc().millisecondsSinceEpoch,
+      ],
     );
-    // A logout while SQLite awaited must roll back both entities and cursor.
-    requireActive();
-  });
+  }
 }

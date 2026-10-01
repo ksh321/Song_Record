@@ -308,6 +308,8 @@ void main() {
       'entity_type': 'SONG',
       'entity_id': other,
       'revision': 5,
+      'object_generation': null,
+      'purged_at': '2026-10-01T00:00:00Z',
     });
     await expectLater(
       store.apply(page([entry(8, other, revision: 6)]), snapshotToken: latest),
@@ -319,6 +321,103 @@ void main() {
     );
     expect(await cursor(), 7);
   });
+  test('old delta installs permanent marker but preserves local draft and snapshot rows', () async {
+    final latest = await replaceBaseline('DELETION_LEDGER', {
+      'id': id,
+      'user_id': owner,
+      'entity_type': 'SONG',
+      'entity_id': other,
+      'revision': 5,
+      'object_generation': null,
+      'purged_at': '2026-10-01T00:00:00Z',
+    });
+    await db.customStatement(
+      'INSERT INTO metadata_copies VALUES(?,?,?,?,?,?,0,0)',
+      [
+        owner,
+        'SONG',
+        other,
+        1,
+        jsonEncode(songChange(other, 1)),
+        jsonEncode({'title': 'unsent draft'}),
+      ],
+    );
+    final before =
+        (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+            .map((r) => r.data)
+            .toList();
+    await store.apply(page([entry(8, other)]), snapshotToken: latest);
+    final row = await db
+        .customSelect('SELECT * FROM metadata_copies')
+        .getSingle();
+    expect(row.read<int>('tombstone'), 1);
+    expect(row.read<int>('server_revision'), 5);
+    expect(jsonDecode(row.read<String>('server_payload')), {
+      'id': other,
+      'entity_type': 'SONG',
+      'revision': 5,
+      'status': 'DELETED',
+      'deleted_at': '2026-10-01T00:00:00Z',
+    });
+    expect(jsonDecode(row.read<String>('local_payload')), {
+      'title': 'unsent draft',
+    });
+    expect(await cursor(), 8);
+    expect(
+      (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+          .map((r) => r.data)
+          .toList(),
+      before,
+    );
+  });
+  test(
+    'malformed deletion marker rolls back earlier changes and cursor',
+    () async {
+      final latest = await replaceBaseline('DELETION_LEDGER', {
+        'id': id,
+        'user_id': owner,
+        'entity_type': 'SONG',
+        'entity_id': other,
+        'revision': 5,
+        'object_generation': null,
+        'purged_at': '2026-02-30T00:00:00Z',
+      });
+      await expectLater(
+        store.apply(
+          page([entry(8, id), entry(9, other)]),
+          snapshotToken: latest,
+        ),
+        throwsFormatException,
+      );
+      expect(await cursor(), 7);
+      expect(
+        await db.customSelect('SELECT * FROM metadata_copies').get(),
+        isEmpty,
+      );
+    },
+  );
+  test(
+    'empty page still installs all baseline tombstones before accepting cursor',
+    () async {
+      final latest = await replaceBaseline('DELETION_LEDGER', {
+        'id': id,
+        'user_id': owner,
+        'entity_type': 'SONG',
+        'entity_id': other,
+        'revision': 5,
+        'object_generation': null,
+        'purged_at': '2026-10-01T00:00:00Z',
+      });
+      await store.apply(page([]), snapshotToken: latest);
+      final row = await db
+          .customSelect('SELECT * FROM metadata_copies')
+          .getSingle();
+      expect(row.read<String>('entity_id'), other);
+      expect(row.read<int>('tombstone'), 1);
+      expect(row.readNullable<String>('local_payload'), isNull);
+      expect(await cursor(), 7);
+    },
+  );
   test('unsupported relation or asset aborts whole page without inventing revision', () async {
     for (final type in ['PLAYLIST_ITEM', 'RECORDING_ASSET']) {
       final unsupported = entry(9, other)..['entity_type'] = type;
