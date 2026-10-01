@@ -1,0 +1,333 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:drift/native.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:song_record/config/app_config.dart';
+import 'package:song_record/core/database/account_database.dart';
+import 'package:song_record/core/database/change_feed_store.dart';
+import 'package:song_record/core/sync/change_feed_response.dart';
+
+void main() {
+  const owner = '11111111-1111-4111-8111-111111111111';
+  const token = '22222222-2222-4222-8222-222222222222';
+  const id = '33333333-3333-4333-8333-333333333333';
+  const other = '44444444-4444-4444-8444-444444444444';
+  late AccountDatabase db;
+  late ChangeFeedStore store;
+  var fenceCalls = 0, failAt = 0;
+  setUp(() async {
+    db = AccountDatabase(
+      NativeDatabase.memory(),
+      userId: owner,
+      environment: AppEnvironment.dev,
+    );
+    await db.verifyReady();
+    fenceCalls = 0;
+    failAt = 0;
+    store = ChangeFeedStore(
+      db,
+      clock: () => DateTime.utc(2026, 10, 1),
+      requireActive: () {
+        if (++fenceCalls == failAt) throw StateError('Account changed');
+      },
+    );
+    final manifest = (jsonDecode(
+      File('../../fixtures/contracts/snapshot-wire.json').readAsStringSync(),
+    ) as Map)['manifest'];
+    await db.customStatement(
+      'INSERT INTO snapshot_downloads(snapshot_token,user_id,manifest_json,snapshot_cursor,expires_at,created_at) VALUES(?,?,?,7,1800000,0)',
+      [token, owner, jsonEncode(manifest)],
+    );
+    await db.customStatement("UPDATE snapshot_downloads SET state='VERIFIED'");
+    await db.customStatement("UPDATE snapshot_downloads SET state='APPLIED'");
+    await db.customStatement('INSERT INTO snapshot_baseline VALUES(1,?,?)', [
+      token,
+      owner,
+    ]);
+    await db.customStatement(
+      'UPDATE sync_cursors SET last_change_seq=7,baseline_complete=1',
+    );
+  });
+  tearDown(() async {
+    await db.close();
+  });
+  Future<String> replaceBaseline(
+    String entity,
+    Map<String, Object?> payload,
+  ) async {
+    final original =
+        (await db
+                .customSelect('SELECT manifest_json FROM snapshot_downloads')
+                .getSingle())
+            .read<String>('manifest_json');
+    final manifest = jsonDecode(original) as Map<String, dynamic>;
+    manifest['snapshot_token'] = other;
+    final counts = manifest['entity_counts'] as Map<String, dynamic>;
+    counts.updateAll((key, value) => key == entity ? 1 : 0);
+    await db.customStatement(
+      'INSERT INTO snapshot_downloads(snapshot_token,user_id,manifest_json,snapshot_cursor,expires_at,created_at) VALUES(?,?,?,7,1800000,0)',
+      [other, owner, jsonEncode(manifest)],
+    );
+    await db.customStatement(
+      'INSERT INTO snapshot_download_rows VALUES(?,?,?,1,?,?)',
+      [other, owner, entity, id, jsonEncode(payload)],
+    );
+    await db.customStatement(
+      "UPDATE snapshot_downloads SET state='VERIFIED' WHERE snapshot_token=?",
+      [other],
+    );
+    await db.customStatement(
+      "UPDATE snapshot_downloads SET state='APPLIED' WHERE snapshot_token=?",
+      [other],
+    );
+    await db.customStatement('UPDATE snapshot_baseline SET snapshot_token=?', [
+      other,
+    ]);
+    return other;
+  }
+
+  Map<String, Object?> entry(
+    int seq,
+    String entityId, {
+    int revision = 2,
+    bool deleted = false,
+  }) => {
+    'change_seq': seq,
+    'entity_type': 'SONG',
+    'entity_id': entityId,
+    'revision': revision,
+    'operation': deleted ? 'DELETE' : 'UPSERT',
+    'payload': {'id': entityId, 'revision': revision, 'title': 'server'},
+  };
+  ChangeFeedPage page(
+    List<Map<String, Object?>> entries, {
+    String account = owner,
+    int after = 7,
+  }) => ChangeFeedPage.decode(
+    jsonEncode({
+      'after_seq': after,
+      'next_seq': after + entries.length,
+      'head_seq': after + entries.length,
+      'has_more': false,
+      'changes': entries,
+    }),
+    owner: account,
+    expectedAfter: after,
+  );
+  Future<int> cursor() async =>
+      (await db
+              .customSelect('SELECT last_change_seq FROM sync_cursors')
+              .getSingle())
+          .read<int>('last_change_seq');
+  Future<void> seed({
+    int revision = 1,
+    bool tombstone = false,
+    String? local = 'draft',
+  }) => db.customStatement(
+    'INSERT INTO metadata_copies VALUES(?,?,?,?,?,?,?,0)',
+    [
+      owner,
+      'SONG',
+      id,
+      revision,
+      jsonEncode({'id': id, 'revision': revision, 'title': 'old'}),
+      local == null ? null : jsonEncode({'title': local}),
+      tombstone ? 1 : 0,
+    ],
+  );
+
+  test(
+    'whole page updates server state and cursor but preserves local draft',
+    () async {
+      await seed();
+      await store.apply(
+        page([entry(8, id), entry(9, other)]),
+        snapshotToken: token,
+      );
+      final row = await db
+          .customSelect("SELECT * FROM metadata_copies WHERE entity_id='$id'")
+          .getSingle();
+      expect(row.read<int>('server_revision'), 2);
+      expect(jsonDecode(row.read<String>('local_payload')), {'title': 'draft'});
+      expect(await cursor(), 9);
+    },
+  );
+  test('final account fence rolls back every row and cursor', () async {
+    failAt = 4; // initial + two rows + pre-commit
+    await expectLater(
+      store.apply(page([entry(8, id), entry(9, other)]), snapshotToken: token),
+      throwsStateError,
+    );
+    expect(
+      await db.customSelect('SELECT * FROM metadata_copies').get(),
+      isEmpty,
+    );
+    expect(await cursor(), 7);
+  });
+  test('late invalid payload rolls back an earlier valid row', () async {
+    final bad = entry(9, other);
+    bad['payload'] = {'title': 'partial'};
+    await expectLater(
+      store.apply(page([entry(8, id), bad]), snapshotToken: token),
+      throwsFormatException,
+    );
+    expect(
+      await db.customSelect('SELECT * FROM metadata_copies').get(),
+      isEmpty,
+    );
+    expect(await cursor(), 7);
+  });
+  test(
+    'wrong owner, replaced baseline and duplicate page cannot advance cursor',
+    () async {
+      await expectLater(
+        store.apply(page([entry(8, id)], account: other), snapshotToken: token),
+        throwsStateError,
+      );
+      await expectLater(
+        store.apply(page([entry(8, id)]), snapshotToken: other),
+        throwsStateError,
+      );
+      await store.apply(page([entry(8, id)]), snapshotToken: token);
+      await expectLater(
+        store.apply(page([entry(8, id)]), snapshotToken: token),
+        throwsStateError,
+      );
+      expect(await cursor(), 8);
+    },
+  );
+  test(
+    'newer acknowledged revision and permanent tombstones cannot rewind',
+    () async {
+      await seed(revision: 5, local: null);
+      await store.apply(page([entry(8, id)]), snapshotToken: token);
+      expect(
+        (await db
+                .customSelect('SELECT server_revision FROM metadata_copies')
+                .getSingle())
+            .read<int>('server_revision'),
+        5,
+      );
+      await db.customStatement('UPDATE metadata_copies SET tombstone=1');
+      await store.apply(
+        page([entry(9, id, revision: 6)], after: 8),
+        snapshotToken: token,
+      );
+      final row = await db
+          .customSelect('SELECT * FROM metadata_copies')
+          .getSingle();
+      expect(row.read<int>('tombstone'), 1);
+      expect(row.read<int>('server_revision'), 5);
+      expect(await cursor(), 9);
+    },
+  );
+  test(
+    'deletion keeps an unsent draft and creates a non-resurrectable marker',
+    () async {
+      await seed();
+      await store.apply(
+        page([entry(8, id, deleted: true)]),
+        snapshotToken: token,
+      );
+      final row = await db
+          .customSelect('SELECT * FROM metadata_copies')
+          .getSingle();
+      expect(row.read<int>('tombstone'), 1);
+      expect(jsonDecode(row.read<String>('local_payload')), {'title': 'draft'});
+      expect(await cursor(), 8);
+    },
+  );
+  test(
+    'same-revision disagreement rejects page instead of overwriting',
+    () async {
+      await seed(revision: 2);
+      await expectLater(
+        store.apply(page([entry(8, id)]), snapshotToken: token),
+        throwsStateError,
+      );
+      expect(await cursor(), 7);
+    },
+  );
+  test(
+    'empty page requires an applied baseline and does not invent progress',
+    () async {
+      await store.apply(page([]), snapshotToken: token);
+      expect(await cursor(), 7);
+      await db.customStatement('UPDATE sync_cursors SET baseline_complete=0');
+      await expectLater(
+        store.apply(page([]), snapshotToken: token),
+        throwsStateError,
+      );
+    },
+  );
+  test(
+    'snapshot replacement at identical cursor fences an old response',
+    () async {
+      final latest = await replaceBaseline('SONG', {
+        'id': id,
+        'user_id': owner,
+        'revision': 5,
+      });
+      await expectLater(
+        store.apply(page([entry(8, id)]), snapshotToken: token),
+        throwsStateError,
+      );
+      await store.apply(page([entry(8, id)]), snapshotToken: latest);
+      expect(
+        await db.customSelect('SELECT * FROM metadata_copies').get(),
+        isEmpty,
+      );
+      expect(await cursor(), 8);
+    },
+  );
+  test('initial permanent ledger prevents revival using entity_id, not ledger UUID', () async {
+    final latest = await replaceBaseline('DELETION_LEDGER', {
+      'id': id,
+      'user_id': owner,
+      'entity_type': 'SONG',
+      'entity_id': other,
+      'revision': 5,
+    });
+    await expectLater(
+      store.apply(page([entry(8, other, revision: 6)]), snapshotToken: latest),
+      throwsStateError,
+    );
+    expect(
+      await db.customSelect('SELECT * FROM metadata_copies').get(),
+      isEmpty,
+    );
+    expect(await cursor(), 7);
+  });
+  test('unsupported relation or asset aborts whole page without inventing revision', () async {
+    for (final type in ['PLAYLIST_ITEM', 'RECORDING_ASSET']) {
+      final unsupported = entry(9, other)..['entity_type'] = type;
+      await expectLater(
+        store.apply(page([entry(8, id), unsupported]), snapshotToken: token),
+        throwsFormatException,
+      );
+      expect(
+        await db.customSelect('SELECT * FROM metadata_copies').get(),
+        isEmpty,
+      );
+      expect(await cursor(), 7);
+    }
+  });
+  test(
+    'cursor write failure also rolls back applied business changes',
+    () async {
+      await db.customStatement(
+        "CREATE TRIGGER reject_cursor BEFORE UPDATE ON sync_cursors BEGIN SELECT RAISE(ABORT,'synthetic failure'); END",
+      );
+      await expectLater(
+        store.apply(page([entry(8, id)]), snapshotToken: token),
+        throwsA(isA<Exception>()),
+      );
+      expect(
+        await db.customSelect('SELECT * FROM metadata_copies').get(),
+        isEmpty,
+      );
+      expect(await cursor(), 7);
+    },
+  );
+}

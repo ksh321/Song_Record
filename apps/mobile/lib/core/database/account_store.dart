@@ -10,11 +10,13 @@ import 'package:sqlite3/sqlite3.dart' as native;
 
 import '../../config/app_config.dart';
 import '../domain/identifiers.dart';
+import '../sync/change_feed_response.dart';
 import '../sync/dependency_planner.dart';
 import '../sync/metadata_response.dart';
 import '../sync/mutation_request.dart';
 import 'account_database.dart' show AccountDatabase;
 import 'account_paths.dart';
+import 'change_feed_store.dart';
 import 'local_models.dart';
 import 'mapping_eligibility.dart';
 import 'retry_controls.dart';
@@ -194,6 +196,16 @@ final class AccountStore {
       _run(() => _snapshots.discard(token));
   Future<void> applySnapshotDownload(String token) =>
       _run(() => _snapshots.apply(token));
+  Future<void> applyChangeFeed(
+    ChangeFeedPage page, {
+    required String snapshotToken,
+  }) => _run(
+    () => ChangeFeedStore(
+      _database,
+      requireActive: requireActive,
+      clock: _manager._clock,
+    ).apply(page, snapshotToken: snapshotToken),
+  );
   Future<SnapshotBaselinePage> snapshotBaselinePage(
     String entity, {
     String? expectedToken,

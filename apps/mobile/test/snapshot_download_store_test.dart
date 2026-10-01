@@ -5,9 +5,11 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_database.dart';
+import 'package:song_record/core/database/account_paths.dart';
 import 'package:song_record/core/database/account_store.dart';
 import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/database/snapshot_download_store.dart';
+import 'package:song_record/core/sync/change_feed_response.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 void main() {
@@ -52,6 +54,75 @@ void main() {
       );
     }
   }
+
+  test('delta commit survives reopen and preserves queue, frozen evidence and audio', () async {
+    const id = '33333333-3333-4333-8333-333333333333';
+    await store.saveEdit(
+      LocalEdit(
+        opId: '44444444-4444-4444-8444-444444444444',
+        entity: LocalEntity.song,
+        entityId: id,
+        operation: LocalOperation.create,
+        baseRevision: 0,
+        draft: {'title': 'unsent'},
+        changes: {'title': 'unsent'},
+      ),
+    );
+    final paths = await AccountPaths.create(
+      directory,
+      owner,
+      AppEnvironment.dev,
+    );
+    final audio = await paths.checkedFile(paths.audioPath(id));
+    await audio.writeAsBytes([1, 2, 3, 4], flush: true);
+    await pages();
+    await store.verifySnapshotDownload(token);
+    await store.applySnapshotDownload(token);
+    final before =
+        (jsonDecode(await store.recoveryData()) as Map)['tables'] as Map;
+    final change = ChangeFeedPage.decode(
+      jsonEncode({
+        'after_seq': 7,
+        'next_seq': 8,
+        'head_seq': 8,
+        'has_more': false,
+        'changes': [
+          {
+            'change_seq': 8,
+            'entity_type': 'SONG',
+            'entity_id': id,
+            'revision': 2,
+            'operation': 'UPSERT',
+            'payload': {'id': id, 'revision': 2, 'title': 'server-new'},
+          },
+        ],
+      }),
+      owner: owner,
+      expectedAfter: 7,
+    );
+    await store.applyChangeFeed(change, snapshotToken: token);
+    final old = store;
+    await manager.logout();
+    store = await manager.openAccount(owner);
+    expect(await store.readCursor(), 8);
+    expect(
+      (await store.readMetadata(LocalEntity.song, id))!.localJson,
+      contains('unsent'),
+    );
+    expect((await store.readMetadata(LocalEntity.song, id))!.revision, 2);
+    final after =
+        (jsonDecode(await store.recoveryData()) as Map)['tables'] as Map;
+    for (final table in before.keys) {
+      if (table != 'metadata_copies' && table != 'sync_cursors') {
+        expect(after[table], before[table], reason: 'Preserve $table');
+      }
+    }
+    expect(await audio.readAsBytes(), [1, 2, 3, 4]);
+    await expectLater(
+      old.applyChangeFeed(change, snapshotToken: token),
+      throwsStateError,
+    );
+  });
 
   test('record lookup distinguishes absent baseline from missing resource and pins generation', () async {
     const id = '33333333-3333-4333-8333-333333333333';
