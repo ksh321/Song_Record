@@ -178,7 +178,12 @@ final class SyncController extends ChangeNotifier {
   }
 
   Future<void> _run({SyncItem? manual, bool resetFailures = false}) async {
-    if (!maySend) return;
+    // Authentication blocks survive a later lifecycle wake or scheduled timer,
+    // not only the follow-up queued while the original request was in flight.
+    // Explicit recovery remains distinct from these automatic triggers.
+    if (!maySend || (!resetFailures && !backend.automaticFollowupAllowed)) {
+      return;
+    }
     if (busy) {
       _wakeRequested = true;
       return;

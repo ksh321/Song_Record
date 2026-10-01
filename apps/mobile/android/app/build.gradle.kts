@@ -35,6 +35,12 @@ android {
             manifestPlaceholders["kakaoScheme"] = "kakao710c5008600b80c7d0cb8010e8f031d6"
             resValue("string", "app_name", "노래기록 DEV")
         }
+        // Dedicated local-only verification app: never replaces dev user data.
+        create("verification") {
+            dimension = "environment"
+            applicationIdSuffix = ".verification"
+            resValue("string", "app_name", "노래기록 동기화 검증")
+        }
         create("staging") {
             dimension = "environment"
             applicationIdSuffix = ".staging"

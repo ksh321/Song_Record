@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "ae8093d860295caeb970cd7727ae4dbc307ee197",
+  "baseline_head": "71c09207f602a966ffcfa0d6f5fed919a4f253c6",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1678,9 +1678,9 @@
         "fixtures/contracts/two-device-recording.json",
         "apps/mobile/test/conflict_screen_integration_test.dart"
       ],
-      "state": "active",
+      "state": "pending",
       "owner": "AI",
-      "resume": "ae8093d CI4 PASS. 삭제·만료 커서 및 충돌 UI/실제 SQLite/계정 전환 통합29 PASS, 분석 정상. 테스트 묶음 커밋·정확 CI 확인 후 P10-03b-FIXTURE 준비. 실물 두 기기 완료 아님."
+      "resume": "71c0920 통합29 PASS 푸시/CI3 PASS, CI 실행36843146048 진행. 물리 기기와 잔여 범위는 P10-03b-FIXTURE 완료 후 연결."
     },
     {
       "id": "P11-PHASE",
@@ -1944,15 +1944,19 @@
     },
     {
       "id": "P10-03b-FIXTURE",
-      "state": "pending",
+      "state": "active",
       "action": "새 비어 있지 않은 큐 실기에 필요한 안전한 synthetic fixture 구현·검증",
       "owner": "AI",
-      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요",
+      "resume": "분리 앱/늦은 인증 차단 복귀 보완73 PASS·분석 정상·최종 APK 빌드 성공. 패키지·해시 P10-03b-device-fixture.md. 커밋·CI 후 USER-027 USB 연결 확인→별도 앱 설치/자동 로그→필요한 새 실기 안내. 실행 중 로컬 빌드 없음.",
       "reads": [
         "apps/mobile/lib/core/database"
       ],
       "writes": [
-        "apps/mobile/test"
+        "apps/mobile/tool",
+        "apps/mobile/test/sync_verification_fixture_test.dart",
+        "apps/mobile/lib/features/sync/sync_controller.dart",
+        "apps/mobile/android/app/build.gradle.kts",
+        "docs/verification/P10-03b-device-fixture.md"
       ],
       "requires": [],
       "permissions": []
