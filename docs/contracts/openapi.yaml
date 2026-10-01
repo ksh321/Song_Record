@@ -10,6 +10,41 @@ servers:
 security:
 - BearerAuth: []
 paths:
+  /sync/changes:
+    get:
+      operationId: getSyncChanges
+      summary: 계정별 증분 변경 조회
+      description: >-
+        성공 적용한 마지막 change_seq를 after_seq로 전달한다. 같은 읽기 시점의 head와 연속된 변경만 반환하며
+        앱은 로컬 적용 트랜잭션이 성공한 뒤에만 next_seq를 저장한다. 빈 응답은 커서를 임의 전진시키지 않는다.
+        만료 커서는 409 CURSOR_EXPIRED이며 미전송 초안을 보존한 초기 재동기화가 필요하다.
+        다른 계정 ID를 쿼리로 지정할 수 없다. CONDITION은 기존 서버 변경 로그의 컨디션 엔터티 코드다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/RequestId'
+      - name: after_seq
+        in: query
+        required: true
+        schema: {type: integer, format: int64, minimum: 0, maximum: 9223372036854775807}
+      - name: limit
+        in: query
+        schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+      responses:
+        '200':
+          description: 인증된 계정의 연속 변경. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeFeedPage'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          $ref: '#/components/responses/Error403'
+        '409':
+          $ref: '#/components/responses/Error409'
   /sync/snapshots:
     post:
       operationId: createSyncSnapshot
@@ -1369,6 +1404,31 @@ components:
         $ref: '#/components/schemas/RequestId'
       description: 생략하거나 유효하지 않으면 서버가 새 추적 ID를 발급한다.
   schemas:
+    ChangeFeedPage:
+      type: object
+      additionalProperties: false
+      required: [after_seq, next_seq, head_seq, has_more, changes]
+      properties:
+        after_seq: {type: integer, format: int64, minimum: 0, maximum: 9223372036854775807}
+        next_seq: {type: integer, format: int64, minimum: 0, maximum: 9223372036854775807}
+        head_seq: {type: integer, format: int64, minimum: 0, maximum: 9223372036854775807}
+        has_more: {type: boolean}
+        changes:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/ChangeFeedEntry'
+    ChangeFeedEntry:
+      type: object
+      additionalProperties: false
+      required: [change_seq, entity_type, entity_id, revision, operation, payload]
+      properties:
+        change_seq: {type: integer, format: int64, minimum: 1, maximum: 9223372036854775807}
+        entity_type: {type: string, enum: [SONG, RECORDING, PLAYLIST, PLAYLIST_ITEM, TAG, RECORDING_ASSET, CONDITION]}
+        entity_id: {type: string, format: uuid}
+        revision: {type: integer, format: int64, minimum: 1, maximum: 9223372036854775807}
+        operation: {type: string, enum: [UPSERT, DELETE]}
+        payload: {type: object}
     SnapshotCreate:
       type: object
       additionalProperties: false

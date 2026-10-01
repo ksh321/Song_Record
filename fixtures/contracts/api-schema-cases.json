@@ -1292,5 +1292,135 @@
       "next_cursor": null
     },
     "valid": false
+  },
+  {
+    "schema": "ChangeFeedPage",
+    "valid": true,
+    "value": {
+      "after_seq": 0,
+      "next_seq": 0,
+      "head_seq": 0,
+      "has_more": false,
+      "changes": []
+    }
+  },
+  {
+    "schema": "ChangeFeedPage",
+    "valid": true,
+    "value": {
+      "after_seq": 0,
+      "next_seq": 1,
+      "head_seq": 1,
+      "has_more": false,
+      "changes": [
+        {
+          "change_seq": 1,
+          "entity_type": "RECORDING",
+          "entity_id": "11111111-1111-4111-8111-111111111111",
+          "revision": 2,
+          "operation": "DELETE",
+          "payload": {
+            "deleted": true
+          }
+        }
+      ]
+    }
+  },
+  {
+    "schema": "ChangeFeedPage",
+    "valid": false,
+    "value": {
+      "after_seq": 0,
+      "next_seq": 1,
+      "head_seq": 1,
+      "has_more": false,
+      "changes": [
+        {
+          "change_seq": 1,
+          "entity_type": "RECORDING",
+          "entity_id": "11111111-1111-4111-8111-111111111111",
+          "revision": 2,
+          "operation": "REMOVE",
+          "payload": {
+            "deleted": true
+          }
+        }
+      ]
+    }
+  },
+  {
+    "schema": "ChangeFeedPage",
+    "valid": false,
+    "value": {
+      "after_seq": 0,
+      "next_seq": 1,
+      "head_seq": 1,
+      "has_more": false,
+      "changes": [
+        {
+          "change_seq": 1,
+          "entity_type": "RECORDING",
+          "entity_id": "11111111-1111-4111-8111-111111111111",
+          "revision": 0,
+          "operation": "DELETE",
+          "payload": {
+            "deleted": true
+          }
+        }
+      ]
+    }
+  },
+  {
+    "schema": "ChangeFeedPage",
+    "valid": false,
+    "value": {
+      "after_seq": 0,
+      "next_seq": 1,
+      "head_seq": 1,
+      "has_more": false,
+      "changes": [
+        {
+          "change_seq": 1,
+          "entity_type": "RECORDING",
+          "entity_id": "11111111-1111-4111-8111-111111111111",
+          "revision": 2,
+          "operation": "DELETE",
+          "payload": null
+        }
+      ]
+    }
+  },
+  {
+    "schema": "ChangeFeedPage",
+    "valid": false,
+    "value": {
+      "after_seq": 0,
+      "next_seq": 1,
+      "head_seq": 1,
+      "has_more": false,
+      "changes": [
+        {
+          "change_seq": 1,
+          "entity_type": "RECORDING",
+          "entity_id": "invalid",
+          "revision": 2,
+          "operation": "DELETE",
+          "payload": {
+            "deleted": true
+          }
+        }
+      ]
+    }
+  },
+  {
+    "schema": "ChangeFeedPage",
+    "valid": false,
+    "value": {
+      "after_seq": 0,
+      "next_seq": 9223372036854775808,
+      "head_seq": 0,
+      "has_more": false,
+      "changes": []
+    }
   }
 ]
