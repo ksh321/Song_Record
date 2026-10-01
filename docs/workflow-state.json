@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "ad8ac50c8de6e9348b5bc40e2c7cbf243a89c247",
+  "baseline_head": "c8f0f7205414c15d2aa9b3d1891596b54dd89355",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1573,7 +1573,7 @@
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "목록 항목 동일 토큰 관계/부모 버전 투영62 PASS/분석 정상. 파일 상태 ad8ac50 CI4 PASS, 세대 삭제e214b3a 푸시/CI 대기. 다음 목록 항목 증분 계약·적용 계속. 사용자 차단 없음"
+      "resume": "초기 목록 관계 c8f0f72 푸시/CI2 PASS·2 진행 중. 세대 삭제e214b3a CI4 PASS. 새 P10-06 목록 전체 항목 적용83 PASS/분석 정상, 커밋 준비. 다음 남은 관계 투영 및 수신 연결 검증. 사용자 차단 없음"
     },
     {
       "id": "P10-06-NEXT",
