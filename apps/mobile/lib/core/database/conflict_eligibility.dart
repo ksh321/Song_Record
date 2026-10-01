@@ -113,6 +113,24 @@ Future<MappingEligibility> applyConflictEligibility(
       if (replacementId != null) blocked.add(replacementId);
       continue;
     }
+    // A draft queued behind the user's resolved conflict is not itself an
+    // approved replay of that older baseline. Preserve the existing hold even
+    // when an unrelated received revision now permits initial conflict probes.
+    for (final candidate in rows) {
+      final candidateId = candidate.read<String>('op_id');
+      final base = candidate.read<int>('base_revision');
+      final order = orders[candidateId] ?? candidate.read<int>('local_order');
+      if (candidate.read<String>('queue_state') == 'PENDING' &&
+          candidate.read<String>('operation') == 'PATCH' &&
+          candidate.read<int>('attempt_count') == 0 &&
+          mapping.groupOf(target(candidate)) ==
+              mapping.groupOf(target(original!)) &&
+          order > resolution.read<int>('logical_order') &&
+          base > 0 &&
+          base < resolution.read<int>('resolved_revision')) {
+        blocked.add(candidateId);
+      }
+    }
     superseded.add(id);
     if (replacementId != null) {
       orders[replacementId] = resolution.read<int>('logical_order');

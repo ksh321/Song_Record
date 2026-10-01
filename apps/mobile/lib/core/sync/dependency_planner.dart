@@ -123,7 +123,11 @@ final class DependencyPlanner {
           dependency: target,
         );
       }
-      if (mutation.baseRevision != baseline.revision) {
+      // A newer received server copy must not strand an older offline edit.
+      // Send its unchanged positive base_revision to the server, which returns
+      // the authoritative 409/current snapshot for explicit conflict review.
+      // A local revision ahead of the known server is still unresolved.
+      if (mutation.baseRevision > baseline.revision) {
         return DispatchWait(
           DispatchWaitReason.staleBaseline,
           dependency: target,

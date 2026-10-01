@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "71c09207f602a966ffcfa0d6f5fed919a4f253c6",
+  "baseline_head": "7e86f7caf4ce4c9d124810dc1665ce8b22b41bda",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -10,7 +10,8 @@
     "canonical.dispatch.connected",
     "p10.initial.core.validated",
     "p10.delta.control.validated",
-    "p10.receiver"
+    "p10.receiver",
+    "p10.fixture.validated"
   ],
   "grants": [],
   "coverage": {
@@ -1608,7 +1609,7 @@
     },
     {
       "id": "P10-07-NEXT",
-      "action": "원본 요구사항의 남은 구현·검증",
+      "action": "P10-07 — 해결 뒤 최신 보류 초안과 canonical 개인 편집 선택 연결",
       "requires": [
         "p10.remaining.analysis",
         "p10.receiver"
@@ -1620,7 +1621,7 @@
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
+      "resume": "기존 비교/저장/UI 이력과 USER-028 확인 유지. 자동 전송을 막아 보존한 더 최신 초안 및 canonical 개인편집을 명시 선택으로 연결할 실제 경로를 검사한다."
     },
     {
       "id": "P10-08-NEXT",
@@ -1678,9 +1679,9 @@
         "fixtures/contracts/two-device-recording.json",
         "apps/mobile/test/conflict_screen_integration_test.dart"
       ],
-      "state": "pending",
+      "state": "active",
       "owner": "AI",
-      "resume": "71c0920 통합29 PASS 푸시/CI3 PASS, CI 실행36843146048 진행. 물리 기기와 잔여 범위는 P10-03b-FIXTURE 완료 후 연결."
+      "resume": "수신 후 오래된 오프라인 수정→실제409→선택→ACK 연결 보완47 PASS, 추가회귀103 PASS, 분석 정상. 커밋·CI 후 더 최신 보류 초안/동일TJ 개인편집 선택의 실제 잔여 연결을 처리. USER-028 완료. docs/verification/P10-10-two-device-flow.md"
     },
     {
       "id": "P11-PHASE",
@@ -1944,35 +1945,31 @@
     },
     {
       "id": "P10-03b-FIXTURE",
-      "state": "active",
+      "state": "done",
       "action": "새 비어 있지 않은 큐 실기에 필요한 안전한 synthetic fixture 구현·검증",
       "owner": "AI",
-      "resume": "분리 앱/늦은 인증 차단 복귀 보완73 PASS·분석 정상·최종 APK 빌드 성공. 패키지·해시 P10-03b-device-fixture.md. 커밋·CI 후 USER-027 USB 연결 확인→별도 앱 설치/자동 로그→필요한 새 실기 안내. 실행 중 로컬 빌드 없음.",
+      "resume": "해당 범위 완료. 동일 실기 반복하지 않는다.",
       "reads": [
         "apps/mobile/lib/core/database"
       ],
-      "writes": [
-        "apps/mobile/tool",
-        "apps/mobile/test/sync_verification_fixture_test.dart",
-        "apps/mobile/lib/features/sync/sync_controller.dart",
-        "apps/mobile/android/app/build.gradle.kts",
-        "docs/verification/P10-03b-device-fixture.md"
-      ],
+      "writes": [],
       "requires": [],
-      "permissions": []
+      "permissions": [],
+      "evidence": "7e86f7c 필수 CI4 PASS/73자동검증/USER-028①~④ 정상. docs/verification/P10-03b-device-fixture.md"
     },
     {
       "id": "P10-03b-PHONE-QUEUE",
-      "state": "pending",
+      "state": "done",
       "action": "새 변경 수동 접수/계정 영향 중 자동 검증으로 대체 불가 범위만 실기",
       "owner": "AI 준비 후 사용자",
-      "resume": "fixture 검증 후 정확 APK/절차를 새 사용자 항목으로 요청",
+      "resume": "추가 사용자 요청 없음. 새 영향이 생기면 별도 선정.",
       "reads": [],
       "writes": [],
       "requires": [
         "p10.fixture.validated"
       ],
-      "permissions": []
+      "permissions": [],
+      "evidence": "USER-028 7e86f7c 합성 별도 앱①~④ 사용자 정상 확인. docs/verification/user-action-records.md. 실제 OAuth/녹음/두 물리 기기로 확대하지 않음."
     },
     {
       "id": "P00-03-TERMS",

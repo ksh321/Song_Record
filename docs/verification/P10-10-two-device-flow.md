@@ -48,3 +48,20 @@
 - `dart analyze test/conflict_screen_integration_test.dart test/resync_integration_test.dart`: **No issues found**. 현재 모델은 UI 실선택→실제 저장→재시작/계정 전환 경계와 실패 시 원본 보존을 직접 검토했다. 테스트만 변경했고 실사용 DB/앱을 수정하지 않았다.
 - 앞선 제품 ae8093d860295caeb970cd7727ae4dbc307ee197 **필수 CI4 PASS**: CI36841099551 / API36841099417 / MySQL36841099414 / Development36841099495. 앞의 진행 중 문구는 당시 관측이다.
 - 다음: 현재 테스트 묶음의 정확 SHA CI 확인, P10-03b-FIXTURE의 실제 기기에서 비어 있지 않은 큐/충돌 화면 확인을 위한 안전한 준비. 기존 USER-024/025를 재요청하지 않고 새 변경 범위만 구분한다. 실제 두 기기·녹음/청취 확인은 자동 테스트29개로 완료 판정하지 않는다.
+
+## 다른 기기 변경 수신 후 오프라인 수정 연결 — P10-02/P10-07/P10-10
+
+- 실제 수신→전송 순서를 대조해 결함을 재현했다. 원래 기준1로 저장한 오프라인 메모가 다른 기기의 revision2를 먼저 수신하면 planner가 영구 보류하여 서버409/선택 화면으로 넘어가지 않았다. `received_revision_conflict_test.dart`에서 초기19종 사본→로컬 메모 저장→증분2 수신→DB 재시작→전송을 연결했을 때 기대1회/실제0회였다.
+- `dependency_planner.dart`는 알려진 서버보다 오래된 양수 기준의 요청을 원문 그대로 보내 서버의 권위 있는409/current 응답을 받게 한다. 기준0/없는 기준/알려진 서버보다 앞선 기준/삭제 대상/선행 의존/매핑 보류 검사는 유지한다. revision을 최신값으로 자동 바꾸거나 가짜409를 저장하지 않는다.
+- 첫 확대 검사에서 사용자 충돌 선택 뒤 쌓인 더 최신 초안의 기존 보류 조건1개가 실패했다. `conflict_eligibility.dart`의 검증된 해결 이력으로 같은 대상·뒤쪽 순서·미전송 PATCH·이전 기준 초안을 명시 보류해 원본/최신 입력을 유지했다. 기존 테스트는 변경/삭제하지 않았다. 해당 보류 초안의 후속 사용자 검토 경로는 아직 전체 P10-07 완료 근거로 확대하지 않는다.
+- 테스트는 원래 op_id/body/base_payload 보존, 실제 형식409 수신, 양쪽 메모 선택 후보, 명시 로컬 선택→새 op_id/기준2→ACK3까지 확인한다. 전송은 합성 서버 응답이며 물리 두 기기 검증이 아니다.
+- `flutter test --no-pub test/received_revision_conflict_test.dart test/dependency_planner_test.dart test/metadata_conflict_test.dart test/conflict_resolution_store_test.dart test/metadata_followup_dispatch_test.dart test/recording_followup_conflict_test.dart --reporter expanded`: **47 PASS**. 로그 p10-07-received-conflict-final.log.
+- `flutter test --no-pub test/metadata_dispatcher_test.dart test/mutation_retry_test.dart test/canonical_song_store_test.dart test/conflict_resolution_plan_test.dart test/recording_tier_dispatch_test.dart test/recording_link_dispatch_test.dart --reporter expanded`: **103 PASS**. 로그 p10-07-received-conflict-regression.log.
+- 변경3파일 dart analyze **No issues found**. 최초 테스트 타입 import 누락1회는 컴파일 단계에서 수정했다. 문제 ID P10-RECEIVED-REVISION: 재현 후1차 수정이 기존 보존 검사1개 실패, 보완2차 통과. 현재 모델 직접 요청 불변/계정 경계/후속 순서/실제 diff 검토. 모델 변경 주장 없음.
+- USER-028은 7e86f7c의 새 충돌 UI/인증 차단 복귀①~④ 사용자 정상 확인 완료다. 이 새 planner 변경의 근거는 위 자동 검증으로 별도 기록하며 사용자 확인을 소급 확대하지 않는다. 같은 UI 실기를 반복 요청하지 않는다.
+
+## 최종 대조에서 확인된 현재 잔여 범위
+
+- V28 이메일 자동 병합 금지/공급자 ID 경쟁은 기존 P06 사용자 확인 범위다. IdentityLinkTests.sameEmailDoesNotMergeAccounts, concurrentConsumptionHasExactlyOneWinner, twoUsersCannotClaimSameNewIdentity 실제 구현도 확인했다. 새 인증 기능 변경이 없어 문서 부족으로 재검증 대기시키지 않는다.
+- P10-02 목록/파일 송신 어댑터와 녹음 작성 UI는 원본 P19/P12/P18 경계이며 P10에 역선행으로 붙이지 않는다. 기존 planner/보존 검증은 유지한다.
+- 새로 확인해야 할 구체적인 잔여 사항: 사용자 해결 뒤의 더 최신 보류 초안 검토 경로, canonical 매핑의 개인 편집 보류를 사용자 선택으로 이어주는 경로, V25/V33의 전체 클라이언트 연결. 기존 a~h 완료 이력을 지우거나 같은 기능을 다시 구현하지 않고 실제 미연결 지점만 처리한다.
