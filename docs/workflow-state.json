@@ -1558,12 +1558,12 @@
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "e4adb7f 필수4 CI PASS/로컬APK 성공. USER-022 USB 및 USER-023 Docker 실행 확인 후 새 폰 실기. 기존 검증 범위 유지.",
-      "blocker": "새 앱 초기 수신 실기: USB0·Docker 런타임 오류, USER-022/023 사용자 조작 대기."
+      "resume": "e4adb7f 필수4 CI PASS/고정 APK 데이터 보존 설치 성공. USER-022/023 환경 완료. USER-024 새 화면/복귀 실기 결과 대기.",
+      "blocker": "새 앱 초기 수신 실기 USER-024 사용자 결과 대기. API/DB/USB 정상."
     },
     {
       "id": "P10-06-NEXT",
-      "action": "P10-06a/P10-06b — 증분 변경 수신: 일관 조회 CI와 인증된 HTTP 계약",
+      "action": "P10-06b/P10-06c — 증분 변경 수신: 계약 보완·앱 디코더와 HTTP 연결",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1582,11 +1582,13 @@
         "services/api/src/main/java/com/ksh321/songrecord/api/sync/SyncConfiguration.java",
         "services/api/src/test/java/com/ksh321/songrecord/api/sync/ChangeHttpTests.java",
         "docs/contracts/openapi.yaml",
-        "fixtures/contracts/api-schema-cases.json"
+        "fixtures/contracts/api-schema-cases.json",
+        "apps/mobile/lib/core/sync/change_feed_response.dart",
+        "apps/mobile/test/change_feed_response_test.dart"
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "a 통합dc3a150 필수4 CI PASS. b HTTP6 및 계약141 PASS, 코드611f516 커밋. 후속 통합 push/CI 진행 후 앱 수신 디코더·원자 적용 연결."
+      "resume": "a 통합dc3a150 필수4 CI PASS. b 보완b7e66e3 서버11 PASS. c e122c1b 앱8 PASS/분석 정상. 통합 CI 및 후속 인증 HTTP transport·원자 적용 연결."
     },
     {
       "id": "P10-07-NEXT",

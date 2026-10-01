@@ -15,3 +15,5 @@ SyncStatusSource를 통해 초기 수신·서버 준비·인증 중단 문구를
 환경 복구: Docker 런타임 소켓 OS 접근 오류로 시작 실패. 정상 종료/보존 이동/빈 소켓 정리 시도도 실패했고 데이터 삭제 성공 없음. 사용자 USER-023 Windows 재시작 후 엔진 실행 확인 대기. 소프트웨어 논리 실패 횟수와 구분. USER-022 USB 연결 대기. ntfy 두 요청 서버 접수, 실제 수신 미확인.
 
 통합 e4adb7fc68cc445b05bd6f4fe046d5b5e840a842 필수4 CI PASS: CI36796712600, API contract36796712573, Idempotency MySQL36796712623, Development workflow36796712619. 폰 검증은 여전히 대기.
+
+2026-10-01 재시작 회신 후 환경 복구 확인: 기존/격리 DB healthy, USB device1대, API health UP. 고정 e4adb7f APK의 SHA256 일치 확인 후 adb install -r Success. USB reverse8080 연결. 사용자 실기는 USER-024로 별도 요청, ntfy 서버 접수이며 수신/실기 결과는 미확인. 과거 USB0/설치 전/엔진 차단은 당시 기록이다.
