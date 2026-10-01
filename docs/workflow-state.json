@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "8a8b56b0d42953621a1464b624de2970b0e1825c",
+  "baseline_head": "a30c9b8807744490147395ff829a3fa44f6ee778",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -402,7 +402,8 @@
         "P10-07b",
         "P10-07c",
         "P10-07d",
-        "P10-07e"
+        "P10-07e",
+        "P10-07f"
       ]
     },
     "P10-08": {
@@ -2097,10 +2098,10 @@
         "apps/mobile/test/permanent_deletion_test.dart",
         "apps/mobile/test/change_feed_store_test.dart"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "일반 UUID 표식 추가3종28 PASS/분석 정상",
-      "blocker": "a30c9b8 통합 CI 진행"
+      "evidence": "a30c9b8807744490147395ff829a3fa44f6ee778 필수 CI4 PASS(36812922525/36812922708/36812922521/36812922666), 작업별 검증 문서"
     },
     {
       "id": "P10-07d",
@@ -2115,10 +2116,10 @@
         "apps/mobile/drift_schemas",
         "apps/mobile/test"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "v6 이관50 PASS/Windows1 SKIP+v5 사본 보존1 PASS, 생성8파일 동일",
-      "blocker": "a30c9b8 정확 SHA CI 진행"
+      "evidence": "a30c9b8807744490147395ff829a3fa44f6ee778 필수 CI4 PASS(36812922525/36812922708/36812922521/36812922666), 작업별 검증 문서"
     },
     {
       "id": "P10-07e",
@@ -2138,6 +2139,25 @@
       "state": "pending",
       "owner": "AI",
       "resume": "충돌 큐 투영 관련74 PASS + 해결 스키마/순서12 PASS, 분석 정상",
+      "blocker": "로컬 검증/현재 모델 검토 완료, 커밋·통합 CI 대기"
+    },
+    {
+      "id": "P10-07f",
+      "action": "충돌 필드의 명시 선택과 새 요청 초안 생성",
+      "requires": [
+        "p10.remaining.analysis"
+      ],
+      "permissions": [],
+      "reads": [
+        "apps/mobile/lib/core/sync/metadata_conflict.dart"
+      ],
+      "writes": [
+        "apps/mobile/lib/core/sync/conflict_resolution_plan.dart",
+        "apps/mobile/test/conflict_resolution_plan_test.dart"
+      ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "명시 선택9 PASS+기존 비교27 PASS/분석 정상, 실제 저장은 후속",
       "blocker": "로컬 검증/현재 모델 검토 완료, 커밋·통합 CI 대기"
     }
   ],
