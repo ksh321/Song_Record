@@ -23,9 +23,9 @@
 | 확인한 제품 Git | CONNECT dab4fd6, P10-05a~d, e 보완 포함 f 2b6a980, g 0241cf56340f52a366bec1a49100e61664074a56 필수 CI4 PASS. h c1b9a4c+운영 문서 통합95a2079 및 i+j d39cc52 필수 CI4 PASS; k와 c를 포함한 통합 b2526b9도 2026-10-01 필수 CI4 PASS |
 | 기존 기능 완료 기준 | `eef028dddea87cb0ad02d733808658512dffe431`까지 사용자 검증 완료. P05-08·P06 포함, 문서 부족만으로 되돌리지 않음 |
 | 현재 구현 완료 지점 | P09-07b-C1/D06, P10-02b 해당 메타데이터 범위, WORKFLOW-07, P10-04a v4, P10-04b-DECODER/ATOMIC/GATE. GATE 90 테스트·분석·Astra/xhigh 재검수·정확 SHA CI 통과. 전체 P10-03/P10-04 완료 아님 |
-| 현재 작업 | P10-06a — 증분 변경 수신의 서버 페이지 검증·일관 조회. 14 PASS/MySQL7 skip. P10-05n 폰 대기와 독립적인 서버 기반으로 선정 |
+| 현재 작업 | P10-06a — 증분 변경 일관 조회: 로컬14 PASS/통합 dc3a150 필수4 CI PASS. P10-06b — 인증된 HTTP 조회: 로컬 HTTP6 PASS·계약141 PASS, 코드611f516 커밋 |
 | 작업 중 변경 | d/l 통합 a207cf64228ab0bedb5d2f0959f50644c4d411ba 필수4 CI PASS. 후속 m/n 통합 e4adb7fc68cc445b05bd6f4fe046d5b5e840a842 필수4 CI PASS, 전체 P10-05는 새 폰 실기 대기로 미완료 |
-| 다음 실행 | e4adb7f 정확 SHA CI 확인 및 로컬 Docker/API 복구. USB 연결 회신 후 동일 서명 업데이트와 새 초기 수신 실기 안내. 독립적인 서버 수신 계약/초안 투영 분석은 계속 가능 |
+| 다음 실행 | dc3a150 필수4 CI PASS 확인. b 코드/계약 통합 push·정확 SHA CI. 다음 앱 증분 수신에서는 CONDITION 코드 매핑·성공한 로컬 트랜잭션 뒤 커서 전진·DELETE 의미 보존을 연결. n 실기는 USER-022/023 해소 후 별도 진행 |
 | 실제 차단 | 무료 Actions 한도 차단 해소. USB0(USER-022), Docker 실행용 sailor-ingest.sock 접근 오류 복구3회 실패; USER-023 재시작/실행 확인 대기, 엔진/API 미시작. 기존 DB 손상 근거 없음, 삭제/초기화 없음. 후속 n 실기만 차단 |
 | 실행 환경 | e4adb7f dev APK 로컬 빌드 종료0·해시/사본 고정, 아직 설치 전. 마지막 설치 확인은 기존 2e6bd88. 예전 health UP은 당시 기록이며 현재 API 미기동 |
 

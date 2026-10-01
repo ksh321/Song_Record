@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "e4adb7fc68cc445b05bd6f4fe046d5b5e840a842",
+  "baseline_head": "dc3a15035ac4ee5386a76e332feb2206c00af976",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1563,7 +1563,7 @@
     },
     {
       "id": "P10-06-NEXT",
-      "action": "P10-06a — 증분 변경 수신: 서버 변경 페이지 경계 검증",
+      "action": "P10-06a/P10-06b — 증분 변경 수신: 일관 조회 CI와 인증된 HTTP 계약",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1575,11 +1575,18 @@
         "services/api/src/test/java/com/ksh321/songrecord/api/sync/ChangeWindowTests.java",
         "services/api/src/test/java/com/ksh321/songrecord/api/sync/ChangeReadViewTests.java",
         "services/api/src/test/java/com/ksh321/songrecord/api/sync/MySqlChangeReadViewTests.java",
-        ".github/workflows/idempotency-mysql.yml"
+        ".github/workflows/idempotency-mysql.yml",
+        "services/api/src/main/java/com/ksh321/songrecord/api/sync/ChangeController.java",
+        "services/api/src/main/java/com/ksh321/songrecord/api/sync/ChangeQueries.java",
+        "services/api/src/main/java/com/ksh321/songrecord/api/sync/ChangeHttpSecurityConfiguration.java",
+        "services/api/src/main/java/com/ksh321/songrecord/api/sync/SyncConfiguration.java",
+        "services/api/src/test/java/com/ksh321/songrecord/api/sync/ChangeHttpTests.java",
+        "docs/contracts/openapi.yaml",
+        "fixtures/contracts/api-schema-cases.json"
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "원본 P10 단계 선행을 충족한 독립 서버 기반. 14 PASS/MySQL7 skip; 정확 SHA CI에서 실제 MySQL 검증 예정. 다음 HTTP/앱 원자 적용은 아직 미연결."
+      "resume": "a 통합dc3a150 필수4 CI PASS. b HTTP6 및 계약141 PASS, 코드611f516 커밋. 후속 통합 push/CI 진행 후 앱 수신 디코더·원자 적용 연결."
     },
     {
       "id": "P10-07-NEXT",

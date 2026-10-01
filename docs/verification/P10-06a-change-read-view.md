@@ -18,3 +18,7 @@ gradlew.bat test --tests '*ChangeWindowTests' --tests '*ChangeReadViewTests' --n
 현재 모델이 원본 요구사항·실제 diff·결과를 별도 대조했다. 계정 필터를 모든 쿼리에 바인딩하며, 마지막 세션 확인을 오래된 RR 시점 안에서 하지 않는 점을 확인했다. 누락 행은 cursor 점프나 정상 빈 페이지로 취급하지 않는다. 새 작업자 위임 없음. 인증/동기화 위험도에 높은 추론이 적합하나 실행 모델/속도 변경을 관측했다고 주장하지 않는다.
 
 실제 MySQL7 및 exact SHA 필수 CI는 push 후 확인한다. HTTP 경로/응답 계약 및 앱의 원자 반영은 아직 연결하지 않았다. 이 기반만으로 p10.receiver나 전체 P10-06 완료를 만들지 않는다. 사용자 폰 조작은 이 서버 기반의 완료 조건이 아니다.
+
+통합 dc3a15035ac4ee5386a76e332feb2206c00af976: 실제 MySQL workflow36798366849 success, API contract36798366834 및 Development workflow36798366831 success. 통합 CI36798366891의 Android APK 빌드는 진행 중이다. 필수4 전체 완료로 표시하지 않는다.
+
+최종 통합 dc3a15035ac4ee5386a76e332feb2206c00af976 필수4 CI PASS. CI36798366891, contract36798366834, 실제 MySQL36798366849, workflow36798366831 모두 success. 서버 조회 기반 범위 완료; 전체 P10-06 아님.
