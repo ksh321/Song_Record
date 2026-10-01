@@ -47,3 +47,18 @@
 실행: `flutter test --no-pub test/recording_asset_projection_test.dart test/change_feed_store_test.dart test/resync_integration_test.dart --reporter expanded` **52 PASS**. 변경4파일 `flutter analyze --no-pub` **No issues found**. 테스트 작성 중 cursor helper 선언 순서 오류를 수정했다. 잘못된 로그/테스트 경로 및 실행 디렉터리는 명령 오류로 별도 수정했으며 테스트 통과로 기록하지 않았다. 분석 스타일 지적4개도 해소했다. 원본 검사를 삭제/약화하지 않았다. 상세 로그 `.local/workflow/p10-asset-receiver-reviewed.log`.
 
 현재 사용자 행동 없음. 폰 설치/실기 실행 없음. 기존 USER-025 확인 범위를 이 변경에 확대하지 않는다. 다음 실행은 generation 삭제 원장 보존 처리와 목록 항목 관계 수신이다. 실행 모델·속도 변경 기능은 미확인, 별도 에이전트 없이 현재 작업에서 구현·검토했다.
+
+## 2026-10-01 — P10-06e/P10-06m 파일 세대 삭제 증거 수신
+
+앞 절의 generation DELETE/원장 미지원은 아래 후속 변경으로 보완했다. 같은 녹음의 새 객체 세대는 허용하고 삭제된 이전 세대 재노출은 차단한다. 원본 설계 p00741 및 DB V6의 녹음 UUID와 object_generation 별도 원장에 근거한다.
+
+- ASSET DELETE의 정확 payload는 recording_id/generation/cloud_revision/purged_at이다. envelope ID·revision과 일치해야 한다. 초기 원장은 실제 SnapshotSourceRows 필드를 검증한 뒤 같은 내부 증거로 변환한다. 서버 writer는 아직 없어 이 계약의 end-to-end 서버 발행 검증은 남아 있다.
+- 새 스키마/마이그레이션 없이 기존 metadata_copies의 DELETION_LEDGER 영역에 generation을 키로 한 **파생 증거**를 저장한다. 원본 서버 원장 UUID나 원본 snapshot을 바꾸지 않는다. 이 영역의 server_payload는 위 4필드, server_revision은 cloud_revision, tombstone=1이다. 녹음·파일 사본 UUID의 영구 삭제와 혼동하지 않는다. 일반 UUID 삭제 원장은 기존 처리대로 유지한다.
+- 파일 상태가 삭제 증거의 generation과 같을 때만 NONE으로 투영하며 파일 세대·크기·해시·저장 시각은 서버 노출용 사본에서 비운다. 실제 로컬 파일·파일 참조·녹음 정보·로컬 입력·큐는 삭제하지 않는다. 다른 새 generation의 현재 상태를 오래된 삭제 응답이 지우지 못한다. 더 높은 버전으로 삭제 세대를 재노출하거나 같은 generation을 다른 녹음에 재배정하는 응답은 거절한다.
+- 증거 저장·사본 반영·cursor 이동은 계정 단일 트랜잭션이다. 계정 해제/잘못된 후반 행은 증거까지 롤백한다. 매 페이지 기존 증거를 DB에서 다시 읽어 유지한다. 중복 증거는 내용 일치만 허용하며 현재 코드에 파일 삭제 권한은 없다.
+
+현재 모델 직접 구현 후 별도 코드 검토: 원본/DB 세대 유일성, 삭제와 새 세대 재업로드 구분, payload-캐시 버전 일치, 계정 경계·원자성, 초기 원본 및 파일 참조 보존을 대조했다. 후속 없는 무한 재시도나 시간 기준 덮어쓰기는 추가하지 않았다.
+
+검증: 관련 change_feed_store/recording_asset_projection/resync_integration 3파일 **59 PASS**, 변경3파일 분석 **No issues found**, diff 검사 통과. 새 검증은 삭제 뒤 다음 페이지 재노출 차단, 새 generation 허용 및 오래된 삭제 무효, 빈 초기 사본 페이지의 원장 반영, 원본 보존, 늦은 오류·계정 해제 롤백, 다른 녹음/계정 거절을 포함한다. 합성 파일 DB 참조를 비교했으며 사용자 실제 파일 청취·실기 결과가 아니다.
+
+테스트 자료 수정: local_recording_files의 실제 local_state/검증 필드를 사용하도록 보완했고, 타 계정 원장은 수신기 이전 DB owner CHECK가 먼저 거절함을 확인해 그 정확 제약과 적용기 자체 계정 검사 모두를 테스트했다. 제약 우회·테스트 약화 없음. 로그 `.local/workflow/p10-asset-deletion-reviewed.log`. 앞 수신 커밋 ad8ac50의 필수 CI3 PASS/CI 실행 중 확인. 전체 P10-06 완료 아님; 다음은 목록 항목 관계 수신과 남은 통합 검증이다.

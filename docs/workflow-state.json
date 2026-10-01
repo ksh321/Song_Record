@@ -1573,7 +1573,7 @@
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "P10-06e/P10-06m 파일 상태 초기·증분 수신52 PASS/분석 정상. generation 삭제 원장 적용과 목록 항목 관계 수신 계속. 사용자 차단 없음"
+      "resume": "ad8ac50 파일 상태 수신 푸시, 필수 CI3 PASS/CI 실행 중. 후속 generation 삭제 원장59 PASS/분석 정상; commit/CI 후 목록 항목 관계 수신 계속. 사용자 차단 없음"
     },
     {
       "id": "P10-06-NEXT",

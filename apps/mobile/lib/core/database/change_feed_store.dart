@@ -8,6 +8,7 @@ import '../sync/permanent_deletion.dart';
 import '../sync/recording_asset_projection.dart';
 import '../sync/recording_change_projection.dart';
 import 'account_database.dart';
+import 'asset_deletion_store.dart';
 import 'local_models.dart';
 import 'snapshot_download_store.dart';
 import 'snapshot_metadata_projection.dart';
@@ -84,10 +85,12 @@ final class ChangeFeedStore {
         position.read<String>('snapshot_token') != snapshotToken) {
       throw StateError('Change feed baseline changed');
     }
-    final permanent = await _initialDeletions(snapshotToken);
+    final assetDeletions = AssetDeletionStore(db, requireActive, clock);
+    await assetDeletions.load();
+    final permanent = await _initialDeletions(snapshotToken, assetDeletions);
     // Also covers an app upgrade whose old receiver already advanced beyond
     // the baseline cursor without materializing these business copies.
-    await _initialMetadata(snapshotToken, permanent);
+    await _initialMetadata(snapshotToken, permanent, assetDeletions);
     for (final entry in page.entries) {
       requireActive();
       final markerRevision = permanent['${entry.entity.code}:${entry.id}'];
@@ -112,19 +115,25 @@ final class ChangeFeedStore {
         throw const FormatException('Change entity adapter is not implemented');
       }
       final asset = entry.entity == LocalEntity.recordingAsset;
-      // A generation deletion cannot tombstone the entire recording/asset ID.
-      // Until its dedicated adapter exists, retain both page and cursor.
+      // A generation deletion never tombstones the recording/asset UUID.
       if (asset && entry.deleted) {
-        throw const FormatException(
-          'Asset generation deletion adapter is not implemented',
+        final proof = assetDeletions.parse(
+          entry.payload,
+          recordingId: entry.id,
+          revision: entry.revision,
         );
+        await assetDeletions.remember(proof);
+        await _applyAssetDeletion(entry.id, assetDeletions);
+        continue;
       }
       final payload = asset
-          ? projectRecordingAsset(
-              entry.payload,
-              owner: db.userId,
-              recordingId: entry.id,
-              revision: entry.revision,
+          ? assetDeletions.suppress(
+              projectRecordingAsset(
+                entry.payload,
+                owner: db.userId,
+                recordingId: entry.id,
+                revision: entry.revision,
+              ),
             )
           : entry.payload;
       if (!entry.deleted && !asset) {
@@ -132,7 +141,7 @@ final class ChangeFeedStore {
       }
       if (!entry.deleted &&
           (payload['id'] != entry.id ||
-              payload['revision'] != entry.revision)) {
+              (!asset && payload['revision'] != entry.revision))) {
         throw const FormatException('Change payload is not an entity snapshot');
       }
       final code = entry.entity.code;
@@ -224,7 +233,7 @@ final class ChangeFeedStore {
       await _writeCopy(
         code,
         entry.id,
-        entry.revision,
+        asset ? projected['revision'] as int : entry.revision,
         encoded,
         entry.deleted ||
             entry.entity == LocalEntity.playlist &&
@@ -246,6 +255,7 @@ final class ChangeFeedStore {
   Future<void> _initialMetadata(
     String token,
     Map<String, int> permanent,
+    AssetDeletionStore assetDeletions,
   ) async {
     for (final entity in [
       LocalEntity.song,
@@ -282,11 +292,13 @@ final class ChangeFeedStore {
           }
           final Map<String, dynamic> projected;
           if (entity == LocalEntity.recordingAsset) {
-            projected = projectRecordingAsset(
-              source,
-              owner: db.userId,
-              recordingId: id,
-              snapshot: true,
+            projected = assetDeletions.suppress(
+              projectRecordingAsset(
+                source,
+                owner: db.userId,
+                recordingId: id,
+                snapshot: true,
+              ),
             );
           } else if (entity == LocalEntity.recording) {
             final bundle = await SnapshotDownloadStore(
@@ -331,7 +343,10 @@ final class ChangeFeedStore {
 
   /// A page may be empty: baseline UUID tombstones must still hide stale
   /// local copies before its cursor is accepted. All writes share apply's TX.
-  Future<Map<String, int>> _initialDeletions(String snapshotToken) async {
+  Future<Map<String, int>> _initialDeletions(
+    String snapshotToken,
+    AssetDeletionStore assetDeletions,
+  ) async {
     final rows = await db
         .customSelect(
           "SELECT canonical_payload FROM snapshot_download_rows WHERE snapshot_token=? AND user_id=? AND entity='DELETION_LEDGER' ORDER BY ordinal",
@@ -349,6 +364,11 @@ final class ChangeFeedStore {
       }
       final wireCode = raw['entity_type'] as String,
           id = raw['entity_id'] as String;
+      if (wireCode == 'RECORDING_ASSET') {
+        await assetDeletions.remember(assetDeletions.fromLedger(raw));
+        await _applyAssetDeletion(id, assetDeletions);
+        continue;
+      }
       final code = wireCode == 'CONDITION' ? 'RECORDING_CONDITION' : wireCode;
       final marker = permanentDeletionPayload(
         raw,
@@ -375,6 +395,35 @@ final class ChangeFeedStore {
       await _writeCopy(code, id, revision, canonicalJson(marker), true);
     }
     return result;
+  }
+
+  Future<void> _applyAssetDeletion(
+    String id,
+    AssetDeletionStore deletions,
+  ) async {
+    final row = await db
+        .customSelect(
+          "SELECT server_payload,tombstone FROM metadata_copies WHERE entity_type='RECORDING_ASSET' AND entity_id=?",
+          variables: [Variable(id)],
+        )
+        .getSingleOrNull();
+    if (row == null ||
+        row.read<int>('tombstone') == 1 ||
+        row.readNullable<String>('server_payload') == null) {
+      return;
+    }
+    final previous =
+        jsonDecode(row.read<String>('server_payload')) as Map<String, dynamic>;
+    final projected = deletions.suppress(previous);
+    if (canonicalJson(projected) != canonicalJson(previous)) {
+      await _writeCopy(
+        'RECORDING_ASSET',
+        id,
+        projected['revision'] as int,
+        canonicalJson(projected),
+        false,
+      );
+    }
   }
 
   Future<void> _writeCopy(

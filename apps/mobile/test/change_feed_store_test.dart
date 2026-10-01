@@ -5,11 +5,12 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_database.dart';
+import 'package:song_record/core/database/asset_deletion_store.dart';
 import 'package:song_record/core/database/change_feed_store.dart';
 import 'package:song_record/core/sync/change_feed_response.dart';
 
 import 'change_payload_validation_test.dart' show songChange, recordingWire;
-import 'recording_asset_projection_test.dart' show assetSource;
+import 'recording_asset_projection_test.dart' show assetSource, assetGeneration;
 
 void main() {
   const owner = '11111111-1111-4111-8111-111111111111';
@@ -141,6 +142,286 @@ void main() {
               .customSelect('SELECT last_change_seq FROM sync_cursors')
               .getSingle())
           .read<int>('last_change_seq');
+  Map<String, Object?> assetDelete(int seq, {int revision = 4}) => {
+    'change_seq': seq,
+    'entity_type': 'RECORDING_ASSET',
+    'entity_id': id,
+    'revision': revision,
+    'operation': 'DELETE',
+    'payload': {
+      'recording_id': id,
+      'generation': assetGeneration,
+      'cloud_revision': revision,
+      'purged_at': '2026-10-01T01:00:00Z',
+    },
+  };
+  test('asset deletion proof survives pages and permits a new generation without touching files', () async {
+    final latest = await replaceBaseline('RECORDING_ASSET', assetSource());
+    await store.apply(page([]), snapshotToken: latest);
+    await db.customStatement(
+      'INSERT INTO local_recording_files(recording_id,user_id,relative_path,sha256,size_bytes,verified_at,local_state,updated_at) VALUES(?,?,?,?,4,1,\'SAVED\',0)',
+      [id, owner, 'audio/$id.m4a', 'a' * 64],
+    );
+    final files =
+        (await db.customSelect('SELECT * FROM local_recording_files').get())
+            .map((r) => r.data)
+            .toList();
+    await store.apply(page([assetDelete(8)]), snapshotToken: latest);
+    final deleted =
+        (await db
+                .customSelect(
+                  "SELECT * FROM metadata_copies WHERE entity_type='RECORDING_ASSET'",
+                )
+                .getSingle())
+            .data;
+    expect(deleted['tombstone'], 0);
+    expect(deleted['server_revision'], 4);
+    expect(
+      jsonDecode(deleted['server_payload'] as String)['cloud_state'],
+      'NONE',
+    );
+    expect(
+      (await db
+              .customSelect(
+                "SELECT entity_id FROM metadata_copies WHERE entity_type='DELETION_LEDGER'",
+              )
+              .getSingle())
+          .read<String>('entity_id'),
+      assetGeneration,
+    );
+    await expectLater(
+      store.apply(
+        page([
+          {
+            'change_seq': 9,
+            'entity_type': 'RECORDING_ASSET',
+            'entity_id': id,
+            'revision': 5,
+            'operation': 'UPSERT',
+            'payload': assetSource(revision: 5),
+          },
+        ], after: 8),
+        snapshotToken: latest,
+      ),
+      throwsStateError,
+    );
+    expect(await cursor(), 8);
+    final next = {
+      ...assetSource(revision: 5),
+      'generation': '66666666-6666-4666-8666-666666666666',
+    };
+    await store.apply(
+      page([
+        {
+          'change_seq': 9,
+          'entity_type': 'RECORDING_ASSET',
+          'entity_id': id,
+          'revision': 5,
+          'operation': 'UPSERT',
+          'payload': next,
+        },
+      ], after: 8),
+      snapshotToken: latest,
+    );
+    await store.apply(page([assetDelete(10)], after: 9), snapshotToken: latest);
+    final replacement =
+        (await db
+                .customSelect(
+                  "SELECT server_payload FROM metadata_copies WHERE entity_type='RECORDING_ASSET'",
+                )
+                .getSingle())
+            .read<String>('server_payload');
+    expect(jsonDecode(replacement)['generation'], next['generation']);
+    expect(jsonDecode(replacement)['cloud_state'], 'STORED');
+    expect(
+      (await db.customSelect('SELECT * FROM local_recording_files').get())
+          .map((r) => r.data)
+          .toList(),
+      files,
+    );
+    expect(await cursor(), 10);
+  });
+  test('initial generation ledger suppresses only matching asset and preserves raw baseline', () async {
+    final latest = await replaceBaseline(
+      'RECORDING_ASSET',
+      assetSource(),
+      relations: {
+        'DELETION_LEDGER': [
+          {
+            'id': other,
+            'user_id': owner,
+            'entity_type': 'RECORDING_ASSET',
+            'entity_id': id,
+            'object_generation': assetGeneration,
+            'revision': 4,
+            'purged_at': '2026-10-01T01:00:00Z',
+          },
+        ],
+      },
+    );
+    final raw =
+        (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+            .map((r) => r.data)
+            .toList();
+    await store.apply(page([]), snapshotToken: latest);
+    final asset =
+        (await db
+                .customSelect(
+                  "SELECT * FROM metadata_copies WHERE entity_type='RECORDING_ASSET'",
+                )
+                .getSingle())
+            .data;
+    expect(asset['server_revision'], 4);
+    expect(asset['tombstone'], 0);
+    expect(jsonDecode(asset['server_payload'] as String)['generation'], isNull);
+    await store.apply(page([]), snapshotToken: latest);
+    expect(
+      (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+          .map((r) => r.data)
+          .toList(),
+      raw,
+    );
+  });
+  test(
+    'late invalid change rolls back newly remembered generation deletion',
+    () async {
+      await expectLater(
+        store.apply(
+          page([
+            assetDelete(8),
+            {...entry(9, other), 'entity_type': 'PLAYLIST_ITEM'},
+          ]),
+          snapshotToken: token,
+        ),
+        throwsFormatException,
+      );
+      expect(await cursor(), 7);
+      expect(
+        await db.customSelect('SELECT * FROM metadata_copies').get(),
+        isEmpty,
+      );
+    },
+  );
+  test('deletion without prior asset still prevents old generation from being exposed', () async {
+    await store.apply(page([assetDelete(8)]), snapshotToken: token);
+    await store.apply(
+      page([
+        {
+          'change_seq': 9,
+          'entity_type': 'RECORDING_ASSET',
+          'entity_id': id,
+          'revision': 3,
+          'operation': 'UPSERT',
+          'payload': assetSource(),
+        },
+      ], after: 8),
+      snapshotToken: token,
+    );
+    final asset =
+        (await db
+                .customSelect(
+                  "SELECT * FROM metadata_copies WHERE entity_type='RECORDING_ASSET'",
+                )
+                .getSingle())
+            .data;
+    expect(asset['server_revision'], 4);
+    expect(jsonDecode(asset['server_payload'] as String)['revision'], 4);
+    expect(
+      jsonDecode(asset['server_payload'] as String)['cloud_state'],
+      'NONE',
+    );
+    expect(await cursor(), 9);
+  });
+  test(
+    'account loss after persisting an asset proof rolls back proof and cursor',
+    () async {
+      var active = true;
+      final leased = ChangeFeedStore(
+        db,
+        requireActive: () {
+          if (!active) throw StateError('Account changed');
+        },
+        clock: () {
+          active = false;
+          return DateTime.utc(2026, 10, 1);
+        },
+      );
+      await expectLater(
+        leased.apply(page([assetDelete(8)]), snapshotToken: token),
+        throwsStateError,
+      );
+      expect(await cursor(), 7);
+      expect(
+        await db.customSelect('SELECT * FROM metadata_copies').get(),
+        isEmpty,
+      );
+    },
+  );
+  test('same generation cannot be reassigned to another recording by a deletion proof', () async {
+    await store.apply(page([assetDelete(8)]), snapshotToken: token);
+    final before =
+        (await db.customSelect('SELECT * FROM metadata_copies').get())
+            .map((r) => r.data)
+            .toList();
+    final conflict = assetDelete(9)..['entity_id'] = other;
+    conflict['payload'] = {
+      ...(conflict['payload'] as Map<String, Object?>),
+      'recording_id': other,
+    };
+    await expectLater(
+      store.apply(page([conflict], after: 8), snapshotToken: token),
+      throwsStateError,
+    );
+    expect(await cursor(), 8);
+    expect(
+      (await db.customSelect('SELECT * FROM metadata_copies').get())
+          .map((r) => r.data)
+          .toList(),
+      before,
+    );
+  });
+  test('foreign-owner asset ledger cannot be installed', () async {
+    final foreign = <String, Object?>{
+      'id': other,
+      'user_id': other,
+      'entity_type': 'RECORDING_ASSET',
+      'entity_id': id,
+      'object_generation': assetGeneration,
+      'revision': 4,
+      'purged_at': '2026-10-01T01:00:00Z',
+    };
+    // The DB owner CHECK rejects this even before the receiver. Also test the
+    // adapter's own account fence directly without bypassing that constraint.
+    expect(
+      () => AssetDeletionStore(
+        db,
+        () {},
+        () => DateTime.utc(2026),
+      ).fromLedger(Map<String, dynamic>.of(foreign)),
+      throwsFormatException,
+    );
+    await expectLater(
+      replaceBaseline(
+        'RECORDING_ASSET',
+        assetSource(),
+        relations: {
+          'DELETION_LEDGER': [foreign],
+        },
+      ),
+      throwsA(
+        predicate<Object>(
+          (error) => error.toString().contains(
+            "CHECK constraint failed: json_extract(canonical_payload, '\u0024.user_id') IS user_id",
+          ),
+        ),
+      ),
+    );
+    expect(await cursor(), 7);
+    expect(
+      await db.customSelect('SELECT * FROM metadata_copies').get(),
+      isEmpty,
+    );
+  });
   test('asset baseline and delta preserve raw rows and local input; NONE is not recording deletion', () async {
     final initial = assetSource();
     final latest = await replaceBaseline('RECORDING_ASSET', initial);
