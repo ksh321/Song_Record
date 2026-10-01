@@ -11,6 +11,8 @@ import 'package:song_record/core/sync/change_feed_response.dart';
 
 import 'change_payload_validation_test.dart' show songChange, recordingWire;
 import 'recording_asset_projection_test.dart' show assetSource, assetGeneration;
+import 'snapshot_playlist_item_projection_test.dart'
+    show playlistSource, playlistItemSource;
 
 void main() {
   const owner = '11111111-1111-4111-8111-111111111111';
@@ -70,7 +72,9 @@ void main() {
     manifest['snapshot_token'] = other;
     final counts = manifest['entity_counts'] as Map<String, dynamic>;
     counts.updateAll(
-      (key, value) => key == entity ? 1 : relations[key]?.length ?? 0,
+      (key, value) => key == entity
+          ? 1 + (relations[key]?.length ?? 0)
+          : relations[key]?.length ?? 0,
     );
     await db.customStatement(
       'INSERT INTO snapshot_downloads(snapshot_token,user_id,manifest_json,snapshot_cursor,expires_at,created_at) VALUES(?,?,?,7,1800000,0)',
@@ -88,8 +92,10 @@ void main() {
             other,
             owner,
             relation.key,
-            index + 1,
-            id,
+            index + (relation.key == entity ? 2 : 1),
+            relation.value[index]['id'] ??
+                relation.value[index]['recording_id'] ??
+                id,
             jsonEncode(relation.value[index]),
           ],
         );
@@ -142,6 +148,131 @@ void main() {
               .customSelect('SELECT last_change_seq FROM sync_cursors')
               .getSingle())
           .read<int>('last_change_seq');
+  for (final deleted in [false, true]) {
+    test(
+      'initial playlist item inherits parent version and deletion=$deleted with original/input preservation',
+      () async {
+        final parent = {
+          ...playlistSource(),
+          'deleted_at': deleted ? '2026-10-01T01:00:00Z' : null,
+        };
+        final latest = await replaceBaseline(
+          'PLAYLIST_ITEM',
+          playlistItemSource(),
+          relations: {
+            'PLAYLIST': [parent],
+          },
+        );
+        final raw =
+            (await db
+                    .customSelect('SELECT * FROM snapshot_download_rows')
+                    .get())
+                .map((r) => r.data)
+                .toList();
+        const local = '{"private_draft":"keep"}';
+        await db.customStatement(
+          "INSERT INTO metadata_copies(user_id,entity_type,entity_id,server_revision,local_payload,updated_at) VALUES(?,'PLAYLIST_ITEM',?,0,?,0)",
+          [owner, id, local],
+        );
+        await store.apply(page([]), snapshotToken: latest);
+        final item =
+            (await db
+                    .customSelect(
+                      "SELECT * FROM metadata_copies WHERE entity_type='PLAYLIST_ITEM'",
+                    )
+                    .getSingle())
+                .data;
+        expect(item['server_revision'], 8);
+        expect(item['tombstone'], deleted ? 1 : 0);
+        expect(item['local_payload'], local);
+        expect(
+          jsonDecode(item['server_payload'] as String)['playlist_revision'],
+          8,
+        );
+        expect(
+          (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+              .map((r) => r.data)
+              .toList(),
+          raw,
+        );
+        await store.apply(page([]), snapshotToken: latest);
+        expect(await cursor(), 7);
+      },
+    );
+  }
+  test('playlist item cannot use another snapshot or missing parent', () async {
+    final latest = await replaceBaseline('PLAYLIST_ITEM', playlistItemSource());
+    await expectLater(
+      store.apply(page([]), snapshotToken: latest),
+      throwsStateError,
+    );
+    expect(await cursor(), 7);
+    expect(
+      await db.customSelect('SELECT * FROM metadata_copies').get(),
+      isEmpty,
+    );
+  });
+  test(
+    'duplicate snapshot playlist identity rolls back parent and first item',
+    () async {
+      final latest = await replaceBaseline(
+        'PLAYLIST_ITEM',
+        playlistItemSource(),
+        relations: {
+          'PLAYLIST': [playlistSource()],
+          'PLAYLIST_ITEM': [
+            {...playlistItemSource(), 'id': other, 'position': 1},
+          ],
+        },
+      );
+      await expectLater(
+        store.apply(page([]), snapshotToken: latest),
+        throwsStateError,
+      );
+      expect(await cursor(), 7);
+      expect(
+        await db.customSelect('SELECT * FROM metadata_copies').get(),
+        isEmpty,
+      );
+    },
+  );
+  test('linked playlist item uses same-token song and parent version rather than song revision', () async {
+    const songId = '77777777-7777-4777-8777-777777777777';
+    final latest = await replaceBaseline(
+      'PLAYLIST_ITEM',
+      {...playlistItemSource(), 'song_id': songId},
+      relations: {
+        'PLAYLIST': [playlistSource()],
+        'SONG': [
+          {
+            ...songChange(songId, 90),
+            'user_id': owner,
+            'source_type': 'TJ',
+            'tj_number': '123',
+          },
+        ],
+      },
+    );
+    await store.apply(page([]), snapshotToken: latest);
+    final item =
+        (await db
+                .customSelect(
+                  "SELECT * FROM metadata_copies WHERE entity_type='PLAYLIST_ITEM'",
+                )
+                .getSingle())
+            .data;
+    expect(item['server_revision'], 8);
+    expect(jsonDecode(item['server_payload'] as String)['song_id'], songId);
+    expect(
+      (await db
+              .customSelect(
+                "SELECT server_revision FROM metadata_copies WHERE entity_type='SONG'",
+              )
+              .getSingle())
+          .read<int>('server_revision'),
+      90,
+    );
+  });
   Map<String, Object?> assetDelete(int seq, {int revision = 4}) => {
     'change_seq': seq,
     'entity_type': 'RECORDING_ASSET',

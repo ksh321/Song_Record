@@ -36,3 +36,15 @@
 DB V4 playlist와 SnapshotSourceRows의 실제 필드(id/name/revision/deleted_at/created_at/updated_at)를 대조해 초기 사본 및 증분 기본정보 적용기를 보완했다. D07에 따라 삭제 시각이 있으면 삭제 상태로 보존하고 더 늦은 UPSERT로 같은 UUID를 부활시키지 않는다. 원본 사본을 유지하며 실제 사용자 목록/곡/녹음/파일 삭제는 수행하지 않았다. 목록 항목 순서·부모 revision·정리 Job까지 완료했다고 확대하지 않는다.
 
 관련 변경 값/수신/재동기화 **38 PASS**, 검토 후 활성 목록의 후속 삭제 상태 추가 검사 **2 PASS**. `dart analyze` 변경5파일 **No issues found**. 상세 `.local/workflow/p10-playlist-receive.log`, `p10-playlist-reviewed.log`. 현재 모델이 D07·DB·실제 diff와 결과를 대조했다. PLAYLIST_ITEM과 RECORDING_ASSET의 별도 버전 계약은 기존 상담 및 원본 대조 후 계속한다.
+
+## 2026-10-01 — P10-05 목록 항목의 같은 스냅샷 관계 투영
+
+이번 신규 범위는 원본 P10-05로 묶는다. 기존 a~k/m 등의 세부 작업을 합치거나 되돌리지 않는다. 원본 계획 p00587~589, 설계 p00682~683/p00745, V4 playlist_item의 부모 버전·서버 entry_key 규칙, SnapshotSourceRows의 실제 필드를 대조했다.
+
+snapshot_playlist_item_projection.dart는 초기 항목과 부모 Playlist·연결 Song을 **동일 토큰·동일 계정의 원본 행**으로 확인한다. 항목의 독립 revision을 만들지 않고 내부 사본 revision/playlist_revision에 부모 버전을 쓴다. TJ 후보·TJ 연결곡·MANUAL 연결곡의 entry_key, candidate_snapshot, 위치·숨김 배치 및 시각을 검증한다. 과거 숨김/삭제 원본은 보존하며 삭제된 부모 목록의 항목은 삭제 상태로 투영한다. local_payload와 미전송 입력은 기존 보존 트랜잭션 규칙을 따른다.
+
+부모나 연결 곡을 현재 최신 캐시에서 임의로 가져오지 않는다. 다른 토큰에만 있는 관계, 없는/중복 부모, 한 목록의 중복 entry_key는 전체 적용과 cursor를 롤백한다. 초기 사본을 반복 적용해도 기존 높은 버전·삭제 표식·초안은 유지한다. 이 변경은 목록 항목 증분 응답 계약이나 P19 편집 API 완료 판정이 아니다.
+
+실제 `flutter test --no-pub test/snapshot_playlist_item_projection_test.dart test/change_feed_store_test.dart test/resync_integration_test.dart --reporter expanded` **62 PASS**, 변경4파일 분석 **No issues found**, diff 검사 통과. 합성 자료 helper의 관계 resource_id를 각 원본 행의 id/recording_id에 맞추고 같은 entity의 복수 행 ordinal/count를 정확히 만들었다. 중복 검사·계정 제약·원본 hash 검사를 약화하지 않았다. 코드 검토는 현재 모델이 원본·V4 procedure·실제 diff·검증 결과를 대조했다.
+
+관련 로그 `.local/workflow/p10-playlist-item-reviewed.log`. 앞 파일 상태 ad8ac50 필수 CI4 PASS(36824983712/36824983743/36824983765/36824983728), 세대 삭제 e214b3a 푸시/CI 대기. 사용자 실기 미실행·사용자 확인 대기0건. 다음은 목록 항목 증분의 부모 버전 계약과 수신 적용, P10 통합 검증이다.

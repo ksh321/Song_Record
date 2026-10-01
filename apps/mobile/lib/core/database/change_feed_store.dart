@@ -12,6 +12,7 @@ import 'asset_deletion_store.dart';
 import 'local_models.dart';
 import 'snapshot_download_store.dart';
 import 'snapshot_metadata_projection.dart';
+import 'snapshot_playlist_item_projection.dart';
 import 'snapshot_recording_projection.dart';
 
 final class ChangeFeedPosition {
@@ -264,9 +265,11 @@ final class ChangeFeedStore {
       LocalEntity.recordingCondition,
       LocalEntity.playlist,
       LocalEntity.recordingAsset,
+      LocalEntity.playlistItem,
     ]) {
       var after = 0;
       final seen = <String>{};
+      final entryKeys = <String>{};
       while (true) {
         final rows = await db
             .customSelect(
@@ -291,7 +294,28 @@ final class ChangeFeedStore {
             throw const FormatException('Invalid initial metadata');
           }
           final Map<String, dynamic> projected;
-          if (entity == LocalEntity.recordingAsset) {
+          if (entity == LocalEntity.playlistItem) {
+            final parent = await _initialSource(
+              token,
+              'PLAYLIST',
+              source['playlist_id'],
+            );
+            final song = source['song_id'] == null
+                ? null
+                : await _initialSource(token, 'SONG', source['song_id']);
+            projected = projectSnapshotPlaylistItem(
+              source,
+              owner: db.userId,
+              id: id,
+              playlist: parent,
+              song: song,
+            );
+            if (!entryKeys.add(
+              '${projected['playlist_id']}:${projected['entry_key']}',
+            )) {
+              throw StateError('Duplicate initial playlist entry');
+            }
+          } else if (entity == LocalEntity.recordingAsset) {
             projected = assetDeletions.suppress(
               projectRecordingAsset(
                 source,
@@ -334,11 +358,40 @@ final class ChangeFeedStore {
             id,
             revision,
             canonicalJson(projected),
-            entity == LocalEntity.playlist && projected['deleted_at'] != null,
+            entity == LocalEntity.playlist && projected['deleted_at'] != null ||
+                entity == LocalEntity.playlistItem &&
+                    projected['playlist_deleted_at'] != null,
           );
         }
       }
     }
+  }
+
+  Future<Map<String, dynamic>> _initialSource(
+    String token,
+    String entity,
+    Object? id,
+  ) async {
+    if (id is! String) {
+      throw const FormatException('Invalid relation reference');
+    }
+    final rows = await db
+        .customSelect(
+          'SELECT canonical_payload FROM snapshot_download_rows WHERE snapshot_token=? AND user_id=? AND entity=? AND resource_id=? LIMIT 2',
+          variables: [
+            Variable(token),
+            Variable(db.userId),
+            Variable(entity),
+            Variable(id),
+          ],
+        )
+        .get();
+    requireActive();
+    if (rows.length != 1) {
+      throw StateError('Missing or ambiguous relation parent');
+    }
+    return jsonDecode(rows.single.read<String>('canonical_payload'))
+        as Map<String, dynamic>;
   }
 
   /// A page may be empty: baseline UUID tombstones must still hide stale

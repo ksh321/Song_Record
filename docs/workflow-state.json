@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "65d25c1f4e4c8f24fdc119ea821718a168dd97a6",
+  "baseline_head": "ad8ac50c8de6e9348b5bc40e2c7cbf243a89c247",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1573,7 +1573,7 @@
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "ad8ac50 파일 상태 수신 푸시, 필수 CI3 PASS/CI 실행 중. 후속 generation 삭제 원장59 PASS/분석 정상; commit/CI 후 목록 항목 관계 수신 계속. 사용자 차단 없음"
+      "resume": "목록 항목 동일 토큰 관계/부모 버전 투영62 PASS/분석 정상. 파일 상태 ad8ac50 CI4 PASS, 세대 삭제e214b3a 푸시/CI 대기. 다음 목록 항목 증분 계약·적용 계속. 사용자 차단 없음"
     },
     {
       "id": "P10-06-NEXT",
