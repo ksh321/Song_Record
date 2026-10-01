@@ -403,7 +403,8 @@
         "P10-07c",
         "P10-07d",
         "P10-07e",
-        "P10-07f"
+        "P10-07f",
+        "P10-07g"
       ]
     },
     "P10-08": {
@@ -2139,7 +2140,7 @@
       "state": "pending",
       "owner": "AI",
       "resume": "충돌 큐 투영 관련74 PASS + 해결 스키마/순서12 PASS, 분석 정상",
-      "blocker": "로컬 검증/현재 모델 검토 완료, 커밋·통합 CI 대기"
+      "blocker": "28c3c0db488e1f36329d92ddcf835b231dff0dfe 필수 CI3 PASS/CI 진행 중"
     },
     {
       "id": "P10-07f",
@@ -2158,7 +2159,27 @@
       "state": "pending",
       "owner": "AI",
       "resume": "명시 선택9 PASS+기존 비교27 PASS/분석 정상, 실제 저장은 후속",
-      "blocker": "로컬 검증/현재 모델 검토 완료, 커밋·통합 CI 대기"
+      "blocker": "28c3c0db488e1f36329d92ddcf835b231dff0dfe 필수 CI3 PASS/CI 진행 중"
+    },
+    {
+      "id": "P10-07g",
+      "action": "충돌 해결의 계정 격리 보존 트랜잭션",
+      "requires": [
+        "p10.remaining.analysis"
+      ],
+      "permissions": [],
+      "reads": [
+        "apps/mobile/lib/core/sync/conflict_resolution_plan.dart"
+      ],
+      "writes": [
+        "apps/mobile/lib/core/database/account_store.dart",
+        "apps/mobile/lib/core/database/conflict_resolution_store.dart",
+        "apps/mobile/test/conflict_resolution_store_test.dart"
+      ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "계정 보존 트랜잭션11 PASS+기존 전송85 PASS/분석 정상, UI 후속",
+      "blocker": "검증·현재 모델 코드 검토 완료, 통합 CI 대기"
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers"

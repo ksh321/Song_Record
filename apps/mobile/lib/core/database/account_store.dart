@@ -11,12 +11,14 @@ import 'package:sqlite3/sqlite3.dart' as native;
 import '../../config/app_config.dart';
 import '../domain/identifiers.dart';
 import '../sync/change_feed_response.dart';
+import '../sync/conflict_resolution_plan.dart';
 import '../sync/dependency_planner.dart';
 import '../sync/metadata_response.dart';
 import '../sync/mutation_request.dart';
 import 'account_database.dart' show AccountDatabase;
 import 'account_paths.dart';
 import 'change_feed_store.dart';
+import 'conflict_resolution_store.dart';
 import 'local_models.dart';
 import 'mapping_eligibility.dart';
 import 'retry_controls.dart';
@@ -425,6 +427,26 @@ final class AccountStore {
   }
 
   Future<List<QueuedMutation>> pendingMutations() => _run(_pendingMutations);
+
+  Future<void> resolveMetadataConflict({
+    required QueuedMutation expected,
+    required String? expectedLocalJson,
+    required String? replacementOpId,
+    Map<String, ConflictChoice> choices = const {},
+  }) {
+    final capturedChoices = Map<String, ConflictChoice>.unmodifiable(choices);
+    return _run(
+      () => _database.transaction(
+        () => ConflictResolutionStore(_database, requireActive).resolve(
+          expected: expected,
+          expectedLocalJson: expectedLocalJson,
+          replacementOpId: replacementOpId,
+          choices: capturedChoices,
+          now: _retry.nowMs,
+        ),
+      ),
+    );
+  }
 
   Future<List<QueuedMutation>> _pendingMutations() async {
     final rows = await _database
@@ -935,16 +957,30 @@ final class AccountStore {
       final preserveCurrent =
           current.read<int>('tombstone') == 1 ||
           current.read<int>('server_revision') > (snapshot['revision'] as int);
+      final eligibility = await readMappingEligibility(_database);
+      final resolvedRows = await _database
+          .customSelect(
+            'SELECT original_op_id FROM mutation_conflict_resolutions',
+          )
+          .get();
+      final resolved = {
+        for (final row in resolvedRows)
+          if (eligibility.superseded.contains(
+                row.read<String>('original_op_id'),
+              ) &&
+              !eligibility.blocked.contains(row.read<String>('original_op_id')))
+            row.read<String>('original_op_id'),
+      };
       final later = await _database
           .customSelect(
-            "SELECT COUNT(*) AS count FROM local_mutations WHERE entity_type=? AND entity_id=? AND op_id<>? AND queue_state<>'ACKED'",
+            "SELECT op_id FROM local_mutations WHERE entity_type=? AND entity_id=? AND op_id<>? AND queue_state<>'ACKED'",
             variables: [
               Variable(m.entity.code),
               Variable(m.entityId),
               Variable(m.opId),
             ],
           )
-          .getSingle();
+          .get();
       final payload = canonicalJson(snapshot);
       // Accept the receipt without overwriting a mapping-held local draft.
       if (!preserveCurrent) {
@@ -965,7 +1001,9 @@ final class AccountStore {
           [
             snapshot['revision'],
             payload,
-            later.read<int>('count') > 0 ? 1 : 0,
+            later.any((row) => !resolved.contains(row.read<String>('op_id')))
+                ? 1
+                : 0,
             m.opId,
             payload,
             DateTime.now().toUtc().millisecondsSinceEpoch,
