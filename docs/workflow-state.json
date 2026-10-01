@@ -395,7 +395,8 @@
       "disposition": "tracked",
       "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
       "units": [
-        "P10-07-NEXT"
+        "P10-07-NEXT",
+        "P10-07a"
       ]
     },
     "P10-08": {
@@ -1998,9 +1999,26 @@
         "apps/mobile/lib/main.dart",
         "apps/mobile/test"
       ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "de6c5ba 자동 연결73 PASS+통합1 PASS/분석 정상. 정확 통합 CI 확인 후 잔여 적용/검증. 사용자 결과 대기 아님.",
+      "blocker": "b72f97761157b0622de5d543a99ea3cbf06b23ed 통합 필수 CI 진행"
+    },
+    {
+      "id": "P10-07a",
+      "action": "기준·로컬·서버 3방향 순수 필드 비교 기반",
+      "requires": [
+        "p10.remaining.analysis"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/sync/three_way_merge.dart",
+        "apps/mobile/test/three_way_merge_test.dart"
+      ],
       "state": "active",
       "owner": "AI",
-      "resume": "de6c5ba 로컬73 PASS+실제19종 사본 통합1 PASS/분석 정상. a/l와 통합 CI를 확인한 뒤 잔여 충돌·관계 투영 계속. USER-025는 이전 c7df3fd만 완료."
+      "resume": "원본 p00300~303/p00593~595의 순수 비교 컴포넌트이며 네트워크·UI·큐 전송을 실행하지 않는다. 전체 P10-06 완료를 선행 사실로 추가하지 않고 전체 P10-07-NEXT 게이트는 유지한다."
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers"
