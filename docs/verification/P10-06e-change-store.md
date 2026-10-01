@@ -79,3 +79,5 @@
 이전 파일 세대 삭제 e214b3a5dc6caad4ff8639bcd3333a5b61a4d4c0 필수 CI4 PASS: CI36826555261/API36826555265/Idempotency36826555174/Workflow36826555184. 초기 목록 항목 c8f0f7205414c15d2aa9b3d1891596b54dd89355는 일반 푸시 완료, CI 확인 중. 이번 변경 전체 P10 완료/폰 실기 완료 아님. 사용자 직접 행동 없음. 다음은 남은 관계 엔티티 적용과 수신 연결 검증이다.
 
 후속 통합 검증(같은 P10-06 작업): `flutter test --no-pub test/change_feed_receiver_test.dart --reporter expanded` **13 PASS**, 해당 파일 `flutter analyze --no-pub` **No issues found**. 수신 실행기→응답 해석→AccountStore→SQLite 목록 적용 후 계정 DB를 닫고 다시 열어 부모/항목 revision8·커서8을 확인했다. 중복 항목이 포함된 잘못된 응답은 부모/항목 없이 커서7을 유지함을 재개방 후 확인했다. transport는 합성 응답이며 실제 서버 목록 writer 발행/휴대폰 실기 검증으로 확대하지 않는다. 로그 `.local/workflow/p10-playlist-receiver.log`. 제품 구현7dda416 및 운영 문서7ccb4e8 로컬 커밋 완료. c8f0f72의 CI는 APK 빌드 단계 진행 중이며 통합 푸시 전 완료를 확인한다.
+
+수신 통합 8d40ecc268e45fb1d1b60064931f513243104dd7의 필수 CI4 PASS 확인: CI36829102663/API36829102674/Idempotency36829102704/Workflow36829102668. 목록 수신 구현·Goal 운영 문서·수신기 통합 테스트가 포함된다. 이후 P10-09 새 변경 검증으로 확대하지 않는다.

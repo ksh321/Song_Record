@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "c8f0f7205414c15d2aa9b3d1891596b54dd89355",
+  "baseline_head": "8d40ecc268e45fb1d1b60064931f513243104dd7",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1571,9 +1571,9 @@
         "apps/mobile/lib/features/sync",
         "apps/mobile/lib/core/database"
       ],
-      "state": "active",
+      "state": "pending",
       "owner": "AI",
-      "resume": "초기 목록 관계 c8f0f72 푸시/CI2 PASS·2 진행 중. 세대 삭제e214b3a CI4 PASS. 새 P10-06 목록 전체 항목 적용83 PASS/분석 정상, 커밋 준비. 다음 남은 관계 투영 및 수신 연결 검증. 사용자 차단 없음"
+      "resume": "초기 목록 관계 c8f0f72 필수 CI4 PASS. 세대 삭제e214b3a CI4 PASS. 초기 사본 잔여 범위 최종 대조는 유지하며 현재 P10-09와 충돌하지 않는 분석 가능"
     },
     {
       "id": "P10-06-NEXT",
@@ -1629,19 +1629,24 @@
     },
     {
       "id": "P10-09-NEXT",
-      "action": "원본 요구사항의 남은 구현·검증",
+      "action": "P10-09 — 삭제된 곡의 새 오프라인 녹음 미연결 보존과 재연결 안내",
       "requires": [
-        "p10.remaining.analysis",
-        "p10.receiver"
+        "p10.remaining.analysis"
       ],
       "permissions": [],
       "reads": [],
       "writes": [
-        "apps/mobile/lib/core/sync"
+        "apps/mobile/lib/core/sync",
+        "apps/mobile/lib/core/database/account_store.dart",
+        "apps/mobile/lib/features/sync/sync_controller.dart",
+        "apps/mobile/test/deleted_song_recording_test.dart",
+        "apps/mobile/test/dependency_planner_test.dart",
+        "services/api/src/main/java/com/ksh321/songrecord/api/recordings/RecordingDrafts.java",
+        "services/api/src/test/java/com/ksh321/songrecord/api/auth/RecordingDraftTests.java"
       ],
-      "state": "pending",
+      "state": "active",
       "owner": "AI",
-      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
+      "resume": "원본 p00599~601과 설계p00308~309에 근거한 독립 구현. 수신 전체 완료를 전제하지 않고 기존 계정 삭제 증거/실제 서버 확인을 사용한다. 서버13 PASS/앱 의존18 PASS; 통합 테스트 raw DB 정리/실제 컬럼명 오류 보완 후 재검증, 미커밋. 수신 CI 대기로 이 작업을 막지 않음"
     },
     {
       "id": "P10-10-NEXT",
