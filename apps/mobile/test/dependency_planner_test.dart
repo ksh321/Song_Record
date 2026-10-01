@@ -121,6 +121,60 @@ void main() {
       (w) => w.reason == DispatchWaitReason.deletedTarget), isTrue);
   });
 
+  test('new offline draft may reach server for deleted song without rewriting input', () {
+    const deleted = ServerBaseline(revision: 3, tombstone: true);
+    final draft = mutation(
+      1,
+      LocalEntity.recording,
+      20,
+      body: {
+        'id': id(20),
+        'metadata_state': 'DRAFT',
+        'song_id': id(10),
+        'note': 'keep',
+      },
+    );
+    final before = draft.payload;
+    final result = plan(
+      [draft],
+      baselines: {LocalTarget(LocalEntity.song, id(10)): deleted},
+    );
+    expect(result.ready.single.opId, draft.opId);
+    expect(draft.payload, before);
+    final edit = mutation(
+      2,
+      LocalEntity.recording,
+      21,
+      operation: LocalOperation.patch,
+      base: 1,
+      body: {'base_revision': 1, 'song_id': id(10)},
+    );
+    expect(
+      plan(
+        [edit],
+        baselines: {
+          LocalTarget(LocalEntity.song, id(10)): deleted,
+          LocalTarget(LocalEntity.recording, id(21)): known,
+        },
+      ).waiting[edit.opId]!.reason,
+      DispatchWaitReason.deletedTarget,
+    );
+    expect(
+      plan([draft]).waiting[draft.opId]!.reason,
+      DispatchWaitReason.missingDependency,
+    );
+    final deletedRecording = plan(
+      [draft],
+      baselines: {
+        LocalTarget(LocalEntity.song, id(10)): deleted,
+        LocalTarget(LocalEntity.recording, id(20)): deleted,
+      },
+    );
+    expect(
+      deletedRecording.waiting[draft.opId]!.reason,
+      DispatchWaitReason.deletedTarget,
+    );
+  });
   test('classification, song, recording and relation phases are ordered', () {
     final result = plan([
       mutation(1, LocalEntity.playlistItem, 40,

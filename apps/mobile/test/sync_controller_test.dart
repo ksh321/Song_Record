@@ -77,6 +77,11 @@ class Backend implements SyncBackend {
 
 Future<void> flush() => Future<void>.delayed(Duration.zero);
 
+class NoticeBackend extends Backend implements SyncStatusSource {
+  @override
+  String? statusMessage = '곡이 삭제되어 새 녹음 1개를 미연결로 보존했어요. 원하는 곡에 다시 연결해 주세요.';
+}
+
 class ScheduledWake {
   ScheduledWake(this.due, this.action);
   final DateTime due;
@@ -105,6 +110,24 @@ class ScheduleHarness {
 }
 
 void main() {
+  testWidgets(
+    'preserved unlinked recording notice remains visible with an empty queue',
+    (tester) async {
+      final backend = NoticeBackend()..items = [];
+      final controller = SyncController(backend);
+      addTearDown(controller.dispose);
+      await tester.pumpWidget(
+        MaterialApp(home: SyncScreen(controller: controller)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(backend.statusMessage!), findsOneWidget);
+      expect(find.text('대기 중인 정보가 없어요.'), findsNothing);
+      backend.statusMessage = null;
+      await controller.refresh();
+      await tester.pumpAndSettle();
+      expect(find.text('대기 중인 정보가 없어요.'), findsOneWidget);
+    },
+  );
   test('normal expired deadline has a one-second scheduling floor', () async {
     final harness = ScheduleHarness();
     final backend = Backend()

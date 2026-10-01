@@ -306,6 +306,29 @@ final class AccountStore {
   Future<MetadataCopy?> readMetadata(LocalEntity entity, String entityId) =>
       _run(() => _readMetadata(entity, entityId));
 
+  /// Durable receipt evidence, not an inference from every unlinked recording.
+  /// Keep the notice until the current server copy is linked or deleted.
+  Future<int> unlinkedOfflineRecordingCount() => _run(() async {
+    final row = await _database
+        .customSelect(
+          '''
+      SELECT COUNT(DISTINCT m.entity_id) AS total FROM local_mutations m
+      JOIN metadata_copies c ON c.entity_type=m.entity_type AND c.entity_id=m.entity_id
+      WHERE m.user_id=? AND c.user_id=? AND m.entity_type='RECORDING'
+        AND m.operation='CREATE' AND m.queue_state='ACKED'
+        AND json_type(m.payload,'\u0024.song_id')='text'
+        AND json_type(m.server_response,'\u0024.song_id')='null'
+        AND json_extract(m.server_response,'\u0024.id')=m.entity_id
+        AND c.tombstone=0 AND json_type(c.server_payload,'\u0024.song_id')='null'
+        AND json_extract(c.server_payload,'\u0024.lifecycle_state')='ACTIVE'
+    ''',
+          variables: [Variable(userId), Variable(userId)],
+        )
+        .getSingle();
+    requireActive();
+    return row.read<int>('total');
+  });
+
   Future<SnapshotMetadataView> snapshotMetadataView(
     LocalEntity entity,
     String entityId, {

@@ -56,8 +56,31 @@ class RecordingDraftTests {
         assertThat(setup.postBody(UUID.randomUUID().toString(),setup.body("")).getStatus()).isEqualTo(201);var body=base();body.put("song_id",setup.id.toString());body.put("title_snapshot","내 초안");body.put("version_code","MR");assertThat(create(body).getStatus()).isEqualTo(201);
         assertThat(setup.f.jdbc.queryForObject("SELECT title_snapshot FROM recording",String.class)).isEqualTo("내 초안");
         id=UUID.randomUUID();body=base();body.put("song_id",UUID.randomUUID().toString());assertThat(create(body).getStatus()).isEqualTo(404);
-        body.put("song_id",setup.id.toString());setup.f.jdbc.update("UPDATE song SET lifecycle_state='TRASHED'");assertThat(create(body).getStatus()).isEqualTo(409);
-        setup.f.jdbc.update("UPDATE song SET lifecycle_state='ACTIVE',user_id=?",bytes(setup.f.other.principal().userId()));assertThat(create(body).getStatus()).isEqualTo(404);
+        body.put("song_id",setup.id.toString());setup.f.jdbc.update("UPDATE song SET lifecycle_state='TRASHED'");var unlinked=create(body);assertThat(unlinked.getStatus()).isEqualTo(201);assertThat(json.readTree(unlinked.getContentAsString()).get("song_id").isNull()).isTrue();
+        body.put("id",UUID.randomUUID().toString());setup.f.jdbc.update("UPDATE song SET lifecycle_state='ACTIVE',user_id=?",bytes(setup.f.other.principal().userId()));assertThat(create(body).getStatus()).isEqualTo(404);
+    }
+    @Test void deletedOwnedSongKeepsNewDraftInformationAndOriginalIdempotentRequest()throws Exception{
+        assertThat(setup.postBody(UUID.randomUUID().toString(),setup.body("")).getStatus()).isEqualTo(201);
+        for(String state:List.of("TRASHED","PURGE_PENDING","PURGED")){
+            setup.f.jdbc.update("UPDATE song SET lifecycle_state=?",state);
+            id=UUID.randomUUID();var body=base();body.put("song_id",setup.id.toString());body.put("title_snapshot","오프라인 제목");body.put("artist_snapshot","가수");body.put("note","보존 메모");
+            String key=UUID.randomUUID().toString();var first=create(key,body);assertThat(first.getStatus()).isEqualTo(201);
+            var saved=json.readTree(first.getContentAsString());assertThat(saved.get("id").asText()).isEqualTo(id.toString());assertThat(saved.get("song_id").isNull()).isTrue();assertThat(saved.get("title_snapshot").asText()).isEqualTo("오프라인 제목");assertThat(saved.get("note").asText()).isEqualTo("보존 메모");
+            assertThat(create(key,body).getContentAsString()).isEqualTo(first.getContentAsString());
+            body.put("song_id",null);assertThat(create(key,body).getContentAsString()).contains("IDEMPOTENCY_CONFLICT");
+            assertThat(setup.f.jdbc.queryForObject("SELECT lifecycle_state FROM song",String.class)).isEqualTo(state);
+        }
+        assertThat(setup.count("recording")).isEqualTo(3);assertThat(setup.count("change_log")).isEqualTo(4);
+    }
+    @Test void onlyCurrentAccountSongDeletionLedgerAllowsUnlinkedDraft()throws Exception{
+        UUID gone=UUID.randomUUID();var body=base();body.put("song_id",gone.toString());
+        setup.f.jdbc.update("INSERT INTO deletion_ledger VALUES(?,'SONG',?,NULL,2)",bytes(setup.f.other.principal().userId()),bytes(gone));
+        assertThat(create(body).getStatus()).isEqualTo(404);assertThat(setup.count("recording")).isZero();
+        setup.f.jdbc.update("INSERT INTO deletion_ledger VALUES(?,'RECORDING',?,NULL,2)",bytes(setup.f.registration.userId()),bytes(gone));
+        assertThat(create(body).getStatus()).isEqualTo(404);
+        setup.f.jdbc.update("INSERT INTO deletion_ledger VALUES(?,'SONG',?,NULL,2)",bytes(setup.f.registration.userId()),bytes(gone));
+        var reply=create(body);assertThat(reply.getStatus()).isEqualTo(201);assertThat(json.readTree(reply.getContentAsString()).get("song_id").isNull()).isTrue();
+        assertThat(setup.count("song")).isZero();assertThat(setup.count("recording")).isEqualTo(1);
     }
     @Test void authenticationTombstonesAndLifecycleBlockResurrection()throws Exception{
         assertThat(setup.mvc.perform(post("/v1/recordings").contentType("application/json").content(json.writeValueAsString(base()))).andReturn().getResponse().getStatus()).isEqualTo(401);

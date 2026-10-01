@@ -92,6 +92,9 @@ final class LocalRepository implements ConflictActions {
 
   Future<List<QueuedMutation>> pendingWork() => _store.pendingWorkMutations();
 
+  Future<int> unlinkedOfflineRecordingCount() =>
+      _store.unlinkedOfflineRecordingCount();
+
   @override
   Future<ConflictReview> review(String opId) => _store.readConflictReview(opId);
 

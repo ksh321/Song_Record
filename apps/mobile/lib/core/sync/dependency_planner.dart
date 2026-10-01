@@ -152,6 +152,18 @@ final class DependencyPlanner {
       for (final dependency in _dependencies(mutation.entity, decoded)) {
         final known = snapshot.baselines[dependency];
         if (known?.tombstone == true) {
+          // P10-09: send the original new draft unchanged. The server confirms
+          // ownership/deletion and stores it unlinked; never rewrite a frozen
+          // request or revive the deleted song. Existing-recording edits still
+          // wait, and all other dependencies are checked normally.
+          if (mutation.entity == LocalEntity.recording &&
+              mutation.operation == LocalOperation.create &&
+              decoded['metadata_state'] == 'DRAFT' &&
+              decoded['id'] == mutation.entityId &&
+              dependency.entity == LocalEntity.song &&
+              decoded['song_id'] == dependency.id) {
+            continue;
+          }
           return DispatchWait(
             DispatchWaitReason.deletedTarget,
             dependency: dependency,

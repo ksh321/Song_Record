@@ -623,6 +623,32 @@ class MySqlIdempotencyTests {
         jdbc.execute("DROP TRIGGER reject_draft_log");assertThat(drafts.create("Bearer test","device",retry,next).status()).isEqualTo(201);
     }
 
+    @Test void mysqlDeletedSongDraftPreservesIdentityAndNeverRecreatesParent() throws Exception {
+        var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
+        for(String table:java.util.List.of("device","song","recording")){int start=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(start,core.indexOf(';',start)));}
+        String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));int start=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(start,sync.indexOf(';',start)));
+        jdbc.execute("ALTER TABLE recording ADD condition_code VARCHAR(36), ADD condition_name_snapshot VARCHAR(50)");
+        var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
+        byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
+        jdbc.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",device,owner);
+        var manager=new DataSourceTransactionManager(jdbc.getDataSource());installRecordingQueryKeys();var drafts=new com.ksh321.songrecord.api.recordings.RecordingDrafts(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,Clock.systemUTC());
+        var json=new tools.jackson.databind.json.JsonMapper();int expected=0;
+        for(String state:java.util.List.of("TRASHED","PURGE_PENDING","PURGED","LEDGER")){
+            UUID song=UUID.randomUUID(),recording=UUID.randomUUID();byte[] songBytes=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(song);
+            if(state.equals("LEDGER"))jdbc.update("INSERT INTO deletion_ledger(id,user_id,entity_type,entity_id,revision) VALUES(?,?,'SONG',?,2)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(UUID.randomUUID()),owner,songBytes);
+            else jdbc.update("INSERT INTO song(id,user_id,source_type,title,artist,note,lifecycle_state,deleted_at) VALUES(?,?,'MANUAL','title','artist','',?,UTC_TIMESTAMP(3))",songBytes,owner,state);
+            String body=json.writeValueAsString(java.util.Map.of("id",recording.toString(),"metadata_state","DRAFT","song_id",song.toString(),"title_snapshot","offline title","note","keep note","recorded_at","2026-09-28T07:00:00Z","timezone_id","UTC","timezone_offset_minutes",0));
+            String requestId=UUID.randomUUID().toString();var reply=drafts.create("Bearer test","device",requestId,body);
+            assertThat(reply.status()).isEqualTo(201);assertThat(drafts.create("Bearer test","device",requestId,body)).isEqualTo(reply);
+            var saved=json.readTree(reply.body());assertThat(saved.get("id").asText()).isEqualTo(recording.toString());assertThat(saved.get("song_id").isNull()).isTrue();assertThat(saved.get("note").asText()).isEqualTo("keep note");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM recording WHERE song_id IS NULL",Integer.class)).isEqualTo(++expected);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(expected);
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(expected);
+            if(state.equals("LEDGER"))assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM song WHERE id=?",Integer.class,songBytes)).isZero();
+            else assertThat(jdbc.queryForObject("SELECT lifecycle_state FROM song WHERE id=?",String.class,songBytes)).isEqualTo(state);
+        }
+    }
+
     @Test void mysqlSavedTransitionTriggersRaceAndRollbackWithoutCloud() throws Exception {
         var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
         for(String table:java.util.List.of("device","song","recording","recording_file_spec")){int start=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(start,core.indexOf(';',start)));}

@@ -28,15 +28,11 @@ public final class RecordingDrafts {
             var result=guard.create(account,CreationGuard.Resource.RECORDING,request.id,()->{
                 // Guard holds USER_SYNC through commit. Song lifecycle writers share that lock.
                 // Do not acquire a SONG lock after the guard's RECORDING lock.
-                if(request.song!=null){
-                    var rows=jdbc.queryForList("SELECT lifecycle_state FROM song WHERE user_id=? AND id=?",String.class,bytes(owner),bytes(request.song));
-                    if(rows.isEmpty())throw error(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","연결할 곡을 찾을 수 없습니다.");
-                    if(!rows.getFirst().equals("ACTIVE"))throw error(HttpStatus.CONFLICT,"SONG_NOT_ACTIVE","활성 곡에만 연결할 수 있습니다.");
-                }
+                final UUID linkedSong=availableSong(owner,request.song);
                 return changes.write(account,()->{
                     var now=LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
                     jdbc.update("INSERT INTO recording(id,user_id,origin_device_id,song_id,title_snapshot,artist_snapshot,version_code,key_mode,key_shift,note,condition_code,condition_name_snapshot,recorded_at,timezone_id,timezone_offset_minutes,metadata_state,lifecycle_state,revision,link_revision,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT','ACTIVE',1,1,?,?)",
-                        bytes(request.id),bytes(owner),bytes(principal.deviceId()),request.song==null?null:bytes(request.song),request.title,request.artist,request.version,request.keyMode,request.keyShift,request.note,request.condition,request.condition==null?null:com.ksh321.songrecord.api.classifications.ConditionCatalog.name(request.condition),LocalDateTime.ofInstant(request.time,ZoneOffset.UTC),request.zone,request.offset,now,now);
+                        bytes(request.id),bytes(owner),bytes(principal.deviceId()),linkedSong==null?null:bytes(linkedSong),request.title,request.artist,request.version,request.keyMode,request.keyShift,request.note,request.condition,request.condition==null?null:com.ksh321.songrecord.api.classifications.ConditionCatalog.name(request.condition),LocalDateTime.ofInstant(request.time,ZoneOffset.UTC),request.zone,request.offset,now,now);
                     RecordingQueryKeys.insert(jdbc,owner,request.id,request.title);
                     String payload=JSON.writeValueAsString(snapshot(owner,request.id));
                     return new AccountChanges.Batch<>(new IdempotentMutations.Reply(201,payload),List.of(new AccountChanges.Change(AccountChanges.Entity.RECORDING,request.id,1,AccountChanges.Operation.UPSERT,payload)));
@@ -49,6 +45,22 @@ public final class RecordingDrafts {
             if(!current.get("metadata_state").equals("DRAFT"))throw error(HttpStatus.CONFLICT,"RECORDING_ALREADY_SAVED","이미 저장 완료된 녹음입니다.");
             return new IdempotentMutations.Reply(200,JSON.writeValueAsString(current));
         });}catch(DuplicateKeyException e){throw error(HttpStatus.CONFLICT,"RECORDING_ID_CONFLICT","녹음 식별자를 확인해 주세요.");}
+    }
+    /** New offline drafts survive a positively identified deletion in this account.
+     * Unknown/foreign IDs remain 404. The immutable request and its receipt hash
+     * retain the requested song; only the new recording's association is null.
+     * Called under USER_SYNC in the mutation boundary's READ_COMMITTED view. */
+    private UUID availableSong(UUID owner,UUID song){
+        if(song==null)return null;
+        var ledger=jdbc.queryForList("SELECT revision FROM deletion_ledger WHERE user_id=? AND entity_type='SONG' AND entity_id=? AND object_generation IS NULL",Long.class,bytes(owner),bytes(song));
+        if(!ledger.isEmpty())return null;
+        var rows=jdbc.queryForList("SELECT lifecycle_state FROM song WHERE user_id=? AND id=?",String.class,bytes(owner),bytes(song));
+        if(rows.isEmpty())throw error(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","연결할 곡을 찾을 수 없습니다.");
+        return switch(rows.getFirst()){
+            case "ACTIVE" -> song;
+            case "TRASHED","PURGE_PENDING","PURGED" -> null;
+            default -> throw new IllegalStateException("Unknown song lifecycle");
+        };
     }
     Map<String,Object> snapshot(UUID owner,UUID id){
         return jdbc.queryForObject("SELECT * FROM recording WHERE user_id=? AND id=?",(rs,n)->{

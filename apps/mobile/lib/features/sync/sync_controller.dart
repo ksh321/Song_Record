@@ -27,12 +27,17 @@ abstract interface class SyncStatusSource {
   String? get statusMessage;
 }
 
-final class RepositorySyncBackend implements SyncBackend {
+final class RepositorySyncBackend implements SyncBackend, SyncStatusSource {
   RepositorySyncBackend(this.repository, this.transport, this.session);
   final LocalRepository repository;
   final MutationTransport transport;
   final Future<AuthSession> Function() session;
   bool _authenticationBlocked = false;
+  int _unlinkedRecordings = 0;
+  @override
+  String? get statusMessage => _unlinkedRecordings == 0
+      ? null
+      : '곡이 삭제되어 새 녹음 $_unlinkedRecordings개를 미연결로 보존했어요. 원하는 곡에 다시 연결해 주세요.';
   @override
   bool get automaticFollowupAllowed => !_authenticationBlocked;
   @override
@@ -43,6 +48,7 @@ final class RepositorySyncBackend implements SyncBackend {
         SyncItem(mutation, await repository.retryStatus(mutation.opId)),
       );
     }
+    _unlinkedRecordings = await repository.unlinkedOfflineRecordingCount();
     return result;
   }
 
