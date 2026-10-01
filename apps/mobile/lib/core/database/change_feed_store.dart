@@ -10,6 +10,14 @@ import 'local_models.dart';
 import 'snapshot_download_store.dart';
 import 'snapshot_recording_projection.dart';
 
+final class ChangeFeedPosition {
+  const ChangeFeedPosition(this.snapshotToken, this.cursor);
+  final String snapshotToken;
+  final int cursor;
+  @override
+  String toString() => 'ChangeFeedPosition[REDACTED]';
+}
+
 /// AccountStore serializes access. No network, file removal or queue mutation.
 /// The applied snapshot token fences replacement even at the same cursor.
 final class ChangeFeedStore {
@@ -17,6 +25,33 @@ final class ChangeFeedStore {
   final AccountDatabase db;
   final void Function() requireActive;
   final DateTime Function() clock;
+
+  Future<ChangeFeedPosition?> position() => db.transaction(() async {
+    requireActive();
+    final row = await db
+        .customSelect(
+          '''
+      SELECT c.last_change_seq,b.snapshot_token FROM sync_cursors c
+      JOIN snapshot_baseline b ON b.singleton=c.singleton
+      JOIN snapshot_downloads h ON h.snapshot_token=b.snapshot_token
+      WHERE c.singleton=1 AND c.baseline_complete=1 AND c.user_id=?
+        AND b.user_id=? AND h.user_id=? AND h.state='APPLIED'
+    ''',
+          variables: [
+            Variable(db.userId),
+            Variable(db.userId),
+            Variable(db.userId),
+          ],
+        )
+        .getSingleOrNull();
+    requireActive();
+    return row == null
+        ? null
+        : ChangeFeedPosition(
+            row.read<String>('snapshot_token'),
+            row.read<int>('last_change_seq'),
+          );
+  });
 
   Future<void> apply(
     ChangeFeedPage page, {

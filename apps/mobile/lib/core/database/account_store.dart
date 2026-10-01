@@ -22,6 +22,7 @@ import 'mapping_eligibility.dart';
 import 'retry_controls.dart';
 import 'snapshot_download_store.dart';
 
+export 'change_feed_store.dart' show ChangeFeedPosition;
 export 'retry_controls.dart' show RetryClock, RetryStatus;
 export 'snapshot_download_store.dart'
     show
@@ -204,13 +205,24 @@ final class AccountStore {
     () =>
         _snapshots.recordingBaseline(recordingId, expectedToken: expectedToken),
   );
-  Future<void> applyChangeFeed(
-    ChangeFeedPage page, {
-    required String snapshotToken,
-  }) => _run(
+  Future<ChangeFeedPosition?> readChangeFeedPosition() => _run(
     () => ChangeFeedStore(
       _database,
       requireActive: requireActive,
+      clock: _manager._clock,
+    ).position(),
+  );
+  Future<void> applyChangeFeed(
+    ChangeFeedPage page, {
+    required String snapshotToken,
+    void Function()? requireCurrent,
+  }) => _run(
+    () => ChangeFeedStore(
+      _database,
+      requireActive: () {
+        requireActive();
+        requireCurrent?.call();
+      },
       clock: _manager._clock,
     ).apply(page, snapshotToken: snapshotToken),
   );
