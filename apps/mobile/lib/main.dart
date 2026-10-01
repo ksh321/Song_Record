@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_store.dart';
 import 'package:song_record/core/domain/identifiers.dart';
+import 'package:song_record/core/sync/change_feed_receiver.dart';
+import 'package:song_record/core/sync/change_feed_transport.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/sync/mutation_transport.dart';
 import 'package:song_record/core/sync/snapshot_receiver.dart';
@@ -11,6 +13,7 @@ import 'package:song_record/core/sync/snapshot_transport.dart';
 import 'package:song_record/features/auth/auth_adapters.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/auth/login_gate.dart';
+import 'package:song_record/features/sync/change_feed_sync_backend.dart';
 import 'package:song_record/features/sync/snapshot_sync_backend.dart';
 import 'package:song_record/features/sync/sync_controller.dart';
 
@@ -85,14 +88,29 @@ Future<void> main() async {
               clock: DateTime.now,
             ),
             session: currentSession,
-            outgoing: RepositorySyncBackend(
-              LocalRepository(store),
-              HttpMutationTransport(
-                config.apiBaseUrl,
-                allowLocalHttp:
-                    kDebugMode && config.environment == AppEnvironment.dev,
+            outgoing: ChangeFeedSyncBackend(
+              receiver: ChangeFeedReceiver(
+                store: store,
+                transport: HttpChangeFeedTransport(
+                  config.apiBaseUrl,
+                  allowLocalHttp:
+                      kDebugMode && config.environment == AppEnvironment.dev,
+                ),
+                isSessionCurrent: (session) =>
+                    identical(controller.session, session) &&
+                    controller.phase == AuthPhase.ready &&
+                    identical(activeStore, store),
               ),
-              currentSession,
+              session: currentSession,
+              outgoing: RepositorySyncBackend(
+                LocalRepository(store),
+                HttpMutationTransport(
+                  config.apiBaseUrl,
+                  allowLocalHttp:
+                      kDebugMode && config.environment == AppEnvironment.dev,
+                ),
+                currentSession,
+              ),
             ),
           ),
         );
