@@ -7,6 +7,8 @@ import '../sync/change_payload_validation.dart';
 import '../sync/recording_change_projection.dart';
 import 'account_database.dart';
 import 'local_models.dart';
+import 'snapshot_download_store.dart';
+import 'snapshot_recording_projection.dart';
 
 /// AccountStore serializes access. No network, file removal or queue mutation.
 /// The applied snapshot token fences replacement even at the same cursor.
@@ -128,14 +130,27 @@ final class ChangeFeedStore {
         continue;
       }
       final previousPayload = current?.readNullable<String>('server_payload');
+      Map<String, dynamic>? previous = previousPayload == null
+          ? null
+          : jsonDecode(previousPayload) as Map<String, dynamic>;
+      if (entry.entity == LocalEntity.recording &&
+          !entry.deleted &&
+          baseline.isNotEmpty) {
+        final bundle = await SnapshotDownloadStore(
+          db,
+          requireActive: requireActive,
+          clock: clock,
+        ).recordingBaseline(entry.id, expectedToken: snapshotToken);
+        if (bundle == null) throw StateError('Recording baseline changed');
+        final initial = projectSnapshotRecording(bundle);
+        previous = previous == null || currentRevision < baselineRevision
+            ? initial
+            : projectRecordingChange(initial, previous);
+      }
       final projected = entry.entity == LocalEntity.recording && !entry.deleted
-          ? projectRecordingChange(
-              previousPayload == null
-                  ? null
-                  : jsonDecode(previousPayload) as Map<String, dynamic>,
-              payload,
-            )
+          ? projectRecordingChange(previous, payload)
           : payload;
+      if (!entry.deleted) validateChangePayload(entry.entity, projected);
       final encoded = canonicalJson(projected);
       if (baselineRevision == entry.revision &&
           baselineRevision >= currentRevision) {

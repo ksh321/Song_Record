@@ -56,8 +56,9 @@ void main() {
   });
   Future<String> replaceBaseline(
     String entity,
-    Map<String, Object?> payload,
-  ) async {
+    Map<String, Object?> payload, {
+    Map<String, List<Map<String, Object?>>> relations = const {},
+  }) async {
     final original =
         (await db
                 .customSelect('SELECT manifest_json FROM snapshot_downloads')
@@ -66,7 +67,9 @@ void main() {
     final manifest = jsonDecode(original) as Map<String, dynamic>;
     manifest['snapshot_token'] = other;
     final counts = manifest['entity_counts'] as Map<String, dynamic>;
-    counts.updateAll((key, value) => key == entity ? 1 : 0);
+    counts.updateAll(
+      (key, value) => key == entity ? 1 : relations[key]?.length ?? 0,
+    );
     await db.customStatement(
       'INSERT INTO snapshot_downloads(snapshot_token,user_id,manifest_json,snapshot_cursor,expires_at,created_at) VALUES(?,?,?,7,1800000,0)',
       [other, owner, jsonEncode(manifest)],
@@ -75,6 +78,21 @@ void main() {
       'INSERT INTO snapshot_download_rows VALUES(?,?,?,1,?,?)',
       [other, owner, entity, id, jsonEncode(payload)],
     );
+    for (final relation in relations.entries) {
+      for (var index = 0; index < relation.value.length; index++) {
+        await db.customStatement(
+          'INSERT INTO snapshot_download_rows VALUES(?,?,?,?,?,?)',
+          [
+            other,
+            owner,
+            relation.key,
+            index + 1,
+            id,
+            jsonEncode(relation.value[index]),
+          ],
+        );
+      }
+    }
     await db.customStatement(
       "UPDATE snapshot_downloads SET state='VERIFIED' WHERE snapshot_token=?",
       [other],
@@ -348,6 +366,136 @@ void main() {
       expect(server['tier'], isNull);
       expect(jsonDecode(row.read<String>('local_payload')), server);
       expect(await cursor(), 8);
+    },
+  );
+  test('first recording delta preserves initial file and historical tags atomically', () async {
+    final initial = {
+      ...recordingWire('RecordingDraft'),
+      'id': id,
+      'revision': 1,
+      'user_id': owner,
+      'tier': 'B',
+    };
+    final file = recordingWire('RecordingSaved')['file'] as Map;
+    final activeToken = await replaceBaseline(
+      'RECORDING',
+      initial,
+      relations: {
+        'RECORDING_FILE_SPEC': [
+          {
+            ...Map<String, Object?>.from(file),
+            'recording_id': id,
+            'user_id': owner,
+          },
+        ],
+        'RECORDING_TAG': [
+          {
+            'recording_id': id,
+            'user_id': owner,
+            'tag_id': other,
+            'name_snapshot': 'old name',
+          },
+        ],
+      },
+    );
+    final snapshotBefore =
+        (await db
+                .customSelect(
+                  'SELECT * FROM snapshot_download_rows ORDER BY entity,ordinal',
+                )
+                .get())
+            .map((r) => r.data)
+            .toList();
+    final delta = entry(8, id)..['entity_type'] = 'RECORDING';
+    delta['payload'] = {
+      ...recordingWire('RecordingDraft'),
+      'id': id,
+      'revision': 2,
+    };
+    await store.apply(page([delta]), snapshotToken: activeToken);
+    final row = await db
+        .customSelect('SELECT * FROM metadata_copies')
+        .getSingle();
+    final server = jsonDecode(row.read<String>('server_payload')) as Map;
+    expect(server['file'], file);
+    expect(server['tier'], 'B');
+    expect(server['tags'], [
+      {'id': other, 'name_snapshot': 'old name'},
+    ]);
+    expect(server.containsKey('user_id'), isFalse);
+    expect(await cursor(), 8);
+    final clear = entry(9, id, revision: 3)..['entity_type'] = 'RECORDING';
+    clear['payload'] = {
+      ...recordingWire('RecordingEdited'),
+      'id': id,
+      'revision': 3,
+      'tier': null,
+      'tag_ids': <String>[],
+      'tags': <Object>[],
+    };
+    await store.apply(page([clear], after: 8), snapshotToken: activeToken);
+    final later = entry(10, id, revision: 4)..['entity_type'] = 'RECORDING';
+    later['payload'] = {
+      ...recordingWire('RecordingDraft'),
+      'id': id,
+      'revision': 4,
+    };
+    await store.apply(page([later], after: 9), snapshotToken: activeToken);
+    final latest = jsonDecode(
+      (await db
+              .customSelect('SELECT server_payload FROM metadata_copies')
+              .getSingle())
+          .read<String>('server_payload'),
+    ) as Map;
+    expect(latest['file'], file);
+    expect(latest['tag_ids'], isEmpty);
+    expect(latest['tags'], isEmpty);
+    expect(latest['tier'], isNull);
+    expect(await cursor(), 10);
+    expect(
+      (await db
+              .customSelect(
+                'SELECT * FROM snapshot_download_rows ORDER BY entity,ordinal',
+              )
+              .get())
+          .map((r) => r.data)
+          .toList(),
+      snapshotBefore,
+    );
+  });
+  test(
+    'invalid initial file refuses the whole page and leaves cursor unchanged',
+    () async {
+      final initial = {
+        ...recordingWire('RecordingDraft'),
+        'id': id,
+        'revision': 1,
+        'user_id': owner,
+      };
+      final activeToken = await replaceBaseline(
+        'RECORDING',
+        initial,
+        relations: {
+          'RECORDING_FILE_SPEC': [
+            {'recording_id': id, 'user_id': owner, 'sha256': 'broken'},
+          ],
+        },
+      );
+      final delta = entry(9, id)..['entity_type'] = 'RECORDING';
+      delta['payload'] = {
+        ...recordingWire('RecordingDraft'),
+        'id': id,
+        'revision': 2,
+      };
+      await expectLater(
+        store.apply(page([entry(8, other), delta]), snapshotToken: activeToken),
+        throwsFormatException,
+      );
+      expect(
+        await db.customSelect('SELECT * FROM metadata_copies').get(),
+        isEmpty,
+      );
+      expect(await cursor(), 7);
     },
   );
   test(
