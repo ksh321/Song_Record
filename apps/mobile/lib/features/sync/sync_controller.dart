@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/database/account_store.dart';
 import '../../core/database/local_models.dart';
+import '../../core/sync/conflict_review.dart';
 import '../../core/sync/local_repository.dart';
 import '../../core/sync/mutation_transport.dart';
 import '../auth/auth_session.dart';
@@ -37,7 +38,7 @@ final class RepositorySyncBackend implements SyncBackend {
   @override
   Future<List<SyncItem>> load() async {
     final result = <SyncItem>[];
-    for (final mutation in await repository.pending()) {
+    for (final mutation in await repository.pendingWork()) {
       result.add(
         SyncItem(mutation, await repository.retryStatus(mutation.opId)),
       );
@@ -74,11 +75,13 @@ typedef SyncSchedule = VoidCallback Function(
 final class SyncController extends ChangeNotifier {
   SyncController(
     this.backend, {
+    this.conflicts,
     DateTime Function()? now,
     SyncSchedule? schedule,
   }) : _now = now ?? DateTime.now,
        _schedule = schedule ?? _timer;
   final SyncBackend backend;
+  final ConflictActions? conflicts;
   String? get statusMessage => backend is SyncStatusSource
       ? (backend as SyncStatusSource).statusMessage
       : null;

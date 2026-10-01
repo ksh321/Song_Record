@@ -115,6 +115,7 @@ Future<void> main() async {
               ),
             ),
           ),
+          conflicts: LocalRepository(store),
         );
         sync.setForeground(
           WidgetsBinding.instance.lifecycleState == null ||

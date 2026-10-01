@@ -198,6 +198,19 @@ void main() {
     },
   );
   test(
+    'repository review resolves work list while retaining recovery history',
+    () async {
+      final review = await repo.review(conflict.opId);
+      expect(review.localJson, local);
+      expect(review.server['name'], 'remote');
+      expect((await repo.pendingWork()).single.opId, conflict.opId);
+      await repo.resolve(review, {'name': ConflictChoice.server});
+      expect(await repo.pendingWork(), isEmpty);
+      expect((await repo.pending()).single.opId, conflict.opId);
+      await expectLater(repo.review(conflict.opId), throwsStateError);
+    },
+  );
+  test(
     'server choice creates no new request and retains original conflict',
     () async {
       await resolve(choice: ConflictChoice.server);

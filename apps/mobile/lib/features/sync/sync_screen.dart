@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/database/local_models.dart';
 import '../../core/theme/app_tokens.dart';
+import 'conflict_screen.dart';
 import 'sync_controller.dart';
 
 class SyncScreen extends StatefulWidget {
@@ -38,6 +39,25 @@ class _SyncScreenState extends State<SyncScreen> {
           : '다음 자동 재시도를 기다리고 있어요';
     }
     return '선행 정보 또는 전송을 기다리고 있어요';
+  }
+
+  Future<void> _review(SyncItem item) async {
+    final controller = widget.controller;
+    final actions = controller.conflicts;
+    if (actions == null || controller.busy) return;
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) =>
+            ConflictScreen(actions: actions, opId: item.mutation.opId),
+      ),
+    );
+    if (!mounted) return;
+    await controller.refresh();
+    if (saved == true &&
+        controller.maySend &&
+        controller.backend.automaticFollowupAllowed) {
+      await controller.wake();
+    }
   }
 
   @override
@@ -78,7 +98,14 @@ class _SyncScreenState extends State<SyncScreen> {
                   child: ListTile(
                     title: Text(_name(item.mutation.entity)),
                     subtitle: Text(_state(item)),
-                    trailing: item.retry?.canRetryManually == true
+                    trailing:
+                        item.mutation.state == 'CONFLICT' &&
+                            state.conflicts != null
+                        ? TextButton(
+                            onPressed: state.busy ? null : () => _review(item),
+                            child: const Text('변경 검토'),
+                          )
+                        : item.retry?.canRetryManually == true
                         ? TextButton(
                             onPressed: state.busy || !state.maySend
                                 ? null

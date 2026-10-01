@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "a30c9b8807744490147395ff829a3fa44f6ee778",
+  "baseline_head": "28c3c0db488e1f36329d92ddcf835b231dff0dfe",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -404,7 +404,8 @@
         "P10-07d",
         "P10-07e",
         "P10-07f",
-        "P10-07g"
+        "P10-07g",
+        "P10-07h"
       ]
     },
     "P10-08": {
@@ -2137,10 +2138,10 @@
         "apps/mobile/lib/core/database/mapping_eligibility.dart",
         "apps/mobile/test/conflict_resolution_schema_test.dart"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "충돌 큐 투영 관련74 PASS + 해결 스키마/순서12 PASS, 분석 정상",
-      "blocker": "28c3c0db488e1f36329d92ddcf835b231dff0dfe 필수 CI3 PASS/CI 진행 중"
+      "evidence": "28c3c0db488e1f36329d92ddcf835b231dff0dfe 필수 CI4 PASS(36814110321/36814110268/36814110355/36814110288), 작업별 검증 문서"
     },
     {
       "id": "P10-07f",
@@ -2156,10 +2157,10 @@
         "apps/mobile/lib/core/sync/conflict_resolution_plan.dart",
         "apps/mobile/test/conflict_resolution_plan_test.dart"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "명시 선택9 PASS+기존 비교27 PASS/분석 정상, 실제 저장은 후속",
-      "blocker": "28c3c0db488e1f36329d92ddcf835b231dff0dfe 필수 CI3 PASS/CI 진행 중"
+      "evidence": "28c3c0db488e1f36329d92ddcf835b231dff0dfe 필수 CI4 PASS(36814110321/36814110268/36814110355/36814110288), 작업별 검증 문서"
     },
     {
       "id": "P10-07g",
@@ -2180,6 +2181,30 @@
       "owner": "AI",
       "resume": "계정 보존 트랜잭션11 PASS+기존 전송85 PASS/분석 정상, UI 후속",
       "blocker": "검증·현재 모델 코드 검토 완료, 통합 CI 대기"
+    },
+    {
+      "id": "P10-07h",
+      "action": "동기화 충돌의 비교·선택 화면 연결",
+      "requires": [
+        "p10.remaining.analysis"
+      ],
+      "permissions": [],
+      "reads": [
+        "docs/reference/search/html.html",
+        "docs/reference/search/ui.txt"
+      ],
+      "writes": [
+        "apps/mobile/lib/core/database/account_store.dart",
+        "apps/mobile/lib/core/sync/local_repository.dart",
+        "apps/mobile/lib/core/sync/conflict_review.dart",
+        "apps/mobile/lib/features/sync",
+        "apps/mobile/lib/main.dart",
+        "apps/mobile/test"
+      ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "원본 P10-07로 묶어 진행. UI/스케줄러/저장46 PASS+태그/목록 보완19 PASS, 분석 정상",
+      "blocker": "화면/저장 검증 및 현재 모델 코드 검토 완료, 통합 CI 대기"
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers"

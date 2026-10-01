@@ -12,6 +12,7 @@ import '../../config/app_config.dart';
 import '../domain/identifiers.dart';
 import '../sync/change_feed_response.dart';
 import '../sync/conflict_resolution_plan.dart';
+import '../sync/conflict_review.dart';
 import '../sync/dependency_planner.dart';
 import '../sync/metadata_response.dart';
 import '../sync/mutation_request.dart';
@@ -427,6 +428,74 @@ final class AccountStore {
   }
 
   Future<List<QueuedMutation>> pendingMutations() => _run(_pendingMutations);
+
+  /// Work list excludes only validated, explicitly resolved history. Recovery
+  /// and pendingMutations keep the original requests for inspection/export.
+  Future<List<QueuedMutation>> pendingWorkMutations() => _run(
+    () => _database.transaction(() async {
+      final pending = await _pendingMutations();
+      final mapping = await readMappingEligibility(_database);
+      final resolutions = await _database
+          .customSelect(
+            'SELECT original_op_id FROM mutation_conflict_resolutions',
+          )
+          .get();
+      final resolved = resolutions
+          .map((r) => r.read<String>('original_op_id'))
+          .toSet();
+      requireActive();
+      return pending
+          .where(
+            (m) =>
+                !resolved.contains(m.opId) ||
+                !mapping.superseded.contains(m.opId) ||
+                mapping.blocked.contains(m.opId),
+          )
+          .toList(growable: false);
+    }),
+  );
+
+  Future<ConflictReview> readConflictReview(String opId) => _run(
+    () => _database.transaction(() async {
+      final mapping = await readMappingEligibility(_database);
+      if (!mapping.allows(opId)) {
+        throw StateError('Conflict is held or resolved');
+      }
+      final pending = await _pendingMutations();
+      final mutation = pending.firstWhere((m) => m.opId == opId);
+      final copy = await _readMetadata(mutation.entity, mutation.entityId);
+      if (copy == null || copy.tombstone) {
+        throw StateError('Conflict target unavailable');
+      }
+      final review = ConflictReview(mutation, copy.localJson);
+      if (copy.revision > (review.server['revision'] as int)) {
+        throw StateError('Conflict server evidence is stale');
+      }
+      final names = <String, String>{};
+      if (review.comparison.conflicts.any(
+        (group) => group.contains('tag_ids'),
+      )) {
+        final selected = <String>{};
+        for (final values in [review.local, review.server]) {
+          if (values['tag_ids'] case final List<dynamic> values) {
+            selected.addAll(values.cast<String>());
+          }
+        }
+        for (final id in selected) {
+          final tag = await _readMetadata(LocalEntity.tag, id);
+          final payload = tag?.localJson ?? tag?.serverJson;
+          if (payload != null) {
+            final decoded = jsonDecode(payload);
+            if (decoded is Map && decoded['name'] is String) {
+              names[id] = decoded['name'] as String;
+            }
+          }
+        }
+      }
+      requireActive();
+      return ConflictReview(mutation, copy.localJson, tagNames: names);
+    }),
+  );
 
   Future<void> resolveMetadataConflict({
     required QueuedMutation expected,

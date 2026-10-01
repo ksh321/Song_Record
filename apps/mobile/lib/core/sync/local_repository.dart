@@ -5,13 +5,15 @@ import '../../features/auth/auth_session.dart';
 import '../database/account_store.dart';
 import '../database/local_models.dart';
 import '../domain/identifiers.dart';
+import 'conflict_resolution_plan.dart';
+import 'conflict_review.dart';
 import 'dependency_planner.dart';
 import 'metadata_dispatcher.dart';
 import 'mutation_transport.dart';
 
 /// Prepare once, retain the command, then save. A failed save is retried with
 /// the same command, never by calling prepare again. Network sending is P10-02.
-final class LocalRepository {
+final class LocalRepository implements ConflictActions {
   LocalRepository(this._store, {String Function()? newId})
     : _newId = newId ?? _uuid;
 
@@ -87,6 +89,25 @@ final class LocalRepository {
   /// Includes failed/conflicted work so reopening the app cannot hide it.
   /// This is an inspection list, not the dependency-ordered network send queue.
   Future<List<QueuedMutation>> pending() => _store.pendingMutations();
+
+  Future<List<QueuedMutation>> pendingWork() => _store.pendingWorkMutations();
+
+  @override
+  Future<ConflictReview> review(String opId) => _store.readConflictReview(opId);
+
+  @override
+  Future<void> resolve(
+    ConflictReview review,
+    Map<String, ConflictChoice> choices,
+  ) {
+    final plan = prepareConflictResolution(review.mutation, choices: choices);
+    return _store.resolveMetadataConflict(
+      expected: review.mutation,
+      expectedLocalJson: review.localJson,
+      replacementOpId: plan.needsRequest ? _newId() : null,
+      choices: choices,
+    );
+  }
 
   Future<RetryStatus?> retryStatus(String opId) => _store.retryStatus(opId);
 
