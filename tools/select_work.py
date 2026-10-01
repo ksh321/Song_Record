@@ -85,6 +85,21 @@ def select(state, planned_ids):
     for row in blocked:
         if not row['owner'] or not row['resume']:
             raise ValueError('Blocked work needs an owner and resume condition')
+    if state.get('execution_mode') == 'strict_sequential':
+        start = state.get('sequence_start')
+        if start is not None and start not in priority:
+            raise ValueError('Sequential start must be in the recorded priority order')
+        sequence = units if start is None else units[next(i for i, u in enumerate(units) if u['id'] == start):]
+        first = next((u['id'] for u in sequence if u['state'] != 'done'), None)
+        # Later work stays recorded, but cannot authorize skipping a blocker.
+        ready = [r for r in ready if r['id'] == first]
+        running = [r for r in running if r['id'] == first]
+        for row in blocked:
+            if row['id'] != first:
+                row['reasons'].append('sequence: ' + str(first))
+        if first is None and unresolved:
+            ready = [{'id': 'ASSESS', 'action': 'Assess source-plan gaps before completion',
+                      'owner': 'AI', 'resume': ', '.join(unresolved), 'reasons': []}]
     return {'decision': 'CONTINUE' if ready else 'IN_PROGRESS' if running else 'WAIT' if blocked else 'NO_OPEN_UNITS',
             'ready': ready, 'running': running, 'blocked': blocked, 'covered_tasks': len(coverage)}
 

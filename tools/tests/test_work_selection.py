@@ -19,6 +19,19 @@ class SelectionTests(unittest.TestCase):
     def result(self):
         return select(self.state, ['P10-03'])
 
+    def test_strict_order_stops_at_first_blocked_and_advances_only_after_done(self):
+        a, b = unit('a', blocker='user result'), unit('b')
+        self.state.update(units=[b, a], priority_order=['a', 'b'],
+                          execution_mode='strict_sequential')
+        self.assertEqual(self.result()['decision'], 'WAIT')
+        self.assertEqual(self.result()['ready'], [])
+        del a['blocker']
+        self.assertEqual([r['id'] for r in self.result()['ready']], ['a'])
+        a['state'] = 'active'
+        self.assertEqual(self.result()['decision'], 'IN_PROGRESS')
+        a.update(state='done', evidence='verified')
+        self.assertEqual([r['id'] for r in self.result()['ready']], ['b'])
+
     def test_priority_survives_partial_completion_and_skips_only_blocked(self):
         a, b, c = unit('a'), unit('b'), unit('c')
         self.state['units'] = [c, b, a]

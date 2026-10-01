@@ -1566,10 +1566,10 @@
         "apps/mobile/lib/core/sync/metadata_followup_plan.dart",
         "apps/mobile/test/metadata_followup_dispatch_test.dart"
       ],
-      "state": "active",
+      "state": "pending",
       "owner": "AI",
-      "resume": "번호순 우선 적용: 의존 순서 전송의 실제 코드·완료 기준·기존 CI 근거를 대조하고 남은 구현/검증부터 수행한다. P10-07 미커밋 변경은 보존하며 자동 선행 조건으로 붙이지 않는다.",
-      "blocker": null
+      "resume": "P10-02 dependency_dispatch_integration_test 추가 커밋의 필수 CI4 PASS 확인 후 P10-02 완료 조건 최종 판정. 관련36 PASS 및 새 실제 저장소 통합1 PASS, 분석 정상. 뒤 P10-07 미커밋 변경은 보존만 한다.",
+      "blocker": "현재 P10-02 추가 통합 검증 커밋의 정확 SHA 필수 CI 확인 대기. 순차 실행 규칙으로 뒤 번호 착수 금지."
     },
     {
       "id": "P10-05-NEXT",
@@ -2275,5 +2275,7 @@
     "P23-PHASE",
     "P24-PHASE",
     "P25-PHASE"
-  ]
+  ],
+  "execution_mode": "strict_sequential",
+  "sequence_start": "P10-02-NEXT"
 }

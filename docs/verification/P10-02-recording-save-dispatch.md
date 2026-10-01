@@ -82,3 +82,9 @@ P10-02 / R002: 기록만이 아니라 곡·태그의 CREATE ACK 뒤 기준 revis
 - 숫자 응답 보완 ae8093d와 수신 후 오래된 기준 처리708ac40은 필수 CI4 PASS 기록으로 확인했다. 708ac40 실행은 CI36845969983/API36845970297/MySQL36845970399/Development36845970132.
 - 아직 전송 미지원인 목록 HTTP/파일 큐는 원본 P19/P12 후속 경계다. 이를 구현 완료로 주장하지 않으며 P10 자체 공통 의존 계획과 후속 어댑터 완료 기준을 분리해서 남은 공통 연결 유무를 확인한다. 이 대조만으로 P10-02 전체 완료 판정을 내리지 않았다.
 - 다음 실제 행동: 의존 계획에서 파일 작업과 미지원 항목이 다른 대상 송신을 차단하지 않는 경계 및 후속 어댑터 등록 지점을 확인하고, 필요한 공통 계층 보완 여부를 결정한다. 새 폰 조작 요청 없음.
+
+### 추가 통합 근거
+
+`dependency_dispatch_integration_test.dart`는 실제 계정별 SQLite와 저장소/송신기를 사용한다. 곡503 실패 중 무관한 태그는 전송되지만 해당 녹음은 시도0으로 보존된다. 재시작 후에도 차단되며 곡 수동 재시도 성공 뒤 녹음이 전송된다. 원본 payload/녹음 UUID/합성 파일 바이트와 ACK 기록을 확인했다. 제품 내부 큐의 실패 격리는 개발 작업 번호의 엄격 순차 운영과 다른 요구사항이다.
+
+`flutter test --no-pub test/dependency_dispatch_integration_test.dart --reporter expanded` 1 PASS, `flutter analyze --no-pub test/dependency_dispatch_integration_test.dart` No issues found. 최초 import 누락으로 컴파일 미실행, ACK 제외 조회를 최종 기록 검증에 잘못 사용한 테스트 오류를 복구 테이블 조회로 수정했고 분석 지적도 해결했다. 실제 서버/폰 실기로 확대하지 않는다. 제품 코드 변경 없음.
