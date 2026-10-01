@@ -15,3 +15,7 @@ gradlew.bat test --tests '*ChangeHttpTests' --no-daemon
 첫 실행 HTTP5+기반14 PASS/MySQL7 skip. 최종 세션 폐기 사례 추가 후 HTTP **6 PASS**, 실패0. OpenAPI/로컬 참조/보안/기존 wire7개/경계 사례 **141 PASS**(이번 계약 사례7개 추가). 테스트 삭제·약화 없음. 상세 .local/workflow/p10-06b-http-test.log 및 p10-06b-http-final-test.log. 실제 MySQL은 선행a의 CI에서 별도 확인한다.
 
 현재 모델 별도 검토: 인증 우선·최종 폐기 차단·정확 경로만 허용·장기 세션 미생성·엄격 정수/상한·새 커서의 의미를 실제 diff/테스트와 대조했다. 새 에이전트 위임 없음. 인증/동기화 위험도에 높은 추론이 적합하나 실행 모델/속도 설정 변경을 확인했다고 주장하지 않는다. 커밋 및 정확 SHA CI는 후속 기록/Git history로 식별한다. 이 서버 API 범위에는 사용자 폰 조작이 필요하지 않다.
+
+## CI 계약 목록 누락 보완
+
+138fa8f 필수 CI 중3 PASS, CI36799355624 서버 테스트1 실패. implementedPathsExactlyMatchControllers의 명시 컨트롤러 목록에 ChangeController 누락이 원인이다. 새 API를 실제 reflection 검증 대상에 추가했으며 동등성 assertion은 유지했다. gradlew.bat test --tests '*ApiContractTests' --tests '*ChangeHttpTests' --no-daemon: 계약5+HTTP6, 총11 PASS/실패0/skip0. 현재 모델 diff 재검토에서 새 API를 제외하거나 계약을 약화하지 않았음을 확인했다. 보완 커밋의 정확 SHA CI는 다시 확인해야 한다.
