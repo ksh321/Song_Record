@@ -118,7 +118,7 @@ class _ConflictScreenState extends State<ConflictScreen> {
             'VERY_GOOD': '매우 좋음',
             'GOOD': '좋음',
             'NORMAL': '보통',
-            'BAD': '나쁨',
+        'BAD': '안 좋음',
           }[value] ??
           value.toString();
     }

@@ -56,6 +56,48 @@ class Actions implements ConflictActions {
 }
 
 void main() {
+  testWidgets('condition choice uses approved D06 labels', (tester) async {
+    final base = {
+      ...recordingWire('RecordingEdited'),
+      'id': payloadId,
+      'revision': 1,
+      'condition_code': null,
+      'condition_name_snapshot': null,
+    };
+    final review = ConflictReview(
+      QueuedMutation(
+        opId: 'op',
+        localOrder: 1,
+        entity: LocalEntity.recording,
+        entityId: payloadId,
+        operation: LocalOperation.patch,
+        state: 'CONFLICT',
+        baseRevision: 1,
+        payload: '{"base_revision":1,"condition_code":"BAD"}',
+        basePayload: jsonEncode(base),
+        serverResponse: jsonEncode({
+          'status': 409,
+          'code': 'REVISION_CONFLICT',
+          'current': {
+            ...base,
+            'revision': 2,
+            'condition_code': 'GOOD',
+            'condition_name_snapshot': '좋음',
+          },
+        }),
+        attemptCount: 1,
+      ),
+      '{}',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ConflictScreen(actions: Actions()..supplied = review, opId: 'op'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('컨디션: 안 좋음'), findsOneWidget);
+    expect(find.text('컨디션: 좋음'), findsOneWidget);
+  });
   ConflictReview tags({required bool names}) {
     const a = '11111111-1111-4111-8111-111111111111',
         b = '22222222-2222-4222-8222-222222222222';
