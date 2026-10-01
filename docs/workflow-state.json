@@ -1563,7 +1563,7 @@
     },
     {
       "id": "P10-06-NEXT",
-      "action": "P10-06d/P10-06e — 증분 변경 수신: 통신·원자 적용 및 후속 DTO 검증",
+      "action": "P10-06f — 증분 변경 수신: 녹음 부가 정보 보존과 후속 DTO 검증",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1588,7 +1588,7 @@
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "b/c 통합2746b19 필수4 CI PASS. d b3f8533 통신15 PASS, e1617b20 통합39 PASS/분석 정상. d/e 정확 SHA CI 후 DTO·관계/asset·삭제 원장 투영·수신기. 전체 P10-06 완료 아님."
+      "resume": "b/c2746b19 필수4 CI PASS. d/e b7330a6 CI3 PASS/Android 빌드 진행. f8090bd3 로컬44 PASS/분석 정상. 선행 CI 후 f push/CI, DTO·초기 관계·삭제 원장·수신기 연결. 전체 P10-06 미완료."
     },
     {
       "id": "P10-07-NEXT",
