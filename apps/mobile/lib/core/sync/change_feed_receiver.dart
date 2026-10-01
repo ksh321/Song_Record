@@ -16,7 +16,11 @@ enum ChangeFeedStep {
 
 /// One page per invocation. No timers, automatic queued follow-ups or resync
 /// writes. The existing application scheduler owns any subsequent invocation.
-final class ChangeFeedReceiver {
+abstract interface class ChangeFeedStepper {
+  Future<ChangeFeedStep> step(AuthSession session);
+}
+
+final class ChangeFeedReceiver implements ChangeFeedStepper {
   ChangeFeedReceiver({
     required this.store,
     required this.transport,
@@ -31,6 +35,7 @@ final class ChangeFeedReceiver {
   /// The caller must have verified a fresh login before explicitly resuming.
   void resumeAfterAuthentication() => _authenticationBlocked = false;
 
+  @override
   Future<ChangeFeedStep> step(AuthSession session) =>
       _flight ??= _step(session).whenComplete(() {
         _flight = null;

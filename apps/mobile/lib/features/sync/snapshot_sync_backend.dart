@@ -22,7 +22,11 @@ final class SnapshotSyncBackend implements SyncBackend, SyncStatusSource {
   @override
   String? get statusMessage {
     if (_authBlocked) return '초기 정보를 받으려면 다시 로그인해 주세요.';
-    if (_complete) return null;
+    if (_complete) {
+      return outgoing is SyncStatusSource
+          ? (outgoing as SyncStatusSource).statusMessage
+          : null;
+    }
     return switch (lastStep) {
       SnapshotStep.waiting => '서버에서 초기 정보를 준비하고 있어요.',
       SnapshotStep.retryLater => '초기 정보를 받지 못했어요. 연결 상태를 확인해 주세요.',
