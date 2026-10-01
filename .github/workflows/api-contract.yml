@@ -12,15 +12,10 @@ on:
       - "!*.md"
       - "!tools/**"
       - "!.gitmessage.txt"
+      - "!.github/**"
       - "docs/contracts/**"
       - "infra/scripts/verify_api_contract.py"
       - "infra/scripts/requirements-api-contract.txt"
-      - ".github/workflows/**"
-      - "tools/ci-policy.json"
-      - "tools/ci-scope.ps1"
-      - "tools/ci-event-scope.ps1"
-      - "tools/github-check.ps1"
-      - "tools/workflow-common.ps1"
   pull_request:
     paths:
       - "**"
@@ -31,15 +26,10 @@ on:
       - "!*.md"
       - "!tools/**"
       - "!.gitmessage.txt"
+      - "!.github/**"
       - "docs/contracts/**"
       - "infra/scripts/verify_api_contract.py"
       - "infra/scripts/requirements-api-contract.txt"
-      - ".github/workflows/**"
-      - "tools/ci-policy.json"
-      - "tools/ci-scope.ps1"
-      - "tools/ci-event-scope.ps1"
-      - "tools/github-check.ps1"
-      - "tools/workflow-common.ps1"
   workflow_dispatch:
 
 permissions:

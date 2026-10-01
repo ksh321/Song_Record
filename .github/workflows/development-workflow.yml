@@ -12,14 +12,8 @@ on:
       - "!docs/**"
       - "!*.md"
       - "!.gitmessage.txt"
-      - "docs/reference/**"
-      - "docs/workflow-state.json"
-      - ".github/workflows/**"
-      - "tools/ci-policy.json"
-      - "tools/ci-scope.ps1"
-      - "tools/ci-event-scope.ps1"
-      - "tools/github-check.ps1"
-      - "tools/workflow-common.ps1"
+      - "!.github/**"
+      - "!tools/**"
   pull_request:
     paths:
       - "**"
@@ -30,14 +24,8 @@ on:
       - "!docs/**"
       - "!*.md"
       - "!.gitmessage.txt"
-      - "docs/reference/**"
-      - "docs/workflow-state.json"
-      - ".github/workflows/**"
-      - "tools/ci-policy.json"
-      - "tools/ci-scope.ps1"
-      - "tools/ci-event-scope.ps1"
-      - "tools/github-check.ps1"
-      - "tools/workflow-common.ps1"
+      - "!.github/**"
+      - "!tools/**"
   workflow_dispatch:
 
 permissions:

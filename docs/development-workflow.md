@@ -71,18 +71,19 @@ pwsh -NoProfile -File tools/watch-ci.ps1 -Start -Commit <40자리SHA> -TaskId P1
 
 ## CI 변경 영향 판정 — WORKFLOW-08 (2026-10-01)
 
-사용자 요청: 비용·시간을 낭비하는 무관한 전체 CI 실행을 피하고 필요한 검증만 한다. 검사 삭제나 실패 무시는 하지 않는다. 기준 파일은 `tools/ci-policy.json`; 실제 Actions push/PR paths와 로컬 판정의 일치도 테스트한다.
+최신 사용자 확정 기준: **정책·문서 변경은 현재 PC에서 해당 설정만 검사하고, 앱·서버·DB는 실제 영향이 있을 때만 원격 CI로 검증한다.** 로컬 검사는 AI가 실행하며 Actions를 사용하지 않는다. 검사 삭제나 실패 무시는 하지 않는다. 기준 파일은 `tools/ci-policy.json`; 실제 Actions push/PR paths와 로컬 판정의 일치도 테스트한다.
 
 | 변경 범위 | 원격 CI |
 |---|---|
 | 일반 문서·AGENTS.md·진행 기록·커밋 템플릿만 | 없음. 로컬 diff/내용/비밀값 확인 |
-| 알림 스크립트·개발 도구·작업 상태 JSON·자료 색인 | Development workflow |
+| 알림 스크립트·개발 도구·작업 상태 JSON·자료 색인 | 없음. 현재 PC에서 해당 도구·문법·정합성 검사 |
 | Flutter 앱 코드·테스트·의존성·Android 설정 | CI의 Flutter 작업 |
 | 서버 코드·테스트·의존성·infra | 서버 빌드·MySQL 마이그레이션·멱등/조회 DB 통합. API 계약 검증 스크립트는 계약 CI도 실행 |
 | 공통 fixture/API 계약 | 앱·서버·DB·계약 검증 |
-| Actions·CI 선택/판정 정책·미분류 경로 | 보수적으로 전체 검증 |
+| Actions YAML·CI 선택/판정 정책 | 없음. 현재 PC에서 YAML/PowerShell 문법 및 검사 선택 로직 테스트 |
+| 미분류 경로 | 먼저 실제 영향 분석. 이유 없이 전체 Actions를 실행하지 않음 |
 
-여러 종류를 한 push에 포함하면 필요한 검사의 합집합이다. 파일 이동은 이전/새 경로, 삭제도 포함한다. CI 자체를 변경하는 이번 커밋은 전체 검증을 한 번 실행한다. 기존 P10-07 미커밋 변경은 범위에 포함하지 않는다.
+여러 종류를 한 push에 포함하면 필요한 검사의 합집합이다. 파일 이동은 이전/새 경로, 삭제도 포함한다. CI 정책 변경 자체는 전체 검증 사유가 아니다. 앞선 c19cbd3의 전체 CI 실행 판단은 과도했으며 사용자 지시로 취소했다. 기존 P10-07 미커밋 변경은 범위에 포함하지 않는다.
 
 1. AI는 push 전에 원격 main의 정확 SHA를 저장한다. 로컬 origin/main이 오래됐다면 fetch/ls-remote로 확인한다. 이 SHA부터 최종 커밋까지의 diff를 판단한다. PR은 merge-base 기준, 수동 workflow_dispatch는 해당 workflow 전체 검증이다.
 2. 정확 SHA 확인과 감시에 `-BaseCommit <push전40자리SHA>`를 함께 전달한다. 생략/미확인은 전체 필수로 처리한다. 새 정책 도입 이전 커밋은 기존 네 CI 기준을 유지한다.

@@ -7,19 +7,22 @@ $count=0
 function Assert($ok,$label){if(-not $ok){throw $label};$script:count++}
 function Names($paths){return @((Get-CiScope $paths | Where-Object required).name)}
 Assert ((Names @('docs/progress.md','AGENTS.md','내가할일.md')).Count -eq 0) 'documentation requires no CI'
-Assert (((Names @('tools/phone-notify.ps1')) -join ',') -eq 'Development workflow') 'notification only automation'
-Assert (((Names @('docs/workflow-state.json')) -join ',') -eq 'Development workflow') 'executable state is not prose'
-Assert (((Names @('docs/reference/search/plan.txt')) -join ',') -eq 'Development workflow') 'source provenance'
+Assert ((Names @('tools/phone-notify.ps1')).Count -eq 0) 'notification checked locally'
+Assert ((Names @('docs/workflow-state.json')).Count -eq 0) 'state checked locally'
+Assert ((Names @('docs/reference/search/plan.txt')).Count -eq 0) 'source provenance checked locally'
 $mobile=@(Get-CiScope @('apps/mobile/lib/main.dart'))
 Assert ((($mobile | Where-Object required).name -join ',') -eq 'CI') 'mobile workflow'
 Assert ((($mobile | Where-Object name -eq 'CI').jobs -join ',') -eq 'Scope changed files,Flutter analyze, test, and Android build') 'mobile excludes backend jobs'
 $server=@(Get-CiScope @('services/api/src/main/Test.java'))
 Assert ((($server | Where-Object name -eq 'CI').jobs -join ',') -eq 'Scope changed files,Spring Boot build and test,MySQL migrations and constraints') 'backend jobs'
 Assert ('Idempotency MySQL' -in ($server | Where-Object required).name) 'backend database integration'
-foreach($path in @('docs/contracts/openapi.yaml','fixtures/contracts/api-wire.json','.github/workflows/ci.yml','tools/ci-event-scope.ps1','.unknown-build-config')) {
+foreach($path in @('docs/contracts/openapi.yaml','fixtures/contracts/api-wire.json','.unknown-build-config')) {
     Assert ((Names @($path)).Count -ge 3) "sensitive or unknown path: $path"
 }
-Assert ((Names @('docs/progress.md','apps/mobile/pubspec.lock','tools/phone-notify.ps1')).Count -eq 2) 'mixed push union'
+foreach($path in @('.github/workflows/ci.yml','tools/ci-event-scope.ps1','tools/ci-policy.json','tools/github-check.ps1')) {
+    Assert ((Names @($path)).Count -eq 0) "policy changes checked locally: $path"
+}
+Assert ((Names @('docs/progress.md','apps/mobile/pubspec.lock','tools/phone-notify.ps1')).Count -eq 1) 'mixed push retains product checks'
 Assert (@(Get-CiScope @() $true | Where-Object required).Count -eq 4) 'unknown range all required'
 $run=[pscustomobject]@{status='completed';conclusion='success'}
 $jobs=@([pscustomobject]@{name='required';conclusion='success'},[pscustomobject]@{name='unrelated';conclusion='skipped'})
