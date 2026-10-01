@@ -22,3 +22,11 @@
 - 테스트 보완 이력: 기대값 텍스트 치환이 다른 롤백 검사에 퍼진 오류를 발견해 해당 변경만 원복하고 대상 테스트 하나로 한정했다. 추가 테스트의 타 계정 자료는 DB CHECK에서 먼저 거절되어, 정상 계정의 잘못된 태그 이름으로 롤백 경로를 검증했다. DB 제약/검사를 약화하지 않았다. 제품 문제 3회 실패로 오인하지 않는다.
 
 로그: .local/workflow/p10-06m-test.log, p10-06m-final.log, p10-06m-upgrade.log. 현재 모델 직접 구현 및 별도 코드 검토 단계이며 모델 변경/독립 검수라고 주장하지 않는다. 대상 SHA는 Git 이력, 정확 SHA 필수 CI는 후속 통합 기록에서 확인한다.
+
+## 2026-10-01 — 원본 P10-05/P10-06의 과거 컨디션 수신 보완
+
+세부 접미사를 추가하지 않고 원본 작업 기준으로 기록한다. SnapshotSourceRows의 RECORDING_CONDITION은 condition_definition이며 D06 과거 데이터 보존 및 OpenAPI Condition의 id/name/code/revision/archived_at/updated_at 계약을 따른다.
+
+초기 사본과 증분 CONDITION을 같은 업무 사본 적용 경로에 연결했다. 네 고정 코드 또는 자기 정의 UUID인 과거 코드를 읽고 이름·archive·미전송 입력·원본 사본을 그대로 보존한다. 사용자 컨디션 생성/이름 수정/archive 기능을 다시 활성화하지 않는다. 다른 UUID/알 수 없는 코드/빈 이름은 거절한다. 승인된 D06과 DB V15/V16을 대조한 현재 모델 코드 검토 완료.
+
+`flutter test --no-pub test/change_payload_validation_test.dart test/change_feed_store_test.dart test/resync_integration_test.dart`: **35 PASS**. 변경5파일 분석 **No issues found**. 실제 초기 과거 정의→증분 이름/기준 갱신→cursor8과 원본 행/로컬 입력 보존을 대조했다. 로그 `.local/workflow/p10-condition-receive.log`. 사용자 실기 확인으로 확대하지 않는다. 관계/클라우드 자산의 별도 revision 적용은 여전히 남아 있다.

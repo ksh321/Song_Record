@@ -1571,9 +1571,9 @@
         "apps/mobile/lib/features/sync",
         "apps/mobile/lib/core/database"
       ],
-      "state": "pending",
+      "state": "active",
       "owner": "AI",
-      "resume": "n e4adb7f USER-024 오류 없음 확인. o61afd02 관계 조회30 PASS 및 통합664ef41 CI4 PASS. 초기 업무 사본의 나머지 엔터티 투영은 P10-06 적용기와 함께 대조. 사용자 대기 없음."
+      "resume": "원본 P10-05/P10-06 범위로 초기·증분 수신 누락 보완: D06 과거 컨디션 정의를 원문 보존 조회에 연결. 새 세부 ID 생성 없음"
     },
     {
       "id": "P10-06-NEXT",
@@ -2180,7 +2180,7 @@
       "state": "pending",
       "owner": "AI",
       "resume": "계정 보존 트랜잭션11 PASS+기존 전송85 PASS/분석 정상, UI 후속",
-      "blocker": "검증·현재 모델 코드 검토 완료, 통합 CI 대기"
+      "blocker": "089713c2948d72c8803f82495586780bccb410c4 통합 푸시, 정확 SHA 필수 CI 확인 대기"
     },
     {
       "id": "P10-07h",
@@ -2204,7 +2204,7 @@
       "state": "pending",
       "owner": "AI",
       "resume": "원본 P10-07로 묶어 진행. UI/스케줄러/저장46 PASS+태그/목록 보완19 PASS, 분석 정상",
-      "blocker": "화면/저장 검증 및 현재 모델 코드 검토 완료, 통합 CI 대기"
+      "blocker": "089713c2948d72c8803f82495586780bccb410c4 통합 푸시, 정확 SHA 필수 CI 확인 대기"
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers"

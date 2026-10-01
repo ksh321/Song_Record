@@ -786,6 +786,73 @@ void main() {
       expect(row['server_revision'], 1);
     },
   );
+  test('retained condition initial and delta preserve historical identity and local input', () async {
+    final initial = <String, Object?>{
+      'id': id,
+      'user_id': owner,
+      'code': id,
+      'name': '과거 컨디션',
+      'revision': 2,
+      'archived_at': '2026-10-01T00:00:00Z',
+      'created_at': '2026-09-30T00:00:00Z',
+      'updated_at': '2026-10-01T00:00:00Z',
+    };
+    final latest = await replaceBaseline('RECORDING_CONDITION', initial);
+    await db.customStatement(
+      "INSERT INTO metadata_copies VALUES(?,'RECORDING_CONDITION',?,1,?,'{\"name\":\"미전송 입력\"}',0,0)",
+      [
+        owner,
+        id,
+        jsonEncode({'id': id, 'revision': 1, 'name': 'old'}),
+      ],
+    );
+    final raw =
+        (await db
+                .customSelect(
+                  'SELECT * FROM snapshot_download_rows ORDER BY ordinal',
+                )
+                .get())
+            .map((r) => r.data)
+            .toList();
+    await store.apply(page([]), snapshotToken: latest);
+    final current =
+        (await db.customSelect('SELECT * FROM metadata_copies').getSingle())
+            .data;
+    expect(jsonDecode(current['server_payload'] as String)['code'], id);
+    expect(current['local_payload'], '{"name":"미전송 입력"}');
+    final delta = {...initial, 'revision': 3, 'name': '보존된 옛 이름'}
+      ..remove('user_id')
+      ..remove('created_at');
+    await store.apply(
+      page([
+        {
+          'change_seq': 8,
+          'entity_type': 'CONDITION',
+          'entity_id': id,
+          'revision': 3,
+          'operation': 'UPSERT',
+          'payload': delta,
+        },
+      ]),
+      snapshotToken: latest,
+    );
+    final after =
+        (await db.customSelect('SELECT * FROM metadata_copies').getSingle())
+            .data;
+    expect(after['server_revision'], 3);
+    expect(after['local_payload'], current['local_payload']);
+    expect(await cursor(), 8);
+    expect(
+      (await db
+              .customSelect(
+                'SELECT * FROM snapshot_download_rows ORDER BY ordinal',
+              )
+              .get())
+          .map((r) => r.data)
+          .toList(),
+      raw,
+    );
+  });
   test(
     'invalid later initial tag rolls back earlier song and cursor writes',
     () async {

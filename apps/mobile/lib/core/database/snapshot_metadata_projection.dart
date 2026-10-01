@@ -2,7 +2,7 @@ import '../sync/change_payload_validation.dart';
 import 'local_models.dart';
 
 /// The untouched raw snapshot retains owner, deletion and creation metadata.
-/// This projection only supplies the current SONG/TAG business wire shape.
+/// Supplies SONG/TAG and retained Condition business wire shapes.
 Map<String, dynamic> projectSnapshotMetadata(
   LocalEntity entity,
   Map<String, dynamic> source, {
@@ -32,6 +32,14 @@ Map<String, dynamic> projectSnapshotMetadata(
       'latest_recorded_at',
     },
     LocalEntity.tag => {'id', 'revision', 'updated_at', 'name', 'archived_at'},
+    LocalEntity.recordingCondition => {
+      'id',
+      'revision',
+      'updated_at',
+      'name',
+      'code',
+      'archived_at',
+    },
     _ => throw const FormatException(
       'Snapshot metadata adapter not implemented',
     ),

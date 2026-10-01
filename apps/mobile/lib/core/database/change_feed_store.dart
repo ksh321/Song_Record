@@ -213,6 +213,7 @@ final class ChangeFeedStore {
       LocalEntity.song,
       LocalEntity.tag,
       LocalEntity.recording,
+      LocalEntity.recordingCondition,
     ]) {
       var after = 0;
       final seen = <String>{};

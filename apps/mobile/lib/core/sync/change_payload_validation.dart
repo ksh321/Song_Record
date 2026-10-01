@@ -6,7 +6,8 @@ void _require(bool valid) {
 }
 
 /// Current change writers emit SONG, RECORDING and TAG snapshots. This validates
-/// their wire fields without normalizing historical values or inventing missing
+/// their wire fields and the legacy Condition response without normalizing
+/// historical values or inventing missing
 /// relations. Other writers need an explicit adapter before a cursor can pass.
 void validateChangePayload(LocalEntity entity, Map<String, dynamic> value) {
   void fields(Set<String> required, Set<String> optional) => _require(
@@ -106,6 +107,18 @@ void validateChangePayload(LocalEntity entity, Map<String, dynamic> value) {
       fields({...common, 'name', 'archived_at'}, {});
       text('name', 1, 50);
       time('archived_at', nullable: true);
+    case LocalEntity.recordingCondition:
+      // D06 keeps old definitions readable; this never enables custom writes.
+      fields({...common, 'name', 'code', 'archived_at'}, {});
+      text('name', 1, 50);
+      time('archived_at', nullable: true);
+      final code = value['code'];
+      _require(
+        {'VERY_GOOD', 'GOOD', 'NORMAL', 'BAD'}.contains(code) ||
+            code is String &&
+                code == value['id'] &&
+                UuidValue(code).value == code,
+      );
     case LocalEntity.recording:
       fields(
         {

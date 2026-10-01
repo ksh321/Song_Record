@@ -39,6 +39,48 @@ Map<String, dynamic> recordingWire(String schema) {
 }
 
 void main() {
+  test(
+    'retained Condition accepts fixed codes and its own legacy UUID only',
+    () {
+      final value = <String, dynamic>{
+        'id': payloadId,
+        'revision': 2,
+        'name': '과거 이름',
+        'code': payloadId,
+        'archived_at': '2026-10-01T00:00:00Z',
+        'updated_at': '2026-10-01T00:00:00Z',
+      };
+      final before = jsonEncode(value);
+      validateChangePayload(LocalEntity.recordingCondition, value);
+      expect(jsonEncode(value), before);
+      for (final code in ['VERY_GOOD', 'GOOD', 'NORMAL', 'BAD']) {
+        validateChangePayload(LocalEntity.recordingCondition, {
+          ...value,
+          'code': code,
+        });
+      }
+      for (final code in [
+        'UNKNOWN',
+        '11111111-1111-4111-8111-111111111111',
+        null,
+      ]) {
+        expect(
+          () => validateChangePayload(LocalEntity.recordingCondition, {
+            ...value,
+            'code': code,
+          }),
+          throwsFormatException,
+        );
+      }
+      expect(
+        () => validateChangePayload(LocalEntity.recordingCondition, {
+          ...value,
+          'name': '',
+        }),
+        throwsFormatException,
+      );
+    },
+  );
   test('actual recording draft, saved and edited shared contract variants validate', () {
     for (final schema in [
       'RecordingDraft',
