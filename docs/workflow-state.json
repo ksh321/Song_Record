@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "664ef4164b437dd65a751c5a9b9bd4ab050ac1a4",
+  "baseline_head": "f03731145895151622c734e150768bcade6b616e",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1562,7 +1562,7 @@
     },
     {
       "id": "P10-06-NEXT",
-      "action": "P10-06 — 증분 수신 제어 후 전용 적용과 앱 연결",
+      "action": "P10-06k — 실제 앱 증분 수신 연결 검증과 잔여 적용기",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1571,12 +1571,14 @@
       "writes": [
         "apps/mobile/lib/core/database",
         "apps/mobile/lib/core/sync",
+        "apps/mobile/lib/features/sync",
+        "apps/mobile/lib/main.dart",
         "apps/mobile/test",
         "docs/verification"
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "제품 f03731145895151622c734e150768bcade6b616e push 완료. h36/i37 PASS·분석 정상. 해당 SHA CI36806041061/MySQL36806041052 진행 중, 계약/워크플로우 PASS. 재개 시 실제 CI 확인 후 증분 스케줄러 및 미구현 삭제/관계 계약 연결. 사용자 대기 없음, API/DB와 Git 실제 확인."
+      "resume": "h/i f037311 CI4 PASS. j57/k60 PASS·분석 정상, c7df3fd dev APK 빌드 성공·데이터 보존 설치 진행. 필요 실기만 별도 요청하고 미구현 삭제/관계 및 만료 복구를 계속한다."
     },
     {
       "id": "P10-07-NEXT",
