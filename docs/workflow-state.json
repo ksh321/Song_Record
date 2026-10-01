@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "dc3a15035ac4ee5386a76e332feb2206c00af976",
+  "baseline_head": "2746b198fa77466eab6907ca971b389eb637df91",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1563,7 +1563,7 @@
     },
     {
       "id": "P10-06-NEXT",
-      "action": "P10-06b/P10-06c — 증분 변경 수신: 계약 보완·앱 디코더와 HTTP 연결",
+      "action": "P10-06d/P10-06e — 증분 변경 수신: 통신·원자 적용 및 후속 DTO 검증",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1588,7 +1588,7 @@
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "a 통합dc3a150 필수4 CI PASS. b 보완b7e66e3 서버11 PASS. c e122c1b 앱8 PASS/분석 정상. 통합 CI 및 후속 인증 HTTP transport·원자 적용 연결."
+      "resume": "b/c 통합2746b19 필수4 CI PASS. d b3f8533 통신15 PASS, e1617b20 통합39 PASS/분석 정상. d/e 정확 SHA CI 후 DTO·관계/asset·삭제 원장 투영·수신기. 전체 P10-06 완료 아님."
     },
     {
       "id": "P10-07-NEXT",

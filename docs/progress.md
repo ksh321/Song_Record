@@ -23,9 +23,9 @@
 | 확인한 제품 Git | CONNECT dab4fd6, P10-05a~d, e 보완 포함 f 2b6a980, g 0241cf56340f52a366bec1a49100e61664074a56 필수 CI4 PASS. h c1b9a4c+운영 문서 통합95a2079 및 i+j d39cc52 필수 CI4 PASS; k와 c를 포함한 통합 b2526b9도 2026-10-01 필수 CI4 PASS |
 | 기존 기능 완료 기준 | `eef028dddea87cb0ad02d733808658512dffe431`까지 사용자 검증 완료. P05-08·P06 포함, 문서 부족만으로 되돌리지 않음 |
 | 현재 구현 완료 지점 | P09-07b-C1/D06, P10-02b 해당 메타데이터 범위, WORKFLOW-07, P10-04a v4, P10-04b-DECODER/ATOMIC/GATE. GATE 90 테스트·분석·Astra/xhigh 재검수·정확 SHA CI 통과. 전체 P10-03/P10-04 완료 아님 |
-| 현재 작업 | P10-06b 계약 검증 목록 보완 b7e66e3, P10-06c 앱 증분 응답 검증 e122c1b. 관련 서버11 PASS·앱8 PASS/분석 정상. 통합 CI 대기 |
-| 작업 중 변경 | 138fa8f CI는 계약 컨트롤러 목록 누락으로1 FAIL/나머지3 PASS. b7e66e3 보완 검증 완료. 폰 대상 e4adb7f는 변경하지 않음 |
-| 다음 실행 | b/c 통합 정확 SHA CI 확인 및 인증된 증분 HTTP transport 연결. P10-05n 폰 결과 USER-024와 독립 진행 |
+| 현재 작업 | P10-06d 인증된 증분 HTTP 통신 b3f8533 및 P10-06e 원자 적용 기반1617b20. 통합39 PASS·분석 정상, 통합 CI 확인 예정 |
+| 작업 중 변경 | P10-06b/c 통합2746b198fa77466eab6907ca971b389eb637df91 필수 CI4 PASS(36800953517/36800953393/36800953584/36800953454). d/e 추가 변경은 별도 CI 필요 |
+| 다음 실행 | d/e 통합 push·정확 SHA CI. 후속 업무 DTO 전체 검증, 관계/asset 및 원장 투영과 수신기 연결. USER-024 폰 결과와 독립 진행 |
 | 실제 차단 | 무료 Actions 한도·Docker·USB 차단 해소. P10-05n 새 화면/홈 복귀 실기 USER-024만 사용자 응답 대기. 전체 P10-05/06 완료 아님 |
 | 실행 환경 | 재시작 후 USB device1대·기존 DB 및 실기 DB healthy. API health UP. e4adb7f 고정 APK 해시 확인 후 adb install -r Success, 데이터 보존·USB reverse8080 연결 |
 
