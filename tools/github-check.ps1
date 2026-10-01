@@ -80,7 +80,8 @@ try {
     $scopeMode='legacy-all'
     if($scopedPolicy) {
         $targetPolicy=(& git @gitArgs show "${Commit}:tools/ci-policy.json") -join "`n"
-        if($LASTEXITCODE -ne 0 -or $targetPolicy.Trim() -cne (Get-Content (Join-Path $PSScriptRoot 'ci-policy.json') -Raw).Trim()) { throw 'Target CI policy differs; use matching checkout' }
+        $localPolicy=(Get-Content (Join-Path $PSScriptRoot 'ci-policy.json') -Raw).Replace("`r`n","`n").Trim()
+        if($LASTEXITCODE -ne 0 -or $targetPolicy.Replace("`r`n","`n").Trim() -cne $localPolicy) { throw 'Target CI policy differs; use matching checkout' }
         if($BaseCommit) {
             $changed=@(Get-CiChangedPaths $root $BaseCommit $Commit)
             $expected=@(Get-CiScope $changed)

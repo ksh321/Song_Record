@@ -35,3 +35,5 @@
 실행 중 목록 조회 결과 c19cbd3의 CI36857813383 한 건만 남아 있었다. 523a141→c19cbd3 diff에 앱/서버/DB 변경 없음 확인 후 사용자 지시로 취소 요청. 다른 이미 종료된 실행은 취소했다고 기록하지 않는다. 해당 watcher PID23676만 명령행·SHA를 대조해 중지하여 불필요한 실패 알림을 방지했다. 취소는 테스트 통과가 아니다.
 
 최종 취소 조회: CI36857813383 status=completed/conclusion=cancelled. 조회 시 실행 중 Actions 0건. 수정 후 ci-scope.ps1 34 PASS, 기존 계약 가상환경의 YAML 파싱 PASS, git diff --check 통과. 실제 영향이 없는 이번 정책/문서 정정은 로컬 검사로 충분하므로 새 Actions/감시를 시작하지 않는다. 원격 필터가 실제로 실행을 제외했는지는 push 뒤 한 번 확인한다.
+
+정정 커밋3258c5da08b8ce38791665afa055e927c94fab09 일반 push 후 기준c19cbd3 대비 조회: 네 workflow 모두 NOT_APPLICABLE, overall NOT_REQUIRED, 실행 ID 없음 확인. 최초 비교에서 Windows CRLF와 Git LF 차이를 정책 변경으로 오인해 중단됐으므로 비교 전 줄바꿈만 정규화했다. 보정 후 같은 SHA 조회 성공. 이는 검사 통과가 아니라 원격 검사 불필요 판정이다.
