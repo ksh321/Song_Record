@@ -126,6 +126,108 @@ void main() {
     );
   });
 
+  test('resync request survives restart and preserves every non-cursor table and audio', () async {
+    const id = '33333333-3333-4333-8333-333333333333',
+        requestId = '55555555-5555-4555-8555-555555555555';
+    await store.saveEdit(
+      LocalEdit(
+        opId: '44444444-4444-4444-8444-444444444444',
+        entity: LocalEntity.song,
+        entityId: id,
+        operation: LocalOperation.create,
+        baseRevision: 0,
+        draft: {'title': 'unsent'},
+        changes: {'title': 'unsent'},
+      ),
+    );
+    final paths = await AccountPaths.create(
+      directory,
+      owner,
+      AppEnvironment.dev,
+    );
+    final audio = await paths.checkedFile(paths.audioPath(id));
+    await audio.writeAsBytes([1, 2, 3, 4], flush: true);
+    await pages();
+    await store.verifySnapshotDownload(token);
+    await store.applySnapshotDownload(token);
+    final position = (await store.readChangeFeedPosition())!;
+    final before =
+        (jsonDecode(await store.recoveryData()) as Map)['tables'] as Map;
+    expect(
+      await store.requestSnapshotRefresh(
+        expected: position,
+        operationId: requestId,
+      ),
+      isTrue,
+    );
+    expect(await store.readCursor(), 7);
+    expect(await store.hasCompleteBaseline(), isFalse);
+    expect(await store.readChangeFeedPosition(), isNull);
+    expect((await store.snapshotBaselinePage('SONG')).token, token);
+    final old = store;
+    await manager.logout();
+    store = await manager.openAccount(owner);
+    expect(jsonDecode((await store.readSnapshotResume())!), {
+      'version': 1,
+      'op_id': requestId,
+      'phase': 'REQUESTED',
+      'token': null,
+      'expires_at': null,
+    });
+    final after =
+        (jsonDecode(await store.recoveryData()) as Map)['tables'] as Map;
+    for (final table in before.keys) {
+      if (table != 'sync_cursors') {
+        expect(after[table], before[table], reason: 'Preserve $table');
+      }
+    }
+    expect(await audio.readAsBytes(), [1, 2, 3, 4]);
+    await expectLater(
+      old.requestSnapshotRefresh(expected: position, operationId: requestId),
+      throwsStateError,
+    );
+  });
+  test('stale resync head and competing request cannot replace current operation', () async {
+    await pages();
+    await store.verifySnapshotDownload(token);
+    await store.applySnapshotDownload(token);
+    final position = (await store.readChangeFeedPosition())!;
+    const requestId = '55555555-5555-4555-8555-555555555555';
+    final before = (jsonDecode(await store.recoveryData()) as Map)['tables'];
+    expect(
+      await store.requestSnapshotRefresh(
+        expected: ChangeFeedPosition(owner, 7),
+        operationId: requestId,
+      ),
+      isFalse,
+    );
+    expect(
+      await store.requestSnapshotRefresh(
+        expected: ChangeFeedPosition(token, 8),
+        operationId: requestId,
+      ),
+      isFalse,
+    );
+    expect((jsonDecode(await store.recoveryData()) as Map)['tables'], before);
+    final attempts = await Future.wait([
+      store.requestSnapshotRefresh(expected: position, operationId: requestId),
+      store.requestSnapshotRefresh(expected: position, operationId: owner),
+    ]);
+    expect(attempts.where((accepted) => accepted), hasLength(1));
+    expect(jsonDecode((await store.readSnapshotResume())!)['op_id'], requestId);
+    // Expired download cleanup may clear a request. The preserved old pointer
+    // must not then make the initial receiver falsely consider resync complete.
+    final pending = await store.readSnapshotResume();
+    expect(
+      await store.compareAndSetSnapshotResume(
+        expected: pending,
+        replacement: null,
+      ),
+      isTrue,
+    );
+    expect(await store.hasCompleteBaseline(), isFalse);
+    expect((await store.snapshotBaselinePage('SONG')).token, token);
+  });
   test('record lookup distinguishes absent baseline from missing resource and pins generation', () async {
     const id = '33333333-3333-4333-8333-333333333333';
     expect(await store.snapshotBaselineRecord('SONG', id), isNull);

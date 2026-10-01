@@ -1075,6 +1075,51 @@ final class AccountStore {
     );
   }
 
+  /// Freeze a resync request without deleting the readable old baseline, drafts,
+  /// queued commands or files. A stale receiver cannot invalidate a newer head.
+  Future<bool> requestSnapshotRefresh({
+    required ChangeFeedPosition expected,
+    required String operationId,
+  }) {
+    if (UuidValue(operationId).value != operationId) {
+      throw const FormatException('Noncanonical resync operation');
+    }
+    final encoded = canonicalJson({
+      'version': 1,
+      'op_id': operationId,
+      'phase': 'REQUESTED',
+      'token': null,
+      'expires_at': null,
+    });
+    return _run(
+      () => _database.transaction(() async {
+        requireActive();
+        final changed = await _database.customUpdate(
+          '''
+        UPDATE sync_cursors SET snapshot_resume=?,baseline_complete=0,updated_at=?
+        WHERE singleton=1 AND user_id=? AND baseline_complete=1
+          AND last_change_seq=? AND snapshot_resume IS NULL
+          AND EXISTS(SELECT 1 FROM snapshot_baseline b JOIN snapshot_downloads h
+            ON h.snapshot_token=b.snapshot_token
+            WHERE b.singleton=1 AND b.user_id=? AND h.user_id=?
+              AND b.snapshot_token=? AND h.state='APPLIED')
+      ''',
+          variables: [
+            Variable(encoded),
+            Variable(_manager._clock().toUtc().millisecondsSinceEpoch),
+            Variable(userId),
+            Variable(expected.cursor),
+            Variable(userId),
+            Variable(userId),
+            Variable(expected.snapshotToken),
+          ],
+        );
+        requireActive();
+        return changed == 1;
+      }),
+    );
+  }
+
   Future<bool> hasCompleteBaseline() => _run(
     () async =>
         (await _database
