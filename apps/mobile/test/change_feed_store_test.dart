@@ -135,6 +135,86 @@ void main() {
     owner: account,
     expectedAfter: after,
   );
+  for (final deleted in [false, true]) {
+    test(
+      'initial playlist header deleted=$deleted preserves source and prevents revival',
+      () async {
+        final initial = <String, Object?>{
+          'id': id,
+          'user_id': owner,
+          'name': '목록',
+          'revision': 2,
+          'deleted_at': deleted ? '2026-10-01T00:00:00Z' : null,
+          'created_at': '2026-09-30T00:00:00Z',
+          'updated_at': '2026-10-01T00:00:00Z',
+        };
+        final latest = await replaceBaseline('PLAYLIST', initial);
+        final raw =
+            (await db
+                    .customSelect('SELECT * FROM snapshot_download_rows')
+                    .get())
+                .map((r) => r.data)
+                .toList();
+        await store.apply(page([]), snapshotToken: latest);
+        final copy =
+            (await db.customSelect('SELECT * FROM metadata_copies').getSingle())
+                .data;
+        expect(copy['tombstone'], deleted ? 1 : 0);
+        expect(copy['server_revision'], 2);
+        await store.apply(
+          page([
+            {
+              'change_seq': 8,
+              'entity_type': 'PLAYLIST',
+              'entity_id': id,
+              'revision': 3,
+              'operation': 'UPSERT',
+              'payload': {...initial, 'revision': 3, 'deleted_at': null}
+                ..remove('user_id'),
+            },
+          ]),
+          snapshotToken: latest,
+        );
+        final after =
+            (await db.customSelect('SELECT * FROM metadata_copies').getSingle())
+                .data;
+        expect(after['server_revision'], deleted ? 2 : 3);
+        expect(after['tombstone'], deleted ? 1 : 0);
+        if (!deleted) {
+          await store.apply(
+            page([
+              {
+                'change_seq': 9,
+                'entity_type': 'PLAYLIST',
+                'entity_id': id,
+                'revision': 4,
+                'operation': 'UPSERT',
+                'payload': {
+                  ...initial,
+                  'revision': 4,
+                  'deleted_at': '2026-10-01T01:00:00Z',
+                }..remove('user_id'),
+              },
+            ], after: 8),
+            snapshotToken: latest,
+          );
+          expect(
+            (await db
+                    .customSelect('SELECT tombstone FROM metadata_copies')
+                    .getSingle())
+                .read<int>('tombstone'),
+            1,
+          );
+        }
+        expect(
+          (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+              .map((r) => r.data)
+              .toList(),
+          raw,
+        );
+      },
+    );
+  }
   Future<int> cursor() async =>
       (await db
               .customSelect('SELECT last_change_seq FROM sync_cursors')

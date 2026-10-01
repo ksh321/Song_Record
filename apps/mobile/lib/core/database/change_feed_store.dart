@@ -191,7 +191,15 @@ final class ChangeFeedStore {
         }
         continue;
       }
-      await _writeCopy(code, entry.id, entry.revision, encoded, entry.deleted);
+      await _writeCopy(
+        code,
+        entry.id,
+        entry.revision,
+        encoded,
+        entry.deleted ||
+            entry.entity == LocalEntity.playlist &&
+                projected['deleted_at'] != null,
+      );
     }
     await db.customStatement(
       '''
@@ -214,6 +222,7 @@ final class ChangeFeedStore {
       LocalEntity.tag,
       LocalEntity.recording,
       LocalEntity.recordingCondition,
+      LocalEntity.playlist,
     ]) {
       var after = 0;
       final seen = <String>{};
@@ -275,7 +284,7 @@ final class ChangeFeedStore {
             id,
             revision,
             canonicalJson(projected),
-            false,
+            entity == LocalEntity.playlist && projected['deleted_at'] != null,
           );
         }
       }

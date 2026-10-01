@@ -40,6 +40,39 @@ Map<String, dynamic> recordingWire(String schema) {
 
 void main() {
   test(
+    'playlist header validates its own fields without inventing item revision',
+    () {
+      final value = <String, dynamic>{
+        'id': payloadId,
+        'revision': 1,
+        'name': '목록',
+        'deleted_at': null,
+        'created_at': '2026-10-01T00:00:00Z',
+        'updated_at': '2026-10-01T00:00:00Z',
+      };
+      validateChangePayload(LocalEntity.playlist, value);
+      expect(
+        () =>
+            validateChangePayload(LocalEntity.playlist, {...value, 'name': ''}),
+        throwsFormatException,
+      );
+      expect(
+        () => validateChangePayload(LocalEntity.playlist, {
+          ...value,
+          'deleted_at': '2026-02-30T00:00:00Z',
+        }),
+        throwsFormatException,
+      );
+      expect(
+        () => validateChangePayload(LocalEntity.playlist, {
+          ...value,
+          'items': <Object?>[],
+        }),
+        throwsFormatException,
+      );
+    },
+  );
+  test(
     'retained Condition accepts fixed codes and its own legacy UUID only',
     () {
       final value = <String, dynamic>{

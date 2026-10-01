@@ -13,6 +13,14 @@ Map<String, dynamic> projectSnapshotMetadata(
     throw const FormatException('Snapshot metadata identity changed');
   }
   final fields = switch (entity) {
+    LocalEntity.playlist => {
+      'id',
+      'name',
+      'revision',
+      'deleted_at',
+      'created_at',
+      'updated_at',
+    },
     LocalEntity.song => {
       'id',
       'revision',

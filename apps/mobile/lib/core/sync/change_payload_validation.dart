@@ -119,6 +119,13 @@ void validateChangePayload(LocalEntity entity, Map<String, dynamic> value) {
                 code == value['id'] &&
                 UuidValue(code).value == code,
       );
+    case LocalEntity.playlist:
+      // Header shape from the account snapshot source. Item ordering has its
+      // own parent-revision contract and is not inferred from this header.
+      fields({...common, 'name', 'deleted_at'}, {'created_at'});
+      text('name', 1, 100);
+      time('deleted_at', nullable: true);
+      if (value.containsKey('created_at')) time('created_at');
     case LocalEntity.recording:
       fields(
         {

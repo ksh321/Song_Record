@@ -30,3 +30,9 @@
 초기 사본과 증분 CONDITION을 같은 업무 사본 적용 경로에 연결했다. 네 고정 코드 또는 자기 정의 UUID인 과거 코드를 읽고 이름·archive·미전송 입력·원본 사본을 그대로 보존한다. 사용자 컨디션 생성/이름 수정/archive 기능을 다시 활성화하지 않는다. 다른 UUID/알 수 없는 코드/빈 이름은 거절한다. 승인된 D06과 DB V15/V16을 대조한 현재 모델 코드 검토 완료.
 
 `flutter test --no-pub test/change_payload_validation_test.dart test/change_feed_store_test.dart test/resync_integration_test.dart`: **35 PASS**. 변경5파일 분석 **No issues found**. 실제 초기 과거 정의→증분 이름/기준 갱신→cursor8과 원본 행/로컬 입력 보존을 대조했다. 로그 `.local/workflow/p10-condition-receive.log`. 사용자 실기 확인으로 확대하지 않는다. 관계/클라우드 자산의 별도 revision 적용은 여전히 남아 있다.
+
+## 2026-10-01 — 원본 P10-05/P10-06의 목록 기본정보 수신
+
+DB V4 playlist와 SnapshotSourceRows의 실제 필드(id/name/revision/deleted_at/created_at/updated_at)를 대조해 초기 사본 및 증분 기본정보 적용기를 보완했다. D07에 따라 삭제 시각이 있으면 삭제 상태로 보존하고 더 늦은 UPSERT로 같은 UUID를 부활시키지 않는다. 원본 사본을 유지하며 실제 사용자 목록/곡/녹음/파일 삭제는 수행하지 않았다. 목록 항목 순서·부모 revision·정리 Job까지 완료했다고 확대하지 않는다.
+
+관련 변경 값/수신/재동기화 **38 PASS**, 검토 후 활성 목록의 후속 삭제 상태 추가 검사 **2 PASS**. `dart analyze` 변경5파일 **No issues found**. 상세 `.local/workflow/p10-playlist-receive.log`, `p10-playlist-reviewed.log`. 현재 모델이 D07·DB·실제 diff와 결과를 대조했다. PLAYLIST_ITEM과 RECORDING_ASSET의 별도 버전 계약은 기존 상담 및 원본 대조 후 계속한다.
