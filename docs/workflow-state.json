@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "12c6fcb5f01415bbc7f9f30b3a99bf3733860bb2",
+  "baseline_head": "65d25c1f4e4c8f24fdc119ea821718a168dd97a6",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1573,7 +1573,7 @@
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "12c6fcb 푸시. 컨디션35/목록38+2 PASS. 상담답변83ec7983 확인·원본/코드 대조: 상세 관계 계약 미확인. P10-06 수신 계약과 적용기 구현으로 계속. 사용자 차단 없음"
+      "resume": "P10-06e/P10-06m 파일 상태 초기·증분 수신52 PASS/분석 정상. generation 삭제 원장 적용과 목록 항목 관계 수신 계속. 사용자 차단 없음"
     },
     {
       "id": "P10-06-NEXT",

@@ -32,3 +32,18 @@
 질문 표현 정정: 원본 P10-06은 ‘업무 변경·삭제 표식을 적용한 로컬 커밋 뒤에만 마지막 change_seq를 갱신’이다. 같은 SQLite 트랜잭션은 이 보장을 위한 현재 구현 선택이며 원문 직접 인용이 아니다. 기존 원자성 검증은 유지한다.
 
 다음 실제 작업: PLAYLIST_ITEM의 부모 버전과 RECORDING_ASSET의 cloud_revision/generation을 별도 수신 계약으로 명시한 뒤 현재 저장소 코드/원본 보존 규칙에 맞춰 적용기·테스트를 구현한다. 상담이 미확인이라고 사용자 승인이나 작업 유예가 생긴 것으로 간주하지 않는다. P10-09 현재 분석에서 RecordingDrafts는 없는 곡404/비활성 곡SONG_NOT_ACTIVE를 반환하며 DependencyPlanner는 삭제된 참조 전송만 막는다. 이것을 새 오프라인 녹음의 미연결 저장 완료로 표시하지 않는다. 원래 op_id·시도/wire·녹음 UUID/파일 보존을 포함한 실제 연결 처리가 남아 있다.
+
+## 2026-10-01 — P10-06e/P10-06m 파일 상태의 초기·증분 수신
+
+근거: 원본 계획 p00587~592, 설계 p00332~337/p00708/p00741, DB V2/V3 recording_asset, SnapshotSourceRows의 실제 공개 필드. 과거 상담은 상세 wire 합의 미확인이라고 답했으므로 아래는 현재 코드에 근거해 명시한 수신 계약이며 과거 승인으로 가장하지 않는다. 서버 파일 변경 writer는 아직 구현되지 않았다.
+
+- UPSERT payload는 SnapshotSourceRows와 같은 recording_id/cloud_state/blocked_reason/generation/verified_size/sha256/stored_at/cloud_revision/created_at/updated_at 필드다. user_id가 있으면 현재 계정과 같아야 하며 초기 사본에는 필수다. envelope entity_id는 recording_id, revision은 cloud_revision과 일치해야 한다. 내부 metadata_copies에만 id/revision 별칭을 추가하며 원본 payload는 보존한다. object_key나 불명확한 필드는 받지 않는다.
+- 파일 상태 버전은 녹음 revision과 비교하지 않는다. STORED/DELETING은 검증된 파일 필드를 요구하고 같은 generation의 확정 크기·해시는 뒤늦은 정책 변경으로 바꾸지 않는다. 같은 버전의 서로 다른 내용은 거절한다. 시각으로 충돌을 해결하지 않는다.
+- NONE은 서버 파일 상태이며 녹음·로컬 파일 삭제가 아니다. 미전송 입력/원본 snapshot은 보존한다. 유효하지 않은 후반 응답은 앞선 변경 및 cursor와 함께 롤백한다.
+- 아직 generation DELETE/삭제 원장 적용은 전용 처리가 남아 있어 거절하고 cursor를 유지한다. 전체 P10-06 완료가 아니며 이 항목을 이유로 독립 작업을 중단하지 않는다.
+
+변경: recording_asset_projection.dart, change_feed_store.dart 및 관련 두 테스트. 현재 모델 코드 검토에서 동일 cloud_revision의 다른 내용과 동일 generation의 checksum/크기 변조를 추가 차단했다.
+
+실행: `flutter test --no-pub test/recording_asset_projection_test.dart test/change_feed_store_test.dart test/resync_integration_test.dart --reporter expanded` **52 PASS**. 변경4파일 `flutter analyze --no-pub` **No issues found**. 테스트 작성 중 cursor helper 선언 순서 오류를 수정했다. 잘못된 로그/테스트 경로 및 실행 디렉터리는 명령 오류로 별도 수정했으며 테스트 통과로 기록하지 않았다. 분석 스타일 지적4개도 해소했다. 원본 검사를 삭제/약화하지 않았다. 상세 로그 `.local/workflow/p10-asset-receiver-reviewed.log`.
+
+현재 사용자 행동 없음. 폰 설치/실기 실행 없음. 기존 USER-025 확인 범위를 이 변경에 확대하지 않는다. 다음 실행은 generation 삭제 원장 보존 처리와 목록 항목 관계 수신이다. 실행 모델·속도 변경 기능은 미확인, 별도 에이전트 없이 현재 작업에서 구현·검토했다.

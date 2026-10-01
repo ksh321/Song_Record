@@ -5,6 +5,7 @@ import 'package:drift/drift.dart';
 import '../sync/change_feed_response.dart';
 import '../sync/change_payload_validation.dart';
 import '../sync/permanent_deletion.dart';
+import '../sync/recording_asset_projection.dart';
 import '../sync/recording_change_projection.dart';
 import 'account_database.dart';
 import 'local_models.dart';
@@ -98,19 +99,37 @@ final class ChangeFeedStore {
         // row, including a legacy body no longer editable by this app version.
         continue;
       }
-      // Relation rows and cloud assets have different revision/generation
-      // contracts. Refuse the whole page until their adapters exist.
+      // Only explicitly supported business adapters can advance the cursor.
+      // Assets use cloud_revision; playlist items still need a parent adapter.
       if (!{
         LocalEntity.song,
         LocalEntity.recording,
         LocalEntity.playlist,
         LocalEntity.tag,
         LocalEntity.recordingCondition,
+        LocalEntity.recordingAsset,
       }.contains(entry.entity)) {
         throw const FormatException('Change entity adapter is not implemented');
       }
-      final payload = entry.payload;
-      if (!entry.deleted) validateChangePayload(entry.entity, payload);
+      final asset = entry.entity == LocalEntity.recordingAsset;
+      // A generation deletion cannot tombstone the entire recording/asset ID.
+      // Until its dedicated adapter exists, retain both page and cursor.
+      if (asset && entry.deleted) {
+        throw const FormatException(
+          'Asset generation deletion adapter is not implemented',
+        );
+      }
+      final payload = asset
+          ? projectRecordingAsset(
+              entry.payload,
+              owner: db.userId,
+              recordingId: entry.id,
+              revision: entry.revision,
+            )
+          : entry.payload;
+      if (!entry.deleted && !asset) {
+        validateChangePayload(entry.entity, payload);
+      }
       if (!entry.deleted &&
           (payload['id'] != entry.id ||
               payload['revision'] != entry.revision)) {
@@ -130,7 +149,9 @@ final class ChangeFeedStore {
       final baseline = await db
           .customSelect(
             '''
-            SELECT json_extract(canonical_payload,'\$.revision') AS revision
+            SELECT CASE WHEN entity='RECORDING_ASSET'
+              THEN json_extract(canonical_payload,'\$.cloud_revision')
+              ELSE json_extract(canonical_payload,'\$.revision') END AS revision
             FROM snapshot_download_rows WHERE snapshot_token=? AND user_id=?
               AND entity=? AND resource_id=?
           ''',
@@ -172,8 +193,17 @@ final class ChangeFeedStore {
       final projected = entry.entity == LocalEntity.recording && !entry.deleted
           ? projectRecordingChange(previous, payload)
           : payload;
-      if (!entry.deleted) validateChangePayload(entry.entity, projected);
+      if (!entry.deleted && !asset) {
+        validateChangePayload(entry.entity, projected);
+      }
       final encoded = canonicalJson(projected);
+      if (asset) {
+        validateAssetTransition(previous, projected);
+        if (currentRevision == entry.revision &&
+            canonicalJson(previous!) != encoded) {
+          throw StateError('Conflicting asset at the same cloud revision');
+        }
+      }
       if (baselineRevision == entry.revision &&
           baselineRevision >= currentRevision) {
         if (entry.deleted) {
@@ -223,6 +253,7 @@ final class ChangeFeedStore {
       LocalEntity.recording,
       LocalEntity.recordingCondition,
       LocalEntity.playlist,
+      LocalEntity.recordingAsset,
     ]) {
       var after = 0;
       final seen = <String>{};
@@ -250,7 +281,14 @@ final class ChangeFeedStore {
             throw const FormatException('Invalid initial metadata');
           }
           final Map<String, dynamic> projected;
-          if (entity == LocalEntity.recording) {
+          if (entity == LocalEntity.recordingAsset) {
+            projected = projectRecordingAsset(
+              source,
+              owner: db.userId,
+              recordingId: id,
+              snapshot: true,
+            );
+          } else if (entity == LocalEntity.recording) {
             final bundle = await SnapshotDownloadStore(
               db,
               requireActive: requireActive,

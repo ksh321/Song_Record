@@ -9,6 +9,7 @@ import 'package:song_record/core/database/change_feed_store.dart';
 import 'package:song_record/core/sync/change_feed_response.dart';
 
 import 'change_payload_validation_test.dart' show songChange, recordingWire;
+import 'recording_asset_projection_test.dart' show assetSource;
 
 void main() {
   const owner = '11111111-1111-4111-8111-111111111111';
@@ -135,6 +136,218 @@ void main() {
     owner: account,
     expectedAfter: after,
   );
+  Future<int> cursor() async =>
+      (await db
+              .customSelect('SELECT last_change_seq FROM sync_cursors')
+              .getSingle())
+          .read<int>('last_change_seq');
+  test('asset baseline and delta preserve raw rows and local input; NONE is not recording deletion', () async {
+    final initial = assetSource();
+    final latest = await replaceBaseline('RECORDING_ASSET', initial);
+    final raw =
+        (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+            .map((r) => r.data)
+            .toList();
+    await store.apply(page([]), snapshotToken: latest);
+    final first =
+        (await db
+                .customSelect(
+                  "SELECT * FROM metadata_copies WHERE entity_type='RECORDING_ASSET'",
+                )
+                .getSingle())
+            .data;
+    expect(first['server_revision'], 3);
+    expect(first['tombstone'], 0);
+    final local = jsonEncode({'local_note': 'keep me'});
+    await db.customStatement(
+      "UPDATE metadata_copies SET local_payload=? WHERE entity_type='RECORDING_ASSET'",
+      [local],
+    );
+    await db.customStatement(
+      "INSERT INTO metadata_copies(user_id,entity_type,entity_id,server_revision,server_payload,local_payload,updated_at) VALUES(?,'RECORDING',?,90,?,?,0)",
+      [
+        owner,
+        id,
+        jsonEncode({'keep': 'recording'}),
+        jsonEncode({'keep': 'recording'}),
+      ],
+    );
+    final recording =
+        (await db
+                .customSelect(
+                  "SELECT * FROM metadata_copies WHERE entity_type='RECORDING'",
+                )
+                .getSingle())
+            .data;
+    await store.apply(
+      page([
+        {
+          'change_seq': 8,
+          'entity_type': 'RECORDING_ASSET',
+          'entity_id': id,
+          'revision': 4,
+          'operation': 'UPSERT',
+          'payload': {
+            ...assetSource(revision: 4),
+            'cloud_state': 'NONE',
+            'generation': null,
+            'verified_size': null,
+            'sha256': null,
+            'stored_at': null,
+          },
+        },
+      ]),
+      snapshotToken: latest,
+    );
+    final result =
+        (await db
+                .customSelect(
+                  "SELECT * FROM metadata_copies WHERE entity_type='RECORDING_ASSET'",
+                )
+                .getSingle())
+            .data;
+    expect(result['server_revision'], 4);
+    expect(result['local_payload'], local);
+    expect(result['tombstone'], 0);
+    expect(
+      jsonDecode(result['server_payload'] as String)['cloud_state'],
+      'NONE',
+    );
+    expect(
+      (await db
+              .customSelect(
+                "SELECT * FROM metadata_copies WHERE entity_type='RECORDING'",
+              )
+              .getSingle())
+          .data,
+      recording,
+    );
+    expect(
+      (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+          .map((r) => r.data)
+          .toList(),
+      raw,
+    );
+    expect(await cursor(), 8);
+  });
+  test(
+    'asset generation DELETE cannot become a permanent recording tombstone',
+    () async {
+      await expectLater(
+        store.apply(
+          page([
+            entry(8, id),
+            {
+              'change_seq': 9,
+              'entity_type': 'RECORDING_ASSET',
+              'entity_id': other,
+              'revision': 4,
+              'operation': 'DELETE',
+              'payload': {},
+            },
+          ]),
+          snapshotToken: token,
+        ),
+        throwsFormatException,
+      );
+      expect(await cursor(), 7);
+      expect(
+        await db.customSelect('SELECT * FROM metadata_copies').get(),
+        isEmpty,
+      );
+    },
+  );
+  test(
+    'asset envelope cloud revision mismatch rolls back the whole page',
+    () async {
+      await expectLater(
+        store.apply(
+          page([
+            entry(8, other),
+            {
+              'change_seq': 9,
+              'entity_type': 'RECORDING_ASSET',
+              'entity_id': id,
+              'revision': 4,
+              'operation': 'UPSERT',
+              'payload': assetSource(),
+            },
+          ]),
+          snapshotToken: token,
+        ),
+        throwsFormatException,
+      );
+      expect(await cursor(), 7);
+      expect(
+        await db.customSelect('SELECT * FROM metadata_copies').get(),
+        isEmpty,
+      );
+    },
+  );
+  test('asset equal-version divergence and verified generation rewrite keep the cursor', () async {
+    final latest = await replaceBaseline('RECORDING_ASSET', assetSource());
+    await store.apply(page([]), snapshotToken: latest);
+    final before =
+        (await db.customSelect('SELECT * FROM metadata_copies').get())
+            .map((r) => r.data)
+            .toList();
+    for (final mutation in [
+      {...assetSource(), 'blocked_reason': 'NETWORK'},
+      {...assetSource(revision: 4), 'sha256': 'b' * 64},
+      {...assetSource(revision: 4), 'verified_size': 5},
+    ]) {
+      await expectLater(
+        store.apply(
+          page([
+            {
+              'change_seq': 8,
+              'entity_type': 'RECORDING_ASSET',
+              'entity_id': id,
+              'revision': mutation['cloud_revision'],
+              'operation': 'UPSERT',
+              'payload': mutation,
+            },
+          ]),
+          snapshotToken: latest,
+        ),
+        throwsA(anyOf(isA<StateError>(), isA<FormatException>())),
+      );
+      expect(await cursor(), 7);
+      expect(
+        (await db.customSelect('SELECT * FROM metadata_copies').get())
+            .map((r) => r.data)
+            .toList(),
+        before,
+      );
+    }
+  });
+  test(
+    'older asset revision cannot replace newer baseline or local version',
+    () async {
+      final latest = await replaceBaseline('RECORDING_ASSET', assetSource());
+      await store.apply(
+        page([
+          {
+            'change_seq': 8,
+            'entity_type': 'RECORDING_ASSET',
+            'entity_id': id,
+            'revision': 2,
+            'operation': 'UPSERT',
+            'payload': assetSource(revision: 2),
+          },
+        ]),
+        snapshotToken: latest,
+      );
+      expect(
+        (await db
+                .customSelect('SELECT server_revision FROM metadata_copies')
+                .getSingle())
+            .read<int>('server_revision'),
+        3,
+      );
+      expect(await cursor(), 8);
+    },
+  );
   for (final deleted in [false, true]) {
     test(
       'initial playlist header deleted=$deleted preserves source and prevents revival',
@@ -215,11 +428,6 @@ void main() {
       },
     );
   }
-  Future<int> cursor() async =>
-      (await db
-              .customSelect('SELECT last_change_seq FROM sync_cursors')
-              .getSingle())
-          .read<int>('last_change_seq');
   Future<void> seed({
     int revision = 1,
     bool tombstone = false,
@@ -581,7 +789,7 @@ void main() {
       },
     );
   }
-  test('unsupported relation or asset aborts whole page without inventing revision', () async {
+  test('unsupported relation or malformed asset aborts whole page without inventing revision', () async {
     for (final type in ['PLAYLIST_ITEM', 'RECORDING_ASSET']) {
       final unsupported = entry(9, other)..['entity_type'] = type;
       await expectLater(
