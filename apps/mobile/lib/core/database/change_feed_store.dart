@@ -89,6 +89,15 @@ final class ChangeFeedStore {
     await _initialMetadata(snapshotToken, permanent);
     for (final entry in page.entries) {
       requireActive();
+      final markerRevision = permanent['${entry.entity.code}:${entry.id}'];
+      if (markerRevision != null) {
+        if (entry.revision > markerRevision) {
+          throw StateError('Change conflicts with permanent deletion revision');
+        }
+        // Validated account-lifetime deletion wins over an older ordinary UUID
+        // row, including a legacy body no longer editable by this app version.
+        continue;
+      }
       // Relation rows and cloud assets have different revision/generation
       // contracts. Refuse the whole page until their adapters exist.
       if (!{
@@ -117,13 +126,6 @@ final class ChangeFeedStore {
             variables: [Variable(code), Variable(entry.id)],
           )
           .getSingleOrNull();
-      final markerRevision = permanent['$code:${entry.id}'];
-      if (markerRevision != null) {
-        if (entry.revision > markerRevision) {
-          throw StateError('Change conflicts with permanent deletion revision');
-        }
-        continue;
-      }
       if (current?.read<int>('tombstone') == 1) continue;
       final baseline = await db
           .customSelect(
@@ -297,12 +299,13 @@ final class ChangeFeedStore {
           raw['entity_id'] is! String) {
         throw const FormatException('Invalid permanent deletion identity');
       }
-      final code = raw['entity_type'] as String,
+      final wireCode = raw['entity_type'] as String,
           id = raw['entity_id'] as String;
+      final code = wireCode == 'CONDITION' ? 'RECORDING_CONDITION' : wireCode;
       final marker = permanentDeletionPayload(
         raw,
         owner: db.userId,
-        entity: code,
+        entity: wireCode,
         id: id,
       );
       final revision = marker['revision'] as int, key = '$code:$id';

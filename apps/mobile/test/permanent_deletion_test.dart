@@ -15,7 +15,14 @@ void main() {
     'purged_at': '2026-10-01T00:00:00.123Z',
   };
   test('ordinary UUID markers project target UUID without altering ledger', () {
-    for (final type in ['SONG', 'RECORDING', 'TAG']) {
+    for (final type in [
+      'SONG',
+      'RECORDING',
+      'TAG',
+      'PLAYLIST',
+      'PLAYLIST_ITEM',
+      'CONDITION',
+    ]) {
       final source = row(type), before = Map<String, dynamic>.from(row(type));
       final marker = permanentDeletionPayload(
         source,

@@ -28,7 +28,14 @@ Map<String, dynamic> permanentDeletionPayload(
       ledger['entity_id'] != id ||
       ledger['entity_type'] != entity ||
       ledger['object_generation'] != null ||
-      !{'SONG', 'RECORDING', 'TAG'}.contains(entity) ||
+      !{
+        'SONG',
+        'RECORDING',
+        'TAG',
+        'PLAYLIST',
+        'PLAYLIST_ITEM',
+        'CONDITION',
+      }.contains(entity) ||
       revision is! int ||
       revision < 1 ||
       revision > 9223372036854775807 ||

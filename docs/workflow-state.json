@@ -389,7 +389,8 @@
       "units": [
         "P10-06-NEXT",
         "P10-06k-PHONE",
-        "P10-06m"
+        "P10-06m",
+        "P10-06n"
       ]
     },
     "P10-07": {
@@ -2060,7 +2061,7 @@
       "state": "pending",
       "owner": "AI",
       "resume": "초기 업무 사본 투영48 PASS+검토23 PASS+업그레이드1 PASS/분석 정상",
-      "blocker": "cfb6489 검증 완료, 후속 통합 푸시/CI 예정"
+      "blocker": "8a8b56b 통합 필수 CI 진행"
     },
     {
       "id": "P10-07c",
@@ -2074,9 +2075,29 @@
         "apps/mobile/lib/core/sync/metadata_conflict.dart",
         "apps/mobile/test/metadata_conflict_test.dart"
       ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "33 PASS/검토 후15 PASS/분석 정상, 큐/UI 쓰기는 후속",
+      "blocker": "8a8b56b 통합 필수 CI 진행"
+    },
+    {
+      "id": "P10-06n",
+      "action": "목록·목록 항목·과거 컨디션 영구 삭제 표식 보존 반영",
+      "requires": [
+        "p10.initial.core.validated",
+        "p10.delta.control.validated"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/sync/permanent_deletion.dart",
+        "apps/mobile/lib/core/database/change_feed_store.dart",
+        "apps/mobile/test/permanent_deletion_test.dart",
+        "apps/mobile/test/change_feed_store_test.dart"
+      ],
       "state": "active",
       "owner": "AI",
-      "resume": "기존 비교기 확장: 키/시각 결합, 태그 UUID 집합 비교. 연결 이동/파일 상태 변경은 자동 비교 대상 제외; 큐 쓰기/전송 없음"
+      "resume": "V6/V15 deletion_ledger에 정의된 UUID 표식 범위 확장. USER/자산 generation은 별도 처리, 물리 삭제 없음"
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers"

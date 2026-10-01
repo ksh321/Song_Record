@@ -420,6 +420,87 @@ void main() {
       expect(await cursor(), 7);
     },
   );
+  for (final type in ['PLAYLIST', 'PLAYLIST_ITEM', 'CONDITION']) {
+    test(
+      'initial $type marker keeps draft and raw history with correct local kind',
+      () async {
+        final localType = type == 'CONDITION' ? 'RECORDING_CONDITION' : type;
+        await db.customStatement(
+          'INSERT INTO metadata_copies VALUES(?,?,?,?,?,?,?,0)',
+          [
+            owner,
+            localType,
+            other,
+            1,
+            '{"revision":1}',
+            '{"note":"retained"}',
+            0,
+          ],
+        );
+        final latest = await replaceBaseline('DELETION_LEDGER', {
+          'id': id,
+          'user_id': owner,
+          'entity_type': type,
+          'entity_id': other,
+          'revision': 5,
+          'object_generation': null,
+          'purged_at': '2026-10-01T00:00:00Z',
+        });
+        final before =
+            (await db
+                    .customSelect('SELECT * FROM snapshot_download_rows')
+                    .get())
+                .map((r) => r.data)
+                .toList();
+        await store.apply(page([]), snapshotToken: latest);
+        final copy = await db
+            .customSelect('SELECT * FROM metadata_copies')
+            .getSingle();
+        expect(copy.read<String>('entity_type'), localType);
+        expect(copy.read<String>('entity_id'), other);
+        expect(copy.read<int>('tombstone'), 1);
+        expect(copy.read<int>('server_revision'), 5);
+        expect(copy.read<String>('local_payload'), '{"note":"retained"}');
+        final obsolete = {
+          'change_seq': 8,
+          'entity_type': type,
+          'entity_id': other,
+          'revision': 2,
+          'operation': 'UPSERT',
+          'payload': {'id': other, 'revision': 2},
+        };
+        await store.apply(page([obsolete]), snapshotToken: latest);
+        expect(
+          (await db
+                  .customSelect('SELECT tombstone FROM metadata_copies')
+                  .getSingle())
+              .read<int>('tombstone'),
+          1,
+        );
+        await expectLater(
+          store.apply(
+            page([
+              {
+                ...obsolete,
+                'change_seq': 9,
+                'revision': 6,
+                'payload': {'id': other, 'revision': 6},
+              },
+            ], after: 8),
+            snapshotToken: latest,
+          ),
+          throwsStateError,
+        );
+        expect(
+          (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+              .map((r) => r.data)
+              .toList(),
+          before,
+        );
+        expect(await cursor(), 8);
+      },
+    );
+  }
   test('unsupported relation or asset aborts whole page without inventing revision', () async {
     for (final type in ['PLAYLIST_ITEM', 'RECORDING_ASSET']) {
       final unsupported = entry(9, other)..['entity_type'] = type;
