@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "67705d7f0e953d55bc2e3606a37b0bbb7108b72b",
+  "baseline_head": "664ef4164b437dd65a751c5a9b9bd4ab050ac1a4",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1558,11 +1558,11 @@
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "n e4adb7f CI4 PASS/USER-024 오류 없음 확인. o61afd02 관계 조회30 PASS/분석 정상, g와 함께 CI 대기. 다음 녹음 관계의 업무 payload 투영은 AI 작업이며 사용자 대기 없음."
+      "resume": "n e4adb7f USER-024 오류 없음 확인. o61afd02 관계 조회30 PASS 및 통합664ef41 CI4 PASS. 초기 업무 사본의 나머지 엔터티 투영은 P10-06 적용기와 함께 대조. 사용자 대기 없음."
     },
     {
       "id": "P10-06-NEXT",
-      "action": "P10-06 — 증분 변경의 초기 녹음 관계 보존 연결",
+      "action": "P10-06 — 증분 수신 제어 후 전용 적용과 앱 연결",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1576,7 +1576,7 @@
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "f 포함67705d7 CI4 PASS. g0af4033 업무 검증50 PASS/분석 정상. o61afd02 관계 조회30 PASS. 다음 초기 녹음 업무 사본 변환과 증분 적용 연결. 전체 P10-05/P10-06 미완료."
+      "resume": "제품 f03731145895151622c734e150768bcade6b616e push 완료. h36/i37 PASS·분석 정상. 해당 SHA CI36806041061/MySQL36806041052 진행 중, 계약/워크플로우 PASS. 재개 시 실제 CI 확인 후 증분 스케줄러 및 미구현 삭제/관계 계약 연결. 사용자 대기 없음, API/DB와 Git 실제 확인."
     },
     {
       "id": "P10-07-NEXT",
