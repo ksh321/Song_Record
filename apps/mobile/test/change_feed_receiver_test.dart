@@ -5,11 +5,14 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_store.dart';
+import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/sync/change_feed_receiver.dart';
 import 'package:song_record/core/sync/change_feed_transport.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 
 import 'change_payload_validation_test.dart' show songChange;
+import 'snapshot_playlist_item_projection_test.dart'
+    show playlistSource, playlistItemSource, playlistParentId, playlistItemId;
 import 'support/business_snapshot_fixture.dart';
 
 class FeedTransport implements ChangeFeedTransport {
@@ -134,6 +137,69 @@ void main() {
     store = await manager.openAccount(owner);
     expect((await store.readChangeFeedPosition())!.cursor, 8);
   });
+  for (final invalid in [false, true]) {
+    test(
+      'playlist aggregate receiver persists atomically with invalid tail=$invalid',
+      () async {
+        await baseline();
+        final item = playlistItemSource();
+        transport.respond = (request) async {
+          expect(request.after, 7);
+          return ChangeFeedResponse(
+            200,
+            jsonEncode({
+              'after_seq': 7,
+              'next_seq': 8,
+              'head_seq': 8,
+              'has_more': false,
+              'changes': [
+                {
+                  'change_seq': 8,
+                  'entity_type': 'PLAYLIST',
+                  'entity_id': playlistParentId,
+                  'revision': 8,
+                  'operation': 'UPSERT',
+                  'payload': {
+                    'playlist': playlistSource(),
+                    'items': [item, if (invalid) item],
+                  },
+                },
+              ],
+            }),
+          );
+        };
+        if (invalid) {
+          await expectLater(receiver.step(session), throwsFormatException);
+        } else {
+          expect(await receiver.step(session), ChangeFeedStep.caughtUp);
+        }
+        expect(transport.calls, 1);
+        await manager.logout();
+        store = await manager.openAccount(owner);
+        expect(await store.readCursor(), invalid ? 7 : 8);
+        final parent = await store.readMetadata(
+          LocalEntity.playlist,
+          playlistParentId,
+        );
+        final savedItem = await store.readMetadata(
+          LocalEntity.playlistItem,
+          playlistItemId,
+        );
+        if (invalid) {
+          expect(parent, isNull);
+          expect(savedItem, isNull);
+        } else {
+          expect(parent!.revision, 8);
+          expect(savedItem!.revision, 8);
+          expect(
+            jsonDecode(savedItem.serverJson!)['playlist_id'],
+            playlistParentId,
+          );
+          expect(jsonDecode(savedItem.serverJson!)['entry_key'], 'tj:123');
+        }
+      },
+    );
+  }
   test('more pages reports progress without sending a second request automatically', () async {
     await baseline();
     transport.respond = (_) async => ChangeFeedResponse(
