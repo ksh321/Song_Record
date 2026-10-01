@@ -93,7 +93,7 @@ def main():
     planned = json.loads((ROOT / 'docs/reference/search/tasks.json').read_text(encoding='utf-8-sig'))
     result = select(state, [r['id'] for r in planned])
     print(json.dumps(result, ensure_ascii=True, indent=2))
-    return 1 if args.check_stop and result['decision'] == 'CONTINUE' else 0
+    return 1 if args.check_stop and (result['ready'] or result['running']) else 0
 
 
 if __name__ == '__main__':

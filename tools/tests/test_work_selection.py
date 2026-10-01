@@ -81,6 +81,29 @@ class SelectionTests(unittest.TestCase):
         self.state['coverage']['P10-03']['disposition'] = 'assumed_done'
         with self.assertRaises(ValueError): self.result()
 
+    def test_cli_stop_check_rejects_active_work_but_allows_only_blocked_wait(self):
+        import contextlib
+        import io
+        import json
+        import tempfile
+        from unittest.mock import patch
+        import select_work
+        with tempfile.TemporaryDirectory(prefix='sr-stop-check-') as folder:
+            root = Path(folder)
+            (root / 'docs/reference/search').mkdir(parents=True)
+            (root / 'docs/reference/search/tasks.json').write_text(
+                json.dumps([{'id': 'P10-03'}]), encoding='utf-8')
+            state_file = root / 'state.json'
+            for status, blocker, expected in [('active', None, 1), ('pending', None, 1), ('pending', 'USER result', 0)]:
+                with self.subTest(status=status, blocker=blocker):
+                    work = unit('work'); work['state'] = status
+                    if blocker: work['blocker'] = blocker
+                    self.state['units'] = [work]
+                    state_file.write_text(json.dumps(self.state), encoding='utf-8')
+                    with patch.object(select_work, 'ROOT', root), patch.object(sys, 'argv',
+                            ['select_work.py', '--state', str(state_file), '--check-stop']), contextlib.redirect_stdout(io.StringIO()):
+                        self.assertEqual(select_work.main(), expected)
+
     def test_active_work_is_not_relaunched(self):
         a = unit('running'); a['state'] = 'active'; self.state['units'] = [a]
         self.assertEqual(self.result()['ready'], [])

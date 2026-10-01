@@ -60,3 +60,9 @@ Astra/ultra 추가2는 오래된 AGENTS D06 미완료 문구와 실제 완료 �
 커밋/푸시: 2d6e8178d0e88f0dff6e835c85145a5cc647757c. 필수 CI2 PASS(API36663110296/workflow36663110730), CI36663110381/MySQL36663110470 실행 중. 새 운영 변경 전체 완료는 아직 아니다. 단발 조회 결과를 저장했으며 남은 외부 실행을 통과로 추정하지 않는다. 새 세션에서는 이 SHA와 후속 문서 커밋 CI를 확인한다.
 
 커밋 형식 규칙의 보존 커밋95a20797c02ede320d6dfedac1eb67906fe6b9aa 필수 CI4 PASS 확인. 이후 i/j/k/c 커밋도 새 제목·본문 형식을 사용했다. 최신 USER-021은 GitHub 계정의 Actions 실행 환경 확인이며 기존 상담/위임 승인 요청과 무관하다.
+
+## 2026-10-01 종료 검사 보완
+
+실행 가능한 후속이 남았는데 이전 응답을 종료한 것은 AI의 잘못이며 사용자/실행 한도 차단으로 정당화하지 않는다. 조사 결과 --check-stop은 CONTINUE만 거절하고 IN_PROGRESS는0을 반환했다. 현재 ready 또는 running이 있으면1을 반환하도록 수정했다. IN_PROGRESS는 중복 시작 없이 현재 결과를 수집하고 계속한다는 의미다.
+
+실제 CLI 진입점 회귀: active→1, 실행 가능 pending→1, 사용자 사유로 모두 차단→0을 임시 상태/원본 색인으로 검증했다. `python -m unittest discover -s tools/tests -p test_work_selection.py` 17 PASS. 실제 저장소 --check-stop도1로 종료하여 현재 작업 중 종료를 거절했다. 기존 선택·권한·파일 충돌 검사를 유지했다. AGENTS와 development-workflow 기존 절을 수정해 같은 선언을 중복 추가하지 않았다. 현재 모델 코드 검토로 반환값과 사용 의미/실제 테스트를 대조했다. 강제 프로세스 지속이나 세션 자동 재시작을 제공하는 기능은 아니다.
