@@ -20,3 +20,5 @@ git diff --check
 **31개 통과, 분석 No issues found.** 새 연결/해제/동일 대상/미존재/삭제 대상 및 변조 응답 검증6개와 기존25개. 실제 임시 SQLite와 합성 파일4바이트를 사용해 녹음 UUID·제목 스냅샷·메모·파일 바이트 보존, 정상 ACK revision2, 막힌 요청 attempt0, 증분 커서 미전진을 확인했다. 응답 target/link_revision/title/tier 변조는 거절한다. 분석 중괄호 권고2건 보완. 제품/원본 데이터 삭제나 사용자 폰 실기 없음.
 
 로그: .local/workflow/p10-02d-link-test.log. 커밋/정확 SHA CI 후속 기록. 사용자 직접 할 일0건. 전체 P10-02 완료는 아니며 미구현 목록/관계/파일 API와의 연결은 선행 구현에 맞춰 진행한다. P10-05의 조회 투영·앱 흐름 연결도 남아 있다.
+
+추가 통합: flutter test --no-pub test/canonical_song_store_test.dart test/recording_link_dispatch_test.dart --reporter expanded 48 통과. 새 연결 경로가 기존 canonical 매핑/참조/불변 요청/파일 보존에 미치는 영향을 확인했다. 코드 커밋38495eb9d1a306e6749b59841b6d027aad4f15dc, 후속 통합 SHA의 CI로 검증할 예정이며 아직 CI 통과 아님.

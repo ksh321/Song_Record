@@ -392,7 +392,7 @@ USER-001~004 완료 유지. USER-005는 Android Studio 실행·키 위치 모름
 
 ### USER-021 — GitHub Actions 무료 사용량 확인
 
-- 상태: **확인 필요**
+- 상태: **완료**
 - 요청 판본: 1
 - 알림 종류: Intervention
 - 알림 행동: Details
@@ -403,3 +403,5 @@ USER-001~004 완료 유지. USER-005는 Android Studio 실행·키 위치 모름
 - 사용자 행동: GitHub 설정 Billing의 Actions 사용량·무료 초기화 날짜·차단 문구만 확인해 회신. 유료 예산 확대/결제/저장소 공개 전환 요청 아님.
 - 기대/재개: 무료 실행 가능 조건 확인 후 AI가 정확한 fd671e0 CI를 재실행·확인한다. 결제 없이 해결 불가면 사용자 선택 전 CI/권한 변경 금지.
 - 알림: 이 기록과 사용자 목록을 먼저 저장한 후1회 발송. 서버 접수와 실제 수신은 구분.
+
+- 사용자 결과: 첨부한 GitHub Metered usage 화면에서 Actions minutes 2,000/2,000 사용, storage0/0.5GB, Billable usage0달러, included usage reset in1day 확인. 무료 분량 소진을 확인했으며 별도 결제 실패가 있다는 근거는 없음. 정확한 초기화 시각은 화면에 없어 추정하지 않음. USER-021 직접 확인 완료로 목록에서 제거. 이후 무료 초기화 확인/CI 재실행은 AI 업무이며 사용자 재확인을 반복 요청하지 않음. 비용 증액 없음.
