@@ -101,6 +101,56 @@ void main() {
     expect(await store.snapshotBaselineRecord('SONG', id), isNull);
   });
 
+  test('combined view preserves local draft and pending command beside server baseline', () async {
+    const id = '33333333-3333-4333-8333-333333333333';
+    final empty = await store.snapshotMetadataView(LocalEntity.song, id);
+    expect(empty.baseline, isNull);
+    expect(empty.cached, isNull);
+    await store.saveEdit(
+      LocalEdit(
+        opId: '44444444-4444-4444-8444-444444444444',
+        entity: LocalEntity.song,
+        entityId: id,
+        operation: LocalOperation.create,
+        baseRevision: 0,
+        draft: {'note': 'retained synthetic draft'},
+        changes: {'note': 'retained synthetic draft'},
+      ),
+    );
+    final queued = (await store.pendingMutations()).single;
+    await pages();
+    await store.verifySnapshotDownload(token);
+    await store.applySnapshotDownload(token);
+    final view = await store.snapshotMetadataView(
+      LocalEntity.song,
+      id,
+      expectedToken: token,
+    );
+    expect(view.baseline!.entry!.payload['note'], '한글 🎵');
+    expect(view.cached!.localJson, contains('retained synthetic draft'));
+    expect(view.cached!.revision, 0);
+    expect(view.cached!.serverJson, isNull);
+    final after = (await store.pendingMutations()).single;
+    expect(after.payload, queued.payload);
+    expect(after.basePayload, queued.basePayload);
+    expect(after.attemptCount, queued.attemptCount);
+    expect(after.state, queued.state);
+    expect(view.toString(), 'SnapshotMetadataView[REDACTED]');
+    await expectLater(
+      store.snapshotMetadataView(LocalEntity.song, id, expectedToken: owner),
+      throwsStateError,
+    );
+    final old = store;
+    store = await manager.openAccount('55555555-5555-4555-8555-555555555555');
+    await expectLater(
+      old.snapshotMetadataView(LocalEntity.song, id),
+      throwsStateError,
+    );
+    final other = await store.snapshotMetadataView(LocalEntity.song, id);
+    expect(other.baseline, isNull);
+    expect(other.cached, isNull);
+  });
+
   test('persistent receive verifies all rows without replacing live edits or cursor', () async {
     await store.saveEdit(
       LocalEdit(

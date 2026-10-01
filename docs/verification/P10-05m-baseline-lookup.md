@@ -14,3 +14,5 @@ flutter analyze --no-pub lib/core/database/snapshot_download_store.dart lib/core
 17 통과, 분석 No issues found. 부분 수신 비노출·조회 세대 고정·미존재 구별·UUID 검증·관계 단건 거절·TTL 이후 조회·계정 전환을 실제 임시 SQLite에서 확인했다. 새 테스트가 최초 UUID 오류를 ArgumentError로 잘못 기대해 1회 실패했으며 실제 검증기 계약 FormatException으로 바로잡았다. 거절 검증은 유지했다. 기존 복수 DB 디버그 경고는 기존 테스트의 고의 rollback 테스트에서 발생하며 테스트 실패가 아니다.
 
 로그 .local/workflow/p10-05m-lookup-test.log. 현재 모델 직접 구현 및 별도 코드 검토, 새 에이전트 없음. 인증/계정 범위이므로 높은 추론이 적합하나 실행 모델·속도 변경 관측은 미확인이다. 코드 커밋은 이 제목의 Git history로 식별하며 정확 CI는 후속 통합 SHA로 기록한다. 폰 실기 미수행, 사용자 직접 할 일 없음.
+
+추가 조회 투영: AccountStore.snapshotMetadataView는 기준선과 기존 metadata_copies를 한 트랜잭션에서 함께 반환한다. 서버 자료와 localJson을 자동 병합하지 않으며 기존 송신 기준 revision/basePayload/큐 상태를 변경하지 않는다. snapshot_download_store_test + account_store_test 41 PASS/기존 환경별1 skip, 관련2파일 분석 No issues found. 같은 ID의 서버 메모와 미전송 초안이 각각 보존되고 타 계정에서 모두 보이지 않음을 확인했다. 로그 .local/workflow/p10-05m-view-test.log. 이후 화면 소비와 편집 기준 반영은 별도 검증한다.

@@ -30,6 +30,16 @@ export 'snapshot_download_store.dart'
 
 typedef SupportDirectory = Future<Directory> Function();
 
+/// Both sources are captured together; callers must not silently merge conflicts
+/// or treat a snapshot read as a queued edit's acknowledged baseline.
+final class SnapshotMetadataView {
+  const SnapshotMetadataView(this.baseline, this.cached);
+  final SnapshotBaselineRecord? baseline;
+  final MetadataCopy? cached;
+  @override
+  String toString() => 'SnapshotMetadataView[REDACTED]';
+}
+
 // Keep isolate callbacks outside manager closures: only the temporary path may
 // cross the isolate boundary, never the manager's pending Future queue.
 QueryExecutor _openNativeDatabase(File file, String tempPath) =>
@@ -257,10 +267,30 @@ final class AccountStore {
     }),
   );
 
-  Future<MetadataCopy?> readMetadata(
+  Future<MetadataCopy?> readMetadata(LocalEntity entity, String entityId) =>
+      _run(() => _readMetadata(entity, entityId));
+
+  Future<SnapshotMetadataView> snapshotMetadataView(
+    LocalEntity entity,
+    String entityId, {
+    String? expectedToken,
+  }) => _run(
+    () => _database.transaction(() async {
+      final baseline = await _snapshots.baselineRecord(
+        entity.code,
+        entityId,
+        expectedToken: expectedToken,
+      );
+      final cached = await _readMetadata(entity, entityId);
+      requireActive();
+      return SnapshotMetadataView(baseline, cached);
+    }),
+  );
+
+  Future<MetadataCopy?> _readMetadata(
     LocalEntity entity,
     String entityId,
-  ) => _run(() async {
+  ) async {
     final row = await _database
         .customSelect(
           'SELECT * FROM metadata_copies WHERE entity_type=? AND entity_id=?',
@@ -278,7 +308,7 @@ final class AccountStore {
             localJson: row.readNullable<String>('local_payload'),
             tombstone: row.read<int>('tombstone') == 1,
           );
-  });
+  }
 
   Future<void> saveEdit(LocalEdit edit) => _run(() async {
     _validatePayloadOwner(edit.draftJson);
