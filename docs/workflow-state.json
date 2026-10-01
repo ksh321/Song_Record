@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "02268882dd57afa60b510f760ec40a032e2a2928",
+  "baseline_head": "ae8093d860295caeb970cd7727ae4dbc307ee197",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1675,11 +1675,12 @@
         "apps/mobile/test/wire_json_test.dart",
         "apps/mobile/test/support/business_snapshot_fixture.dart",
         "services/api/src/test/java/com/ksh321/songrecord/api/auth/TwoDeviceInformationFlowTests.java",
-        "fixtures/contracts/two-device-recording.json"
+        "fixtures/contracts/two-device-recording.json",
+        "apps/mobile/test/conflict_screen_integration_test.dart"
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "서버4 PASS, Flutter 송수신180 PASS+스냅샷27 PASS. 숫자 해석 결함 보완 및 현재 모델 검토 완료. 묶음 커밋/정확 SHA CI 후 V22 등 남은 P10 요구사항 대조. 실물 두 기기 완료로 간주하지 않음. docs/verification/P10-10-two-device-flow.md"
+      "resume": "ae8093d CI4 PASS. 삭제·만료 커서 및 충돌 UI/실제 SQLite/계정 전환 통합29 PASS, 분석 정상. 테스트 묶음 커밋·정확 CI 확인 후 P10-03b-FIXTURE 준비. 실물 두 기기 완료 아님."
     },
     {
       "id": "P11-PHASE",
