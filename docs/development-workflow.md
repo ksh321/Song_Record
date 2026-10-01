@@ -50,6 +50,21 @@ raw 로그·프롬프트·기계별 JSON은 `.local/workflow`에 저장하고 Gi
 JSON에는 기준 HEAD, 시작/종료 미커밋 변경, working_tree 범위, 전체 판정과 실행 예외를 남긴다.
 Doctor와 Quick 결과는 독립적이다. Docker가 꺼졌어도 문서/로컬 동기화 검증은 진행할 수 있다.
 
+## CI 휴대폰 알림 — WORKFLOW-02
+
+사용자는 2026-10-01 휴대폰 소리 알림을 켜고 CI 결과를 ntfy로 받도록 요청했다. AI heartbeat/정기 대화 호출 대신 일반 로컬 프로세스를 사용한다. push 뒤 AI가 현재 PowerShell 7 실행 파일로 다음 스크립트를 시작한다(사용자에게 명령 실행을 넘기지 않는다).
+
+```powershell
+# 정확한 SHA/관리 중인 작업 ID로 치환하여 AI가 실행
+pwsh -NoProfile -File tools/watch-ci.ps1 -Start -Commit <40자리SHA> -TaskId P10-02 -Account ksh321
+```
+
+- 120초 간격, 최대 12시간. 기존 github-check.ps1로 SHA·workflow·필수 job을 대조하며 필수 네 workflow가 모두 판정될 때 성공/실패 알림을 보낸다. 일부 대기 중이면 전체 완료로 알리지 않는다. 조회 오류 연속 3회나 시간 제한은 미확인/감시 중단 알림이다.
+- `.local/workflow/ci-watch/<SHA>.json`에 상태/PID, 별도 로그에 조회 결과를 저장한다. AI가 시작 후 실제 프로세스와 상태를 확인한다. 같은 SHA의 동시 실행은 파일 잠금으로 막고 전송 시도 UNKNOWN 또는 SERVER_ACCEPTED가 있으면 재전송하지 않는다. UNKNOWN은 사용자 미수신 확인과 재전송 요청을 받은 뒤에만 해당 기록을 별도로 보존하고 복구한다. 새 재실행 CI 알림도 같은 SHA에는 자동 중복 전송하지 않으므로 필요한 경우 명시적으로 다시 감시한다.
+- 통지 내용은 작업 ID·짧은 SHA·고정 결과·대화 재개 요청뿐이다. topic/토큰/계정/기기 로그는 전송하지 않는다. GCM 자격 증명은 기존 조회 도구가 메모리에서 사용하며 ntfy topic은 기존 로컬 설정만 읽는다. 우선순위5, 서버 접수와 사람 수신은 별개다.
+- 감시는 AI 토큰을 소비하는 실행이 아니며 기존 GitHub CI 자체의 사용량은 계속 적용된다. PC가 켜져 있고 절전하지 않으며 인터넷이 연결돼 있어야 한다. 자동 로그인/재부팅 후 재시작/AI 대화 자동 재개는 설정하지 않았다. 전송 실패 시 자동 반복 알림도 하지 않는다.
+- 알림을 받은 사용자가 ‘CI 확인 후 이어서 진행’이라고 답하면 AI가 실제 Git/정확 SHA CI/진행 문서를 대조해 재개한다. 순차 작업의 CI 대기는 뒤 번호 작업으로 우회하지 않는다. CI 성공은 필수 실기나 전체 요구사항 완료를 대신하지 않는다.
+
 ## 자료와 변경 계약
 
 [원본/색인 manifest](reference/search/manifest.json), [231개 작업 색인](reference/search/tasks.json),

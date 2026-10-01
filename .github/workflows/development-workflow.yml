@@ -30,3 +30,4 @@ jobs:
             if ($errors) { throw ($errors | Out-String) }
           }
           & ./tools/tests/workflow-gates.ps1
+          & ./tools/tests/ci-notify.ps1

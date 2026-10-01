@@ -114,3 +114,19 @@ CI 성공은 실제 기기의 계정 격리 증거가 아니다. DB 연결 성�
 이 절을 추가한 후속 커밋은 검증 결과를 기록하는 문서 전용 변경이다. 그 SHA는 Git history로 식별하며 자체 CI도 별도로 조회한다. 위 결과는 구현 커밋의 증거이며 미래 기록 커밋에 대한 성공 주장으로 사용하지 않는다.
 
 최종 USB 재연결: 사용자 요청 응답 후 adb -d get-state=device, dev 앱 설치, ntfy POST_NOTIFICATIONS granted=true 확인. 새로운 개입 알림도 서버 접수했으며 이 개별 알림의 사람 수신은 따로 추정하지 않는다. 앞선 trial의 명시적 사용자 수신 확인에 기반한 알림 설정 완료는 유지한다. USB 연결 성공은 로그인/녹음 실기 성공을 의미하지 않는다.
+
+## 2026-10-01 알림 강도 보완
+
+사용자가 다른 작업 중 알림을 인지하기 어렵다고 하여 phone-notify.ps1의 전송 priority를3→5(max/urgent)로 변경했다. 기존 고정 문구·중복 방지·비밀 topic 저장 위치는 유지한다. workflow-gates.ps1의 HTTP 대역 검증97개 PASS. 이는 실제 폰으로 시험 알림을 보낸 결과가 아니다. 휴대폰 urgent 채널의 알림음·진동·팝업 및 시스템 알림 음량은 사용자 설정이며 아직 적용/청취 확인하지 않았다. 전송 priority만으로 정확히3초 소리/진동을 보장하지 않는다. 약3초 알림음을 해당 채널에 선택하는 방식을 안내한다. 공식 근거 https://docs.ntfy.sh/subscribe/phone/#message-priority 및 https://docs.ntfy.sh/publish/#message-priority . 이 운영 보완은 사용자 별도 요청이며 제품 P10 순차 실행을 우회한 다음 기능 구현이 아니다. 커밋/CI는 아직 미완료.
+
+
+## 2026-10-01 CI 완료 휴대폰 알림
+
+사용자는 소리 알림을 켜고 CI 결과를 ntfy로 받기로 결정했다. 알림창의 기존 ntfy 알림을 지운 뒤 진동 수신을 확인했고, 이후 재전송에도 알림 수신/진동을 보고했다. 연속 알림 진동이나 정확한 지속 시간을 보장하지 않으며 설정 전체 해결로 확대하지 않는다.
+
+- 구현: tools/watch-ci.ps1, tools/ci-notify-common.ps1, tools/tests/ci-notify.ps1. 기존 phone-notify 최상 priority5도 함께 보존한다. 새 AI 세션/heartbeat/API 과금 없음.
+- 정확 SHA 기존 github-check 결과만 사용, 네 workflow 판정 대기, 조회 연속 오류3회/최대12시간 종료, 프로세스 잠금 및 전송 전 UNKNOWN 저장으로 동시/불확실 중복 방지. 고정 문구만 ntfy 전송. PC 절전/종료 시 보장 없음. 재개는 사용자의 채팅 회신 후 실제 CI 재확인.
+- 로컬 검증: tools/tests/ci-notify.ps1 12 PASS(전체 성공/실패/진행 중/다른 SHA/누락/중복 workflow/잘못된 상태/고정 문구). tools/tests/workflow-gates.ps1 97 PASS(HTTP 대역, 폰 전송 아님). 새 PowerShell 구문 검사 및 git diff --check 통과.
+- 실연결: watch-ci.ps1 -Once -Commit 9469638501614583d15de2f23b471e21e6c385d2 -TaskId P10-02 -Account ksh321 종료0. 필수4 PASS 실제 조회 후 P10-02 PASS 알림 서버 접수. 같은 명령 재실행은 접수 기록으로 전송 없이 종료0. 이 CI 결과 알림의 사람 수신은 아직 미확인.
+- 현재 모델 직접 검토: 기존 인증 재사용, 원본 미커밋 앱 파일 분리, stale 보고서 거절, 네 workflow 누락 시 성공 금지, 전송 불확실 시 자동 재시도 금지를 대조했다. 독립 에이전트 검수 아님. 모델/속도 변경 주장 없음.
+- 다음: 이 운영 변경 커밋/일반 push 뒤 해당 SHA에 숨김 로컬 감시를 시작하고 상태/PID를 확인한다. 새 SHA CI는 아직 대기이며 이전 SHA 통과로 대신하지 않는다. 제품 주 작업은 P10-02 최종 완료 조건 대조다.

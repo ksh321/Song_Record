@@ -125,7 +125,8 @@ if ($ItemId) {
     }
     $message="$ItemId r${Revision}: $actionText 자세한 내용은 내가할일.md와 대화를 확인하세요. " + $(if($Kind -eq 'Escalation'){$message}else{''})
 }
-$payload=@{topic=$topic;title=$title;message=$message;priority=3} | ConvertTo-Json -Compress
+# Urgent Android channel; sound duration/volume remain user-controlled on phone.
+$payload=@{topic=$topic;title=$title;message=$message;priority=5} | ConvertTo-Json -Compress
 $sendAttempt=@{attempt_id=[guid]::NewGuid().ToString('N');utc=[DateTime]::UtcNow.ToString('o');task=$TaskId;kind=$Kind;status='UNKNOWN'}
 if ($ItemId) {
     $sendAttempt.item_id=$ItemId; $sendAttempt.revision=$Revision
