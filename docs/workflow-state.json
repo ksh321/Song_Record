@@ -401,7 +401,8 @@
         "P10-07a",
         "P10-07b",
         "P10-07c",
-        "P10-07d"
+        "P10-07d",
+        "P10-07e"
       ]
     },
     "P10-08": {
@@ -2099,7 +2100,7 @@
       "state": "pending",
       "owner": "AI",
       "resume": "일반 UUID 표식 추가3종28 PASS/분석 정상",
-      "blocker": "3622d07 로컬 검증/검토 완료, 선행 CI 후 푸시"
+      "blocker": "a30c9b8 통합 CI 진행"
     },
     {
       "id": "P10-07d",
@@ -2114,9 +2115,30 @@
         "apps/mobile/drift_schemas",
         "apps/mobile/test"
       ],
-      "state": "active",
+      "state": "pending",
       "owner": "AI",
-      "resume": "v6 추가 이관과 보존 검증. 원본 충돌 요청은 ACKED로 위장하지 않으며 실제 해결/전송은 후속 단계"
+      "resume": "v6 이관50 PASS/Windows1 SKIP+v5 사본 보존1 PASS, 생성8파일 동일",
+      "blocker": "a30c9b8 정확 SHA CI 진행"
+    },
+    {
+      "id": "P10-07e",
+      "action": "충돌 해결 이력의 전송 순서·원본 재전송 차단 연결",
+      "requires": [
+        "p10.remaining.analysis"
+      ],
+      "permissions": [],
+      "reads": [
+        "apps/mobile/lib/core/database/local_schema.drift"
+      ],
+      "writes": [
+        "apps/mobile/lib/core/database/conflict_eligibility.dart",
+        "apps/mobile/lib/core/database/mapping_eligibility.dart",
+        "apps/mobile/test/conflict_resolution_schema_test.dart"
+      ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "충돌 큐 투영 관련74 PASS + 해결 스키마/순서12 PASS, 분석 정상",
+      "blocker": "로컬 검증/현재 모델 검토 완료, 커밋·통합 CI 대기"
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers"

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import 'account_database.dart';
+import 'conflict_eligibility.dart';
 import 'local_models.dart';
 
 /// Requires the caller's account transaction.
@@ -31,7 +32,7 @@ Future<MappingEligibility> readMappingEligibility(
 
   // Preserve the common no-mapping path without scanning historical payloads.
   if (aliases.isEmpty && supersessions.isEmpty && holds.isEmpty) {
-    return const MappingEligibility.empty();
+    return applyConflictEligibility(database, const MappingEligibility.empty());
   }
   final mutations = await database.customSelect('''
     SELECT rowid AS local_order,op_id,entity_type,entity_id,operation,queue_state,attempt_count,payload,base_payload FROM local_mutations
@@ -214,10 +215,13 @@ Future<MappingEligibility> readMappingEligibility(
     }
   }
 
-  return MappingEligibility(
-    blocked: blocked,
-    superseded: superseded,
-    logicalOrders: logicalOrders,
-    groups: {for (final target in parent.keys.toList()) target: root(target)},
+  return applyConflictEligibility(
+    database,
+    MappingEligibility(
+      blocked: blocked,
+      superseded: superseded,
+      logicalOrders: logicalOrders,
+      groups: {for (final target in parent.keys.toList()) target: root(target)},
+    ),
   );
 }
