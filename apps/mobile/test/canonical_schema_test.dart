@@ -95,8 +95,8 @@ void main() {
       await directory.delete(recursive: true);
     }
   });
-  for (final version in [1, 2, 3, 4, 5]) {
-    test('v$version to v6 preserves old rows, wire, budget, cursor and synthetic file', () async {
+  for (final version in [1, 2, 3, 4, 5, 6]) {
+    test('v$version to v7 preserves old rows, wire, budget, cursor and synthetic file', () async {
       final directory = await Directory.systemTemp.createTemp(
         'sr-canonical-migration-',
       );
@@ -251,7 +251,7 @@ void main() {
               .data
               .values
               .single,
-          6,
+          7,
         );
         for (final entry in before.entries) {
           expect(
@@ -569,7 +569,7 @@ void main() {
       }
       expect(exported['format'], 'song-record-local-recovery');
       expect(exported['version'], 2);
-      expect(exported['schema_version'], 6);
+      expect(exported['schema_version'], 7);
       expect(tables['local_mutations'], mutationsBefore);
 
       final mutations = (tables['local_mutations'] as List)

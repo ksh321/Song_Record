@@ -18,7 +18,7 @@ class AccountDatabase extends _$AccountDatabase {
   final AppEnvironment environment;
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -37,7 +37,7 @@ class AccountDatabase extends _$AccountDatabase {
     // No destructive fallback. Every future version needs an explicit,
     // data-preserving migration and a checked-in schema snapshot.
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 5 || to != 6) {
+      if (from < 1 || from > 6 || to != 7) {
         throw StateError('Unsupported local schema migration: $from -> $to');
       }
       if (from < 2) {
@@ -117,12 +117,25 @@ class AccountDatabase extends _$AccountDatabase {
         await migrator.createTrigger(snapshotBaselineInsert);
         await migrator.createTrigger(snapshotBaselineUpdate);
       }
-      await migrator.createTable(mutationConflictResolutions);
-      await migrator.createTrigger(conflictResolutionValidInsert);
-      await migrator.createTrigger(conflictResolutionNoReplace);
-      await migrator.createTrigger(conflictResolutionNoUpdate);
-      await migrator.createTrigger(conflictResolutionNoDelete);
-      await migrator.createTrigger(resolvedMutationNoClaim);
+      if (from < 6) {
+        await migrator.createTable(mutationConflictResolutions);
+        await migrator.createTrigger(conflictResolutionValidInsert);
+        await migrator.createTrigger(conflictResolutionNoReplace);
+        await migrator.createTrigger(conflictResolutionNoUpdate);
+        await migrator.createTrigger(conflictResolutionNoDelete);
+        await migrator.createTrigger(resolvedMutationNoClaim);
+      }
+      await migrator.createTable(recordingFollowups);
+      await migrator.createTrigger(recordingFollowupValidInsert);
+      await migrator.createTrigger(recordingFollowupNoUpdate);
+      await migrator.createTrigger(recordingFollowupNoDelete);
+      await migrator.createTrigger(recordingFollowupNoReplace);
+      await migrator.createTrigger(recordingFollowupOriginalNoClaim);
+      if (from == 6) {
+        // Replace only the trigger definition; every history row stays intact.
+        await customStatement('DROP TRIGGER conflict_resolution_valid_insert');
+        await migrator.createTrigger(conflictResolutionValidInsert);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');

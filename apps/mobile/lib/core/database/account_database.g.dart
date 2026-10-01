@@ -4498,6 +4498,447 @@ class SyncCursorsCompanion extends UpdateCompanion<SyncCursor> {
   }
 }
 
+class RecordingFollowups extends Table
+    with TableInfo<RecordingFollowups, RecordingFollowup> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  RecordingFollowups(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _originalOpIdMeta = const VerificationMeta(
+    'originalOpId',
+  );
+  late final GeneratedColumn<String> originalOpId = GeneratedColumn<String>(
+    'original_op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _replacementOpIdMeta = const VerificationMeta(
+    'replacementOpId',
+  );
+  late final GeneratedColumn<String> replacementOpId = GeneratedColumn<String>(
+    'replacement_op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL UNIQUE REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _predecessorOpIdMeta = const VerificationMeta(
+    'predecessorOpId',
+  );
+  late final GeneratedColumn<String> predecessorOpId = GeneratedColumn<String>(
+    'predecessor_op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_account(user_id)',
+  );
+  static const VerificationMeta _logicalOrderMeta = const VerificationMeta(
+    'logicalOrder',
+  );
+  late final GeneratedColumn<int> logicalOrder = GeneratedColumn<int>(
+    'logical_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (logical_order > 0)',
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    originalOpId,
+    replacementOpId,
+    predecessorOpId,
+    userId,
+    logicalOrder,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'recording_followups';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RecordingFollowup> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('original_op_id')) {
+      context.handle(
+        _originalOpIdMeta,
+        originalOpId.isAcceptableOrUnknown(
+          data['original_op_id']!,
+          _originalOpIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_originalOpIdMeta);
+    }
+    if (data.containsKey('replacement_op_id')) {
+      context.handle(
+        _replacementOpIdMeta,
+        replacementOpId.isAcceptableOrUnknown(
+          data['replacement_op_id']!,
+          _replacementOpIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_replacementOpIdMeta);
+    }
+    if (data.containsKey('predecessor_op_id')) {
+      context.handle(
+        _predecessorOpIdMeta,
+        predecessorOpId.isAcceptableOrUnknown(
+          data['predecessor_op_id']!,
+          _predecessorOpIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_predecessorOpIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('logical_order')) {
+      context.handle(
+        _logicalOrderMeta,
+        logicalOrder.isAcceptableOrUnknown(
+          data['logical_order']!,
+          _logicalOrderMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_logicalOrderMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {originalOpId};
+  @override
+  RecordingFollowup map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RecordingFollowup(
+      originalOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_op_id'],
+      )!,
+      replacementOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}replacement_op_id'],
+      )!,
+      predecessorOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}predecessor_op_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      logicalOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}logical_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  RecordingFollowups createAlias(String alias) {
+    return RecordingFollowups(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+  @override
+  List<String> get customConstraints => const [
+    'CHECK(original_op_id <> replacement_op_id)',
+    'CHECK(original_op_id <> predecessor_op_id)',
+    'CHECK(replacement_op_id <> predecessor_op_id)',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class RecordingFollowup extends DataClass
+    implements Insertable<RecordingFollowup> {
+  final String originalOpId;
+  final String replacementOpId;
+  final String predecessorOpId;
+  final String userId;
+  final int logicalOrder;
+  final int createdAt;
+  const RecordingFollowup({
+    required this.originalOpId,
+    required this.replacementOpId,
+    required this.predecessorOpId,
+    required this.userId,
+    required this.logicalOrder,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['original_op_id'] = Variable<String>(originalOpId);
+    map['replacement_op_id'] = Variable<String>(replacementOpId);
+    map['predecessor_op_id'] = Variable<String>(predecessorOpId);
+    map['user_id'] = Variable<String>(userId);
+    map['logical_order'] = Variable<int>(logicalOrder);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  RecordingFollowupsCompanion toCompanion(bool nullToAbsent) {
+    return RecordingFollowupsCompanion(
+      originalOpId: Value(originalOpId),
+      replacementOpId: Value(replacementOpId),
+      predecessorOpId: Value(predecessorOpId),
+      userId: Value(userId),
+      logicalOrder: Value(logicalOrder),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory RecordingFollowup.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RecordingFollowup(
+      originalOpId: serializer.fromJson<String>(json['original_op_id']),
+      replacementOpId: serializer.fromJson<String>(json['replacement_op_id']),
+      predecessorOpId: serializer.fromJson<String>(json['predecessor_op_id']),
+      userId: serializer.fromJson<String>(json['user_id']),
+      logicalOrder: serializer.fromJson<int>(json['logical_order']),
+      createdAt: serializer.fromJson<int>(json['created_at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'original_op_id': serializer.toJson<String>(originalOpId),
+      'replacement_op_id': serializer.toJson<String>(replacementOpId),
+      'predecessor_op_id': serializer.toJson<String>(predecessorOpId),
+      'user_id': serializer.toJson<String>(userId),
+      'logical_order': serializer.toJson<int>(logicalOrder),
+      'created_at': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  RecordingFollowup copyWith({
+    String? originalOpId,
+    String? replacementOpId,
+    String? predecessorOpId,
+    String? userId,
+    int? logicalOrder,
+    int? createdAt,
+  }) => RecordingFollowup(
+    originalOpId: originalOpId ?? this.originalOpId,
+    replacementOpId: replacementOpId ?? this.replacementOpId,
+    predecessorOpId: predecessorOpId ?? this.predecessorOpId,
+    userId: userId ?? this.userId,
+    logicalOrder: logicalOrder ?? this.logicalOrder,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  RecordingFollowup copyWithCompanion(RecordingFollowupsCompanion data) {
+    return RecordingFollowup(
+      originalOpId: data.originalOpId.present
+          ? data.originalOpId.value
+          : this.originalOpId,
+      replacementOpId: data.replacementOpId.present
+          ? data.replacementOpId.value
+          : this.replacementOpId,
+      predecessorOpId: data.predecessorOpId.present
+          ? data.predecessorOpId.value
+          : this.predecessorOpId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      logicalOrder: data.logicalOrder.present
+          ? data.logicalOrder.value
+          : this.logicalOrder,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecordingFollowup(')
+          ..write('originalOpId: $originalOpId, ')
+          ..write('replacementOpId: $replacementOpId, ')
+          ..write('predecessorOpId: $predecessorOpId, ')
+          ..write('userId: $userId, ')
+          ..write('logicalOrder: $logicalOrder, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    originalOpId,
+    replacementOpId,
+    predecessorOpId,
+    userId,
+    logicalOrder,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RecordingFollowup &&
+          other.originalOpId == this.originalOpId &&
+          other.replacementOpId == this.replacementOpId &&
+          other.predecessorOpId == this.predecessorOpId &&
+          other.userId == this.userId &&
+          other.logicalOrder == this.logicalOrder &&
+          other.createdAt == this.createdAt);
+}
+
+class RecordingFollowupsCompanion extends UpdateCompanion<RecordingFollowup> {
+  final Value<String> originalOpId;
+  final Value<String> replacementOpId;
+  final Value<String> predecessorOpId;
+  final Value<String> userId;
+  final Value<int> logicalOrder;
+  final Value<int> createdAt;
+  const RecordingFollowupsCompanion({
+    this.originalOpId = const Value.absent(),
+    this.replacementOpId = const Value.absent(),
+    this.predecessorOpId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.logicalOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  RecordingFollowupsCompanion.insert({
+    required String originalOpId,
+    required String replacementOpId,
+    required String predecessorOpId,
+    required String userId,
+    required int logicalOrder,
+    required int createdAt,
+  }) : originalOpId = Value(originalOpId),
+       replacementOpId = Value(replacementOpId),
+       predecessorOpId = Value(predecessorOpId),
+       userId = Value(userId),
+       logicalOrder = Value(logicalOrder),
+       createdAt = Value(createdAt);
+  static Insertable<RecordingFollowup> custom({
+    Expression<String>? originalOpId,
+    Expression<String>? replacementOpId,
+    Expression<String>? predecessorOpId,
+    Expression<String>? userId,
+    Expression<int>? logicalOrder,
+    Expression<int>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (originalOpId != null) 'original_op_id': originalOpId,
+      if (replacementOpId != null) 'replacement_op_id': replacementOpId,
+      if (predecessorOpId != null) 'predecessor_op_id': predecessorOpId,
+      if (userId != null) 'user_id': userId,
+      if (logicalOrder != null) 'logical_order': logicalOrder,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  RecordingFollowupsCompanion copyWith({
+    Value<String>? originalOpId,
+    Value<String>? replacementOpId,
+    Value<String>? predecessorOpId,
+    Value<String>? userId,
+    Value<int>? logicalOrder,
+    Value<int>? createdAt,
+  }) {
+    return RecordingFollowupsCompanion(
+      originalOpId: originalOpId ?? this.originalOpId,
+      replacementOpId: replacementOpId ?? this.replacementOpId,
+      predecessorOpId: predecessorOpId ?? this.predecessorOpId,
+      userId: userId ?? this.userId,
+      logicalOrder: logicalOrder ?? this.logicalOrder,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (originalOpId.present) {
+      map['original_op_id'] = Variable<String>(originalOpId.value);
+    }
+    if (replacementOpId.present) {
+      map['replacement_op_id'] = Variable<String>(replacementOpId.value);
+    }
+    if (predecessorOpId.present) {
+      map['predecessor_op_id'] = Variable<String>(predecessorOpId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (logicalOrder.present) {
+      map['logical_order'] = Variable<int>(logicalOrder.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RecordingFollowupsCompanion(')
+          ..write('originalOpId: $originalOpId, ')
+          ..write('replacementOpId: $replacementOpId, ')
+          ..write('predecessorOpId: $predecessorOpId, ')
+          ..write('userId: $userId, ')
+          ..write('logicalOrder: $logicalOrder, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class MutationWireRequests extends Table
     with TableInfo<MutationWireRequests, MutationWireRequest> {
   @override
@@ -10031,6 +10472,27 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     'CREATE TRIGGER cursor_no_rewind BEFORE UPDATE ON sync_cursors WHEN NEW.user_id <> OLD.user_id OR(OLD.last_change_seq IS NOT NULL AND(NEW.last_change_seq IS NULL OR NEW.last_change_seq < OLD.last_change_seq))BEGIN SELECT RAISE (ABORT, \'Do not discard an acknowledged cursor\');END',
     'cursor_no_rewind',
   );
+  late final RecordingFollowups recordingFollowups = RecordingFollowups(this);
+  late final Trigger recordingFollowupValidInsert = Trigger(
+    'CREATE TRIGGER recording_followup_valid_insert BEFORE INSERT ON recording_followups BEGIN SELECT RAISE (ABORT, \'Invalid recording followup\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS o JOIN local_mutations AS r ON r.op_id = NEW.replacement_op_id JOIN local_mutations AS p ON p.op_id = NEW.predecessor_op_id WHERE o.op_id = NEW.original_op_id AND o.user_id = NEW.user_id AND r.user_id = o.user_id AND p.user_id = o.user_id AND o.entity_type = \'RECORDING\' AND r.entity_type = o.entity_type AND p.entity_type = o.entity_type AND r.entity_id = o.entity_id AND p.entity_id = o.entity_id AND o.operation = \'PATCH\' AND r.operation = \'PATCH\' AND o.base_revision = 0 AND o.attempt_count = 0 AND o.queue_state = \'PENDING\' AND r.base_revision > 0 AND r.attempt_count = 0 AND r.queue_state = \'PENDING\' AND p.queue_state = \'ACKED\' AND p.attempt_count > 0 AND NEW.logical_order = o."rowid" AND r."rowid" > o."rowid" AND json_extract(p.server_response, \'\$.revision\') = r.base_revision);END',
+    'recording_followup_valid_insert',
+  );
+  late final Trigger recordingFollowupNoUpdate = Trigger(
+    'CREATE TRIGGER recording_followup_no_update BEFORE UPDATE ON recording_followups BEGIN SELECT RAISE (ABORT, \'Recording followup evidence is immutable\');END',
+    'recording_followup_no_update',
+  );
+  late final Trigger recordingFollowupNoDelete = Trigger(
+    'CREATE TRIGGER recording_followup_no_delete BEFORE DELETE ON recording_followups BEGIN SELECT RAISE (ABORT, \'Recording followup evidence must be retained\');END',
+    'recording_followup_no_delete',
+  );
+  late final Trigger recordingFollowupNoReplace = Trigger(
+    'CREATE TRIGGER recording_followup_no_replace BEFORE INSERT ON recording_followups BEGIN SELECT RAISE (ABORT, \'Recording followup evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM recording_followups WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.replacement_op_id);END',
+    'recording_followup_no_replace',
+  );
+  late final Trigger recordingFollowupOriginalNoClaim = Trigger(
+    'CREATE TRIGGER recording_followup_original_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM recording_followups WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Original offline intent cannot be sent after materialization\');END',
+    'recording_followup_original_no_claim',
+  );
   late final MutationWireRequests mutationWireRequests = MutationWireRequests(
     this,
   );
@@ -10187,7 +10649,7 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
   late final MutationConflictResolutions mutationConflictResolutions =
       MutationConflictResolutions(this);
   late final Trigger conflictResolutionValidInsert = Trigger(
-    'CREATE TRIGGER conflict_resolution_valid_insert BEFORE INSERT ON mutation_conflict_resolutions BEGIN SELECT RAISE (ABORT, \'Resolution requires the current revision conflict\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.original_op_id AND m.user_id = NEW.user_id AND m.operation = \'PATCH\' AND m.entity_type IN (\'SONG\', \'RECORDING\', \'TAG\') AND m.queue_state = \'CONFLICT\' AND m.attempt_count = NEW.original_attempt_count AND json_extract(m.server_response, \'\$.status\') = 409 AND json_extract(m.server_response, \'\$.code\') = \'REVISION_CONFLICT\' AND json_type(m.server_response, \'\$.current.revision\') = \'integer\' AND NEW.resolved_revision >= json_extract(m.server_response, \'\$.current.revision\') AND NEW.resolved_revision > m.base_revision AND json_extract(NEW.server_snapshot, \'\$.id\') = m.entity_id AND(json_type(NEW.server_snapshot, \'\$.user_id\') IS NULL OR json_extract(NEW.server_snapshot, \'\$.user_id\') = NEW.user_id));SELECT RAISE (ABORT, \'Resolution choice must be explicit\') WHERE EXISTS (SELECT 1 FROM json_each(NEW.choices)AS choice WHERE choice.type <> \'text\' OR choice.value NOT IN (\'LOCAL\', \'SERVER\'));SELECT RAISE (ABORT, \'Mapping evidence must be resolved separately\') WHERE EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = NEW.original_op_id AND released_at IS NULL) OR EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.original_op_id);SELECT RAISE (ABORT, \'Invalid conflict replacement\') WHERE NEW.replacement_op_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM local_mutations AS original JOIN local_mutations AS replacement ON replacement.op_id = NEW.replacement_op_id WHERE original.op_id = NEW.original_op_id AND replacement.user_id = NEW.user_id AND replacement.entity_type = original.entity_type AND replacement.entity_id = original.entity_id AND replacement.operation = \'PATCH\' AND replacement.queue_state = \'PENDING\' AND replacement.attempt_count = 0 AND replacement."rowid" > original."rowid" AND replacement.base_revision = NEW.resolved_revision AND replacement.base_payload = NEW.server_snapshot AND json_type(replacement.payload, \'\$.base_revision\') = \'integer\' AND json_extract(replacement.payload, \'\$.base_revision\') = NEW.resolved_revision AND NOT EXISTS (SELECT 1 FROM mutation_wire_requests WHERE op_id = replacement.op_id));SELECT RAISE (ABORT, \'Conflict resolution order must be inherited\') WHERE NEW.order_root_op_id IS NOT COALESCE((SELECT order_root_op_id FROM mutation_conflict_resolutions WHERE replacement_op_id = NEW.original_op_id), NEW.original_op_id) OR NEW.logical_order IS NOT COALESCE((SELECT logical_order FROM mutation_conflict_resolutions WHERE replacement_op_id = NEW.original_op_id), (SELECT "rowid" FROM local_mutations WHERE op_id = NEW.original_op_id));SELECT RAISE (ABORT, \'Cannot prepend a resolution chain\') WHERE EXISTS (SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id = NEW.replacement_op_id);END',
+    'CREATE TRIGGER conflict_resolution_valid_insert BEFORE INSERT ON mutation_conflict_resolutions BEGIN SELECT RAISE (ABORT, \'Resolution requires the current revision conflict\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.original_op_id AND m.user_id = NEW.user_id AND m.operation = \'PATCH\' AND m.entity_type IN (\'SONG\', \'RECORDING\', \'TAG\') AND m.queue_state = \'CONFLICT\' AND m.attempt_count = NEW.original_attempt_count AND json_extract(m.server_response, \'\$.status\') = 409 AND json_extract(m.server_response, \'\$.code\') = \'REVISION_CONFLICT\' AND json_type(m.server_response, \'\$.current.revision\') = \'integer\' AND NEW.resolved_revision >= json_extract(m.server_response, \'\$.current.revision\') AND NEW.resolved_revision > m.base_revision AND json_extract(NEW.server_snapshot, \'\$.id\') = m.entity_id AND(json_type(NEW.server_snapshot, \'\$.user_id\') IS NULL OR json_extract(NEW.server_snapshot, \'\$.user_id\') = NEW.user_id));SELECT RAISE (ABORT, \'Resolution choice must be explicit\') WHERE EXISTS (SELECT 1 FROM json_each(NEW.choices)AS choice WHERE choice.type <> \'text\' OR choice.value NOT IN (\'LOCAL\', \'SERVER\'));SELECT RAISE (ABORT, \'Mapping evidence must be resolved separately\') WHERE EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = NEW.original_op_id AND released_at IS NULL) OR EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.original_op_id);SELECT RAISE (ABORT, \'Invalid conflict replacement\') WHERE NEW.replacement_op_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM local_mutations AS original JOIN local_mutations AS replacement ON replacement.op_id = NEW.replacement_op_id WHERE original.op_id = NEW.original_op_id AND replacement.user_id = NEW.user_id AND replacement.entity_type = original.entity_type AND replacement.entity_id = original.entity_id AND replacement.operation = \'PATCH\' AND replacement.queue_state = \'PENDING\' AND replacement.attempt_count = 0 AND replacement."rowid" > original."rowid" AND replacement.base_revision = NEW.resolved_revision AND replacement.base_payload = NEW.server_snapshot AND json_type(replacement.payload, \'\$.base_revision\') = \'integer\' AND json_extract(replacement.payload, \'\$.base_revision\') = NEW.resolved_revision AND NOT EXISTS (SELECT 1 FROM mutation_wire_requests WHERE op_id = replacement.op_id));SELECT RAISE (ABORT, \'Conflict resolution order must be inherited\') WHERE NEW.order_root_op_id IS NOT COALESCE((SELECT order_root_op_id FROM mutation_conflict_resolutions WHERE replacement_op_id = NEW.original_op_id), NEW.original_op_id) OR NEW.logical_order IS NOT COALESCE((SELECT logical_order FROM mutation_conflict_resolutions WHERE replacement_op_id = NEW.original_op_id), (SELECT logical_order FROM recording_followups WHERE replacement_op_id = NEW.original_op_id), (SELECT "rowid" FROM local_mutations WHERE op_id = NEW.original_op_id));SELECT RAISE (ABORT, \'Cannot prepend a resolution chain\') WHERE EXISTS (SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id = NEW.replacement_op_id);END',
     'conflict_resolution_valid_insert',
   );
   late final Trigger conflictResolutionNoReplace = Trigger(
@@ -10225,6 +10687,12 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     localAccountNoDelete,
     mutationRequestImmutable,
     cursorNoRewind,
+    recordingFollowups,
+    recordingFollowupValidInsert,
+    recordingFollowupNoUpdate,
+    recordingFollowupNoDelete,
+    recordingFollowupNoReplace,
+    recordingFollowupOriginalNoClaim,
     mutationWireRequests,
     mutationWireRequestImmutable,
     mutationRetryControls,
@@ -10301,6 +10769,41 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'sync_cursors',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'recording_followups',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'recording_followups',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'recording_followups',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'recording_followups',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'local_mutations',
         limitUpdateKind: UpdateKind.update,
       ),
       result: [],
@@ -10680,6 +11183,27 @@ final class $LocalAccountReferences
     );
   }
 
+  static MultiTypedResultKey<RecordingFollowups, List<RecordingFollowup>>
+  _recordingFollowupsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.recordingFollowups,
+        aliasName: 'local_account__user_id__recording_followups__user_id',
+      );
+
+  $RecordingFollowupsProcessedTableManager get recordingFollowupsRefs {
+    final manager =
+        $RecordingFollowupsTableManager($_db, $_db.recordingFollowups).filter(
+          (f) => f.userId.userId.sqlEquals($_itemColumn<String>('user_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _recordingFollowupsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
   static MultiTypedResultKey<SongAliases, List<SongAliase>>
   _songAliasesRefsTable(_$AccountDatabase db) => MultiTypedResultKey.fromTable(
     db.songAliases,
@@ -11010,6 +11534,31 @@ class $LocalAccountFilterComposer
           }) => $SyncCursorsFilterComposer(
             $db: $db,
             $table: $db.syncCursors,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> recordingFollowupsRefs(
+    Expression<bool> Function($RecordingFollowupsFilterComposer f) f,
+  ) {
+    final $RecordingFollowupsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.recordingFollowups,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $RecordingFollowupsFilterComposer(
+            $db: $db,
+            $table: $db.recordingFollowups,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -11399,6 +11948,31 @@ class $LocalAccountAnnotationComposer
     return f(composer);
   }
 
+  Expression<T> recordingFollowupsRefs<T extends Object>(
+    Expression<T> Function($RecordingFollowupsAnnotationComposer a) f,
+  ) {
+    final $RecordingFollowupsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.recordingFollowups,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $RecordingFollowupsAnnotationComposer(
+            $db: $db,
+            $table: $db.recordingFollowups,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
   Expression<T> songAliasesRefs<T extends Object>(
     Expression<T> Function($SongAliasesAnnotationComposer a) f,
   ) {
@@ -11620,6 +12194,7 @@ class $LocalAccountTableManager
             bool localRecordingFilesRefs,
             bool importJobsRefs,
             bool syncCursorsRefs,
+            bool recordingFollowupsRefs,
             bool songAliasesRefs,
             bool mutationSupersessionsRefs,
             bool canonicalEditIntentsRefs,
@@ -11680,6 +12255,7 @@ class $LocalAccountTableManager
                 localRecordingFilesRefs = false,
                 importJobsRefs = false,
                 syncCursorsRefs = false,
+                recordingFollowupsRefs = false,
                 songAliasesRefs = false,
                 mutationSupersessionsRefs = false,
                 canonicalEditIntentsRefs = false,
@@ -11697,6 +12273,7 @@ class $LocalAccountTableManager
                     if (localRecordingFilesRefs) db.localRecordingFiles,
                     if (importJobsRefs) db.importJobs,
                     if (syncCursorsRefs) db.syncCursors,
+                    if (recordingFollowupsRefs) db.recordingFollowups,
                     if (songAliasesRefs) db.songAliases,
                     if (mutationSupersessionsRefs) db.mutationSupersessions,
                     if (canonicalEditIntentsRefs) db.canonicalEditIntents,
@@ -11809,6 +12386,27 @@ class $LocalAccountTableManager
                                 table,
                                 p0,
                               ).syncCursorsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.userId == item.userId,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (recordingFollowupsRefs)
+                        await $_getPrefetchedData<
+                          LocalAccountData,
+                          LocalAccount,
+                          RecordingFollowup
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalAccountReferences
+                              ._recordingFollowupsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalAccountReferences(
+                                db,
+                                table,
+                                p0,
+                              ).recordingFollowupsRefs,
                           referencedItemsForCurrentItem:
                               (item, referencedItems) => referencedItems.where(
                                 (e) => e.userId == item.userId,
@@ -12009,6 +12607,7 @@ typedef $LocalAccountProcessedTableManager =
         bool localRecordingFilesRefs,
         bool importJobsRefs,
         bool syncCursorsRefs,
+        bool recordingFollowupsRefs,
         bool songAliasesRefs,
         bool mutationSupersessionsRefs,
         bool canonicalEditIntentsRefs,
@@ -15212,6 +15811,617 @@ typedef $SyncCursorsProcessedTableManager =
       (SyncCursor, $SyncCursorsReferences),
       SyncCursor,
       PrefetchHooks Function({bool userId})
+    >;
+typedef $RecordingFollowupsCreateCompanionBuilder =
+    RecordingFollowupsCompanion Function({
+      required String originalOpId,
+      required String replacementOpId,
+      required String predecessorOpId,
+      required String userId,
+      required int logicalOrder,
+      required int createdAt,
+    });
+typedef $RecordingFollowupsUpdateCompanionBuilder =
+    RecordingFollowupsCompanion Function({
+      Value<String> originalOpId,
+      Value<String> replacementOpId,
+      Value<String> predecessorOpId,
+      Value<String> userId,
+      Value<int> logicalOrder,
+      Value<int> createdAt,
+    });
+
+final class $RecordingFollowupsReferences
+    extends
+        BaseReferences<
+          _$AccountDatabase,
+          RecordingFollowups,
+          RecordingFollowup
+        > {
+  $RecordingFollowupsReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static LocalMutations _originalOpIdTable(_$AccountDatabase db) =>
+      db.localMutations.createAlias(
+        'recording_followups__original_op_id__local_mutations__op_id',
+      );
+
+  $LocalMutationsProcessedTableManager get originalOpId {
+    final $_column = $_itemColumn<String>('original_op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_originalOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalMutations _replacementOpIdTable(_$AccountDatabase db) =>
+      db.localMutations.createAlias(
+        'recording_followups__replacement_op_id__local_mutations__op_id',
+      );
+
+  $LocalMutationsProcessedTableManager get replacementOpId {
+    final $_column = $_itemColumn<String>('replacement_op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_replacementOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalMutations _predecessorOpIdTable(_$AccountDatabase db) =>
+      db.localMutations.createAlias(
+        'recording_followups__predecessor_op_id__local_mutations__op_id',
+      );
+
+  $LocalMutationsProcessedTableManager get predecessorOpId {
+    final $_column = $_itemColumn<String>('predecessor_op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_predecessorOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalAccount _userIdTable(_$AccountDatabase db) => db.localAccount
+      .createAlias('recording_followups__user_id__local_account__user_id');
+
+  $LocalAccountProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $LocalAccountTableManager(
+      $_db,
+      $_db.localAccount,
+    ).filter((f) => f.userId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $RecordingFollowupsFilterComposer
+    extends Composer<_$AccountDatabase, RecordingFollowups> {
+  $RecordingFollowupsFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get logicalOrder => $composableBuilder(
+    column: $table.logicalOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalMutationsFilterComposer get originalOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originalOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsFilterComposer get replacementOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.replacementOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsFilterComposer get predecessorOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.predecessorOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountFilterComposer get userId {
+    final $LocalAccountFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountFilterComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $RecordingFollowupsOrderingComposer
+    extends Composer<_$AccountDatabase, RecordingFollowups> {
+  $RecordingFollowupsOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get logicalOrder => $composableBuilder(
+    column: $table.logicalOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalMutationsOrderingComposer get originalOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originalOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsOrderingComposer get replacementOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.replacementOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsOrderingComposer get predecessorOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.predecessorOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountOrderingComposer get userId {
+    final $LocalAccountOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountOrderingComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $RecordingFollowupsAnnotationComposer
+    extends Composer<_$AccountDatabase, RecordingFollowups> {
+  $RecordingFollowupsAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get logicalOrder => $composableBuilder(
+    column: $table.logicalOrder,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $LocalMutationsAnnotationComposer get originalOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originalOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsAnnotationComposer get replacementOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.replacementOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsAnnotationComposer get predecessorOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.predecessorOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountAnnotationComposer get userId {
+    final $LocalAccountAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountAnnotationComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $RecordingFollowupsTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          RecordingFollowups,
+          RecordingFollowup,
+          $RecordingFollowupsFilterComposer,
+          $RecordingFollowupsOrderingComposer,
+          $RecordingFollowupsAnnotationComposer,
+          $RecordingFollowupsCreateCompanionBuilder,
+          $RecordingFollowupsUpdateCompanionBuilder,
+          (RecordingFollowup, $RecordingFollowupsReferences),
+          RecordingFollowup,
+          PrefetchHooks Function({
+            bool originalOpId,
+            bool replacementOpId,
+            bool predecessorOpId,
+            bool userId,
+          })
+        > {
+  $RecordingFollowupsTableManager(
+    _$AccountDatabase db,
+    RecordingFollowups table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $RecordingFollowupsFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $RecordingFollowupsOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $RecordingFollowupsAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> originalOpId = const Value.absent(),
+                Value<String> replacementOpId = const Value.absent(),
+                Value<String> predecessorOpId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<int> logicalOrder = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+              }) => RecordingFollowupsCompanion(
+                originalOpId: originalOpId,
+                replacementOpId: replacementOpId,
+                predecessorOpId: predecessorOpId,
+                userId: userId,
+                logicalOrder: logicalOrder,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String originalOpId,
+                required String replacementOpId,
+                required String predecessorOpId,
+                required String userId,
+                required int logicalOrder,
+                required int createdAt,
+              }) => RecordingFollowupsCompanion.insert(
+                originalOpId: originalOpId,
+                replacementOpId: replacementOpId,
+                predecessorOpId: predecessorOpId,
+                userId: userId,
+                logicalOrder: logicalOrder,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<RecordingFollowups, RecordingFollowup>(table),
+                  $RecordingFollowupsReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                originalOpId = false,
+                replacementOpId = false,
+                predecessorOpId = false,
+                userId = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (originalOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.originalOpId,
+                            referencedTable: $RecordingFollowupsReferences
+                                ._originalOpIdTable(db),
+                            referencedColumn: $RecordingFollowupsReferences
+                                ._originalOpIdTable(db)
+                                .opId,
+                          ) as T;
+                        }
+                        if (replacementOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.replacementOpId,
+                            referencedTable: $RecordingFollowupsReferences
+                                ._replacementOpIdTable(db),
+                            referencedColumn: $RecordingFollowupsReferences
+                                ._replacementOpIdTable(db)
+                                .opId,
+                          ) as T;
+                        }
+                        if (predecessorOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.predecessorOpId,
+                            referencedTable: $RecordingFollowupsReferences
+                                ._predecessorOpIdTable(db),
+                            referencedColumn: $RecordingFollowupsReferences
+                                ._predecessorOpIdTable(db)
+                                .opId,
+                          ) as T;
+                        }
+                        if (userId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.userId,
+                            referencedTable: $RecordingFollowupsReferences
+                                ._userIdTable(db),
+                            referencedColumn: $RecordingFollowupsReferences
+                                ._userIdTable(db)
+                                .userId,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $RecordingFollowupsProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      RecordingFollowups,
+      RecordingFollowup,
+      $RecordingFollowupsFilterComposer,
+      $RecordingFollowupsOrderingComposer,
+      $RecordingFollowupsAnnotationComposer,
+      $RecordingFollowupsCreateCompanionBuilder,
+      $RecordingFollowupsUpdateCompanionBuilder,
+      (RecordingFollowup, $RecordingFollowupsReferences),
+      RecordingFollowup,
+      PrefetchHooks Function({
+        bool originalOpId,
+        bool replacementOpId,
+        bool predecessorOpId,
+        bool userId,
+      })
     >;
 typedef $MutationWireRequestsCreateCompanionBuilder =
     MutationWireRequestsCompanion Function({
@@ -21108,6 +22318,8 @@ class $AccountDatabaseManager {
       $ImportItemsTableManager(_db, _db.importItems);
   $SyncCursorsTableManager get syncCursors =>
       $SyncCursorsTableManager(_db, _db.syncCursors);
+  $RecordingFollowupsTableManager get recordingFollowups =>
+      $RecordingFollowupsTableManager(_db, _db.recordingFollowups);
   $MutationWireRequestsTableManager get mutationWireRequests =>
       $MutationWireRequestsTableManager(_db, _db.mutationWireRequests);
   $MutationRetryControlsTableManager get mutationRetryControls =>

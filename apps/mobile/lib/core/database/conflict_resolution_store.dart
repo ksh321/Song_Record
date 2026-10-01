@@ -166,7 +166,7 @@ final class ConflictResolutionStore {
         plan.serverJson,
         plan.choicesJson,
         previous?.read<String>('order_root_op_id') ?? expected.opId,
-        previous?.read<int>('logical_order') ?? expected.localOrder,
+        previous?.read<int>('logical_order') ?? mapping.orderOf(expected),
         now,
       ],
     );

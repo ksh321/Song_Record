@@ -22,6 +22,7 @@ import 'change_feed_store.dart';
 import 'conflict_resolution_store.dart';
 import 'local_models.dart';
 import 'mapping_eligibility.dart';
+import 'recording_followup_store.dart';
 import 'retry_controls.dart';
 import 'snapshot_download_store.dart';
 
@@ -267,6 +268,7 @@ final class AccountStore {
         'song_aliases': 'source_song_id',
         'mutation_supersessions': 'original_op_id',
         'mutation_conflict_resolutions': 'original_op_id',
+        'recording_followups': 'original_op_id',
         'canonical_edit_intents': 'intent_id',
         'mutation_mapping_holds': 'op_id,mapping_source_id,reason',
         'local_recording_files': 'recording_id',
@@ -460,7 +462,7 @@ final class AccountStore {
       final mapping = await readMappingEligibility(_database);
       final resolutions = await _database
           .customSelect(
-            'SELECT original_op_id FROM mutation_conflict_resolutions',
+            'SELECT original_op_id FROM mutation_conflict_resolutions UNION SELECT original_op_id FROM recording_followups',
           )
           .get();
       final resolved = resolutions
@@ -602,6 +604,10 @@ final class AccountStore {
 
   Future<MutationRequest?> claimMutation() => _run(
     () => _database.transaction(() async {
+      await materializeRecordingFollowup(
+        _database,
+        await readMappingEligibility(_database),
+      );
       final snapshot = await _retry.forPlanner(await _dispatchSnapshot());
       final plan = const DependencyPlanner().plan(snapshot);
       for (final candidate in plan.ready) {
@@ -643,6 +649,14 @@ final class AccountStore {
 
   Future<DateTime?> _nextDispatchAt({required bool includeReady}) => _run(
     () => _database.transaction(() async {
+      if (includeReady &&
+          await materializeRecordingFollowup(
+            _database,
+            await readMappingEligibility(_database),
+            previewOnly: true,
+          )) {
+        return _retry.now;
+      }
       final snapshot = await _retry.forPlanner(
         await _dispatchSnapshot(),
         includeFutureAutomatic: true,
@@ -1052,7 +1066,7 @@ final class AccountStore {
       final eligibility = await readMappingEligibility(_database);
       final resolvedRows = await _database
           .customSelect(
-            'SELECT original_op_id FROM mutation_conflict_resolutions',
+            'SELECT original_op_id FROM mutation_conflict_resolutions UNION SELECT original_op_id FROM recording_followups',
           )
           .get();
       final resolved = {

@@ -84,6 +84,7 @@ Future<MappingEligibility> applyConflictEligibility(
               (previous?.read<String>('order_root_op_id') ?? id) &&
           resolution.read<int>('logical_order') ==
               (previous?.read<int>('logical_order') ??
+                  mapping.logicalOrders[id] ??
                   original.read<int>('local_order')) &&
           !mapping.blocked.contains(id) &&
           !mapping.superseded.contains(id);

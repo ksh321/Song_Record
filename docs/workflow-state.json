@@ -1555,11 +1555,15 @@
         "apps/mobile/lib/core/sync/recording_save_contract.dart",
         "apps/mobile/lib/core/sync/dependency_planner.dart",
         "apps/mobile/lib/core/database/account_store.dart",
-        "apps/mobile/test/recording_save_dispatch_test.dart"
+        "apps/mobile/test/recording_save_dispatch_test.dart",
+        "apps/mobile/lib/core/database/recording_followup_store.dart",
+        "apps/mobile/lib/core/database/local_schema.drift",
+        "apps/mobile/lib/core/database/conflict_eligibility.dart",
+        "apps/mobile/lib/core/database/conflict_resolution_store.dart"
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "bb1eb9e 저장 완료 API 연결31 PASS/공통96 PASS/분석 정상. CI 대기. 원본 큐 보존과 base_revision=0 후속 연결 및 네이티브 저장 연결 계속.",
+      "resume": "오프라인 CREATE→후속 수정/저장·응답 유실/재시작/충돌 순서 연결97 PASS/skip1·분석 정상. 묶음 커밋과 정확 SHA CI 후 목록·관계 전송 선행 계약 확인. UI P18-02/04 및 파일업로드 P12-05와 구분.",
       "blocker": null
     },
     {

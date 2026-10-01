@@ -133,53 +133,6 @@ BEGIN
 END;
 
 -- P10-02b: freeze the HTTP contract independently of the local edit fingerprint.
--- P10-02: preserve offline PATCH intent while materializing an acknowledged baseline.
-CREATE TABLE recording_followups (
-  original_op_id TEXT NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id),
-  replacement_op_id TEXT NOT NULL UNIQUE REFERENCES local_mutations(op_id),
-  predecessor_op_id TEXT NOT NULL REFERENCES local_mutations(op_id),
-  user_id TEXT NOT NULL REFERENCES local_account(user_id),
-  logical_order INTEGER NOT NULL CHECK(logical_order > 0),
-  created_at INTEGER NOT NULL,
-  CHECK(original_op_id <> replacement_op_id),
-  CHECK(original_op_id <> predecessor_op_id),
-  CHECK(replacement_op_id <> predecessor_op_id)
-) WITHOUT ROWID;
-
-CREATE TRIGGER recording_followup_valid_insert BEFORE INSERT ON recording_followups BEGIN
-  SELECT RAISE(ABORT, 'Invalid recording followup') WHERE NOT EXISTS (
-    SELECT 1 FROM local_mutations o JOIN local_mutations r ON r.op_id=NEW.replacement_op_id
-    JOIN local_mutations p ON p.op_id=NEW.predecessor_op_id
-    WHERE o.op_id=NEW.original_op_id AND o.user_id=NEW.user_id
-      AND r.user_id=o.user_id AND p.user_id=o.user_id
-      AND o.entity_type='RECORDING' AND r.entity_type=o.entity_type AND p.entity_type=o.entity_type
-      AND r.entity_id=o.entity_id AND p.entity_id=o.entity_id
-      AND o.operation='PATCH' AND r.operation='PATCH'
-      AND o.base_revision=0 AND o.attempt_count=0 AND o.queue_state='PENDING'
-      AND r.base_revision>0 AND r.attempt_count=0 AND r.queue_state='PENDING'
-      AND p.queue_state='ACKED' AND p.attempt_count>0
-      AND NEW.logical_order=o.rowid AND r.rowid>o.rowid
-      AND json_extract(p.server_response,'$.revision')=r.base_revision
-  );
-END;
-CREATE TRIGGER recording_followup_no_update BEFORE UPDATE ON recording_followups BEGIN
-  SELECT RAISE(ABORT, 'Recording followup evidence is immutable');
-END;
-CREATE TRIGGER recording_followup_no_delete BEFORE DELETE ON recording_followups BEGIN
-  SELECT RAISE(ABORT, 'Recording followup evidence must be retained');
-END;
-CREATE TRIGGER recording_followup_no_replace BEFORE INSERT ON recording_followups BEGIN
-  SELECT RAISE(ABORT, 'Recording followup evidence cannot be replaced') WHERE EXISTS (
-    SELECT 1 FROM recording_followups WHERE original_op_id=NEW.original_op_id OR replacement_op_id=NEW.replacement_op_id
-  );
-END;
-CREATE TRIGGER recording_followup_original_no_claim BEFORE UPDATE OF attempt_count ON local_mutations
-WHEN NEW.attempt_count>OLD.attempt_count AND EXISTS (
-  SELECT 1 FROM recording_followups WHERE original_op_id=OLD.op_id
-) BEGIN
-  SELECT RAISE(ABORT, 'Original offline intent cannot be sent after materialization');
-END;
-
 CREATE TABLE mutation_wire_requests (
   op_id TEXT NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id),
   contract_version TEXT NOT NULL,
@@ -653,7 +606,7 @@ CREATE TRIGGER conflict_resolution_valid_insert BEFORE INSERT ON mutation_confli
   );
   SELECT RAISE(ABORT,'Conflict resolution order must be inherited') WHERE
     NEW.order_root_op_id IS NOT COALESCE((SELECT order_root_op_id FROM mutation_conflict_resolutions WHERE replacement_op_id=NEW.original_op_id),NEW.original_op_id)
-    OR NEW.logical_order IS NOT COALESCE((SELECT logical_order FROM mutation_conflict_resolutions WHERE replacement_op_id=NEW.original_op_id),(SELECT logical_order FROM recording_followups WHERE replacement_op_id=NEW.original_op_id),(SELECT rowid FROM local_mutations WHERE op_id=NEW.original_op_id));
+    OR NEW.logical_order IS NOT COALESCE((SELECT logical_order FROM mutation_conflict_resolutions WHERE replacement_op_id=NEW.original_op_id),(SELECT rowid FROM local_mutations WHERE op_id=NEW.original_op_id));
   SELECT RAISE(ABORT,'Cannot prepend a resolution chain') WHERE EXISTS (
     SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id=NEW.replacement_op_id
   );
