@@ -2,7 +2,11 @@ import 'dart:convert';
 
 import '../database/local_models.dart';
 import '../domain/identifiers.dart';
+import '../domain/input_validation.dart';
+import 'change_payload_validation.dart';
 import 'mutation_request.dart';
+import 'recording_change_projection.dart';
+import 'recording_save_contract.dart';
 
 /// Shared mutation response validation; no database writes.
 Map<String, Object?> decodeMetadataSnapshot(
@@ -67,6 +71,102 @@ Map<String, Object?> decodeMetadataSnapshot(
     if (nullable && value[key] == null) return;
     string(key);
     require(DateTime.tryParse(value[key] as String) != null);
+  }
+
+  if (!conflict &&
+      m.entity == LocalEntity.recording &&
+      m.operation == LocalOperation.patch) {
+    final sent = jsonDecode(request.body);
+    if (sent is Map<String, dynamic> && sent.containsKey('metadata_state')) {
+      require(validRecordingSaveRequest(sent, m.baseRevision));
+      require(
+        request.method == 'PATCH' &&
+            request.path == '/v1/recordings/${m.entityId}',
+      );
+      validateChangePayload(LocalEntity.recording, decoded);
+      require(
+        response.status == 200 &&
+            value['id'] == m.entityId &&
+            value['revision'] == m.baseRevision + 1 &&
+            value['metadata_state'] == 'SAVED' &&
+            value['lifecycle_state'] == 'ACTIVE',
+      );
+      require(
+        value['title_snapshot'] is String &&
+            value['artist_snapshot'] is String &&
+            value['key_mode'] is String &&
+            value['key_shift'] is int,
+      );
+      require(
+        validRecordingFileSpec(value['file']) &&
+            canonicalJson(value['file'] as Map<String, dynamic>) ==
+                canonicalJson(sent['file'] as Map<String, dynamic>),
+      );
+      final baseline = m.basePayload == null
+          ? null
+          : jsonDecode(m.basePayload!);
+      if (baseline is! Map<String, dynamic> ||
+          baseline['metadata_state'] != 'DRAFT' ||
+          baseline['id'] != m.entityId ||
+          baseline['revision'] != m.baseRevision) {
+        throw const FormatException('Missing recording save baseline');
+      }
+      for (final key in {
+        'song_id',
+        'link_revision',
+        'origin_device_id',
+        'recorded_at',
+        'timezone_id',
+        'timezone_offset_minutes',
+        'condition_code',
+        'condition_name_snapshot',
+        ...{
+          'title_snapshot',
+          'artist_snapshot',
+          'version_code',
+          'key_mode',
+          'key_shift',
+          'note',
+        }.where((key) => !sent.containsKey(key)),
+      }) {
+        require(
+          baseline.containsKey(key) &&
+              value.containsKey(key) &&
+              baseline[key] == value[key],
+        );
+      }
+      for (final key in {
+        'title_snapshot',
+        'artist_snapshot',
+        'note',
+        'version_code',
+        'key_mode',
+        'key_shift',
+      }) {
+        if (!sent.containsKey(key)) continue;
+        final field = switch (key) {
+          'title_snapshot' => InputField.title,
+          'artist_snapshot' => InputField.artist,
+          'note' => InputField.note,
+          _ => null,
+        };
+        final expected = field == null
+            ? sent[key]
+            : validateInput(field, (sent[key] ?? '') as String).value;
+        require(value[key] == expected);
+      }
+      // Saving does not edit tags/tier. Its core response omits those fields;
+      // omission must not erase previously received relationship snapshots.
+      for (final key in {'tier', 'tags', 'tag_ids'}) {
+        if (value.containsKey(key) && baseline.containsKey(key)) {
+          require(
+            canonicalJson({'v': value[key]}) ==
+                canonicalJson({'v': baseline[key]}),
+          );
+        }
+      }
+      return projectRecordingChange(baseline, decoded);
+    }
   }
 
   switch (m.entity) {

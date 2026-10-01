@@ -63,6 +63,8 @@ ThreeWayComparison? compareMetadataConflict(QueuedMutation mutation) {
     // Relationship moves and DRAFT -> SAVED/file transitions need their own
     // explicit handling, not a metadata-only rebase.
     if (changes.containsKey('song_id') ||
+        changes.containsKey('metadata_state') ||
+        changes.containsKey('file') ||
         changes.containsKey('tier') && base['metadata_state'] != 'SAVED' ||
         base['metadata_state'] != server['metadata_state'] ||
         base['lifecycle_state'] != 'ACTIVE' ||

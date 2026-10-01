@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 
 import '../database/local_models.dart';
 import '../domain/identifiers.dart';
+import 'recording_save_contract.dart';
 
 /// Durable wire identity. Credentials are deliberately supplied only at send time.
 final class MutationRequest {
@@ -46,6 +47,18 @@ final class MutationRequest {
     final decoded = jsonDecode(m.payload);
     if (decoded is! Map<String, dynamic>) return null;
     final create = m.operation == LocalOperation.create;
+    if (m.entity == LocalEntity.recording &&
+        !create &&
+        decoded.containsKey('metadata_state')) {
+      if (!validRecordingSaveRequest(decoded, m.baseRevision)) return null;
+      return MutationRequest(
+        mutation: m,
+        method: 'PATCH',
+        path: '/v1/recordings/${m.entityId}',
+        body: m.payload,
+        attempt: m.attemptCount + 1,
+      );
+    }
     if (m.entity == LocalEntity.recording &&
         !create &&
         decoded.containsKey('song_id')) {
