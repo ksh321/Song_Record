@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "d39cc52e7888a4851e6a1795f1d62aee278b77ba",
+  "baseline_head": "b2526b98625f3fa3cc228fed868d357101e5c314",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1540,11 +1540,11 @@
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "d 로컬 통합31 PASS·분석·현재 모델 검토 완료. b2526b9 필수 CI 무료 초기화 후 재실행3 PASS/통합 진행. 대상 곡·원본 녹음/파일 보존 검증 완료. 다음은 P10-05 조회 투영/앱 연결."
+      "resume": "d 로컬31/48 PASS·분석·검토 완료, 코드38495eb. 후속 통합 push/CI 대기. 기타 목록/파일 전송은 API 선행 확인 후 진행."
     },
     {
       "id": "P10-05-NEXT",
-      "action": "P10-05k — 일관된 초기 스냅샷: 중단 재개 실행기와 조회 투영·앱 연결",
+      "action": "P10-05l — 일관된 초기 스냅샷: 전경 스케줄러 연결 및 조회 투영",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1555,10 +1555,9 @@
         "apps/mobile/lib/core/sync",
         "apps/mobile/lib/core/database"
       ],
-      "state": "pending",
-      "owner": "AI; 무료 Actions 사용량 초기화 대기",
-      "resume": "fd671e0 로컬 통합50 PASS+추가1 PASS/링크1 skip, push. USER021 완료; 무료 초기화 후 AI가 실행 가능 확인·정확 SHA CI 재실행. 조회 투영/앱 연결 잔여.",
-      "blocker": "b2526b9 통합 CI 재실행 진행 중. 무료 Actions 차단 해소, 전체 P10-05 완료 아님"
+      "state": "active",
+      "owner": "AI",
+      "resume": "b2526b9 필수4 CI PASS. l 연결 계층42 PASS·분석·검토 완료, 앱 미연결. 다음은 기준선 조회 투영과 로컬 변경 보존."
     },
     {
       "id": "P10-06-NEXT",
