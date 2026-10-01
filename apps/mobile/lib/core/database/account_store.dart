@@ -263,6 +263,7 @@ final class AccountStore {
         'mutation_retry_controls': 'op_id',
         'song_aliases': 'source_song_id',
         'mutation_supersessions': 'original_op_id',
+        'mutation_conflict_resolutions': 'original_op_id',
         'canonical_edit_intents': 'intent_id',
         'mutation_mapping_holds': 'op_id,mapping_source_id,reason',
         'local_recording_files': 'recording_id',

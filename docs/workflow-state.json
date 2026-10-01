@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "df4c1060c490fa3318ede6857bbf7e286b53fa6f",
+  "baseline_head": "8a8b56b0d42953621a1464b624de2970b0e1825c",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -400,7 +400,8 @@
         "P10-07-NEXT",
         "P10-07a",
         "P10-07b",
-        "P10-07c"
+        "P10-07c",
+        "P10-07d"
       ]
     },
     "P10-08": {
@@ -2058,10 +2059,10 @@
         "apps/mobile/lib/core/database/snapshot_metadata_projection.dart",
         "apps/mobile/test"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "초기 업무 사본 투영48 PASS+검토23 PASS+업그레이드1 PASS/분석 정상",
-      "blocker": "8a8b56b 통합 필수 CI 진행"
+      "evidence": "8a8b56b0d42953621a1464b624de2970b0e1825c 필수 CI4 PASS(36811598580/36811598352/36811598362/36811598400), 해당 작업 검증 문서 및 현재 모델 코드 검토. 새 폰 실기로 확대하지 않음"
     },
     {
       "id": "P10-07c",
@@ -2075,10 +2076,10 @@
         "apps/mobile/lib/core/sync/metadata_conflict.dart",
         "apps/mobile/test/metadata_conflict_test.dart"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "33 PASS/검토 후15 PASS/분석 정상, 큐/UI 쓰기는 후속",
-      "blocker": "8a8b56b 통합 필수 CI 진행"
+      "evidence": "8a8b56b0d42953621a1464b624de2970b0e1825c 필수 CI4 PASS(36811598580/36811598352/36811598362/36811598400), 해당 작업 검증 문서 및 현재 모델 코드 검토. 새 폰 실기로 확대하지 않음"
     },
     {
       "id": "P10-06n",
@@ -2095,9 +2096,27 @@
         "apps/mobile/test/permanent_deletion_test.dart",
         "apps/mobile/test/change_feed_store_test.dart"
       ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "일반 UUID 표식 추가3종28 PASS/분석 정상",
+      "blocker": "3622d07 로컬 검증/검토 완료, 선행 CI 후 푸시"
+    },
+    {
+      "id": "P10-07d",
+      "action": "원본 요청·서버 근거·새 요청의 충돌 해결 이력 보존 스키마",
+      "requires": [
+        "p10.remaining.analysis"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/database",
+        "apps/mobile/drift_schemas",
+        "apps/mobile/test"
+      ],
       "state": "active",
       "owner": "AI",
-      "resume": "V6/V15 deletion_ledger에 정의된 UUID 표식 범위 확장. USER/자산 generation은 별도 처리, 물리 삭제 없음"
+      "resume": "v6 추가 이관과 보존 검증. 원본 충돌 요청은 ACKED로 위장하지 않으며 실제 해결/전송은 후속 단계"
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers"

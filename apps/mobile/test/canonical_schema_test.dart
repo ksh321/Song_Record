@@ -12,12 +12,13 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 String uid(int n) =>
     '00000000-0000-4000-8000-${n.toRadixString(16).padLeft(12, '0')}';
-const added = [
+const canonicalTables = [
   'song_aliases',
   'mutation_supersessions',
   'canonical_edit_intents',
   'mutation_mapping_holds',
 ];
+const added = [...canonicalTables, 'mutation_conflict_resolutions'];
 
 Future<void> assertOrderProtected(AccountDatabase db) async {
   final before =
@@ -94,8 +95,8 @@ void main() {
       await directory.delete(recursive: true);
     }
   });
-  for (final version in [1, 2, 3, 4]) {
-    test('v$version to v5 preserves old rows, wire, budget, cursor and synthetic file', () async {
+  for (final version in [1, 2, 3, 4, 5]) {
+    test('v$version to v6 preserves old rows, wire, budget, cursor and synthetic file', () async {
       final directory = await Directory.systemTemp.createTemp(
         'sr-canonical-migration-',
       );
@@ -168,6 +169,41 @@ void main() {
           jsonEncode({'song_id': uid(6), 'note': 'synthetic draft'}),
         ],
       );
+      if (version >= 5) {
+        // Exercise nonempty retained baseline tables as well as queue/file rows.
+        final token = uid(30);
+        old.execute(
+          'INSERT INTO snapshot_downloads(snapshot_token,user_id,manifest_json,snapshot_cursor,expires_at,created_at) VALUES(?,?,?,17,999999,1)',
+          [
+            token,
+            owner,
+            jsonEncode({'snapshot_token': token, 'snapshot_cursor': 17}),
+          ],
+        );
+        old.execute(
+          "INSERT INTO snapshot_download_rows VALUES(?,?,'TAG',1,?,?)",
+          [
+            token,
+            owner,
+            entity,
+            jsonEncode({
+              'id': entity,
+              'user_id': owner,
+              'name': 'preserved baseline',
+            }),
+          ],
+        );
+        old.execute(
+          "INSERT INTO snapshot_download_progress VALUES(?,'TAG',1,NULL,1)",
+          [token],
+        );
+        old.execute("UPDATE snapshot_downloads SET state='VERIFIED'");
+        old.execute("UPDATE snapshot_downloads SET state='APPLIED'");
+        old.execute('INSERT INTO snapshot_baseline VALUES(1,?,?)', [
+          token,
+          owner,
+        ]);
+      }
       if (version == 3) {
         // Preserve an unusual legacy negative rowid; new v4 inserts reject it.
         old.execute(
@@ -215,7 +251,7 @@ void main() {
               .data
               .values
               .single,
-          5,
+          6,
         );
         for (final entry in before.entries) {
           expect(
@@ -458,7 +494,9 @@ void main() {
       );
     }
     expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
-    for (final table in added) {
+    // Only these tables have rows in this canonical mapping fixture. Resolution
+    // replacement protection is tested with populated rows in its own tests.
+    for (final table in canonicalTables) {
       await expectLater(
         db.customStatement(
           'INSERT OR REPLACE INTO $table SELECT * FROM $table',
@@ -531,7 +569,7 @@ void main() {
       }
       expect(exported['format'], 'song-record-local-recovery');
       expect(exported['version'], 2);
-      expect(exported['schema_version'], 5);
+      expect(exported['schema_version'], 6);
       expect(tables['local_mutations'], mutationsBefore);
 
       final mutations = (tables['local_mutations'] as List)

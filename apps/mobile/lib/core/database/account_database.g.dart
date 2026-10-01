@@ -9336,6 +9336,664 @@ class SnapshotBaselineCompanion extends UpdateCompanion<SnapshotBaselineData> {
   }
 }
 
+class MutationConflictResolutions extends Table
+    with TableInfo<MutationConflictResolutions, MutationConflictResolution> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  MutationConflictResolutions(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _originalOpIdMeta = const VerificationMeta(
+    'originalOpId',
+  );
+  late final GeneratedColumn<String> originalOpId = GeneratedColumn<String>(
+    'original_op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_account(user_id)',
+  );
+  static const VerificationMeta _replacementOpIdMeta = const VerificationMeta(
+    'replacementOpId',
+  );
+  late final GeneratedColumn<String> replacementOpId = GeneratedColumn<String>(
+    'replacement_op_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'UNIQUE REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _originalAttemptCountMeta =
+      const VerificationMeta('originalAttemptCount');
+  late final GeneratedColumn<int> originalAttemptCount = GeneratedColumn<int>(
+    'original_attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (original_attempt_count > 0)',
+  );
+  static const VerificationMeta _resolvedRevisionMeta = const VerificationMeta(
+    'resolvedRevision',
+  );
+  late final GeneratedColumn<int> resolvedRevision = GeneratedColumn<int>(
+    'resolved_revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (resolved_revision > 0)',
+  );
+  static const VerificationMeta _serverSnapshotMeta = const VerificationMeta(
+    'serverSnapshot',
+  );
+  late final GeneratedColumn<String> serverSnapshot = GeneratedColumn<String>(
+    'server_snapshot',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (json_valid(server_snapshot) AND json_type(server_snapshot) = \'object\')',
+  );
+  static const VerificationMeta _choicesMeta = const VerificationMeta(
+    'choices',
+  );
+  late final GeneratedColumn<String> choices = GeneratedColumn<String>(
+    'choices',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (json_valid(choices) AND json_type(choices) = \'object\')',
+  );
+  static const VerificationMeta _orderRootOpIdMeta = const VerificationMeta(
+    'orderRootOpId',
+  );
+  late final GeneratedColumn<String> orderRootOpId = GeneratedColumn<String>(
+    'order_root_op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _logicalOrderMeta = const VerificationMeta(
+    'logicalOrder',
+  );
+  late final GeneratedColumn<int> logicalOrder = GeneratedColumn<int>(
+    'logical_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (logical_order > 0)',
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    originalOpId,
+    userId,
+    replacementOpId,
+    originalAttemptCount,
+    resolvedRevision,
+    serverSnapshot,
+    choices,
+    orderRootOpId,
+    logicalOrder,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'mutation_conflict_resolutions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MutationConflictResolution> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('original_op_id')) {
+      context.handle(
+        _originalOpIdMeta,
+        originalOpId.isAcceptableOrUnknown(
+          data['original_op_id']!,
+          _originalOpIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_originalOpIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('replacement_op_id')) {
+      context.handle(
+        _replacementOpIdMeta,
+        replacementOpId.isAcceptableOrUnknown(
+          data['replacement_op_id']!,
+          _replacementOpIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('original_attempt_count')) {
+      context.handle(
+        _originalAttemptCountMeta,
+        originalAttemptCount.isAcceptableOrUnknown(
+          data['original_attempt_count']!,
+          _originalAttemptCountMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_originalAttemptCountMeta);
+    }
+    if (data.containsKey('resolved_revision')) {
+      context.handle(
+        _resolvedRevisionMeta,
+        resolvedRevision.isAcceptableOrUnknown(
+          data['resolved_revision']!,
+          _resolvedRevisionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_resolvedRevisionMeta);
+    }
+    if (data.containsKey('server_snapshot')) {
+      context.handle(
+        _serverSnapshotMeta,
+        serverSnapshot.isAcceptableOrUnknown(
+          data['server_snapshot']!,
+          _serverSnapshotMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_serverSnapshotMeta);
+    }
+    if (data.containsKey('choices')) {
+      context.handle(
+        _choicesMeta,
+        choices.isAcceptableOrUnknown(data['choices']!, _choicesMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_choicesMeta);
+    }
+    if (data.containsKey('order_root_op_id')) {
+      context.handle(
+        _orderRootOpIdMeta,
+        orderRootOpId.isAcceptableOrUnknown(
+          data['order_root_op_id']!,
+          _orderRootOpIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_orderRootOpIdMeta);
+    }
+    if (data.containsKey('logical_order')) {
+      context.handle(
+        _logicalOrderMeta,
+        logicalOrder.isAcceptableOrUnknown(
+          data['logical_order']!,
+          _logicalOrderMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_logicalOrderMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {originalOpId};
+  @override
+  MutationConflictResolution map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MutationConflictResolution(
+      originalOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_op_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      replacementOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}replacement_op_id'],
+      ),
+      originalAttemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}original_attempt_count'],
+      )!,
+      resolvedRevision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}resolved_revision'],
+      )!,
+      serverSnapshot: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_snapshot'],
+      )!,
+      choices: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}choices'],
+      )!,
+      orderRootOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}order_root_op_id'],
+      )!,
+      logicalOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}logical_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  MutationConflictResolutions createAlias(String alias) {
+    return MutationConflictResolutions(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+  @override
+  List<String> get customConstraints => const [
+    'CHECK(replacement_op_id IS NULL OR replacement_op_id <> original_op_id)',
+    'CHECK(json_type(server_snapshot, \'\$.revision\') IS \'integer\' AND json_extract(server_snapshot, \'\$.revision\') = resolved_revision)',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class MutationConflictResolution extends DataClass
+    implements Insertable<MutationConflictResolution> {
+  final String originalOpId;
+  final String userId;
+  final String? replacementOpId;
+  final int originalAttemptCount;
+  final int resolvedRevision;
+  final String serverSnapshot;
+  final String choices;
+  final String orderRootOpId;
+  final int logicalOrder;
+  final int createdAt;
+  const MutationConflictResolution({
+    required this.originalOpId,
+    required this.userId,
+    this.replacementOpId,
+    required this.originalAttemptCount,
+    required this.resolvedRevision,
+    required this.serverSnapshot,
+    required this.choices,
+    required this.orderRootOpId,
+    required this.logicalOrder,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['original_op_id'] = Variable<String>(originalOpId);
+    map['user_id'] = Variable<String>(userId);
+    if (!nullToAbsent || replacementOpId != null) {
+      map['replacement_op_id'] = Variable<String>(replacementOpId);
+    }
+    map['original_attempt_count'] = Variable<int>(originalAttemptCount);
+    map['resolved_revision'] = Variable<int>(resolvedRevision);
+    map['server_snapshot'] = Variable<String>(serverSnapshot);
+    map['choices'] = Variable<String>(choices);
+    map['order_root_op_id'] = Variable<String>(orderRootOpId);
+    map['logical_order'] = Variable<int>(logicalOrder);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  MutationConflictResolutionsCompanion toCompanion(bool nullToAbsent) {
+    return MutationConflictResolutionsCompanion(
+      originalOpId: Value(originalOpId),
+      userId: Value(userId),
+      replacementOpId: replacementOpId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(replacementOpId),
+      originalAttemptCount: Value(originalAttemptCount),
+      resolvedRevision: Value(resolvedRevision),
+      serverSnapshot: Value(serverSnapshot),
+      choices: Value(choices),
+      orderRootOpId: Value(orderRootOpId),
+      logicalOrder: Value(logicalOrder),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory MutationConflictResolution.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MutationConflictResolution(
+      originalOpId: serializer.fromJson<String>(json['original_op_id']),
+      userId: serializer.fromJson<String>(json['user_id']),
+      replacementOpId: serializer.fromJson<String?>(json['replacement_op_id']),
+      originalAttemptCount: serializer.fromJson<int>(
+        json['original_attempt_count'],
+      ),
+      resolvedRevision: serializer.fromJson<int>(json['resolved_revision']),
+      serverSnapshot: serializer.fromJson<String>(json['server_snapshot']),
+      choices: serializer.fromJson<String>(json['choices']),
+      orderRootOpId: serializer.fromJson<String>(json['order_root_op_id']),
+      logicalOrder: serializer.fromJson<int>(json['logical_order']),
+      createdAt: serializer.fromJson<int>(json['created_at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'original_op_id': serializer.toJson<String>(originalOpId),
+      'user_id': serializer.toJson<String>(userId),
+      'replacement_op_id': serializer.toJson<String?>(replacementOpId),
+      'original_attempt_count': serializer.toJson<int>(originalAttemptCount),
+      'resolved_revision': serializer.toJson<int>(resolvedRevision),
+      'server_snapshot': serializer.toJson<String>(serverSnapshot),
+      'choices': serializer.toJson<String>(choices),
+      'order_root_op_id': serializer.toJson<String>(orderRootOpId),
+      'logical_order': serializer.toJson<int>(logicalOrder),
+      'created_at': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  MutationConflictResolution copyWith({
+    String? originalOpId,
+    String? userId,
+    Value<String?> replacementOpId = const Value.absent(),
+    int? originalAttemptCount,
+    int? resolvedRevision,
+    String? serverSnapshot,
+    String? choices,
+    String? orderRootOpId,
+    int? logicalOrder,
+    int? createdAt,
+  }) => MutationConflictResolution(
+    originalOpId: originalOpId ?? this.originalOpId,
+    userId: userId ?? this.userId,
+    replacementOpId: replacementOpId.present
+        ? replacementOpId.value
+        : this.replacementOpId,
+    originalAttemptCount: originalAttemptCount ?? this.originalAttemptCount,
+    resolvedRevision: resolvedRevision ?? this.resolvedRevision,
+    serverSnapshot: serverSnapshot ?? this.serverSnapshot,
+    choices: choices ?? this.choices,
+    orderRootOpId: orderRootOpId ?? this.orderRootOpId,
+    logicalOrder: logicalOrder ?? this.logicalOrder,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  MutationConflictResolution copyWithCompanion(
+    MutationConflictResolutionsCompanion data,
+  ) {
+    return MutationConflictResolution(
+      originalOpId: data.originalOpId.present
+          ? data.originalOpId.value
+          : this.originalOpId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      replacementOpId: data.replacementOpId.present
+          ? data.replacementOpId.value
+          : this.replacementOpId,
+      originalAttemptCount: data.originalAttemptCount.present
+          ? data.originalAttemptCount.value
+          : this.originalAttemptCount,
+      resolvedRevision: data.resolvedRevision.present
+          ? data.resolvedRevision.value
+          : this.resolvedRevision,
+      serverSnapshot: data.serverSnapshot.present
+          ? data.serverSnapshot.value
+          : this.serverSnapshot,
+      choices: data.choices.present ? data.choices.value : this.choices,
+      orderRootOpId: data.orderRootOpId.present
+          ? data.orderRootOpId.value
+          : this.orderRootOpId,
+      logicalOrder: data.logicalOrder.present
+          ? data.logicalOrder.value
+          : this.logicalOrder,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MutationConflictResolution(')
+          ..write('originalOpId: $originalOpId, ')
+          ..write('userId: $userId, ')
+          ..write('replacementOpId: $replacementOpId, ')
+          ..write('originalAttemptCount: $originalAttemptCount, ')
+          ..write('resolvedRevision: $resolvedRevision, ')
+          ..write('serverSnapshot: $serverSnapshot, ')
+          ..write('choices: $choices, ')
+          ..write('orderRootOpId: $orderRootOpId, ')
+          ..write('logicalOrder: $logicalOrder, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    originalOpId,
+    userId,
+    replacementOpId,
+    originalAttemptCount,
+    resolvedRevision,
+    serverSnapshot,
+    choices,
+    orderRootOpId,
+    logicalOrder,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MutationConflictResolution &&
+          other.originalOpId == this.originalOpId &&
+          other.userId == this.userId &&
+          other.replacementOpId == this.replacementOpId &&
+          other.originalAttemptCount == this.originalAttemptCount &&
+          other.resolvedRevision == this.resolvedRevision &&
+          other.serverSnapshot == this.serverSnapshot &&
+          other.choices == this.choices &&
+          other.orderRootOpId == this.orderRootOpId &&
+          other.logicalOrder == this.logicalOrder &&
+          other.createdAt == this.createdAt);
+}
+
+class MutationConflictResolutionsCompanion
+    extends UpdateCompanion<MutationConflictResolution> {
+  final Value<String> originalOpId;
+  final Value<String> userId;
+  final Value<String?> replacementOpId;
+  final Value<int> originalAttemptCount;
+  final Value<int> resolvedRevision;
+  final Value<String> serverSnapshot;
+  final Value<String> choices;
+  final Value<String> orderRootOpId;
+  final Value<int> logicalOrder;
+  final Value<int> createdAt;
+  const MutationConflictResolutionsCompanion({
+    this.originalOpId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.replacementOpId = const Value.absent(),
+    this.originalAttemptCount = const Value.absent(),
+    this.resolvedRevision = const Value.absent(),
+    this.serverSnapshot = const Value.absent(),
+    this.choices = const Value.absent(),
+    this.orderRootOpId = const Value.absent(),
+    this.logicalOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  MutationConflictResolutionsCompanion.insert({
+    required String originalOpId,
+    required String userId,
+    this.replacementOpId = const Value.absent(),
+    required int originalAttemptCount,
+    required int resolvedRevision,
+    required String serverSnapshot,
+    required String choices,
+    required String orderRootOpId,
+    required int logicalOrder,
+    required int createdAt,
+  }) : originalOpId = Value(originalOpId),
+       userId = Value(userId),
+       originalAttemptCount = Value(originalAttemptCount),
+       resolvedRevision = Value(resolvedRevision),
+       serverSnapshot = Value(serverSnapshot),
+       choices = Value(choices),
+       orderRootOpId = Value(orderRootOpId),
+       logicalOrder = Value(logicalOrder),
+       createdAt = Value(createdAt);
+  static Insertable<MutationConflictResolution> custom({
+    Expression<String>? originalOpId,
+    Expression<String>? userId,
+    Expression<String>? replacementOpId,
+    Expression<int>? originalAttemptCount,
+    Expression<int>? resolvedRevision,
+    Expression<String>? serverSnapshot,
+    Expression<String>? choices,
+    Expression<String>? orderRootOpId,
+    Expression<int>? logicalOrder,
+    Expression<int>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (originalOpId != null) 'original_op_id': originalOpId,
+      if (userId != null) 'user_id': userId,
+      if (replacementOpId != null) 'replacement_op_id': replacementOpId,
+      if (originalAttemptCount != null)
+        'original_attempt_count': originalAttemptCount,
+      if (resolvedRevision != null) 'resolved_revision': resolvedRevision,
+      if (serverSnapshot != null) 'server_snapshot': serverSnapshot,
+      if (choices != null) 'choices': choices,
+      if (orderRootOpId != null) 'order_root_op_id': orderRootOpId,
+      if (logicalOrder != null) 'logical_order': logicalOrder,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  MutationConflictResolutionsCompanion copyWith({
+    Value<String>? originalOpId,
+    Value<String>? userId,
+    Value<String?>? replacementOpId,
+    Value<int>? originalAttemptCount,
+    Value<int>? resolvedRevision,
+    Value<String>? serverSnapshot,
+    Value<String>? choices,
+    Value<String>? orderRootOpId,
+    Value<int>? logicalOrder,
+    Value<int>? createdAt,
+  }) {
+    return MutationConflictResolutionsCompanion(
+      originalOpId: originalOpId ?? this.originalOpId,
+      userId: userId ?? this.userId,
+      replacementOpId: replacementOpId ?? this.replacementOpId,
+      originalAttemptCount: originalAttemptCount ?? this.originalAttemptCount,
+      resolvedRevision: resolvedRevision ?? this.resolvedRevision,
+      serverSnapshot: serverSnapshot ?? this.serverSnapshot,
+      choices: choices ?? this.choices,
+      orderRootOpId: orderRootOpId ?? this.orderRootOpId,
+      logicalOrder: logicalOrder ?? this.logicalOrder,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (originalOpId.present) {
+      map['original_op_id'] = Variable<String>(originalOpId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (replacementOpId.present) {
+      map['replacement_op_id'] = Variable<String>(replacementOpId.value);
+    }
+    if (originalAttemptCount.present) {
+      map['original_attempt_count'] = Variable<int>(originalAttemptCount.value);
+    }
+    if (resolvedRevision.present) {
+      map['resolved_revision'] = Variable<int>(resolvedRevision.value);
+    }
+    if (serverSnapshot.present) {
+      map['server_snapshot'] = Variable<String>(serverSnapshot.value);
+    }
+    if (choices.present) {
+      map['choices'] = Variable<String>(choices.value);
+    }
+    if (orderRootOpId.present) {
+      map['order_root_op_id'] = Variable<String>(orderRootOpId.value);
+    }
+    if (logicalOrder.present) {
+      map['logical_order'] = Variable<int>(logicalOrder.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MutationConflictResolutionsCompanion(')
+          ..write('originalOpId: $originalOpId, ')
+          ..write('userId: $userId, ')
+          ..write('replacementOpId: $replacementOpId, ')
+          ..write('originalAttemptCount: $originalAttemptCount, ')
+          ..write('resolvedRevision: $resolvedRevision, ')
+          ..write('serverSnapshot: $serverSnapshot, ')
+          ..write('choices: $choices, ')
+          ..write('orderRootOpId: $orderRootOpId, ')
+          ..write('logicalOrder: $logicalOrder, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AccountDatabase extends GeneratedDatabase {
   _$AccountDatabase(QueryExecutor e) : super(e);
   $AccountDatabaseManager get managers => $AccountDatabaseManager(this);
@@ -9526,6 +10184,28 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     'CREATE TRIGGER snapshot_baseline_update BEFORE UPDATE ON snapshot_baseline WHEN NEW.singleton IS NOT OLD.singleton OR NEW.user_id IS NOT OLD.user_id OR NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND user_id = NEW.user_id AND state = \'APPLIED\') BEGIN SELECT RAISE (ABORT, \'Only an applied snapshot may become baseline\');END',
     'snapshot_baseline_update',
   );
+  late final MutationConflictResolutions mutationConflictResolutions =
+      MutationConflictResolutions(this);
+  late final Trigger conflictResolutionValidInsert = Trigger(
+    'CREATE TRIGGER conflict_resolution_valid_insert BEFORE INSERT ON mutation_conflict_resolutions BEGIN SELECT RAISE (ABORT, \'Resolution requires the current revision conflict\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.original_op_id AND m.user_id = NEW.user_id AND m.operation = \'PATCH\' AND m.entity_type IN (\'SONG\', \'RECORDING\', \'TAG\') AND m.queue_state = \'CONFLICT\' AND m.attempt_count = NEW.original_attempt_count AND json_extract(m.server_response, \'\$.status\') = 409 AND json_extract(m.server_response, \'\$.code\') = \'REVISION_CONFLICT\' AND json_type(m.server_response, \'\$.current.revision\') = \'integer\' AND NEW.resolved_revision >= json_extract(m.server_response, \'\$.current.revision\') AND NEW.resolved_revision > m.base_revision AND json_extract(NEW.server_snapshot, \'\$.id\') = m.entity_id AND(json_type(NEW.server_snapshot, \'\$.user_id\') IS NULL OR json_extract(NEW.server_snapshot, \'\$.user_id\') = NEW.user_id));SELECT RAISE (ABORT, \'Resolution choice must be explicit\') WHERE EXISTS (SELECT 1 FROM json_each(NEW.choices)AS choice WHERE choice.type <> \'text\' OR choice.value NOT IN (\'LOCAL\', \'SERVER\'));SELECT RAISE (ABORT, \'Mapping evidence must be resolved separately\') WHERE EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = NEW.original_op_id AND released_at IS NULL) OR EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.original_op_id);SELECT RAISE (ABORT, \'Invalid conflict replacement\') WHERE NEW.replacement_op_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM local_mutations AS original JOIN local_mutations AS replacement ON replacement.op_id = NEW.replacement_op_id WHERE original.op_id = NEW.original_op_id AND replacement.user_id = NEW.user_id AND replacement.entity_type = original.entity_type AND replacement.entity_id = original.entity_id AND replacement.operation = \'PATCH\' AND replacement.queue_state = \'PENDING\' AND replacement.attempt_count = 0 AND replacement."rowid" > original."rowid" AND replacement.base_revision = NEW.resolved_revision AND replacement.base_payload = NEW.server_snapshot AND json_type(replacement.payload, \'\$.base_revision\') = \'integer\' AND json_extract(replacement.payload, \'\$.base_revision\') = NEW.resolved_revision AND NOT EXISTS (SELECT 1 FROM mutation_wire_requests WHERE op_id = replacement.op_id));SELECT RAISE (ABORT, \'Conflict resolution order must be inherited\') WHERE NEW.order_root_op_id IS NOT COALESCE((SELECT order_root_op_id FROM mutation_conflict_resolutions WHERE replacement_op_id = NEW.original_op_id), NEW.original_op_id) OR NEW.logical_order IS NOT COALESCE((SELECT logical_order FROM mutation_conflict_resolutions WHERE replacement_op_id = NEW.original_op_id), (SELECT "rowid" FROM local_mutations WHERE op_id = NEW.original_op_id));SELECT RAISE (ABORT, \'Cannot prepend a resolution chain\') WHERE EXISTS (SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id = NEW.replacement_op_id);END',
+    'conflict_resolution_valid_insert',
+  );
+  late final Trigger conflictResolutionNoReplace = Trigger(
+    'CREATE TRIGGER conflict_resolution_no_replace BEFORE INSERT ON mutation_conflict_resolutions WHEN EXISTS (SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id = NEW.original_op_id OR(NEW.replacement_op_id IS NOT NULL AND replacement_op_id = NEW.replacement_op_id)) BEGIN SELECT RAISE (ABORT, \'Conflict resolution evidence cannot be replaced\');END',
+    'conflict_resolution_no_replace',
+  );
+  late final Trigger conflictResolutionNoUpdate = Trigger(
+    'CREATE TRIGGER conflict_resolution_no_update BEFORE UPDATE ON mutation_conflict_resolutions BEGIN SELECT RAISE (ABORT, \'Conflict resolution evidence is immutable\');END',
+    'conflict_resolution_no_update',
+  );
+  late final Trigger conflictResolutionNoDelete = Trigger(
+    'CREATE TRIGGER conflict_resolution_no_delete BEFORE DELETE ON mutation_conflict_resolutions BEGIN SELECT RAISE (ABORT, \'Conflict resolution evidence must be retained\');END',
+    'conflict_resolution_no_delete',
+  );
+  late final Trigger resolvedMutationNoClaim = Trigger(
+    'CREATE TRIGGER resolved_mutation_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Resolved original operation cannot be retried\');END',
+    'resolved_mutation_no_claim',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -9588,6 +10268,12 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     snapshotProgressUpdate,
     snapshotBaselineInsert,
     snapshotBaselineUpdate,
+    mutationConflictResolutions,
+    conflictResolutionValidInsert,
+    conflictResolutionNoReplace,
+    conflictResolutionNoUpdate,
+    conflictResolutionNoDelete,
+    resolvedMutationNoClaim,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -9841,6 +10527,41 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'snapshot_baseline',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_conflict_resolutions',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_conflict_resolutions',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_conflict_resolutions',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'mutation_conflict_resolutions',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'local_mutations',
         limitUpdateKind: UpdateKind.update,
       ),
       result: [],
@@ -10108,6 +10829,35 @@ final class $LocalAccountReferences
 
     final cache = $_typedResult.readTableOrNull(
       _snapshotBaselineRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    MutationConflictResolutions,
+    List<MutationConflictResolution>
+  >
+  _mutationConflictResolutionsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.mutationConflictResolutions,
+        aliasName:
+            'local_account__user_id__mutation_conflict_resolutions__user_id',
+      );
+
+  $MutationConflictResolutionsProcessedTableManager
+  get mutationConflictResolutionsRefs {
+    final manager =
+        $MutationConflictResolutionsTableManager(
+          $_db,
+          $_db.mutationConflictResolutions,
+        ).filter(
+          (f) => f.userId.userId.sqlEquals($_itemColumn<String>('user_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _mutationConflictResolutionsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -10441,6 +11191,32 @@ class $LocalAccountFilterComposer
                 $removeJoinBuilderFromRootComposer,
           ),
     );
+    return f(composer);
+  }
+
+  Expression<bool> mutationConflictResolutionsRefs(
+    Expression<bool> Function($MutationConflictResolutionsFilterComposer f) f,
+  ) {
+    final $MutationConflictResolutionsFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.userId,
+          referencedTable: $db.mutationConflictResolutions,
+          getReferencedColumn: (t) => t.userId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $MutationConflictResolutionsFilterComposer(
+                $db: $db,
+                $table: $db.mutationConflictResolutions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
     return f(composer);
   }
 }
@@ -10797,6 +11573,32 @@ class $LocalAccountAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> mutationConflictResolutionsRefs<T extends Object>(
+    Expression<T> Function($MutationConflictResolutionsAnnotationComposer a) f,
+  ) {
+    final $MutationConflictResolutionsAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.userId,
+          referencedTable: $db.mutationConflictResolutions,
+          getReferencedColumn: (t) => t.userId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $MutationConflictResolutionsAnnotationComposer(
+                $db: $db,
+                $table: $db.mutationConflictResolutions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $LocalAccountTableManager
@@ -10825,6 +11627,7 @@ class $LocalAccountTableManager
             bool snapshotDownloadsRefs,
             bool snapshotDownloadRowsRefs,
             bool snapshotBaselineRefs,
+            bool mutationConflictResolutionsRefs,
           })
         > {
   $LocalAccountTableManager(_$AccountDatabase db, LocalAccount table)
@@ -10884,6 +11687,7 @@ class $LocalAccountTableManager
                 snapshotDownloadsRefs = false,
                 snapshotDownloadRowsRefs = false,
                 snapshotBaselineRefs = false,
+                mutationConflictResolutionsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -10900,6 +11704,8 @@ class $LocalAccountTableManager
                     if (snapshotDownloadsRefs) db.snapshotDownloads,
                     if (snapshotDownloadRowsRefs) db.snapshotDownloadRows,
                     if (snapshotBaselineRefs) db.snapshotBaseline,
+                    if (mutationConflictResolutionsRefs)
+                      db.mutationConflictResolutions,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -11156,6 +11962,27 @@ class $LocalAccountTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (mutationConflictResolutionsRefs)
+                        await $_getPrefetchedData<
+                          LocalAccountData,
+                          LocalAccount,
+                          MutationConflictResolution
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalAccountReferences
+                              ._mutationConflictResolutionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalAccountReferences(
+                                db,
+                                table,
+                                p0,
+                              ).mutationConflictResolutionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.userId == item.userId,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -11189,6 +12016,7 @@ typedef $LocalAccountProcessedTableManager =
         bool snapshotDownloadsRefs,
         bool snapshotDownloadRowsRefs,
         bool snapshotBaselineRefs,
+        bool mutationConflictResolutionsRefs,
       })
     >;
 typedef $MetadataCopiesCreateCompanionBuilder =
@@ -19539,6 +20367,727 @@ typedef $SnapshotBaselineProcessedTableManager =
       SnapshotBaselineData,
       PrefetchHooks Function({bool userId})
     >;
+typedef $MutationConflictResolutionsCreateCompanionBuilder =
+    MutationConflictResolutionsCompanion Function({
+      required String originalOpId,
+      required String userId,
+      Value<String?> replacementOpId,
+      required int originalAttemptCount,
+      required int resolvedRevision,
+      required String serverSnapshot,
+      required String choices,
+      required String orderRootOpId,
+      required int logicalOrder,
+      required int createdAt,
+    });
+typedef $MutationConflictResolutionsUpdateCompanionBuilder =
+    MutationConflictResolutionsCompanion Function({
+      Value<String> originalOpId,
+      Value<String> userId,
+      Value<String?> replacementOpId,
+      Value<int> originalAttemptCount,
+      Value<int> resolvedRevision,
+      Value<String> serverSnapshot,
+      Value<String> choices,
+      Value<String> orderRootOpId,
+      Value<int> logicalOrder,
+      Value<int> createdAt,
+    });
+
+final class $MutationConflictResolutionsReferences
+    extends
+        BaseReferences<
+          _$AccountDatabase,
+          MutationConflictResolutions,
+          MutationConflictResolution
+        > {
+  $MutationConflictResolutionsReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static LocalMutations _originalOpIdTable(_$AccountDatabase db) =>
+      db.localMutations.createAlias(
+        'mutation_conflict_resolutions__original_op_id__local_mutations__op_id',
+      );
+
+  $LocalMutationsProcessedTableManager get originalOpId {
+    final $_column = $_itemColumn<String>('original_op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_originalOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalAccount _userIdTable(_$AccountDatabase db) =>
+      db.localAccount.createAlias(
+        'mutation_conflict_resolutions__user_id__local_account__user_id',
+      );
+
+  $LocalAccountProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $LocalAccountTableManager(
+      $_db,
+      $_db.localAccount,
+    ).filter((f) => f.userId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalMutations _replacementOpIdTable(
+    _$AccountDatabase db,
+  ) => db.localMutations.createAlias(
+    'mutation_conflict_resolutions__replacement_op_id__local_mutations__op_id',
+  );
+
+  $LocalMutationsProcessedTableManager? get replacementOpId {
+    final $_column = $_itemColumn<String>('replacement_op_id');
+    if ($_column == null) return null;
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_replacementOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalMutations _orderRootOpIdTable(
+    _$AccountDatabase db,
+  ) => db.localMutations.createAlias(
+    'mutation_conflict_resolutions__order_root_op_id__local_mutations__op_id',
+  );
+
+  $LocalMutationsProcessedTableManager get orderRootOpId {
+    final $_column = $_itemColumn<String>('order_root_op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_orderRootOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $MutationConflictResolutionsFilterComposer
+    extends Composer<_$AccountDatabase, MutationConflictResolutions> {
+  $MutationConflictResolutionsFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get originalAttemptCount => $composableBuilder(
+    column: $table.originalAttemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get resolvedRevision => $composableBuilder(
+    column: $table.resolvedRevision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverSnapshot => $composableBuilder(
+    column: $table.serverSnapshot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get choices => $composableBuilder(
+    column: $table.choices,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get logicalOrder => $composableBuilder(
+    column: $table.logicalOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalMutationsFilterComposer get originalOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originalOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountFilterComposer get userId {
+    final $LocalAccountFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountFilterComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsFilterComposer get replacementOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.replacementOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsFilterComposer get orderRootOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.orderRootOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationConflictResolutionsOrderingComposer
+    extends Composer<_$AccountDatabase, MutationConflictResolutions> {
+  $MutationConflictResolutionsOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get originalAttemptCount => $composableBuilder(
+    column: $table.originalAttemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get resolvedRevision => $composableBuilder(
+    column: $table.resolvedRevision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverSnapshot => $composableBuilder(
+    column: $table.serverSnapshot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get choices => $composableBuilder(
+    column: $table.choices,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get logicalOrder => $composableBuilder(
+    column: $table.logicalOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalMutationsOrderingComposer get originalOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originalOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountOrderingComposer get userId {
+    final $LocalAccountOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountOrderingComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsOrderingComposer get replacementOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.replacementOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsOrderingComposer get orderRootOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.orderRootOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationConflictResolutionsAnnotationComposer
+    extends Composer<_$AccountDatabase, MutationConflictResolutions> {
+  $MutationConflictResolutionsAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get originalAttemptCount => $composableBuilder(
+    column: $table.originalAttemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get resolvedRevision => $composableBuilder(
+    column: $table.resolvedRevision,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get serverSnapshot => $composableBuilder(
+    column: $table.serverSnapshot,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get choices =>
+      $composableBuilder(column: $table.choices, builder: (column) => column);
+
+  GeneratedColumn<int> get logicalOrder => $composableBuilder(
+    column: $table.logicalOrder,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $LocalMutationsAnnotationComposer get originalOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originalOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountAnnotationComposer get userId {
+    final $LocalAccountAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountAnnotationComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsAnnotationComposer get replacementOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.replacementOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsAnnotationComposer get orderRootOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.orderRootOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $MutationConflictResolutionsTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          MutationConflictResolutions,
+          MutationConflictResolution,
+          $MutationConflictResolutionsFilterComposer,
+          $MutationConflictResolutionsOrderingComposer,
+          $MutationConflictResolutionsAnnotationComposer,
+          $MutationConflictResolutionsCreateCompanionBuilder,
+          $MutationConflictResolutionsUpdateCompanionBuilder,
+          (MutationConflictResolution, $MutationConflictResolutionsReferences),
+          MutationConflictResolution,
+          PrefetchHooks Function({
+            bool originalOpId,
+            bool userId,
+            bool replacementOpId,
+            bool orderRootOpId,
+          })
+        > {
+  $MutationConflictResolutionsTableManager(
+    _$AccountDatabase db,
+    MutationConflictResolutions table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $MutationConflictResolutionsFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $MutationConflictResolutionsOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $MutationConflictResolutionsAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> originalOpId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String?> replacementOpId = const Value.absent(),
+                Value<int> originalAttemptCount = const Value.absent(),
+                Value<int> resolvedRevision = const Value.absent(),
+                Value<String> serverSnapshot = const Value.absent(),
+                Value<String> choices = const Value.absent(),
+                Value<String> orderRootOpId = const Value.absent(),
+                Value<int> logicalOrder = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+              }) => MutationConflictResolutionsCompanion(
+                originalOpId: originalOpId,
+                userId: userId,
+                replacementOpId: replacementOpId,
+                originalAttemptCount: originalAttemptCount,
+                resolvedRevision: resolvedRevision,
+                serverSnapshot: serverSnapshot,
+                choices: choices,
+                orderRootOpId: orderRootOpId,
+                logicalOrder: logicalOrder,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String originalOpId,
+                required String userId,
+                Value<String?> replacementOpId = const Value.absent(),
+                required int originalAttemptCount,
+                required int resolvedRevision,
+                required String serverSnapshot,
+                required String choices,
+                required String orderRootOpId,
+                required int logicalOrder,
+                required int createdAt,
+              }) => MutationConflictResolutionsCompanion.insert(
+                originalOpId: originalOpId,
+                userId: userId,
+                replacementOpId: replacementOpId,
+                originalAttemptCount: originalAttemptCount,
+                resolvedRevision: resolvedRevision,
+                serverSnapshot: serverSnapshot,
+                choices: choices,
+                orderRootOpId: orderRootOpId,
+                logicalOrder: logicalOrder,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    MutationConflictResolutions,
+                    MutationConflictResolution
+                  >(table),
+                  $MutationConflictResolutionsReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                originalOpId = false,
+                userId = false,
+                replacementOpId = false,
+                orderRootOpId = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (originalOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.originalOpId,
+                            referencedTable:
+                                $MutationConflictResolutionsReferences
+                                    ._originalOpIdTable(db),
+                            referencedColumn:
+                                $MutationConflictResolutionsReferences
+                                    ._originalOpIdTable(db)
+                                    .opId,
+                          ) as T;
+                        }
+                        if (userId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.userId,
+                            referencedTable:
+                                $MutationConflictResolutionsReferences
+                                    ._userIdTable(db),
+                            referencedColumn:
+                                $MutationConflictResolutionsReferences
+                                    ._userIdTable(db)
+                                    .userId,
+                          ) as T;
+                        }
+                        if (replacementOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.replacementOpId,
+                            referencedTable:
+                                $MutationConflictResolutionsReferences
+                                    ._replacementOpIdTable(db),
+                            referencedColumn:
+                                $MutationConflictResolutionsReferences
+                                    ._replacementOpIdTable(db)
+                                    .opId,
+                          ) as T;
+                        }
+                        if (orderRootOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.orderRootOpId,
+                            referencedTable:
+                                $MutationConflictResolutionsReferences
+                                    ._orderRootOpIdTable(db),
+                            referencedColumn:
+                                $MutationConflictResolutionsReferences
+                                    ._orderRootOpIdTable(db)
+                                    .opId,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $MutationConflictResolutionsProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      MutationConflictResolutions,
+      MutationConflictResolution,
+      $MutationConflictResolutionsFilterComposer,
+      $MutationConflictResolutionsOrderingComposer,
+      $MutationConflictResolutionsAnnotationComposer,
+      $MutationConflictResolutionsCreateCompanionBuilder,
+      $MutationConflictResolutionsUpdateCompanionBuilder,
+      (MutationConflictResolution, $MutationConflictResolutionsReferences),
+      MutationConflictResolution,
+      PrefetchHooks Function({
+        bool originalOpId,
+        bool userId,
+        bool replacementOpId,
+        bool orderRootOpId,
+      })
+    >;
 
 class $AccountDatabaseManager {
   final _$AccountDatabase _db;
@@ -19579,4 +21128,9 @@ class $AccountDatabaseManager {
       $SnapshotDownloadProgressTableManager(_db, _db.snapshotDownloadProgress);
   $SnapshotBaselineTableManager get snapshotBaseline =>
       $SnapshotBaselineTableManager(_db, _db.snapshotBaseline);
+  $MutationConflictResolutionsTableManager get mutationConflictResolutions =>
+      $MutationConflictResolutionsTableManager(
+        _db,
+        _db.mutationConflictResolutions,
+      );
 }

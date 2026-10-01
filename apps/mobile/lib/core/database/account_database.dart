@@ -18,7 +18,7 @@ class AccountDatabase extends _$AccountDatabase {
   final AppEnvironment environment;
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -37,7 +37,7 @@ class AccountDatabase extends _$AccountDatabase {
     // No destructive fallback. Every future version needs an explicit,
     // data-preserving migration and a checked-in schema snapshot.
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 4 || to != 5) {
+      if (from < 1 || from > 5 || to != 6) {
         throw StateError('Unsupported local schema migration: $from -> $to');
       }
       if (from < 2) {
@@ -102,19 +102,27 @@ class AccountDatabase extends _$AccountDatabase {
         await migrator.createTrigger(canonicalIntentNoReplace);
         await migrator.createTrigger(mappingHoldNoReplace);
       }
-      await migrator.createTable(snapshotDownloads);
-      await migrator.createTable(snapshotDownloadRows);
-      await migrator.createTable(snapshotDownloadProgress);
-      await migrator.createTable(snapshotBaseline);
-      await migrator.createTrigger(snapshotDownloadIdentity);
-      await migrator.createTrigger(snapshotDownloadNoReplace);
-      await migrator.createTrigger(snapshotRowInsert);
-      await migrator.createTrigger(snapshotRowNoUpdate);
-      await migrator.createTrigger(snapshotRowDelete);
-      await migrator.createTrigger(snapshotProgressInsert);
-      await migrator.createTrigger(snapshotProgressUpdate);
-      await migrator.createTrigger(snapshotBaselineInsert);
-      await migrator.createTrigger(snapshotBaselineUpdate);
+      if (from < 5) {
+        await migrator.createTable(snapshotDownloads);
+        await migrator.createTable(snapshotDownloadRows);
+        await migrator.createTable(snapshotDownloadProgress);
+        await migrator.createTable(snapshotBaseline);
+        await migrator.createTrigger(snapshotDownloadIdentity);
+        await migrator.createTrigger(snapshotDownloadNoReplace);
+        await migrator.createTrigger(snapshotRowInsert);
+        await migrator.createTrigger(snapshotRowNoUpdate);
+        await migrator.createTrigger(snapshotRowDelete);
+        await migrator.createTrigger(snapshotProgressInsert);
+        await migrator.createTrigger(snapshotProgressUpdate);
+        await migrator.createTrigger(snapshotBaselineInsert);
+        await migrator.createTrigger(snapshotBaselineUpdate);
+      }
+      await migrator.createTable(mutationConflictResolutions);
+      await migrator.createTrigger(conflictResolutionValidInsert);
+      await migrator.createTrigger(conflictResolutionNoReplace);
+      await migrator.createTrigger(conflictResolutionNoUpdate);
+      await migrator.createTrigger(conflictResolutionNoDelete);
+      await migrator.createTrigger(resolvedMutationNoClaim);
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
