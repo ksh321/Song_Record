@@ -16,7 +16,11 @@ enum SnapshotStep {
 
 /// One network request at most per call. The application schedules the next step;
 /// this class neither polls nor queues a follow-up behind an in-flight request.
-final class SnapshotReceiver {
+abstract interface class SnapshotStepper {
+  Future<SnapshotStep> step(AuthSession session);
+}
+
+final class SnapshotReceiver implements SnapshotStepper {
   SnapshotReceiver({
     required this.store,
     required this.transport,
@@ -33,6 +37,7 @@ final class SnapshotReceiver {
   /// Only the caller that has obtained a newly verified session may resume.
   void resumeAfterAuthentication() => _authenticationBlocked = false;
 
+  @override
   Future<SnapshotStep> step(AuthSession session) {
     return _flight ??= _step(session).whenComplete(() {
       _flight = null;
