@@ -1,19 +1,34 @@
 import '../../core/sync/change_feed_receiver.dart';
 import '../auth/auth_session.dart';
+import 'snapshot_sync_backend.dart';
 import 'sync_controller.dart';
 
 /// Uses only SyncController's foreground scheduling. Each wake receives at most
 /// one page before sending; it never starts its own timer or a queued request.
-final class ChangeFeedSyncBackend implements SyncBackend, SyncStatusSource {
+final class ChangeFeedSyncBackend
+    implements SyncBackend, SyncStatusSource, SnapshotRestartSource {
   ChangeFeedSyncBackend({
     required this.outgoing,
     required this.receiver,
     required this.session,
+    this.allowInitialRestart = false,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
   final SyncBackend outgoing;
   final ChangeFeedStepper receiver;
   final Future<AuthSession> Function() session;
+  final bool allowInitialRestart;
+  bool _initialNeeded = false;
+  @override
+  bool get initialSnapshotRequired => _initialNeeded;
+  @override
+  void snapshotReady() {
+    if (!_initialNeeded) return;
+    _initialNeeded = false;
+    _due = null;
+    lastStep = null;
+  }
+
   final DateTime Function() _now;
   bool _blocked = false;
   DateTime? _due;
@@ -56,8 +71,15 @@ final class ChangeFeedSyncBackend implements SyncBackend, SyncStatusSource {
     switch (result) {
       case ChangeFeedStep.authenticationRequired:
       case ChangeFeedStep.cursorExpired:
-      case ChangeFeedStep.needsInitialSnapshot:
         _blocked = true;
+        return;
+      case ChangeFeedStep.needsInitialSnapshot:
+        if (allowInitialRestart) {
+          _initialNeeded = true;
+          _due = _now().toUtc().add(const Duration(seconds: 1));
+        } else {
+          _blocked = true;
+        }
         return;
       case ChangeFeedStep.progressed:
         _due = _now().toUtc().add(const Duration(seconds: 1));

@@ -89,6 +89,7 @@ Future<void> main() async {
             ),
             session: currentSession,
             outgoing: ChangeFeedSyncBackend(
+              allowInitialRestart: true,
               receiver: ChangeFeedReceiver(
                 store: store,
                 transport: HttpChangeFeedTransport(
@@ -100,6 +101,7 @@ Future<void> main() async {
                     identical(controller.session, session) &&
                     controller.phase == AuthPhase.ready &&
                     identical(activeStore, store),
+                newOperationId: () => UuidValue.random().value,
               ),
               session: currentSession,
               outgoing: RepositorySyncBackend(

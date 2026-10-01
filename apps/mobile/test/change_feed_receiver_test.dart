@@ -231,6 +231,26 @@ void main() {
     expect((jsonDecode(await store.recoveryData()) as Map)['tables'], before);
   });
   test(
+    'expired cursor schedules durable refresh without advancing old cursor',
+    () async {
+      await baseline();
+      receiver = ChangeFeedReceiver(
+        store: store,
+        transport: transport,
+        isSessionCurrent: (_) => current,
+        newOperationId: () => id,
+      );
+      transport.respond = (_) async =>
+          const ChangeFeedResponse(409, '{"error":{"code":"CURSOR_EXPIRED"}}');
+      expect(await receiver.step(session), ChangeFeedStep.needsInitialSnapshot);
+      expect(await store.readCursor(), 7);
+      expect(await store.hasCompleteBaseline(), isFalse);
+      expect(jsonDecode((await store.readSnapshotResume())!)['op_id'], id);
+      expect(await receiver.step(session), ChangeFeedStep.needsInitialSnapshot);
+      expect(transport.calls, 1);
+    },
+  );
+  test(
     'retryable transport/server failure and invalid page never advance cursor',
     () async {
       await baseline();

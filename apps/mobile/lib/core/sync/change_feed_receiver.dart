@@ -25,10 +25,12 @@ final class ChangeFeedReceiver implements ChangeFeedStepper {
     required this.store,
     required this.transport,
     required this.isSessionCurrent,
+    this.newOperationId,
   });
   final AccountStore store;
   final ChangeFeedTransport transport;
   final bool Function(AuthSession) isSessionCurrent;
+  final String Function()? newOperationId;
   Future<ChangeFeedStep>? _flight;
   bool _authenticationBlocked = false;
 
@@ -79,6 +81,17 @@ final class ChangeFeedReceiver implements ChangeFeedStepper {
       if (value is Map &&
           value['error'] is Map &&
           value['error']['code'] == 'CURSOR_EXPIRED') {
+        if (newOperationId != null) {
+          fence();
+          final requested = await store.requestSnapshotRefresh(
+            expected: position,
+            operationId: newOperationId!(),
+          );
+          fence();
+          return requested
+              ? ChangeFeedStep.needsInitialSnapshot
+              : ChangeFeedStep.retryLater;
+        }
         return ChangeFeedStep.cursorExpired;
       }
       throw const FormatException('Unexpected change feed conflict');

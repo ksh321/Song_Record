@@ -2,6 +2,11 @@ import '../../core/sync/snapshot_receiver.dart';
 import '../auth/auth_session.dart';
 import 'sync_controller.dart';
 
+abstract interface class SnapshotRestartSource {
+  bool get initialSnapshotRequired;
+  void snapshotReady();
+}
+
 /// Composes initial receiving with the existing foreground scheduler. No timer
 /// or queued follow-up lives here; the controller remains the single scheduler.
 final class SnapshotSyncBackend implements SyncBackend, SyncStatusSource {
@@ -45,6 +50,13 @@ final class SnapshotSyncBackend implements SyncBackend, SyncStatusSource {
   @override
   Future<void> send() async {
     if (_authBlocked) return;
+    if (_complete &&
+        outgoing is SnapshotRestartSource &&
+        (outgoing as SnapshotRestartSource).initialSnapshotRequired) {
+      final restartAt = await outgoing.nextAttempt();
+      _complete = false;
+      _due = restartAt;
+    }
     if (!_complete) {
       if (_due != null && _now().toUtc().isBefore(_due!)) return;
       _due = null;
@@ -61,6 +73,9 @@ final class SnapshotSyncBackend implements SyncBackend, SyncStatusSource {
       switch (result) {
         case SnapshotStep.complete:
           _complete = true;
+          if (outgoing is SnapshotRestartSource) {
+            (outgoing as SnapshotRestartSource).snapshotReady();
+          }
         case SnapshotStep.authenticationRequired:
           _authBlocked = true;
           return;

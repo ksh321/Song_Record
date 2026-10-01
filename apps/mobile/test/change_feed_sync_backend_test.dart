@@ -142,6 +142,44 @@ void main() {
       controller.dispose();
     },
   );
+  test('resync reenters initial receiver with deadline and sends only after fresh baseline', () async {
+    backend = ChangeFeedSyncBackend(
+      outgoing: sender,
+      receiver: receiver,
+      session: () async => session,
+      now: () => now,
+      allowInitialRestart: true,
+    );
+    final initial = Receiver()..action = () async => SnapshotStep.complete;
+    final wrapper = SnapshotSyncBackend(
+      outgoing: backend,
+      receiver: initial,
+      session: () async => session,
+      now: () => now,
+    );
+    receiver.respond = () async => ChangeFeedStep.needsInitialSnapshot;
+    await wrapper.send();
+    expect(initial.calls, 1);
+    expect(sender.sends, 0);
+    expect(backend.initialSnapshotRequired, isTrue);
+    await wrapper.send();
+    expect(initial.calls, 1); // early wake cannot bypass restart delay
+    now = now.add(const Duration(seconds: 1));
+    initial.action = () async => SnapshotStep.progressed;
+    await wrapper.send();
+    expect(initial.calls, 2);
+    expect(receiver.calls, 1);
+    expect(sender.sends, 0);
+    now = now.add(const Duration(seconds: 1));
+    initial.action = () async => SnapshotStep.complete;
+    receiver.respond = () async => ChangeFeedStep.caughtUp;
+    await wrapper.send();
+    expect(initial.calls, 3);
+    expect(receiver.calls, 2);
+    expect(sender.sends, 1);
+    expect(backend.initialSnapshotRequired, isFalse);
+    expect(wrapper.statusMessage, isNull);
+  });
   testWidgets('initial wrapper forwards delta status instead of empty queue', (
     tester,
   ) async {
