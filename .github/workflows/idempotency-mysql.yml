@@ -37,4 +37,4 @@ jobs:
         env:
           P07_MYSQL_CI: 'true'
           P07_MYSQL_PASSWORD: disposable-ci-password
-        run: bash gradlew test --tests '*MySqlIdempotencyTests' --tests '*MySqlSnapshotReadViewTests' --tests '*MySqlSnapshotBuildStoreTests' --tests '*MySqlSnapshotSourceRowsTests' --no-daemon
+        run: bash gradlew test --tests '*MySqlIdempotencyTests' --tests '*MySqlSnapshotReadViewTests' --tests '*MySqlSnapshotBuildStoreTests' --tests '*MySqlSnapshotSourceRowsTests' --tests '*MySqlChangeReadViewTests' --no-daemon
