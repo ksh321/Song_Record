@@ -2,9 +2,34 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths:
+      - "**"
+      - "!docs/**"
+      - "!*.md"
+      - "!tools/**"
+      - "!.gitmessage.txt"
+      - "docs/contracts/**"
+      - ".github/workflows/**"
+      - "tools/ci-policy.json"
+      - "tools/ci-scope.ps1"
+      - "tools/ci-event-scope.ps1"
+      - "tools/github-check.ps1"
+      - "tools/workflow-common.ps1"
   pull_request:
+    paths:
+      - "**"
+      - "!docs/**"
+      - "!*.md"
+      - "!tools/**"
+      - "!.gitmessage.txt"
+      - "docs/contracts/**"
+      - ".github/workflows/**"
+      - "tools/ci-policy.json"
+      - "tools/ci-scope.ps1"
+      - "tools/ci-event-scope.ps1"
+      - "tools/github-check.ps1"
+      - "tools/workflow-common.ps1"
   workflow_dispatch:
 
 permissions:
@@ -15,7 +40,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  scope:
+    name: Scope changed files
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      flutter: ${{ steps.scope.outputs.flutter }}
+      api: ${{ steps.scope.outputs.api }}
+      mysql: ${{ steps.scope.outputs.mysql }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - id: scope
+        shell: pwsh
+        run: ./tools/ci-event-scope.ps1
   flutter:
+    needs: scope
+    if: needs.scope.outputs.flutter == 'true'
     name: Flutter analyze, test, and Android build
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -57,6 +99,8 @@ jobs:
         run: flutter build apk --debug --flavor dev -t lib/main.dart
 
   api:
+    needs: scope
+    if: needs.scope.outputs.api == 'true'
     name: Spring Boot build and test
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -86,6 +130,8 @@ jobs:
         run: ./gradlew clean build --no-daemon
 
   mysql:
+    needs: scope
+    if: needs.scope.outputs.mysql == 'true'
     name: MySQL migrations and constraints
     runs-on: ubuntu-latest
     timeout-minutes: 25

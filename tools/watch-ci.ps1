@@ -2,6 +2,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{40}$')][string]$Commit,
+    [ValidatePattern('^[0-9a-f]{40}$')][string]$BaseCommit,
     [Parameter(Mandatory)][ValidatePattern('^(WORKFLOW-\d{2}|P\d{2}-\d{2}[a-z]?)(-[A-Z0-9]+)?$')][string]$TaskId,
     [ValidatePattern('^[a-zA-Z0-9-]+$')][string]$Account='ksh321',
     [ValidateRange(60,1800)][int]$IntervalSeconds=120,
@@ -18,6 +19,7 @@ if ($Start) {
     if ($Once) { throw 'Start and Once cannot be combined' }
     $argsList=@('-NoProfile','-File',('"'+$PSCommandPath+'"'),'-Commit',$Commit,
         '-TaskId',$TaskId,'-Account',$Account,'-IntervalSeconds',$IntervalSeconds,'-MaxHours',$MaxHours)
+    if($BaseCommit){$argsList+=@('-BaseCommit',$BaseCommit)}
     $process=Start-Process -FilePath $pwsh -ArgumentList $argsList -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput (Join-Path $dir "$Commit.stdout.log") `
         -RedirectStandardError (Join-Path $dir "$Commit.stderr.log")
@@ -48,7 +50,9 @@ try {
         $result='WAIT'
         try {
             $queried=[DateTime]::UtcNow
-            & $pwsh -NoProfile -File (Join-Path $PSScriptRoot 'github-check.ps1') -Commit $Commit -Account $Account *> (Join-Path $dir "$Commit.check.log")
+            $checkArgs=@('-NoProfile','-File',(Join-Path $PSScriptRoot 'github-check.ps1'),'-Commit',$Commit,'-Account',$Account)
+            if($BaseCommit){$checkArgs+=@('-BaseCommit',$BaseCommit)}
+            & $pwsh @checkArgs *> (Join-Path $dir "$Commit.check.log")
             $code=$LASTEXITCODE
             $reportPath=Join-Path $root ".local/workflow/ci-$Commit.json"
             if ($code -notin @(0,1,2) -or -not (Test-Path $reportPath)) { throw 'CI read unavailable' }

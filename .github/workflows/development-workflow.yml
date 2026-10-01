@@ -3,7 +3,41 @@ name: Development workflow
 on:
   push:
     branches: [main]
+    paths:
+      - "**"
+      - "!apps/**"
+      - "!services/**"
+      - "!infra/**"
+      - "!fixtures/**"
+      - "!docs/**"
+      - "!*.md"
+      - "!.gitmessage.txt"
+      - "docs/reference/**"
+      - "docs/workflow-state.json"
+      - ".github/workflows/**"
+      - "tools/ci-policy.json"
+      - "tools/ci-scope.ps1"
+      - "tools/ci-event-scope.ps1"
+      - "tools/github-check.ps1"
+      - "tools/workflow-common.ps1"
   pull_request:
+    paths:
+      - "**"
+      - "!apps/**"
+      - "!services/**"
+      - "!infra/**"
+      - "!fixtures/**"
+      - "!docs/**"
+      - "!*.md"
+      - "!.gitmessage.txt"
+      - "docs/reference/**"
+      - "docs/workflow-state.json"
+      - ".github/workflows/**"
+      - "tools/ci-policy.json"
+      - "tools/ci-scope.ps1"
+      - "tools/ci-event-scope.ps1"
+      - "tools/github-check.ps1"
+      - "tools/workflow-common.ps1"
   workflow_dispatch:
 
 permissions:
@@ -31,3 +65,4 @@ jobs:
           }
           & ./tools/tests/workflow-gates.ps1
           & ./tools/tests/ci-notify.ps1
+          & ./tools/tests/ci-scope.ps1

@@ -45,10 +45,15 @@ function Get-LatestCiRun($Runs, [string]$Commit, [string]$Path) {
     } | Sort-Object {[DateTime]$_.created_at}, {[long]$_.id}, {[int]$_.run_attempt} -Descending | Select-Object -First 1
 }
 
-function Get-CiState($Run, $Jobs, [string[]]$RequiredJobs) {
+function Get-CiState($Run, $Jobs, [string[]]$RequiredJobs, [switch]$AllowUnrequiredSkipped) {
     if (-not $Run -or $Run.status -ne 'completed') { return 'PENDING' }
     if ($Run.conclusion -ne 'success') { return 'FAIL' }
-    if (-not @($Jobs).Count -or @($Jobs | Where-Object conclusion -ne 'success').Count) { return 'FAIL' }
+    if (-not @($Jobs).Count) { return 'FAIL' }
+    foreach($job in $Jobs) {
+        if($job.conclusion -eq 'success'){continue}
+        if($AllowUnrequiredSkipped -and $job.name -notin $RequiredJobs -and $job.conclusion -eq 'skipped'){continue}
+        return 'FAIL'
+    }
     foreach ($name in $RequiredJobs) { if ($name -notin @($Jobs.name)) { return 'PENDING' } }
     return 'PASS'
 }

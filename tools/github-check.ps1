@@ -1,11 +1,13 @@
 #requires -Version 7.0
 [CmdletBinding()]
 param([ValidatePattern('^[0-9a-f]{40}$')][string]$Commit, [switch]$InspectPolicy,
+      [ValidatePattern('^[0-9a-f]{40}$')][string]$BaseCommit,
       [ValidatePattern('^[a-zA-Z0-9-]+$')][string]$Account)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 Set-Location $root
 . (Join-Path $PSScriptRoot 'workflow-common.ps1')
+. (Join-Path $PSScriptRoot 'ci-scope.ps1')
 $gitArgs = @('-c',"safe.directory=$($root.Replace('\','/'))")
 if (-not $Commit) { $Commit = & git @gitArgs rev-parse HEAD; if ($LASTEXITCODE) { throw 'Cannot read HEAD' } }
 $remote = & git @gitArgs remote get-url origin
@@ -73,17 +75,41 @@ try {
         @{path='.github/workflows/development-workflow.yml'; name='Development workflow'; jobs=@('Source index and automation checks')}
     )
     $runs = @(Read-Collection "actions/runs?head_sha=$Commit" 'workflow_runs' | Where-Object { $_.head_sha -eq $Commit -and $_.event -in @('push','pull_request','workflow_dispatch') })
+    & git @gitArgs cat-file -e "${Commit}:tools/ci-policy.json" 2>$null
+    $scopedPolicy=($LASTEXITCODE -eq 0)
+    $scopeMode='legacy-all'
+    if($scopedPolicy) {
+        $targetPolicy=(& git @gitArgs show "${Commit}:tools/ci-policy.json") -join "`n"
+        if($LASTEXITCODE -ne 0 -or $targetPolicy.Trim() -cne (Get-Content (Join-Path $PSScriptRoot 'ci-policy.json') -Raw).Trim()) { throw 'Target CI policy differs; use matching checkout' }
+        if($BaseCommit) {
+            $changed=@(Get-CiChangedPaths $root $BaseCommit $Commit)
+            $expected=@(Get-CiScope $changed)
+            $scopeMode='explicit-push-range'
+        } else {
+            $expected=@(Get-CiScope @() $true)
+            $scopeMode='unknown-range-all'
+        }
+    }
     $checks = foreach ($workflow in $expected) {
         $run = Get-LatestCiRun $runs $Commit $workflow.path
+        # Manual dispatch means full validation even when the changed paths are exempt.
+        if($scopedPolicy -and $run.event -eq 'workflow_dispatch') {
+            $workflow=@(Get-CiScope @() $true) | Where-Object path -eq $workflow.path
+        }
+        if($scopedPolicy -and -not $workflow.required -and -not $run) {
+            [pscustomobject]@{workflow=$workflow.name;path=$workflow.path;status='NOT_APPLICABLE';run_id=$null;conclusion=$null;url=$null;jobs=@();required_jobs=@()}
+            continue
+        }
         $jobs = @()
         if ($run -and $run.status -eq 'completed' -and $run.conclusion -eq 'success') {
             $jobs = @(Read-Collection "actions/runs/$($run.id)/attempts/$($run.run_attempt)/jobs" 'jobs')
         }
-        $state = Get-CiState $run $jobs $workflow.jobs
-        [pscustomobject]@{workflow=$workflow.name; path=$workflow.path; status=$state; run_id=$run.id; conclusion=$run.conclusion; url=$run.html_url; jobs=@($jobs | Select-Object name,conclusion)}
+        $state = Get-CiState $run $jobs $workflow.jobs -AllowUnrequiredSkipped:$scopedPolicy
+        [pscustomobject]@{workflow=$workflow.name; path=$workflow.path; status=$state; run_id=$run.id; conclusion=$run.conclusion; url=$run.html_url; jobs=@($jobs | Select-Object name,conclusion);required_jobs=@($workflow.jobs)}
     }
-    $overall = Get-OverallState $checks $policyPending
-    $report = [ordered]@{schema=2; utc=[DateTime]::UtcNow.ToString('o'); repository=$repo; commit=$Commit; overall=$overall; gate_scope='repository workflow contract; not proof of server branch requirements'; policy=$policy; checks=@($checks)}
+    $applicable=@($checks | Where-Object status -ne 'NOT_APPLICABLE')
+    $overall = if($scopedPolicy -and -not $applicable.Count -and -not $policyPending){'NOT_REQUIRED'}else{Get-OverallState $applicable $policyPending}
+    $report = [ordered]@{schema=3; utc=[DateTime]::UtcNow.ToString('o'); repository=$repo; commit=$Commit; base_commit=$BaseCommit; scope_mode=$scopeMode; overall=$overall; gate_scope='repository workflow contract; not proof of server branch requirements'; policy=$policy; checks=@($checks)}
     $outDir = Join-Path $root '.local/workflow'
     New-Item -ItemType Directory -Force $outDir | Out-Null
     $report | ConvertTo-Json -Depth 15 | Set-Content (Join-Path $outDir "ci-$Commit.json") -Encoding utf8
