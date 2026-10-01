@@ -457,3 +457,19 @@ USER-001~004 완료 유지. USER-005는 Android Studio 실행·키 위치 모름
 자동 준비 추가 확인: e4adb7f 앱의 실제 resolve-activity 결과로 실행, 종료0 및 프로세스 유지. 해당 PID의 최근500줄 로그를 .local에만 저장했고 FATAL EXCEPTION/Unhandled Exception 각각0. 읽기 전용 DB 쿼리에서 최근10분 SYNC 스냅샷 READY1개 확인. 서버 준비 상태이며 앱 적용 완료/사용자 화면·홈 복귀 성공으로 확대하지 않음. USER-024 반복 알림 없음.
 
 USER-024 사용자 결과: ‘USER-024 오류 없음’. 지정 테스트 요청에 대한 오류 없음 확인으로 인정한다. 개별 화면 문구·실제 수신 중 이탈 여부·추가 기기/횟수는 제공되지 않았으므로 추정하지 않는다. 목록에서 제거하며 동일 요청 반복 없음. 이 확인은 테스트 APK e4adb7f 범위이고 후속 P10-06 변경까지 확대하지 않는다.
+
+### USER-025 — 실제 앱 증분 수신 안내와 복귀 확인
+
+- 상태: **완료**
+- 작업 ID: P10-06k
+- 요청 판본: 1
+- 알림 종류: PhoneTest
+- 알림 행동: PhoneSteps
+- 요청 시각: 2026-10-01T02:47:30.1483159Z
+- 대상: c7df3fd9cc12aac51bbda1606f3e92aa8e195224 dev APK. 고정 .local/workflow/apk/p10-06k-c7df3fd.apk 및 SHA256 provenance, adb install -r Success, API health UP/USB device1대/reverse8080 확인.
+- 이유: USER-024의 초기 수신 뒤 새로 추가된 증분 수신 및 송신 게이트의 실제 화면 확인이다. 이전 APK 검증을 되돌리지 않는다. 자동 UI 수집은 com.android.systemui만 노출되어 잠금 해제는 사용자 조작이 필요하다.
+- 자동 확인: 앱 실행 성공, 앱 PID 최근500줄의 FATAL EXCEPTION/Unhandled Exception/FormatException/StateError/SocketException 각0. 사람의 화면 확인/성공한 증분 적용으로 확대하지 않는다.
+- 절차/기대: 잠금 해제→설정→동기화 상태→홈 이탈/복귀→최종 문구와 오류 여부 회신. 커서 만료 문구는 실제 결과로 받아 후속 P10-08 보존 복구에 사용한다.
+- 알림: 아래 기록 후 한 번 전송. 서버 접수와 실제 수신/실기 완료 구분. CI와 잔여 구현은 별도 AI 작업으로 계속한다.
+
+사용자 재설치 요청 후 동일 c7df3fd APK를 adb install -r로 재설치했다. 설치된 base.apk를 로컬로 가져와 고정 SHA256과 정확 일치를 확인했다. 이어 사용자 ‘이상 없음’ 회신을 USER-025의 지정 화면 확인 결과로 인정하고 체크리스트에서 제거했다. 세부 횟수·화면 문구는 추정하지 않으며 이후 l/P10-08 변경으로 확대하지 않는다.

@@ -1,13 +1,15 @@
 {
   "schema": 1,
-  "baseline_head": "f03731145895151622c734e150768bcade6b616e",
+  "baseline_head": "22365d08814ddd8ddf3a2eef45357c7993bf39f6",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
     "p10.remaining.analysis",
     "export.integrated",
     "workflow08.reviewed",
-    "canonical.dispatch.connected"
+    "canonical.dispatch.connected",
+    "p10.initial.core.validated",
+    "p10.delta.control.validated"
   ],
   "grants": [],
   "coverage": {
@@ -385,7 +387,8 @@
       "disposition": "tracked",
       "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
       "units": [
-        "P10-06-NEXT"
+        "P10-06-NEXT",
+        "P10-06k-PHONE"
       ]
     },
     "P10-07": {
@@ -399,7 +402,9 @@
       "disposition": "tracked",
       "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
       "units": [
-        "P10-08-NEXT"
+        "P10-08-NEXT",
+        "P10-08a",
+        "P10-08b"
       ]
     },
     "P10-09": {
@@ -1562,7 +1567,7 @@
     },
     {
       "id": "P10-06-NEXT",
-      "action": "P10-06k — 실제 앱 증분 수신 연결 검증과 잔여 적용기",
+      "action": "P10-06 — 미구현 관계 적용과 전체 수신 검증",
       "requires": [
         "p10.remaining.analysis"
       ],
@@ -1576,9 +1581,9 @@
         "apps/mobile/test",
         "docs/verification"
       ],
-      "state": "active",
+      "state": "pending",
       "owner": "AI",
-      "resume": "h/i f037311 CI4 PASS. j57/k60 PASS·분석 정상, c7df3fd dev APK 빌드 성공·데이터 보존 설치 진행. 필요 실기만 별도 요청하고 미구현 삭제/관계 및 만료 복구를 계속한다."
+      "resume": "j/k22365d0 CI4 PASS 및 c7df3fd USER-025 이상 없음 완료. l42 PASS/분석 최종 보완40b3cd6 로컬 커밋. 남은 관계/전용 적용과 초기 사본 투영을 P10-08b CI와 독립 진행."
     },
     {
       "id": "P10-07-NEXT",
@@ -1947,6 +1952,55 @@
         "provider-contact"
       ],
       "blocker": "공식 FAQ 무료/호출제한 없음 외 캐시·재표시 범위 미확인. 공개문서 재검색 완료; 같은 검색 반복하지 않음"
+    },
+    {
+      "id": "P10-06k-PHONE",
+      "action": "새 증분 수신 화면의 실제 표시 확인",
+      "requires": [],
+      "permissions": [],
+      "reads": [],
+      "writes": [],
+      "state": "done",
+      "owner": "사용자",
+      "resume": "후속 변경은 별도 검증",
+      "evidence": "docs/verification/user-action-records.md USER-025: c7df3fd 재설치/설치 SHA256 일치 후 사용자 이상 없음 확인"
+    },
+    {
+      "id": "P10-08a",
+      "action": "만료 커서 재동기화의 보존 요청 저장 기반",
+      "requires": [
+        "p10.initial.core.validated",
+        "p10.delta.control.validated"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/database/account_store.dart",
+        "apps/mobile/test/snapshot_download_store_test.dart"
+      ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "요청 저장 기반 구현 완료, 전체 P10-08 완료 아님",
+      "blocker": "c42956d 로컬 검증/검토 완료, 후속 통합 푸시의 정확 SHA CI 대기"
+    },
+    {
+      "id": "P10-08b",
+      "action": "만료 커서 응답을 보존 재수신과 기존 실행 제어에 연결",
+      "requires": [
+        "p10.initial.core.validated",
+        "p10.delta.control.validated"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/sync",
+        "apps/mobile/lib/features/sync",
+        "apps/mobile/lib/main.dart",
+        "apps/mobile/test"
+      ],
+      "state": "active",
+      "owner": "AI",
+      "resume": "de6c5ba 로컬73 PASS+실제19종 사본 통합1 PASS/분석 정상. a/l와 통합 CI를 확인한 뒤 잔여 충돌·관계 투영 계속. USER-025는 이전 c7df3fd만 완료."
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers"
