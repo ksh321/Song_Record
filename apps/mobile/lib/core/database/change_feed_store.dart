@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../sync/change_feed_response.dart';
+import '../sync/recording_change_projection.dart';
 import 'account_database.dart';
 import 'local_models.dart';
 
@@ -124,7 +125,16 @@ final class ChangeFeedStore {
           currentRevision > entry.revision) {
         continue;
       }
-      final encoded = canonicalJson(payload);
+      final previousPayload = current?.readNullable<String>('server_payload');
+      final projected = entry.entity == LocalEntity.recording && !entry.deleted
+          ? projectRecordingChange(
+              previousPayload == null
+                  ? null
+                  : jsonDecode(previousPayload) as Map<String, dynamic>,
+              payload,
+            )
+          : payload;
+      final encoded = canonicalJson(projected);
       if (baselineRevision == entry.revision &&
           baselineRevision >= currentRevision) {
         if (entry.deleted) {

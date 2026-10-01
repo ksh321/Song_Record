@@ -314,6 +314,40 @@ void main() {
     }
   });
   test(
+    'recording edit delta preserves a prior saved file projection in SQLite',
+    () async {
+      final previous = {
+        'id': id,
+        'revision': 1,
+        'file': {'sha256': 'synthetic'},
+        'tier': 'A',
+        'tag_ids': <String>[],
+        'tags': <Object>[],
+      };
+      await db.customStatement(
+        'INSERT INTO metadata_copies VALUES(?,?,?,?,?,?,0,0)',
+        [owner, 'RECORDING', id, 1, jsonEncode(previous), jsonEncode(previous)],
+      );
+      final edited = entry(8, id)..['entity_type'] = 'RECORDING';
+      edited['payload'] = {
+        'id': id,
+        'revision': 2,
+        'tier': null,
+        'tag_ids': <String>[],
+        'tags': <Object>[],
+      };
+      await store.apply(page([edited]), snapshotToken: token);
+      final row = await db
+          .customSelect('SELECT * FROM metadata_copies')
+          .getSingle();
+      final server = jsonDecode(row.read<String>('server_payload')) as Map;
+      expect(server['file'], {'sha256': 'synthetic'});
+      expect(server['tier'], isNull);
+      expect(jsonDecode(row.read<String>('local_payload')), server);
+      expect(await cursor(), 8);
+    },
+  );
+  test(
     'cursor write failure also rolls back applied business changes',
     () async {
       await db.customStatement(
