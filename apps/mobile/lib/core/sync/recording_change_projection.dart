@@ -16,7 +16,14 @@ Map<String, dynamic> projectRecordingChange(
   if (incoming.containsKey('tag_ids') != incoming.containsKey('tags')) {
     throw const FormatException('Incomplete recording tag projection');
   }
-  for (final key in ['file', 'tier', 'tag_ids', 'tags']) {
+  for (final key in [
+    'file',
+    'tier',
+    'tag_ids',
+    'tags',
+    'condition_code',
+    'condition_name_snapshot',
+  ]) {
     if (!result.containsKey(key) && previous?.containsKey(key) == true) {
       result[key] = jsonDecode(jsonEncode(previous![key]));
     }

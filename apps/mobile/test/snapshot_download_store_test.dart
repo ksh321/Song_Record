@@ -12,6 +12,8 @@ import 'package:song_record/core/database/snapshot_download_store.dart';
 import 'package:song_record/core/sync/change_feed_response.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'change_payload_validation_test.dart' show songChange;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory directory;
@@ -93,7 +95,7 @@ void main() {
             'entity_id': id,
             'revision': 2,
             'operation': 'UPSERT',
-            'payload': {'id': id, 'revision': 2, 'title': 'server-new'},
+            'payload': songChange(id, 2, title: 'server-new'),
           },
         ],
       }),

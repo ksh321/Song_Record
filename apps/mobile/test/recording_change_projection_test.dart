@@ -8,6 +8,8 @@ void main() {
     'note': 'old',
     'file': <String, dynamic>{'sha256': 'synthetic'},
     'tier': 'A',
+    'condition_code': 'GOOD',
+    'condition_name_snapshot': 'historical label',
     'tag_ids': ['tag-id'],
     'tags': [
       {'id': 'tag-id', 'name_snapshot': 'old name'},
@@ -39,6 +41,8 @@ void main() {
     });
     expect(result['tier'], 'A');
     expect(result['tag_ids'], ['tag-id']);
+    expect(result['condition_code'], 'GOOD');
+    expect(result['condition_name_snapshot'], 'historical label');
     expect(result['tags'], [
       {'id': 'tag-id', 'name_snapshot': 'old name'},
     ]);

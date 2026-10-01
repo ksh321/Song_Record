@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../sync/change_feed_response.dart';
+import '../sync/change_payload_validation.dart';
 import '../sync/recording_change_projection.dart';
 import 'account_database.dart';
 import 'local_models.dart';
@@ -57,6 +58,7 @@ final class ChangeFeedStore {
         throw const FormatException('Change entity adapter is not implemented');
       }
       final payload = entry.payload;
+      if (!entry.deleted) validateChangePayload(entry.entity, payload);
       if (!entry.deleted &&
           (payload['id'] != entry.id ||
               payload['revision'] != entry.revision)) {

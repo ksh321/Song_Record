@@ -8,6 +8,8 @@ import 'package:song_record/core/database/account_database.dart';
 import 'package:song_record/core/database/change_feed_store.dart';
 import 'package:song_record/core/sync/change_feed_response.dart';
 
+import 'change_payload_validation_test.dart' show songChange, recordingWire;
+
 void main() {
   const owner = '11111111-1111-4111-8111-111111111111';
   const token = '22222222-2222-4222-8222-222222222222';
@@ -98,7 +100,7 @@ void main() {
     'entity_id': entityId,
     'revision': revision,
     'operation': deleted ? 'DELETE' : 'UPSERT',
-    'payload': {'id': entityId, 'revision': revision, 'title': 'server'},
+    'payload': songChange(entityId, revision),
   };
   ChangeFeedPage page(
     List<Map<String, Object?>> entries, {
@@ -319,7 +321,7 @@ void main() {
       final previous = {
         'id': id,
         'revision': 1,
-        'file': {'sha256': 'synthetic'},
+        'file': recordingWire('RecordingSaved')['file'],
         'tier': 'A',
         'tag_ids': <String>[],
         'tags': <Object>[],
@@ -330,6 +332,7 @@ void main() {
       );
       final edited = entry(8, id)..['entity_type'] = 'RECORDING';
       edited['payload'] = {
+        ...recordingWire('RecordingEdited'),
         'id': id,
         'revision': 2,
         'tier': null,
@@ -341,7 +344,7 @@ void main() {
           .customSelect('SELECT * FROM metadata_copies')
           .getSingle();
       final server = jsonDecode(row.read<String>('server_payload')) as Map;
-      expect(server['file'], {'sha256': 'synthetic'});
+      expect(server['file'], previous['file']);
       expect(server['tier'], isNull);
       expect(jsonDecode(row.read<String>('local_payload')), server);
       expect(await cursor(), 8);
