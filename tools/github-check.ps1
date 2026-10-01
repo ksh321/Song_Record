@@ -74,7 +74,7 @@ try {
     )
     $runs = @(Read-Collection "actions/runs?head_sha=$Commit" 'workflow_runs' | Where-Object { $_.head_sha -eq $Commit -and $_.event -in @('push','pull_request','workflow_dispatch') })
     $checks = foreach ($workflow in $expected) {
-        $run = $runs | Where-Object path -eq $workflow.path | Sort-Object {[DateTime]$_.created_at},run_attempt -Descending | Select-Object -First 1
+        $run = Get-LatestCiRun $runs $Commit $workflow.path
         $jobs = @()
         if ($run -and $run.status -eq 'completed' -and $run.conclusion -eq 'success') {
             $jobs = @(Read-Collection "actions/runs/$($run.id)/attempts/$($run.run_attempt)/jobs" 'jobs')

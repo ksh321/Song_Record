@@ -61,6 +61,14 @@ Astra/ultra 추가2는 오래된 AGENTS D06 미완료 문구와 실제 완료 �
 
 커밋 형식 규칙의 보존 커밋95a20797c02ede320d6dfedac1eb67906fe6b9aa 필수 CI4 PASS 확인. 이후 i/j/k/c 커밋도 새 제목·본문 형식을 사용했다. 최신 USER-021은 GitHub 계정의 Actions 실행 환경 확인이며 기존 상담/위임 승인 요청과 무관하다.
 
+## 2026-10-01 동일 시각 CI 실행 선택 보완
+
+12c6fcb5f01415bbc7f9f30b3a99bf3733860bb2에 동일 초의 push 실행 두 개가 관측됐다. CI 36816782842는 `higher priority waiting request for ci-CI-refs/heads/main` 때문에 취소됐고 36816783369는 진행 중이었다. 원격 main은 같은 SHA였다. 재실행 요청이나 CI 설정 변경 없이 실제 최신 실행을 확인했다.
+
+github-check.ps1의 created_at/run_attempt 정렬은 같은 초·같은 attempt의 ID 순서를 보장하지 않아 취소된 이전 실행을 고를 수 있었다. workflow-common.ps1에 SHA·경로·이벤트 필터와 created_at/숫자 run ID/attempt 내림차순 선택을 모았다. 성공 여부로 실행을 고르지 않으며 새 실행의 실패·진행 중 상태를 오래된 성공으로 가리지 않는다. 필수 job 검사·CI 설정은 유지한다.
+
+현재 모델 코드 검토: 정확 SHA/워크플로 필터, 64비트 run ID, 응답 순서 독립, 최신 실패 유지, 기존 필수 job 판정을 대조했다. 실제 `tools/tests/workflow-gates.ps1` 실행은 **97 PASS**(새 회귀 6개 포함), `git diff --check` 통과. 알림 테스트는 기존 격리된 모의 HTTP이며 실제 휴대폰 발송/수신 기록이 아니다. 수정된 조회에서 정확 SHA의 CI는 PENDING(36816783369), 나머지 3개 PASS였다. 대상 커밋 필수 CI 완료 판정은 별도로 확인한다.
+
 ## 2026-10-01 종료 검사 보완
 
 실행 가능한 후속이 남았는데 이전 응답을 종료한 것은 AI의 잘못이며 사용자/실행 한도 차단으로 정당화하지 않는다. 조사 결과 --check-stop은 CONTINUE만 거절하고 IN_PROGRESS는0을 반환했다. 현재 ready 또는 running이 있으면1을 반환하도록 수정했다. IN_PROGRESS는 중복 시작 없이 현재 결과를 수집하고 계속한다는 의미다.

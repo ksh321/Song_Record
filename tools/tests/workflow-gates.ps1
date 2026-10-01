@@ -13,6 +13,16 @@ Assert-Equal (Get-LoginState 0 'unknown output') 'PENDING' 'unknown login'
 Assert-Equal (Get-LoginState 1 'Logged in using ChatGPT') 'FAIL' 'failed login'
 $run=[pscustomobject]@{status='completed';conclusion='success'}
 $job=[pscustomobject]@{name='required';conclusion='success'}
+$oldRun=[pscustomobject]@{id=36816782842;head_sha='target';path='ci.yml';event='push';created_at='2026-10-01T04:47:59Z';run_attempt=1;status='completed';conclusion='cancelled'}
+$newRun=[pscustomobject]@{id=36816783369;head_sha='target';path='ci.yml';event='push';created_at='2026-10-01T04:47:59Z';run_attempt=1;status='in_progress';conclusion=$null}
+Assert-Equal (Get-LatestCiRun @($oldRun,$newRun) 'target' 'ci.yml').id $newRun.id 'same-second duplicate selects newest ID'
+Assert-Equal (Get-LatestCiRun @($newRun,$oldRun) 'target' 'ci.yml').id $newRun.id 'API ordering independent'
+Assert-Equal (Get-CiState (Get-LatestCiRun @($oldRun,$newRun) 'target' 'ci.yml') @() @('required')) 'PENDING' 'replacement still needs validation'
+$oldRun.conclusion='success'
+$newRun.status='completed'; $newRun.conclusion='failure'
+Assert-Equal (Get-CiState (Get-LatestCiRun @($oldRun,$newRun) 'target' 'ci.yml') @($job) @('required')) 'FAIL' 'old success cannot hide newer failure'
+Assert-Equal (Get-LatestCiRun @($oldRun,$newRun) 'other' 'ci.yml') $null 'wrong commit excluded'
+Assert-Equal (Get-LatestCiRun @($oldRun,$newRun) 'target' 'other.yml') $null 'wrong workflow excluded'
 Assert-Equal (Get-CiState $null @() @('required')) 'PENDING' 'missing run'
 Assert-Equal (Get-CiState ([pscustomobject]@{status='in_progress'}) @() @('required')) 'PENDING' 'running'
 Assert-Equal (Get-CiState $run @($job) @('required')) 'PASS' 'required passed'

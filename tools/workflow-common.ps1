@@ -36,6 +36,15 @@ function Get-OverallState($Results, [bool]$PolicyPending = $false) {
     return 'PASS'
 }
 
+function Get-LatestCiRun($Runs, [string]$Commit, [string]$Path) {
+    # Same-second duplicate pushes need a deterministic run-ID tie breaker.
+    # Never select an older success merely because the latest run has not passed.
+    $Runs | Where-Object {
+        $_.head_sha -eq $Commit -and $_.path -eq $Path -and
+        $_.event -in @('push','pull_request','workflow_dispatch')
+    } | Sort-Object {[DateTime]$_.created_at}, {[long]$_.id}, {[int]$_.run_attempt} -Descending | Select-Object -First 1
+}
+
 function Get-CiState($Run, $Jobs, [string[]]$RequiredJobs) {
     if (-not $Run -or $Run.status -ne 'completed') { return 'PENDING' }
     if ($Run.conclusion -ne 'success') { return 'FAIL' }
