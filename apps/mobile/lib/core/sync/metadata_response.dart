@@ -173,6 +173,37 @@ Map<String, Object?> decodeMetadataSnapshot(
           }),
         );
         string('tier', nullable: true);
+        if (!conflict && request.path.endsWith('/song')) {
+          final requested = jsonDecode(request.body) as Map<String, dynamic>;
+          require(value['song_id'] == requested['song_id']);
+          final baseline = m.basePayload == null
+              ? null
+              : jsonDecode(m.basePayload!);
+          if (baseline is! Map || baseline['link_revision'] is! int) {
+            throw const FormatException('Missing recording link baseline');
+          }
+          final moved = baseline['song_id'] != requested['song_id'];
+          require(
+            value['link_revision'] ==
+                (baseline['link_revision'] as int) + (moved ? 1 : 0),
+          );
+          for (final field in [
+            'title_snapshot',
+            'artist_snapshot',
+            'version_code',
+            'key_mode',
+            'key_shift',
+            'recorded_at',
+            'note',
+            'tier',
+            'condition_code',
+            'condition_name_snapshot',
+          ]) {
+            if (baseline.containsKey(field)) {
+              require(value[field] == baseline[field]);
+            }
+          }
+        }
         if (!conflict && request.path.endsWith('/tier')) {
           final requested = jsonDecode(request.body) as Map<String, dynamic>;
           require(value['tier'] == requested['tier']);
