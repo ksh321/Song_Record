@@ -62,3 +62,18 @@
 검증: 관련 change_feed_store/recording_asset_projection/resync_integration 3파일 **59 PASS**, 변경3파일 분석 **No issues found**, diff 검사 통과. 새 검증은 삭제 뒤 다음 페이지 재노출 차단, 새 generation 허용 및 오래된 삭제 무효, 빈 초기 사본 페이지의 원장 반영, 원본 보존, 늦은 오류·계정 해제 롤백, 다른 녹음/계정 거절을 포함한다. 합성 파일 DB 참조를 비교했으며 사용자 실제 파일 청취·실기 결과가 아니다.
 
 테스트 자료 수정: local_recording_files의 실제 local_state/검증 필드를 사용하도록 보완했고, 타 계정 원장은 수신기 이전 DB owner CHECK가 먼저 거절함을 확인해 그 정확 제약과 적용기 자체 계정 검사 모두를 테스트했다. 제약 우회·테스트 약화 없음. 로그 `.local/workflow/p10-asset-deletion-reviewed.log`. 앞 수신 커밋 ad8ac50의 필수 CI3 PASS/CI 실행 중 확인. 전체 P10-06 완료 아님; 다음은 목록 항목 관계 수신과 남은 통합 검증이다.
+
+## 2026-10-01 — P10-06 증분 변경 수신: 목록 전체 항목의 원자적 적용
+
+근거: 원본 계획 p00590~592, 부모 Playlist revision으로 항목/순서를 변경하는 설계와 V4 실제 필드. 아래는 현재 구현의 명시적 수신 계약이다. 과거 상담에서 확정된 wire 계약으로 주장하지 않는다. 서버 목록 writer 연결/실제 HTTP 발행 검증은 남아 있다.
+
+- 한 논리 작업의 payload는 `playlist` 전체 헤더와 `items` 전체 항목 배열이다. 숨긴 항목도 포함하며 서버에서 제거한 항목만 배열에서 빠진다. envelope PLAYLIST는 부모 ID, PLAYLIST_ITEM은 대상 항목 ID이며 revision은 부모 revision과 일치한다. 항목 UPSERT 대상은 배열에 존재하고 DELETE 대상은 없어야 한다.
+- 동일 부모 버전의 순서/관계/추가/제거를 한 트랜잭션에서 적용한다. 사라진 서버 항목은 삭제 표식으로 보존하고 로컬 전용 미전송 생성·수정 입력·원본 사본은 유지한다. 삭제된 항목 재노출, 다른 부모/계정, 중복 ID/entry_key, 같은 버전의 다른 내용은 거절한다.
+- 항목 검증은 초기 사본 투영과 공유한다. 연결된 곡은 현재 계정의 서버 사본을 대조한다. 기존 헤더 단독 PLAYLIST payload는 기존 처리대로 유지한다. 물리 파일/사용자 데이터 삭제나 DB 마이그레이션 없음.
+- 변경 파일: playlist_change_store.dart, change_feed_store.dart, change_feed_store_test.dart. 현재 모델 직접 검토에서 동일 버전 재수신과 내용 불일치 회귀 검증을 추가했다. 별도 에이전트 검수 아님.
+
+실행: `flutter test --no-pub test/change_feed_store_test.dart test/snapshot_playlist_item_projection_test.dart test/recording_asset_projection_test.dart test/resync_integration_test.dart --reporter expanded` **83 PASS**. 변경3파일 `flutter analyze --no-pub` **No issues found**(최종 추가 회귀 테스트 포함). 마지막 항목 저장 실패 시 부모/앞 항목/커서 전체 롤백, 삭제 항목 재노출 거절, 미전송 입력 보존, owner/version 거절을 검증했다. 로그 `.local/workflow/p10-playlist-aggregate-reviewed.log`.
+
+테스트 첫 실행의 Variable import 누락은 수정했다. 이후 샌드박스 실행이 출력 없이 정체해 해당 실행만 중단하고 기존 SDK 접근 가능한 실행으로 검증했다. 이것은 제품 논리 수정 실패가 아닌 실행 환경 문제다. 미실행 테스트를 통과로 기록하지 않았다.
+
+이전 파일 세대 삭제 e214b3a5dc6caad4ff8639bcd3333a5b61a4d4c0 필수 CI4 PASS: CI36826555261/API36826555265/Idempotency36826555174/Workflow36826555184. 초기 목록 항목 c8f0f7205414c15d2aa9b3d1891596b54dd89355는 일반 푸시 완료, CI 확인 중. 이번 변경 전체 P10 완료/폰 실기 완료 아님. 사용자 직접 행동 없음. 다음은 남은 관계 엔티티 적용과 수신 연결 검증이다.

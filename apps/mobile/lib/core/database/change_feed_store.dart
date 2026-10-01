@@ -10,6 +10,7 @@ import '../sync/recording_change_projection.dart';
 import 'account_database.dart';
 import 'asset_deletion_store.dart';
 import 'local_models.dart';
+import 'playlist_change_store.dart';
 import 'snapshot_download_store.dart';
 import 'snapshot_metadata_projection.dart';
 import 'snapshot_playlist_item_projection.dart';
@@ -103,8 +104,14 @@ final class ChangeFeedStore {
         // row, including a legacy body no longer editable by this app version.
         continue;
       }
+      if (entry.entity == LocalEntity.playlistItem ||
+          entry.entity == LocalEntity.playlist &&
+              entry.payload.containsKey('items')) {
+        await PlaylistChangeStore(db, requireActive, _writeCopy).apply(entry);
+        continue;
+      }
       // Only explicitly supported business adapters can advance the cursor.
-      // Assets use cloud_revision; playlist items still need a parent adapter.
+      // Assets use cloud_revision; playlist operations were handled above.
       if (!{
         LocalEntity.song,
         LocalEntity.recording,

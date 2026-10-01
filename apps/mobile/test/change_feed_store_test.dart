@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Variable;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
@@ -148,6 +149,279 @@ void main() {
               .customSelect('SELECT last_change_seq FROM sync_cursors')
               .getSingle())
           .read<int>('last_change_seq');
+  Map<String, Object?> playlistChange(
+    int seq,
+    int revision,
+    List<Map<String, dynamic>> items, {
+    String type = 'PLAYLIST',
+    String entityId = other,
+    bool deleted = false,
+  }) => {
+    'change_seq': seq,
+    'entity_type': type,
+    'entity_id': entityId,
+    'revision': revision,
+    'operation': deleted ? 'DELETE' : 'UPSERT',
+    'payload': {
+      'playlist': {...playlistSource(), 'revision': revision},
+      'items': items,
+    },
+  };
+  test('complete playlist operation atomically reorders/removes items while preserving drafts and original snapshot', () async {
+    const addedId = '55555555-5555-4555-8555-555555555555';
+    const pendingId = '77777777-7777-4777-8777-777777777777';
+    final latest = await replaceBaseline(
+      'PLAYLIST_ITEM',
+      playlistItemSource(),
+      relations: {
+        'PLAYLIST': [playlistSource()],
+      },
+    );
+    await store.apply(page([]), snapshotToken: latest);
+    final raw =
+        (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+            .map((r) => r.data)
+            .toList();
+    await db.customStatement(
+      "UPDATE metadata_copies SET local_payload=? WHERE entity_type='PLAYLIST_ITEM' AND entity_id=?",
+      [
+        jsonEncode({'playlist_id': other, 'draft': 'keep'}),
+        id,
+      ],
+    );
+    await db.customStatement(
+      "INSERT INTO metadata_copies(user_id,entity_type,entity_id,local_payload,updated_at) VALUES(?,'PLAYLIST_ITEM',?,?,0)",
+      [
+        owner,
+        pendingId,
+        jsonEncode({'playlist_id': other, 'offline': true}),
+      ],
+    );
+    final pending =
+        (await db
+                .customSelect(
+                  "SELECT * FROM metadata_copies WHERE entity_id='$pendingId'",
+                )
+                .getSingle())
+            .data;
+    final moved = {...playlistItemSource(), 'position': 1};
+    final added = {
+      ...playlistItemSource(),
+      'id': addedId,
+      'candidate_number': '124',
+      'entry_key': 'tj:124',
+      'position': 0,
+    };
+    await store.apply(
+      page([
+        playlistChange(8, 9, [moved, added]),
+      ]),
+      snapshotToken: latest,
+    );
+    final ordered = await db
+        .customSelect(
+          "SELECT entity_id,server_revision,json_extract(server_payload,'\u0024.position') AS position FROM metadata_copies WHERE entity_type='PLAYLIST_ITEM' AND server_revision>0 ORDER BY position",
+        )
+        .get();
+    expect(ordered.map((r) => r.read<String>('entity_id')).toList(), [
+      addedId,
+      id,
+    ]);
+    expect(ordered.map((r) => r.read<int>('server_revision')).toList(), [9, 9]);
+    await store.apply(
+      page([
+        playlistChange(
+          9,
+          10,
+          [playlistItemSource()],
+          type: 'PLAYLIST_ITEM',
+          entityId: addedId,
+          deleted: true,
+        ),
+      ], after: 8),
+      snapshotToken: latest,
+    );
+    expect(
+      (await db
+              .customSelect(
+                "SELECT tombstone FROM metadata_copies WHERE entity_id='$addedId'",
+              )
+              .getSingle())
+          .read<int>('tombstone'),
+      1,
+    );
+    expect(
+      (await db
+              .customSelect(
+                "SELECT * FROM metadata_copies WHERE entity_id='$pendingId'",
+              )
+              .getSingle())
+          .data,
+      pending,
+    );
+    final kept =
+        (await db
+                .customSelect(
+                  "SELECT local_payload FROM metadata_copies WHERE entity_type='PLAYLIST_ITEM' AND entity_id=?",
+                  variables: [Variable(id)],
+                )
+                .getSingle())
+            .read<String>('local_payload');
+    expect(jsonDecode(kept)['draft'], 'keep');
+    expect(
+      (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+          .map((r) => r.data)
+          .toList(),
+      raw,
+    );
+    await expectLater(
+      store.apply(
+        page([
+          playlistChange(10, 11, [moved, added]),
+        ], after: 9),
+        snapshotToken: latest,
+      ),
+      throwsFormatException,
+    );
+    expect(await cursor(), 9);
+  });
+  test('failed last item write rolls back the entire playlist operation and cursor', () async {
+    const addedId = '55555555-5555-4555-8555-555555555555';
+    final latest = await replaceBaseline(
+      'PLAYLIST_ITEM',
+      playlistItemSource(),
+      relations: {
+        'PLAYLIST': [playlistSource()],
+      },
+    );
+    await store.apply(page([]), snapshotToken: latest);
+    final before =
+        (await db.customSelect('SELECT * FROM metadata_copies').get())
+            .map((r) => r.data)
+            .toList();
+    await db.customStatement(
+      "CREATE TRIGGER fail_last_item BEFORE INSERT ON metadata_copies WHEN NEW.entity_type='PLAYLIST_ITEM' AND NEW.entity_id='$addedId' BEGIN SELECT RAISE(ABORT,'synthetic last item failure'); END",
+    );
+    await expectLater(
+      store.apply(
+        page([
+          playlistChange(8, 9, [
+            {...playlistItemSource(), 'position': 1},
+            {
+              ...playlistItemSource(),
+              'id': addedId,
+              'candidate_number': '124',
+              'entry_key': 'tj:124',
+            },
+          ]),
+        ]),
+        snapshotToken: latest,
+      ),
+      throwsA(
+        predicate<Object>(
+          (e) => e.toString().contains('synthetic last item failure'),
+        ),
+      ),
+    );
+    expect(await cursor(), 7);
+    expect(
+      (await db.customSelect('SELECT * FROM metadata_copies').get())
+          .map((r) => r.data)
+          .toList(),
+      before,
+    );
+  });
+  test('duplicate items, mismatched parent version and wrong item owner cannot advance cursor', () async {
+    final latest = await replaceBaseline(
+      'PLAYLIST_ITEM',
+      playlistItemSource(),
+      relations: {
+        'PLAYLIST': [playlistSource()],
+      },
+    );
+    for (final bad in [
+      playlistChange(8, 9, [playlistItemSource(), playlistItemSource()]),
+      {
+        ...playlistChange(8, 9, [playlistItemSource()]),
+        'revision': 10,
+      },
+      playlistChange(8, 9, [
+        {...playlistItemSource(), 'user_id': other},
+      ]),
+    ]) {
+      await expectLater(
+        store.apply(page([bad]), snapshotToken: latest),
+        throwsFormatException,
+      );
+      expect(await cursor(), 7);
+      expect(
+        await db.customSelect('SELECT * FROM metadata_copies').get(),
+        isEmpty,
+      );
+    }
+  });
+  test('same playlist version is idempotent but rejects divergent item content', () async {
+    final latest = await replaceBaseline(
+      'PLAYLIST_ITEM',
+      playlistItemSource(),
+      relations: {
+        'PLAYLIST': [playlistSource()],
+      },
+    );
+    await store.apply(
+      page([
+        playlistChange(8, 9, [playlistItemSource()]),
+      ]),
+      snapshotToken: latest,
+    );
+    final before =
+        (await db
+                .customSelect(
+                  'SELECT * FROM metadata_copies ORDER BY entity_type,entity_id',
+                )
+                .get())
+            .map((r) => r.data)
+            .toList();
+    await store.apply(
+      page([
+        playlistChange(9, 9, [playlistItemSource()]),
+      ], after: 8),
+      snapshotToken: latest,
+    );
+    expect(await cursor(), 9);
+    expect(
+      (await db
+              .customSelect(
+                'SELECT * FROM metadata_copies ORDER BY entity_type,entity_id',
+              )
+              .get())
+          .map((r) => r.data)
+          .toList(),
+      before,
+    );
+    await expectLater(
+      store.apply(
+        page([
+          playlistChange(10, 9, [
+            {...playlistItemSource(), 'position': 2},
+          ]),
+        ], after: 9),
+        snapshotToken: latest,
+      ),
+      throwsFormatException,
+    );
+    expect(await cursor(), 9);
+    expect(
+      (await db
+              .customSelect(
+                'SELECT * FROM metadata_copies ORDER BY entity_type,entity_id',
+              )
+              .get())
+          .map((r) => r.data)
+          .toList(),
+      before,
+    );
+  });
   for (final deleted in [false, true]) {
     test(
       'initial playlist item inherits parent version and deletion=$deleted with original/input preservation',
