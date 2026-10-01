@@ -72,3 +72,13 @@ P10-02 / R002: 기록만이 아니라 곡·태그의 CREATE ACK 뒤 기준 revis
 
 
 02268882dd57afa60b510f760ec40a032e2a2928 필수 CI4 PASS: 36838603955/36838603995/36838604019/36838603865. 스키마 LF 보정 및 곡/태그 후속 연결의 해당 범위 검증 완료. 전체 P10-02 완료로 확대하지 않는다. 이어진 P10-10 서버 계약 교차 검증에서 숫자 응답 표기 결함을 발견해 보완 중이며 P10-10-two-device-flow.md에 근거를 연결한다.
+
+## 번호순 재개 대조 — 2026-10-01
+
+현재 주 작업은 P10-02 의존 순서 전송이다. P10-04/P10-07은 사용자 예시이며 우선 착수 지시가 아니었다. 기존 완료 이력은 유지한다.
+
+- 원본 plan p00579~580: 분류·곡→녹음→목록·관계→파일, 선행 실패 시 관련 항목만 대기, 미생성 곡 때문에 입력/파일을 버리지 않음. dependency_planner.dart의 phase0/1/2와 실제 참조 검사를 대조했다.
+- 실제 실행: `flutter test --no-pub test/dependency_planner_test.dart test/metadata_followup_dispatch_test.dart test/recording_save_dispatch_test.dart test/recording_tier_dispatch_test.dart test/recording_link_dispatch_test.dart --reporter expanded` **36 PASS**, 종료0. 현 작업 폴더의 미커밋 P10-07 변경도 포함된 결과이며 특정 과거 SHA 결과로 꾸미지 않는다. 로그 .local/workflow/p10-02-order-audit.log.
+- 숫자 응답 보완 ae8093d와 수신 후 오래된 기준 처리708ac40은 필수 CI4 PASS 기록으로 확인했다. 708ac40 실행은 CI36845969983/API36845970297/MySQL36845970399/Development36845970132.
+- 아직 전송 미지원인 목록 HTTP/파일 큐는 원본 P19/P12 후속 경계다. 이를 구현 완료로 주장하지 않으며 P10 자체 공통 의존 계획과 후속 어댑터 완료 기준을 분리해서 남은 공통 연결 유무를 확인한다. 이 대조만으로 P10-02 전체 완료 판정을 내리지 않았다.
+- 다음 실제 행동: 의존 계획에서 파일 작업과 미지원 항목이 다른 대상 송신을 차단하지 않는 경계 및 후속 어댑터 등록 지점을 확인하고, 필요한 공통 계층 보완 여부를 결정한다. 새 폰 조작 요청 없음.

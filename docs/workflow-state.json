@@ -375,7 +375,8 @@
       "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
       "units": [
         "EXPORT-REVIEW",
-        "P10-04b-CONNECT"
+        "P10-04b-CONNECT",
+        "P10-04"
       ]
     },
     "P10-05": {
@@ -1565,9 +1566,9 @@
         "apps/mobile/lib/core/sync/metadata_followup_plan.dart",
         "apps/mobile/test/metadata_followup_dispatch_test.dart"
       ],
-      "state": "pending",
+      "state": "active",
       "owner": "AI",
-      "resume": "0226888 후속 연결 및 LF 보정 CI4 PASS. 현재 P10-10 실제 서버 계약 교차 검증에서 발견한 숫자 응답 보완·통합이 진행 중. 해당 결과를 반영한 최종 범위 대조가 남음.",
+      "resume": "번호순 우선 적용: 의존 순서 전송의 실제 코드·완료 기준·기존 CI 근거를 대조하고 남은 구현/검증부터 수행한다. P10-07 미커밋 변경은 보존하며 자동 선행 조건으로 붙이지 않는다.",
       "blocker": null
     },
     {
@@ -1621,7 +1622,7 @@
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "기존 비교/저장/UI 이력과 USER-028 확인 유지. 자동 전송을 막아 보존한 더 최신 초안 및 canonical 개인편집을 명시 선택으로 연결할 실제 경로를 검사한다."
+      "resume": "기존 비교/저장/UI 이력과 USER-028 확인 유지. 자동 전송을 막아 보존한 더 최신 초안 및 canonical 개인편집을 명시 선택으로 연결할 실제 경로를 검사한다. 미커밋 보류 초안 연결: 관련 Flutter71 PASS, 정적 분석 이전11파일 정상 후 예산 검사 추가. 자동 보류 기존 검사 유지. 변경 파일은 Git diff에 보존. P10-02부터 우선하며 진행 중 프로세스 없음."
     },
     {
       "id": "P10-08-NEXT",
@@ -1679,7 +1680,7 @@
         "fixtures/contracts/two-device-recording.json",
         "apps/mobile/test/conflict_screen_integration_test.dart"
       ],
-      "state": "active",
+      "state": "pending",
       "owner": "AI",
       "resume": "수신 후 오래된 오프라인 수정→실제409→선택→ACK 연결 보완47 PASS, 추가회귀103 PASS, 분석 정상. 커밋·CI 후 더 최신 보류 초안/동일TJ 개인편집 선택의 실제 잔여 연결을 처리. USER-028 완료. docs/verification/P10-10-two-device-flow.md"
     },
@@ -2229,17 +2230,36 @@
       "owner": "AI",
       "resume": "기존 등록 P10-07h ID와 범위를 유지. UI/스케줄러/저장46 PASS+태그/목록 보완19 PASS, 분석 정상. 새로 등록하는 작업만 원본 번호로 묶는 최신 규칙 적용",
       "evidence": "089713c2948d72c8803f82495586780bccb410c4 필수 CI4 PASS(36815636933/36815636966/36815636941/36815636959). 저장/화면 구현 범위이며 P10-10 V25 실기로 확대하지 않음"
+    },
+    {
+      "id": "P10-04",
+      "state": "pending",
+      "action": "P10-04 — canonical ID 반영: 원본 완료 기준과 현재 보존·참조 변환 증거 최종 대조",
+      "owner": "AI",
+      "resume": "P10-02 다음 번호순 실행. CONNECT 완료 이력은 유지하고 개인 편집 후보 보존과 P10-07 선택 UI 범위를 원본으로 구분한다.",
+      "requires": [
+        "canonical.dispatch.connected"
+      ],
+      "permissions": [],
+      "reads": [
+        "docs/verification/P10-04b-connect.md"
+      ],
+      "writes": [
+        "apps/mobile/lib/core/database/account_store.dart"
+      ]
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers",
   "priority_order": [
-    "P10-10-NEXT",
-    "P10-07-NEXT",
+    "P00-03-TERMS",
     "P10-02-NEXT",
+    "P10-04",
     "P10-05-NEXT",
     "P10-06-NEXT",
+    "P10-07-NEXT",
     "P10-08-NEXT",
     "P10-09-NEXT",
+    "P10-10-NEXT",
     "P11-PHASE",
     "P12-PHASE",
     "P13-PHASE",
@@ -2254,7 +2274,6 @@
     "P22-PHASE",
     "P23-PHASE",
     "P24-PHASE",
-    "P25-PHASE",
-    "P00-03-TERMS"
+    "P25-PHASE"
   ]
 }
