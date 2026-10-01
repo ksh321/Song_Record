@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../database/local_models.dart';
+import '../domain/identifiers.dart';
 import 'change_payload_validation.dart';
 import 'mutation_request.dart';
 import 'three_way_merge.dart';
@@ -11,7 +12,11 @@ import 'three_way_merge.dart';
 ThreeWayComparison? compareMetadataConflict(QueuedMutation mutation) {
   if (mutation.state != 'CONFLICT' ||
       mutation.operation != LocalOperation.patch ||
-      !{LocalEntity.song, LocalEntity.tag}.contains(mutation.entity) ||
+      !{
+        LocalEntity.song,
+        LocalEntity.tag,
+        LocalEntity.recording,
+      }.contains(mutation.entity) ||
       mutation.basePayload == null ||
       mutation.serverResponse == null) {
     return null;
@@ -49,10 +54,80 @@ ThreeWayComparison? compareMetadataConflict(QueuedMutation mutation) {
         base['tj_number'] != server['tj_number']) {
       throw const FormatException('Immutable song source changed');
     }
-  } else if (base['archived_at'] != null || server['archived_at'] != null) {
+  } else if (mutation.entity == LocalEntity.tag &&
+      (base['archived_at'] != null || server['archived_at'] != null)) {
     return null;
   }
   final changes = Map<String, dynamic>.from(patch)..remove('base_revision');
+  if (mutation.entity == LocalEntity.recording) {
+    // Relationship moves and DRAFT -> SAVED/file transitions need their own
+    // explicit handling, not a metadata-only rebase.
+    if (changes.containsKey('song_id') ||
+        changes.containsKey('tier') && base['metadata_state'] != 'SAVED' ||
+        base['metadata_state'] != server['metadata_state'] ||
+        base['lifecycle_state'] != 'ACTIVE' ||
+        server['lifecycle_state'] != 'ACTIVE') {
+      return null;
+    }
+    if (base['origin_device_id'] != server['origin_device_id']) {
+      throw const FormatException('Recording origin changed');
+    }
+    final intended = <String, dynamic>{...base, ...changes};
+    // Names are historical server snapshots, not client-editable tag fields.
+    // Validate the selected ID set separately without manufacturing names.
+    if (changes.containsKey('tag_ids')) {
+      final ids = changes['tag_ids'];
+      if (ids is! List) throw const FormatException('Invalid selected tags');
+      final seen = <String>{};
+      for (final id in ids) {
+        if (id is! String || UuidValue(id).value != id || !seen.add(id)) {
+          throw const FormatException('Invalid selected tags');
+        }
+      }
+      intended.remove('tag_ids');
+      intended.remove('tags');
+    }
+    validateChangePayload(mutation.entity, intended);
+    for (final value in [base, server, intended]) {
+      if (value['metadata_state'] == 'SAVED' &&
+          (value['title_snapshot'] == null ||
+              value['artist_snapshot'] == null ||
+              value['key_mode'] == null)) {
+        throw const FormatException('Saved recording metadata is incomplete');
+      }
+    }
+    Map<String, dynamic> comparable(Map<String, dynamic> value) {
+      final copy = Map<String, dynamic>.from(value);
+      if (copy['tag_ids'] case final List<dynamic> ids) {
+        copy['tag_ids'] = List<String>.from(ids)..sort();
+      }
+      return copy;
+    }
+
+    return compareThreeWayPatch(
+      base: comparable(base),
+      localChanges: comparable(changes),
+      server: comparable(server),
+      editableFields: {
+        'title_snapshot',
+        'artist_snapshot',
+        'version_code',
+        'key_mode',
+        'key_shift',
+        'note',
+        'recorded_at',
+        'timezone_id',
+        'timezone_offset_minutes',
+        'condition_code',
+        'tag_ids',
+        'tier',
+      },
+      atomicGroups: [
+        {'key_mode', 'key_shift'},
+        {'recorded_at', 'timezone_id', 'timezone_offset_minutes'},
+      ],
+    );
+  }
   // Validate the intended local state as well as the remote evidence. The
   // generic comparer deliberately does not know domain field constraints.
   validateChangePayload(mutation.entity, {...base, ...changes});

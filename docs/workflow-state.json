@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "b72f97761157b0622de5d543a99ea3cbf06b23ed",
+  "baseline_head": "df4c1060c490fa3318ede6857bbf7e286b53fa6f",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -398,7 +398,8 @@
       "units": [
         "P10-07-NEXT",
         "P10-07a",
-        "P10-07b"
+        "P10-07b",
+        "P10-07c"
       ]
     },
     "P10-08": {
@@ -2018,10 +2019,10 @@
         "apps/mobile/lib/core/sync/three_way_merge.dart",
         "apps/mobile/test/three_way_merge_test.dart"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "순수 비교 12 PASS/분석 정상. 후속 계약 어댑터 진행",
-      "blocker": "ea8ce78 로컬 검증/검토 완료, 정확 SHA CI 대기"
+      "evidence": "df4c1060c490fa3318ede6857bbf7e286b53fa6f 필수 CI4 PASS (36810225134/36810225121/36810225130/36810225166). 해당 검증 문서의 로컬 검사·현재 모델 검토, 전체 P10-07 아님"
     },
     {
       "id": "P10-07b",
@@ -2037,10 +2038,10 @@
         "apps/mobile/lib/core/sync/metadata_conflict.dart",
         "apps/mobile/test/metadata_conflict_test.dart"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "계약 어댑터27 PASS/분석/현재 모델 검토 완료",
-      "blocker": "df4c106 정확 SHA CI 진행"
+      "evidence": "df4c1060c490fa3318ede6857bbf7e286b53fa6f 필수 CI4 PASS (36810225134/36810225121/36810225130/36810225166). 해당 검증 문서의 로컬 검사·현재 모델 검토, 전체 P10-07 아님"
     },
     {
       "id": "P10-06m",
@@ -2056,9 +2057,26 @@
         "apps/mobile/lib/core/database/snapshot_metadata_projection.dart",
         "apps/mobile/test"
       ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "초기 업무 사본 투영48 PASS+검토23 PASS+업그레이드1 PASS/분석 정상",
+      "blocker": "cfb6489 검증 완료, 후속 통합 푸시/CI 예정"
+    },
+    {
+      "id": "P10-07c",
+      "action": "녹음 메타데이터의 결합 필드·태그 충돌 비교",
+      "requires": [
+        "p10.remaining.analysis"
+      ],
+      "permissions": [],
+      "reads": [],
+      "writes": [
+        "apps/mobile/lib/core/sync/metadata_conflict.dart",
+        "apps/mobile/test/metadata_conflict_test.dart"
+      ],
       "state": "active",
       "owner": "AI",
-      "resume": "초기 사본 후 빈 증분에서도 업무 사본을 갱신; 로컬 입력/큐/원본/파일 보존, 관계 전체 완료로 확대하지 않음"
+      "resume": "기존 비교기 확장: 키/시각 결합, 태그 UUID 집합 비교. 연결 이동/파일 상태 변경은 자동 비교 대상 제외; 큐 쓰기/전송 없음"
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers"

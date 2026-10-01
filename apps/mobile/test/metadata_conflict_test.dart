@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/sync/metadata_conflict.dart';
 
-import 'change_payload_validation_test.dart' show songChange, payloadId;
+import 'change_payload_validation_test.dart'
+    show songChange, payloadId, recordingWire;
 
 void main() {
   const time = '2026-10-01T00:00:00Z';
@@ -115,7 +116,7 @@ void main() {
   test('create unsupported entity missing evidence and other errors are not rebased', () {
     for (final m in [
       mutation(operation: LocalOperation.create),
-      mutation(entity: LocalEntity.recording),
+      mutation(entity: LocalEntity.playlist),
       mutation(noBase: true),
       mutation(code: 'CANONICAL_MAPPING_REQUIRED'),
       mutation(status: 400),
@@ -186,4 +187,185 @@ void main() {
       throwsFormatException,
     );
   });
+  Map<String, dynamic> recording(int revision) => {
+    ...recordingWire('RecordingEdited'),
+    'id': payloadId,
+    'revision': revision,
+  };
+  QueuedMutation recordingMutation(
+    Map<String, dynamic> patch, {
+    Map<String, dynamic>? base,
+    Map<String, dynamic>? server,
+  }) => mutation(
+    entity: LocalEntity.recording,
+    base: base ?? recording(1),
+    server: server ?? recording(2),
+    patch: {'base_revision': 1, ...patch},
+  );
+  test(
+    'recording independent note edit is compared without changing snapshots',
+    () {
+      final result = compareMetadataConflict(
+        recordingMutation(
+          {'note': 'local'},
+          server: {...recording(2), 'title_snapshot': 'remote'},
+        ),
+      )!;
+      expect(result.safePatch, {'note': 'local'});
+      expect(result.requiresChoice, isFalse);
+    },
+  );
+  test('recording key pair and recorded time tuple are atomic groups', () {
+    final base = {...recording(1), 'key_mode': 'MALE', 'key_shift': 1};
+    final result = compareMetadataConflict(
+      recordingMutation(
+        {'key_shift': 2, 'recorded_at': '2026-10-01T00:00:00Z'},
+        base: base,
+        server: {
+          ...base,
+          'revision': 2,
+          'key_mode': 'FEMALE',
+          'timezone_id': 'Asia/Seoul',
+          'timezone_offset_minutes': 540,
+        },
+      ),
+    )!;
+    expect(result.safePatch, isEmpty);
+    expect(result.conflicts, [
+      {'key_mode', 'key_shift'},
+      {'recorded_at', 'timezone_id', 'timezone_offset_minutes'},
+    ]);
+  });
+  test(
+    'tag UUID sets compare independently of order and preserve name history',
+    () {
+      const a = '11111111-1111-4111-8111-111111111111';
+      const b = '22222222-2222-4222-8222-222222222222';
+      final base = {
+        ...recording(1),
+        'tag_ids': [a, b],
+        'tags': [
+          {'id': a, 'name_snapshot': 'old A'},
+          {'id': b, 'name_snapshot': 'old B'},
+        ],
+      };
+      final server = {
+        ...base,
+        'revision': 2,
+        'tag_ids': [b, a],
+      };
+      final m = recordingMutation(
+        {
+          'tag_ids': [b, a],
+        },
+        base: base,
+        server: server,
+      );
+      final before = m.basePayload;
+      expect(compareMetadataConflict(m)!.requiresChoice, isFalse);
+      expect(compareMetadataConflict(m)!.safePatch, isEmpty);
+      expect(m.basePayload, before);
+      final cleared = compareMetadataConflict(
+        recordingMutation({'tag_ids': <String>[]}, base: base, server: server),
+      )!;
+      expect(cleared.safePatch, {'tag_ids': <String>[]});
+      expect(cleared.safePatch.containsKey('tags'), isFalse);
+    },
+  );
+  test('concurrent tag set edits remain a conflict and duplicate input is rejected', () {
+    const a = '11111111-1111-4111-8111-111111111111';
+    const b = '22222222-2222-4222-8222-222222222222';
+    final server = {
+      ...recording(2),
+      'tag_ids': [b],
+      'tags': [
+        {'id': b, 'name_snapshot': 'B'},
+      ],
+    };
+    expect(
+      compareMetadataConflict(
+        recordingMutation({
+          'tag_ids': [a],
+        }, server: server),
+      )!.conflicts,
+      [
+        {'tag_ids'},
+      ],
+    );
+    expect(
+      () => compareMetadataConflict(
+        recordingMutation({
+          'tag_ids': [a, a],
+        }),
+      ),
+      throwsFormatException,
+    );
+  });
+  test(
+    'recording move lifecycle and saved transitions require another resolution',
+    () {
+      expect(
+        compareMetadataConflict(recordingMutation({'song_id': null})),
+        isNull,
+      );
+      expect(compareMetadataConflict(recordingMutation({'tier': 'A'})), isNull);
+      expect(
+        compareMetadataConflict(
+          recordingMutation(
+            {'note': 'local'},
+            server: {...recording(2), 'lifecycle_state': 'TRASHED'},
+          ),
+        ),
+        isNull,
+      );
+      expect(
+        compareMetadataConflict(
+          recordingMutation(
+            {'note': 'local'},
+            server: {...recording(2), 'metadata_state': 'SAVED'},
+          ),
+        ),
+        isNull,
+      );
+    },
+  );
+  test(
+    'saved recording patch cannot erase required metadata or change origin',
+    () {
+      final base = {
+        ...recording(1),
+        'metadata_state': 'SAVED',
+        'title_snapshot': 'title',
+        'artist_snapshot': 'artist',
+        'key_mode': 'ORIGINAL',
+        'key_shift': 0,
+      };
+      final server = {...base, 'revision': 2};
+      expect(
+        () => compareMetadataConflict(
+          recordingMutation(
+            {'title_snapshot': null},
+            base: base,
+            server: server,
+          ),
+        ),
+        throwsFormatException,
+      );
+      expect(
+        compareMetadataConflict(
+          recordingMutation({'tier': 'A'}, base: base, server: server),
+        )!.safePatch,
+        {'tier': 'A'},
+      );
+      expect(
+        () => compareMetadataConflict(
+          recordingMutation(
+            {'note': 'local'},
+            server: {...recording(2), 'origin_device_id': payloadId},
+          ),
+        ),
+        throwsFormatException,
+      );
+    },
+  );
 }
