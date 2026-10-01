@@ -224,8 +224,9 @@ final class ChangeFeedStore {
         id: id,
       );
       final revision = marker['revision'] as int, key = '$code:$id';
-      if (result.containsKey(key))
+      if (result.containsKey(key)) {
         throw StateError('Ambiguous permanent deletion');
+      }
       result[key] = revision;
       final current = await db
           .customSelect(
