@@ -29,6 +29,15 @@ final class SnapshotDownloadState {
   String toString() => 'SnapshotDownloadState[REDACTED]';
 }
 
+final class SnapshotBaselineRecord {
+  const SnapshotBaselineRecord(this.token, this.cursor, this.entry);
+  final String token;
+  final int cursor;
+  final SnapshotEntry? entry;
+  @override
+  String toString() => 'SnapshotBaselineRecord[REDACTED]';
+}
+
 final class SnapshotBaselinePage {
   SnapshotBaselinePage(
     this.token,
@@ -337,6 +346,59 @@ final class SnapshotDownloadStore {
     ];
     requireActive();
     return SnapshotBaselinePage(token, cursor, entries, rows.length > limit);
+  });
+
+  /// Point lookup only for entities whose resource UUID identifies one row.
+  /// Relationship/log entities can repeat resource IDs: use baselinePage instead.
+  /// Null means no applied baseline; a null entry means absent in that baseline.
+  Future<SnapshotBaselineRecord?> baselineRecord(
+    String entity,
+    String resourceId, {
+    String? expectedToken,
+  }) => db.transaction(() async {
+    requireActive();
+    _check(
+      const {
+        'SONG',
+        'RECORDING',
+        'PLAYLIST',
+        'TAG',
+        'RECORDING_CONDITION',
+      }.contains(entity),
+    );
+    _check(UuidValue(resourceId).value == resourceId);
+    final header = await db
+        .customSelect(
+          "SELECT h.snapshot_token,h.snapshot_cursor FROM snapshot_baseline b JOIN snapshot_downloads h ON h.snapshot_token=b.snapshot_token AND h.user_id=b.user_id WHERE b.singleton=1 AND b.user_id=? AND h.state='APPLIED'",
+          variables: [Variable(db.userId)],
+        )
+        .getSingleOrNull();
+    if (header == null) {
+      _check(expectedToken == null);
+      requireActive();
+      return null;
+    }
+    final token = header.read<String>('snapshot_token');
+    final cursor = header.read<int>('snapshot_cursor');
+    _check(expectedToken == null || token == expectedToken);
+    final row = await db
+        .customSelect(
+          'SELECT ordinal,canonical_payload FROM snapshot_download_rows WHERE snapshot_token=? AND entity=? AND resource_id=?',
+          variables: [Variable(token), Variable(entity), Variable(resourceId)],
+        )
+        .getSingleOrNull();
+    final entry = row == null
+        ? null
+        : SnapshotEntry.fromStored(
+            entity: entity,
+            ordinal: row.read<int>('ordinal'),
+            resourceId: resourceId,
+            canonicalPayload: row.read<String>('canonical_payload'),
+            owner: db.userId,
+            snapshotCursor: cursor,
+          );
+    requireActive();
+    return SnapshotBaselineRecord(token, cursor, entry);
   });
 
   /// Discard only an un-applied derived download, including an expired one.

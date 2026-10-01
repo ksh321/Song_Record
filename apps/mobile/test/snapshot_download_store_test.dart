@@ -53,6 +53,54 @@ void main() {
     }
   }
 
+  test('record lookup distinguishes absent baseline from missing resource and pins generation', () async {
+    const id = '33333333-3333-4333-8333-333333333333';
+    expect(await store.snapshotBaselineRecord('SONG', id), isNull);
+    await pages();
+    await store.verifySnapshotDownload(token);
+    expect(await store.snapshotBaselineRecord('SONG', id), isNull);
+    await store.applySnapshotDownload(token);
+    final page = await store.snapshotBaselinePage('SONG');
+    final record = await store.snapshotBaselineRecord(
+      'SONG',
+      page.entries.single.resourceId,
+      expectedToken: token,
+    );
+    expect(record!.token, token);
+    expect(record.cursor, 7);
+    expect(record.entry!.payload, page.entries.single.payload);
+    expect(record.toString(), isNot(contains('한글')));
+    expect((await store.snapshotBaselineRecord('SONG', owner))!.entry, isNull);
+    await expectLater(
+      store.snapshotBaselineRecord('SONG', "x' OR 1=1 --"),
+      throwsFormatException,
+    );
+    await expectLater(
+      store.snapshotBaselineRecord('RECORDING_TAG', id),
+      throwsStateError,
+    );
+    await expectLater(
+      store.snapshotBaselineRecord('SONG', id, expectedToken: owner),
+      throwsStateError,
+    );
+    await expectLater(
+      store.snapshotBaselineRecord('UNKNOWN', id),
+      throwsStateError,
+    );
+    now = now.add(const Duration(hours: 1));
+    expect(
+      (await store.snapshotBaselineRecord(
+        'SONG',
+        page.entries.single.resourceId,
+      ))!.entry,
+      isNotNull,
+    );
+    final old = store;
+    store = await manager.openAccount('55555555-5555-4555-8555-555555555555');
+    await expectLater(old.snapshotBaselineRecord('SONG', id), throwsStateError);
+    expect(await store.snapshotBaselineRecord('SONG', id), isNull);
+  });
+
   test('persistent receive verifies all rows without replacing live edits or cursor', () async {
     await store.saveEdit(
       LocalEdit(

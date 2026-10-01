@@ -22,7 +22,11 @@ import 'snapshot_download_store.dart';
 
 export 'retry_controls.dart' show RetryClock, RetryStatus;
 export 'snapshot_download_store.dart'
-    show SnapshotDownloadState, SnapshotProgress, SnapshotBaselinePage;
+    show
+        SnapshotDownloadState,
+        SnapshotProgress,
+        SnapshotBaselinePage,
+        SnapshotBaselineRecord;
 
 typedef SupportDirectory = Future<Directory> Function();
 
@@ -191,6 +195,18 @@ final class AccountStore {
       expectedToken: expectedToken,
       after: after,
       limit: limit,
+    ),
+  );
+
+  Future<SnapshotBaselineRecord?> snapshotBaselineRecord(
+    String entity,
+    String resourceId, {
+    String? expectedToken,
+  }) => _run(
+    () => _snapshots.baselineRecord(
+      entity,
+      resourceId,
+      expectedToken: expectedToken,
     ),
   );
 
