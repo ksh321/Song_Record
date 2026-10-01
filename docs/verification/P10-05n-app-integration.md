@@ -17,3 +17,7 @@ SyncStatusSource를 통해 초기 수신·서버 준비·인증 중단 문구를
 통합 e4adb7fc68cc445b05bd6f4fe046d5b5e840a842 필수4 CI PASS: CI36796712600, API contract36796712573, Idempotency MySQL36796712623, Development workflow36796712619. 폰 검증은 여전히 대기.
 
 2026-10-01 재시작 회신 후 환경 복구 확인: 기존/격리 DB healthy, USB device1대, API health UP. 고정 e4adb7f APK의 SHA256 일치 확인 후 adb install -r Success. USB reverse8080 연결. 사용자 실기는 USER-024로 별도 요청, ntfy 서버 접수이며 수신/실기 결과는 미확인. 과거 USB0/설치 전/엔진 차단은 당시 기록이다.
+
+자동 준비 추가 확인: e4adb7f 앱의 실제 resolve-activity 결과로 실행, 종료0 및 프로세스 유지. 해당 PID의 최근500줄 로그를 .local에만 저장했고 FATAL EXCEPTION/Unhandled Exception 각각0. 읽기 전용 DB 쿼리에서 최근10분 SYNC 스냅샷 READY1개 확인. 서버 준비 상태이며 앱 적용 완료/사용자 화면·홈 복귀 성공으로 확대하지 않음. USER-024 반복 알림 없음.
+
+USER-024 회신 ‘오류 없음’ 수신. e4adb7f 새 앱 연결의 지정 실기 요청에 대한 사용자 확인으로 기록한다. 실제 세부 문구/수신 중 이탈 확인 여부는 미제공이며 만들어 쓰지 않는다. 추가 실기 반복 요청 없음. 기존 자동44 PASS/CI4 PASS와 합쳐 n 연결 범위 검증 완료. 초기 사본의 전체 업무 조회 투영 등 P10-05 후속 범위는 별도이며 전체 P10-05 완료로 확대하지 않는다.

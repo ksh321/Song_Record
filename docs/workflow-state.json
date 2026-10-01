@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "2746b198fa77466eab6907ca971b389eb637df91",
+  "baseline_head": "b7330a6afaaa3b2c255b053d93fea85b44801962",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1558,8 +1558,7 @@
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "e4adb7f 필수4 CI PASS/고정 APK 데이터 보존 설치 성공. USER-022/023 환경 완료. USER-024 새 화면/복귀 실기 결과 대기.",
-      "blocker": "새 앱 초기 수신 실기 USER-024 사용자 결과 대기. API/DB/USB 정상."
+      "resume": "n e4adb7f CI4 PASS/자동44 PASS/USER-024 오류 없음 확인. 초기 사본 업무 조회 투영 잔여 범위를 P10-06 적용기와 통합 확인. 사용자 대기 없음."
     },
     {
       "id": "P10-06-NEXT",
@@ -1588,7 +1587,7 @@
       ],
       "state": "active",
       "owner": "AI",
-      "resume": "b/c2746b19 필수4 CI PASS. d/e b7330a6 CI3 PASS/Android 빌드 진행. f8090bd3 로컬44 PASS/분석 정상. 선행 CI 후 f push/CI, DTO·초기 관계·삭제 원장·수신기 연결. 전체 P10-06 미완료."
+      "resume": "b/c2746b19 필수4 CI PASS. d/e b7330a6 CI4 PASS. f8090bd3 로컬44 PASS/분석 정상. 선행 CI 후 f push/CI, DTO·초기 관계·삭제 원장·수신기 연결. 전체 P10-06 미완료."
     },
     {
       "id": "P10-07-NEXT",
