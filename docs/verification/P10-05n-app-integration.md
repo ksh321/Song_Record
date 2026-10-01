@@ -9,3 +9,9 @@ SyncStatusSource를 통해 초기 수신·서버 준비·인증 중단 문구를
 검증: flutter test --no-pub test/snapshot_sync_backend_test.dart test/sync_controller_test.dart test/snapshot_receiver_test.dart --reporter expanded **44 PASS**. 관련6파일 analyze **No issues found**. import 정렬 권고를 보완했다. 코드 검토에서 초기화 순서, 계정별 수명, 전경 이탈 뒤 세션 검사, 기존 단일 타이머, 수신/인증 상태의 빈 화면 오표시 방지를 대조했다. 현재 모델 직접 검토이며 외부 위임 없음.
 
 로그 .local/workflow/p10-05n-app-test.log. APK/실기 및 정확 SHA CI는 아직 대기다. 기존 폰 결과를 새 변경 검증으로 확대하지 않는다. 기존 편집 사본을 자동 덮어쓰거나 미전송 초안을 병합하지 않으며 m의 읽기 기반과 후속 충돌/증분 연결은 별도 범위다. 전체 P10-05 완료 아님.
+
+실제 dev APK 빌드 종료0. 코드 e4adb7fc68cc445b05bd6f4fe046d5b5e840a842 사본 고정, 설치 전. USB0으로 USER-022 연결 요청. Docker 엔진/API 미실행을 확인하고 기존 Docker Desktop 시작 요청; DB/볼륨 삭제 없음.
+
+환경 복구: Docker 런타임 소켓 OS 접근 오류로 시작 실패. 정상 종료/보존 이동/빈 소켓 정리 시도도 실패했고 데이터 삭제 성공 없음. 사용자 USER-023 Windows 재시작 후 엔진 실행 확인 대기. 소프트웨어 논리 실패 횟수와 구분. USER-022 USB 연결 대기. ntfy 두 요청 서버 접수, 실제 수신 미확인.
+
+통합 e4adb7fc68cc445b05bd6f4fe046d5b5e840a842 필수4 CI PASS: CI36796712600, API contract36796712573, Idempotency MySQL36796712623, Development workflow36796712619. 폰 검증은 여전히 대기.

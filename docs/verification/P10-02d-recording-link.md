@@ -22,3 +22,5 @@ git diff --check
 로그: .local/workflow/p10-02d-link-test.log. 커밋/정확 SHA CI 후속 기록. 사용자 직접 할 일0건. 전체 P10-02 완료는 아니며 미구현 목록/관계/파일 API와의 연결은 선행 구현에 맞춰 진행한다. P10-05의 조회 투영·앱 흐름 연결도 남아 있다.
 
 추가 통합: flutter test --no-pub test/canonical_song_store_test.dart test/recording_link_dispatch_test.dart --reporter expanded 48 통과. 새 연결 경로가 기존 canonical 매핑/참조/불변 요청/파일 보존에 미치는 영향을 확인했다. 코드 커밋38495eb9d1a306e6749b59841b6d027aad4f15dc, 후속 통합 SHA의 CI로 검증할 예정이며 아직 CI 통과 아님.
+
+후속 통합 a207cf64228ab0bedb5d2f0959f50644c4d411ba 필수4 CI PASS(CI36795491899, contract36795492024, MySQL36795492055, workflow36795491910). 해당 코드 포함 통합 결과이며 원래38495eb에서 별도 CI를 실행했다고 주장하지 않는다.

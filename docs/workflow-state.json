@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "b2526b98625f3fa3cc228fed868d357101e5c314",
+  "baseline_head": "e4adb7fc68cc445b05bd6f4fe046d5b5e840a842",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -1538,42 +1538,48 @@
         "apps/mobile/lib/core/sync/metadata_response.dart",
         "apps/mobile/test/recording_link_dispatch_test.dart"
       ],
-      "state": "active",
+      "state": "pending",
       "owner": "AI",
-      "resume": "d 로컬31/48 PASS·분석·검토 완료, 코드38495eb. 후속 통합 push/CI 대기. 기타 목록/파일 전송은 API 선행 확인 후 진행."
+      "resume": "d31/48 PASS・통합a207cf6 필수4 CI PASS. 목록/관계/파일 송신의 서버 API 선행 확인 필요.",
+      "blocker": "남은 목록/관계/파일 HTTP Controller 미구현. 현재 서버 Controller 목록 대조; 기존 구현을 완료로 확장하지 않음."
     },
     {
       "id": "P10-05-NEXT",
-      "action": "P10-05l — 일관된 초기 스냅샷: 전경 스케줄러 연결 및 조회 투영",
+      "action": "P10-05n — 일관된 초기 스냅샷: 앱 연결 검증과 조회 투영",
       "requires": [
         "p10.remaining.analysis"
       ],
       "permissions": [],
       "reads": [],
       "writes": [
-        "services/api/src/main/java/com/ksh321/songrecord/api/sync",
-        "apps/mobile/lib/core/sync",
+        "apps/mobile/lib/main.dart",
+        "apps/mobile/lib/features/sync",
         "apps/mobile/lib/core/database"
       ],
-      "state": "active",
+      "state": "pending",
       "owner": "AI",
-      "resume": "b2526b9 필수4 CI PASS. l 연결 계층42 PASS·분석·검토 완료, 앱 미연결. 다음은 기준선 조회 투영과 로컬 변경 보존."
+      "resume": "e4adb7f 필수4 CI PASS/로컬APK 성공. USER-022 USB 및 USER-023 Docker 실행 확인 후 새 폰 실기. 기존 검증 범위 유지.",
+      "blocker": "새 앱 초기 수신 실기: USB0·Docker 런타임 오류, USER-022/023 사용자 조작 대기."
     },
     {
       "id": "P10-06-NEXT",
-      "action": "원본 요구사항의 남은 구현·검증",
+      "action": "P10-06a — 증분 변경 수신: 서버 변경 페이지 경계 검증",
       "requires": [
-        "p10.remaining.analysis",
-        "p10.receiver"
+        "p10.remaining.analysis"
       ],
       "permissions": [],
       "reads": [],
       "writes": [
-        "apps/mobile/lib/core/sync"
+        "services/api/src/main/java/com/ksh321/songrecord/api/sync/ChangeWindow.java",
+        "services/api/src/main/java/com/ksh321/songrecord/api/sync/ChangeReadView.java",
+        "services/api/src/test/java/com/ksh321/songrecord/api/sync/ChangeWindowTests.java",
+        "services/api/src/test/java/com/ksh321/songrecord/api/sync/ChangeReadViewTests.java",
+        "services/api/src/test/java/com/ksh321/songrecord/api/sync/MySqlChangeReadViewTests.java",
+        ".github/workflows/idempotency-mysql.yml"
       ],
-      "state": "pending",
+      "state": "active",
       "owner": "AI",
-      "resume": "현재 작업 모델이 선행/파일 범위 확인 후 직접 수행; 새 세션 자료 전달 불필요"
+      "resume": "원본 P10 단계 선행을 충족한 독립 서버 기반. 14 PASS/MySQL7 skip; 정확 SHA CI에서 실제 MySQL 검증 예정. 다음 HTTP/앱 원자 적용은 아직 미연결."
     },
     {
       "id": "P10-07-NEXT",

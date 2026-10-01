@@ -16,3 +16,5 @@ flutter analyze --no-pub lib/core/sync/snapshot_receiver.dart lib/features/sync/
 현재 모델 별도 검토: D09 수신 완료 조건, 기존 SyncController의 단일 timer/후속 실행 차단, 계정별 인스턴스 수명을 diff/검증과 대조했다. 외부 작업자 위임 없음. 인증·동기화 위험 때문에 높은 추론이 적합하나 실제 모델/속도 변경을 확인했다고 주장하지 않는다.
 
 변경: snapshot_receiver.dart, snapshot_sync_backend.dart, snapshot_sync_backend_test.dart. 로그 .local/workflow/p10-05l-backend-test.log. 대상 SHA는 이 제목의 Git 커밋으로 식별하며 통합 CI는 push 후 기록한다.
+
+통합 a207cf64228ab0bedb5d2f0959f50644c4d411ba 필수4 CI PASS. code a5a6a78 포함. 후속 n 앱 연결은 별도 실기 검증 대상이다.
