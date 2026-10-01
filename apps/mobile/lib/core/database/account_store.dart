@@ -28,7 +28,8 @@ export 'snapshot_download_store.dart'
         SnapshotDownloadState,
         SnapshotProgress,
         SnapshotBaselinePage,
-        SnapshotBaselineRecord;
+        SnapshotBaselineRecord,
+        SnapshotRecordingBaseline;
 
 typedef SupportDirectory = Future<Directory> Function();
 
@@ -196,6 +197,13 @@ final class AccountStore {
       _run(() => _snapshots.discard(token));
   Future<void> applySnapshotDownload(String token) =>
       _run(() => _snapshots.apply(token));
+  Future<SnapshotRecordingBaseline?> snapshotRecordingBaseline(
+    String recordingId, {
+    String? expectedToken,
+  }) => _run(
+    () =>
+        _snapshots.recordingBaseline(recordingId, expectedToken: expectedToken),
+  );
   Future<void> applyChangeFeed(
     ChangeFeedPage page, {
     required String snapshotToken,

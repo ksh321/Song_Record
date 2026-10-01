@@ -53,6 +53,22 @@ final class SnapshotBaselinePage {
   String toString() => 'SnapshotBaselinePage[REDACTED]';
 }
 
+final class SnapshotRecordingBaseline {
+  SnapshotRecordingBaseline(
+    this.token,
+    this.cursor,
+    this.recording,
+    this.file,
+    List<SnapshotEntry> tags,
+  ) : tags = List.unmodifiable(tags);
+  final String token;
+  final int cursor;
+  final SnapshotEntry? recording, file;
+  final List<SnapshotEntry> tags;
+  @override
+  String toString() => 'SnapshotRecordingBaseline[REDACTED]';
+}
+
 /// Internal persistence service. AccountStore serializes calls and supplies the
 /// live account fence, including the final check inside every transaction.
 final class SnapshotDownloadStore {
@@ -399,6 +415,65 @@ final class SnapshotDownloadStore {
           );
     requireActive();
     return SnapshotBaselineRecord(token, cursor, entry);
+  });
+
+  /// Read parent and repeated recording-tag rows in one baseline generation.
+  /// This does not merge local edits, advance a cursor or manufacture revisions.
+  Future<SnapshotRecordingBaseline?> recordingBaseline(
+    String recordingId, {
+    String? expectedToken,
+  }) => db.transaction(() async {
+    requireActive();
+    final parent = await baselineRecord(
+      'RECORDING',
+      recordingId,
+      expectedToken: expectedToken,
+    );
+    if (parent == null) return null;
+    final rows = await db
+        .customSelect(
+          '''
+      SELECT entity,ordinal,canonical_payload FROM snapshot_download_rows
+      WHERE snapshot_token=? AND user_id=? AND resource_id=?
+        AND entity IN ('RECORDING_FILE_SPEC','RECORDING_TAG') ORDER BY entity,ordinal
+    ''',
+          variables: [
+            Variable(parent.token),
+            Variable(db.userId),
+            Variable(recordingId),
+          ],
+        )
+        .get();
+    _check(parent.entry != null || rows.isEmpty);
+    SnapshotEntry? file;
+    final tags = <SnapshotEntry>[];
+    final tagIds = <String>{};
+    for (final row in rows) {
+      final entry = SnapshotEntry.fromStored(
+        entity: row.read<String>('entity'),
+        ordinal: row.read<int>('ordinal'),
+        resourceId: recordingId,
+        canonicalPayload: row.read<String>('canonical_payload'),
+        owner: db.userId,
+        snapshotCursor: parent.cursor,
+      );
+      if (entry.entity == 'RECORDING_FILE_SPEC') {
+        _check(file == null);
+        file = entry;
+      } else {
+        final id = entry.payload['tag_id'];
+        _check(id is String && UuidValue(id).value == id && tagIds.add(id));
+        tags.add(entry);
+      }
+    }
+    requireActive();
+    return SnapshotRecordingBaseline(
+      parent.token,
+      parent.cursor,
+      parent.entry,
+      file,
+      tags,
+    );
   });
 
   /// Discard only an un-applied derived download, including an expired one.
