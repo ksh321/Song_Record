@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "baseline_head": "22365d08814ddd8ddf3a2eef45357c7993bf39f6",
+  "baseline_head": "b72f97761157b0622de5d543a99ea3cbf06b23ed",
   "facts": [
     "workflow08.validated",
     "export.reviewed",
@@ -396,7 +396,8 @@
       "basis": "plan.txt p00159~p00236 단계 선행 및 해당 작업 원문; progress.md 최신 범위 판정",
       "units": [
         "P10-07-NEXT",
-        "P10-07a"
+        "P10-07a",
+        "P10-07b"
       ]
     },
     "P10-08": {
@@ -1584,7 +1585,7 @@
       ],
       "state": "pending",
       "owner": "AI",
-      "resume": "j/k22365d0 CI4 PASS 및 c7df3fd USER-025 이상 없음 완료. l42 PASS/분석 최종 보완40b3cd6 로컬 커밋. 남은 관계/전용 적용과 초기 사본 투영을 P10-08b CI와 독립 진행."
+      "resume": "j/k22365d0 CI4 PASS/c7df3fd USER-025 완료. l42 PASS 및 b72f977 CI4 PASS. 미구현 관계와 초기 업무 사본 갱신을 계속한다."
     },
     {
       "id": "P10-07-NEXT",
@@ -1979,10 +1980,10 @@
         "apps/mobile/lib/core/database/account_store.dart",
         "apps/mobile/test/snapshot_download_store_test.dart"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "요청 저장 기반 구현 완료, 전체 P10-08 완료 아님",
-      "blocker": "c42956d 로컬 검증/검토 완료, 후속 통합 푸시의 정확 SHA CI 대기"
+      "evidence": "b72f977 필수 CI4 PASS: 36809128620/36809128637/36809128564/36809128749; 해당 검증 문서의 자동 테스트와 현재 모델 검토. 사용자 실기로 확대하지 않음"
     },
     {
       "id": "P10-08b",
@@ -1999,10 +2000,10 @@
         "apps/mobile/lib/main.dart",
         "apps/mobile/test"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "de6c5ba 자동 연결73 PASS+통합1 PASS/분석 정상. 정확 통합 CI 확인 후 잔여 적용/검증. 사용자 결과 대기 아님.",
-      "blocker": "b72f97761157b0622de5d543a99ea3cbf06b23ed 통합 필수 CI 진행"
+      "evidence": "b72f977 필수 CI4 PASS: 36809128620/36809128637/36809128564/36809128749; 해당 검증 문서의 자동 테스트와 현재 모델 검토. 사용자 실기로 확대하지 않음"
     },
     {
       "id": "P10-07a",
@@ -2016,9 +2017,28 @@
         "apps/mobile/lib/core/sync/three_way_merge.dart",
         "apps/mobile/test/three_way_merge_test.dart"
       ],
+      "state": "pending",
+      "owner": "AI",
+      "resume": "순수 비교 12 PASS/분석 정상. 후속 계약 어댑터 진행",
+      "blocker": "ea8ce78 로컬 검증/검토 완료, 정확 SHA CI 대기"
+    },
+    {
+      "id": "P10-07b",
+      "action": "곡·태그 revision 충돌의 불변 큐 비교 어댑터",
+      "requires": [
+        "p10.remaining.analysis"
+      ],
+      "permissions": [],
+      "reads": [
+        "apps/mobile/lib/core/sync/three_way_merge.dart"
+      ],
+      "writes": [
+        "apps/mobile/lib/core/sync/metadata_conflict.dart",
+        "apps/mobile/test/metadata_conflict_test.dart"
+      ],
       "state": "active",
       "owner": "AI",
-      "resume": "원본 p00300~303/p00593~595의 순수 비교 컴포넌트이며 네트워크·UI·큐 전송을 실행하지 않는다. 전체 P10-06 완료를 선행 사실로 추가하지 않고 전체 P10-07-NEXT 게이트는 유지한다."
+      "resume": "독립 순수 비교 연결: 실제 PATCH 계약/REVISION_CONFLICT를 대조하며 큐 상태·전송·UI를 변경하지 않음"
     }
   ],
   "execution_policy": "current-session-only; no delegated CLI workers/reviewers"
