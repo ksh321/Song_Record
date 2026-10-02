@@ -133,7 +133,7 @@ if ($ItemId) {
         Device {'휴대폰을 USB로 연결하고 디버깅을 허용해 주세요.'}
         PhoneSteps {'준비된 앱의 실기 순서를 확인하고 결과를 알려주세요.'}
         Decision {'기록된 선택 사항을 확인하고 결정해 주세요.'}
-        Details {'기록된 요청 사항을 확인하고 답해주세요.'}
+        Details {'자동 개발이 중단되었습니다. 현재 대화 또는 내가할일.md에서 원인과 조치 순서를 확인하고 결과를 알려주세요.'}
     }
     $message="$ItemId r${Revision}: $actionText 자세한 내용은 내가할일.md와 대화를 확인하세요. " + $(if($Kind -eq 'Escalation'){$message}else{''})
 }

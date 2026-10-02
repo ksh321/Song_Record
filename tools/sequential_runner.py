@@ -268,9 +268,24 @@ class Runner:
         if not all(isinstance(guidance.get(key), str) and guidance[key].strip() for key in required):
             self.data['notification_pending'] = {'reason': reason, 'needs': list(required),
                                                  'owner': 'AI', 'status': 'NEEDS_ACTIONABLE_GUIDANCE'}
-            self.save()
-            self.event('notification_held', self.data['notification_pending'])
-            return
+            labels = {
+                'SUBSCRIPTION_QUOTA': '구독 사용량 한도',
+                'PROVIDER_APPROVAL_REQUIRED': '명령 실행 또는 접근 승인',
+                'REPAIR_BUDGET_EXHAUSTED': '같은 문제의 수정 한도 소진',
+                'CI_UNCONFIRMED': '필수 CI 결과 미확인',
+                'EXECUTION_BLOCKED': '실행 환경 또는 인증 오류',
+                'PROVIDER_TURN_FAILED': '개발 모델 호출 실패',
+            }
+            label = labels.get(reason, '자동 처리가 불가능한 문제')
+            guidance = {
+                'preparation': f'{task} 작업이 {label} 때문에 정지했습니다. 현재 Codex 대화를 열어 주세요.',
+                'steps': f'현재 대화에 "{item} 중단 원인과 해결 절차 알려줘"라고 보내 주세요. '
+                         'AI가 저장된 오류를 확인해 실제 필요한 로그인 화면·승인 버튼 또는 판단 사항을 안내합니다. '
+                         '아직 특정 조작 방법은 확인되지 않았으므로 임의 설정 변경은 필요 없습니다.',
+                'expected': '구체적 해결 절차 또는 필요한 판단을 확인하고, 해결 후 같은 작업의 조건을 다시 검증합니다.',
+                'reply': f'{item} 중단 원인과 해결 절차 알려줘',
+            }
+            self.event('notification_fallback_guidance', {'reason': reason, 'task_id': task})
         instructions = guidance['steps']
         if not isinstance(instructions, str):
             instructions = json.dumps(instructions, ensure_ascii=False)
@@ -715,6 +730,7 @@ class Runner:
                         item, _ = next_task(self.state(), self.tasks)
                         if not item:
                             self.pause('BLOCKED', 'NEXT_SEQUENCE_PREREQUISITE')
+                            self.record_request('NEXT_SEQUENCE_PREREQUISITE')
                             break
                         ids = [t['id'] for t in self.tasks]
                         if ids.index(item[1]) > ids.index(self.data['end_task']):
@@ -835,7 +851,14 @@ def main():
                                   'usage_allowed': quota_available(caps)}, indent=2))
         else:
             runner.run(args.end_task, resume=args.mode == 'resume')
-    except (Blocked, ProviderError, ValueError, OSError) as error:
+    except Exception as error:
+        if args.mode in ('run', 'resume') and not runner.data:
+            runner.directory = runner.directory / 'startup-alert'
+            runner.path = runner.directory / 'checkpoint.json'
+            if runner.path.exists():
+                runner.load()
+            else:
+                runner.data = {'root': str(runner.root), 'task_id': 'WORKFLOW-09', 'status': 'BLOCKED'}
         if runner.data and runner.data.get('status') not in ('PAUSED_USER', 'PAUSED_QUOTA', 'WAITING_USER'):
             runner.pause('BLOCKED', str(error))
             if args.mode in ('run', 'resume'):

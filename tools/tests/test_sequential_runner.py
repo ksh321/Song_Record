@@ -292,12 +292,30 @@ class RunnerFixture(unittest.TestCase):
         self.assertEqual(self.runner.accept_event(event), 'ALREADY_APPLIED')
         self.assertTrue(self.runner.stop_path.exists())
 
-    def test_notification_without_steps_is_held_for_ai(self):
-        with patch('sequential_runner.execute') as send:
+    def test_blocked_without_steps_still_notifies_with_honest_fallback(self):
+        with patch('sequential_runner.execute', return_value={'exit_code': 0}) as send:
             self.runner.record_request('EXECUTION_BLOCKED')
-            send.assert_not_called()
+            self.runner.record_request('EXECUTION_BLOCKED')
+            self.assertEqual(send.call_count, 1)
         self.assertEqual(self.runner.data['notification_pending']['owner'], 'AI')
-        self.assertNotIn('request', self.runner.data)
+        self.assertIn('request', self.runner.data)
+        todo = (self.root / '내가할일.md').read_text(encoding='utf-8')
+        self.assertIn('아직 특정 조작 방법은 확인되지 않았으므로', todo)
+        self.assertIn('중단 원인과 해결 절차 알려줘', todo)
+
+    def test_startup_block_sends_alert_without_overwriting_work_checkpoint(self):
+        from sequential_runner import main
+        original = self.runner.path.read_bytes() if self.runner.path.exists() else None
+        startup = Runner(self.root)
+        with patch('sequential_runner.Runner', return_value=startup), \
+             patch.object(startup, 'run', side_effect=Blocked('CHATGPT_SUBSCRIPTION_LOGIN_REQUIRED')), \
+             patch('sys.argv', ['runner', 'run', '--end-task', 'P10-02']), \
+             patch('sequential_runner.execute', return_value={'exit_code': 0}) as send:
+            self.assertEqual(main(), 2)
+            self.assertEqual(send.call_count, 1)
+        self.assertTrue((self.runner.directory / 'startup-alert/checkpoint.json').exists())
+        if original is not None:
+            self.assertEqual(self.runner.path.read_bytes(), original)
 
     def test_w39_notification_unknown_not_resent(self):
         self.runner.data['next_action'] = dict(preparation='폰 잠금 해제', steps='폰 설정에서 USB 디버깅 허용을 누릅니다.', expected='연결 허용', reply='승인 여부')
