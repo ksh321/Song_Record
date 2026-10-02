@@ -113,8 +113,15 @@ class RunLock:
 
 
 def git(root, *args):
-    result = subprocess.run(['git', '-c', 'safe.directory=' + Path(root).as_posix(), *args],
-                            cwd=root, capture_output=True, text=True, encoding='utf-8')
+    env = os.environ.copy()
+    env.update(GIT_TERMINAL_PROMPT='0', GCM_INTERACTIVE='Never')
+    try:
+        result = subprocess.run(['git', '-c', 'safe.directory=' + Path(root).as_posix(),
+                                 '-c', 'credential.interactive=false', *args],
+                                cwd=root, capture_output=True, text=True, encoding='utf-8',
+                                env=env, timeout=120)
+    except subprocess.TimeoutExpired:
+        raise Blocked('GIT_TIMEOUT:' + args[0]) from None
     if result.returncode:
         raise Blocked('GIT_FAILED:' + args[0])
     return result.stdout.strip()

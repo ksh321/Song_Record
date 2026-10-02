@@ -361,6 +361,20 @@ class RunnerFixture(unittest.TestCase):
         self.assertEqual(self.runner.data['task_id'], 'P10-02')
         self.assertFalse((self.root / 'P10-10.txt').exists())
 
+    def test_git_never_waits_for_account_picker(self):
+        with patch('workflow_runtime.subprocess.run') as command:
+            command.return_value.returncode = 0
+            command.return_value.stdout = 'ok'
+            self.assertEqual(git(self.root, 'ls-remote', 'origin'), 'ok')
+            args, kwargs = command.call_args
+            self.assertIn('credential.interactive=false', args[0])
+            self.assertEqual(kwargs['env']['GIT_TERMINAL_PROMPT'], '0')
+            self.assertEqual(kwargs['env']['GCM_INTERACTIVE'], 'Never')
+            self.assertEqual(kwargs['timeout'], 120)
+        with patch('workflow_runtime.subprocess.run', side_effect=subprocess.TimeoutExpired('git', 120)):
+            with self.assertRaisesRegex(Blocked, 'GIT_TIMEOUT:ls-remote'):
+                git(self.root, 'ls-remote', 'origin')
+
     def test_completion_notice_once_after_restart(self):
         self.runner.data.update(stage='COMPLETE', status='RUN_FINISHED', reason='APPROVED_END_REACHED')
         with patch('sequential_runner.execute', return_value={'exit_code': 0}) as send:
