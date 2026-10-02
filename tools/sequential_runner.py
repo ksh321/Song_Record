@@ -251,6 +251,17 @@ class Runner:
 
     def record_request(self, reason):
         """Use the existing USER record and sender, never send arbitrary provider output."""
+        if reason == 'PROVIDER_APPROVAL_REQUIRED':
+            # A provider sandbox approval is an AI handoff, not evidence that
+            # a human must act. The supervising Codex turn inspects the saved
+            # command and uses its normal authorization tools; never auto-accept
+            # arbitrary provider commands or ask the user to diagnose them.
+            self.pause('WAITING_AI', 'PROVIDER_APPROVAL_TRIAGE_REQUIRED')
+            self.data['ai_handoff'] = {'reason': reason, 'owner': 'AI',
+                                       'status': 'NEEDS_HOST_TRIAGE', 'created': utc()}
+            self.save()
+            self.event('ai_handoff', self.data['ai_handoff'])
+            return
         records_path = self.root / 'docs/verification/user-action-records.md'
         todo_path = self.root / '내가할일.md'
         records, todo = records_path.read_text(encoding='utf-8'), todo_path.read_text(encoding='utf-8')
@@ -375,7 +386,6 @@ class Runner:
             self.pause('PAUSED_USER', 'USER_STOP')
             return None
         if result['requests']:
-            self.pause('WAITING_USER', 'PROVIDER_APPROVAL_REQUIRED')
             self.record_request('PROVIDER_APPROVAL_REQUIRED')
             return None
         if result['status'] != 'completed':
@@ -684,11 +694,13 @@ class Runner:
             receipt = read_json(receipt_path) if receipt_path.exists() else {}
             if state['runner'].get('notification_required', True) and receipt.get('status') != 'HUMAN_CONFIRMED':
                 raise Blocked('THIS_LAPTOP_NOTIFICATION_CONFIRMATION_REQUIRED')
-            if self.stopped() or self.data.get('status') in ('PAUSED_USER', 'PAUSED_QUOTA', 'BLOCKED', 'WAITING_USER'):
+            if self.stopped() or self.data.get('status') in ('PAUSED_USER', 'PAUSED_QUOTA', 'BLOCKED', 'WAITING_USER', 'WAITING_AI'):
                 if not resume:
                     raise Blocked('EXPLICIT_RESUME_REQUIRED')
                 if self.data.get('request') and not self.data['request'].get('resolved'):
                     raise Blocked('MATCHING_USER_RESULT_REQUIRED')
+                if self.data.get('ai_handoff', {}).get('status') == 'NEEDS_HOST_TRIAGE':
+                    raise Blocked('HOST_AI_TRIAGE_REQUIRED')
                 if self.data.get('reason') in ('REPAIR_BUDGET_EXHAUSTED', 'RECOVERED_CHECKPOINT_REQUIRES_RECONCILIATION'):
                     raise Blocked('EXPLICIT_RECONCILIATION_REQUIRED')
                 if self.stop_path.exists():
@@ -851,6 +863,8 @@ def main():
                                   'usage_allowed': quota_available(caps)}, indent=2))
         else:
             runner.run(args.end_task, resume=args.mode == 'resume')
+            if runner.data.get('status') == 'WAITING_AI':
+                print('WAITING_AI: supervising Codex must inspect call.requests and resolve or prepare a genuine user action; no phone alert sent.')
     except Exception as error:
         if args.mode in ('run', 'resume') and not runner.data:
             runner.directory = runner.directory / 'startup-alert'
@@ -859,7 +873,7 @@ def main():
                 runner.load()
             else:
                 runner.data = {'root': str(runner.root), 'task_id': 'WORKFLOW-09', 'status': 'BLOCKED'}
-        if runner.data and runner.data.get('status') not in ('PAUSED_USER', 'PAUSED_QUOTA', 'WAITING_USER'):
+        if runner.data and runner.data.get('status') not in ('PAUSED_USER', 'PAUSED_QUOTA', 'WAITING_USER', 'WAITING_AI'):
             runner.pause('BLOCKED', str(error))
             if args.mode in ('run', 'resume'):
                 runner.record_request('EXECUTION_BLOCKED')

@@ -292,6 +292,29 @@ class RunnerFixture(unittest.TestCase):
         self.assertEqual(self.runner.accept_event(event), 'ALREADY_APPLIED')
         self.assertTrue(self.runner.stop_path.exists())
 
+    def test_provider_approval_hands_to_ai_without_phone_or_user_task(self):
+        self.runner.data['call'] = {'requests': [{'method': 'item/commandExecution/requestApproval'}]}
+        before = (self.root / '내가할일.md').read_bytes()
+        with patch('sequential_runner.execute') as send:
+            self.runner.record_request('PROVIDER_APPROVAL_REQUIRED')
+            send.assert_not_called()
+        self.assertEqual(self.runner.data['status'], 'WAITING_AI')
+        self.assertEqual(self.runner.data['ai_handoff']['owner'], 'AI')
+        self.assertNotIn('request', self.runner.data)
+        self.assertEqual((self.root / '내가할일.md').read_bytes(), before)
+        self.assertEqual(len(self.runner.data['call']['requests']), 1)
+
+    def test_untriaged_ai_handoff_does_not_become_user_alert_on_resume(self):
+        from sequential_runner import main
+        self.runner.record_request('PROVIDER_APPROVAL_REQUIRED')
+        with patch('sequential_runner.Runner', return_value=self.runner), \
+             patch.object(self.runner, 'run', side_effect=Blocked('HOST_AI_TRIAGE_REQUIRED')), \
+             patch('sys.argv', ['runner', 'resume']), \
+             patch('sequential_runner.execute') as send:
+            self.assertEqual(main(), 2)
+            send.assert_not_called()
+        self.assertEqual(self.runner.data['status'], 'WAITING_AI')
+
     def test_blocked_without_steps_still_notifies_with_honest_fallback(self):
         with patch('sequential_runner.execute', return_value={'exit_code': 0}) as send:
             self.runner.record_request('EXECUTION_BLOCKED')
