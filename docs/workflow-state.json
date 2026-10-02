@@ -2241,7 +2241,7 @@
     },
     {
       "id": "P10-04",
-      "state": "pending",
+      "state": "done",
       "action": "P10-04 — canonical ID 반영: 원본 완료 기준과 현재 보존·참조 변환 증거 최종 대조",
       "owner": "AI",
       "resume": "P10-02 다음 번호순 실행. CONNECT 완료 이력은 유지하고 개인 편집 후보 보존과 P10-07 선택 UI 범위를 원본으로 구분한다.",
@@ -2254,7 +2254,15 @@
       ],
       "writes": [
         "apps/mobile/lib/core/database/account_store.dart"
-      ]
+      ],
+      "task_evidence": {
+        "P10-04": {
+          "commit": "ab3fec601e817c43001fe0c68526ba1c246b34ef",
+          "path": "docs/verification/P10-04-canonical-mapping.md",
+          "utc": "2026-10-02T10:57:56.071464+00:00"
+        }
+      },
+      "evidence": "docs/verification/P10-04-canonical-mapping.md"
     }
   ],
   "execution_policy": "single-local-controller; no delegated CLI workers/reviewers; subscription only",

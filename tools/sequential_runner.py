@@ -16,15 +16,16 @@ from pathlib import Path
 
 from codex_transport import AppServer, ProviderError
 from select_work import select
-from workflow_runtime import (Blocked, RunLock, atomic_json, execute, failure_action,
+from workflow_policy import bind_diagnosis, compact_context, stage_model
+from workflow_runtime import (Blocked, RunLock, atomic_json, execute,
                               fingerprint, git, observation_matches, quota_available,
-                              read_json, record_failure, recover_json, relative_path,
+                              read_json, recover_json, relative_path,
                               select_model, utc, process_alive)
 
 ROOT = Path(__file__).resolve().parents[1]
 HANDOFF = {'type': 'object', 'additionalProperties': False,
            'properties': {'action': {'type': 'string', 'enum': [
-               'plan', 'implemented', 'reviewed', 'finalized', 'continue', 'wait']},
+               'plan', 'diagnosed', 'implemented', 'reviewed', 'finalized', 'continue', 'wait']},
                'payload': {'type': 'string'}, 'summary': {'type': 'string'}},
            'required': ['action', 'payload', 'summary']}
 PROTECTED = ('tools', 'AGENTS.md', 'docs/workflow-state.json', '.github')
@@ -32,7 +33,7 @@ PROTECTED = ('tools', 'AGENTS.md', 'docs/workflow-state.json', '.github')
 
 def controller_hash(root):
     digest = hashlib.sha256()
-    for name in ('tools/sequential_runner.py', 'tools/codex_transport.py', 'tools/workflow_runtime.py', 'tools/select_work.py'):
+    for name in ('tools/sequential_runner.py', 'tools/codex_transport.py', 'tools/workflow_runtime.py', 'tools/select_work.py', 'tools/workflow_policy.py'):
         path = Path(root) / name
         digest.update(name.encode() + path.read_bytes())
     return digest.hexdigest()
@@ -84,8 +85,17 @@ def validate_plan(root, plan, task_id):
         raise Blocked('CONCRETE_MANUAL_STEPS_REQUIRED')
     if len({a['id'] for a in plan['acceptance']}) != len(plan['acceptance']):
         raise Blocked('DUPLICATE_ACCEPTANCE_ID')
-    for check in plan['checks']:
+    if not plan.get('fast_checks'):
+        # Compatibility for retained plans: analysis plus one focused test.
+        quick = [dict(c) for c in plan['checks'] if c['kind'] == 'flutter-analyze'][:1]
+        focused = next((c for c in plan['checks'] if c['kind'] in ('flutter-test', 'api-test')), None)
+        if focused:
+            quick.append(dict(focused, targets=focused['targets'][:1]))
+        plan['fast_checks'] = quick or [dict(plan['checks'][0])]
+    for check in plan['checks'] + plan.get('fast_checks', []):
         resolve_check(root, check)
+    if plan.get('fast_checks') and len({c['id'] for c in plan['fast_checks']}) != len(plan['fast_checks']):
+        raise Blocked('DUPLICATE_FAST_CHECK')
     if not plan.get('verification_file', '').startswith('docs/verification/'):
         raise Blocked('EXISTING_VERIFICATION_LOCATION_REQUIRED')
     relative_path(root, plan['verification_file'])
@@ -347,12 +357,9 @@ class Runner:
             self.pause('PAUSED_QUOTA', 'SUBSCRIPTION_QUOTA')
             self.record_request('SUBSCRIPTION_QUOTA')
             return None
-        incident = self.data.get('incident', {})
-        escalate = failure_action(incident) == 'ESCALATE' or self.data.get('escalated', False)
-        risk = self.data.get('plan', {}).get('risk', 'sensitive' if self.data['task_id'].startswith(('P06-', 'P10-')) else 'general')
-        selected = select_model(caps['models'], risk, escalate)
+        selected = stage_model(self.data, caps['models'], self.source())
+        escalate = selected == select_model(caps['models'], escalate=True)
         if escalate:
-            self.data['escalated'] = True
             proof = self.root / '.local/workflow/model-activation.json'
             activation = read_json(proof) if proof.exists() else {}
             if not any(observation_matches(o, selected) for o in activation.get('observations', [])):
@@ -362,6 +369,7 @@ class Runner:
                                          thread_id=self.data.get('thread_id'), read_only=read_only)
         self.data['thread_id'] = opened['thread']['id']
         self.save()
+        atomic_json(self.directory / 'task-context.json', {'plan': self.data.get('plan'), 'source_refs': self.data.get('source_refs')})
         prompt = ('현재 P번호 ' + self.data['task_id'] + ', 기존 단위 ' + self.data['unit_id'] + '. '
                   '단일 실행기의 현재 단계만 수행한다. 하위 에이전트·Ultra·유료 API·리셋권 금지. '
                   '직접 Git 쓰기·알림·CI 조회·실행기 파일 변경 금지. 관련 파일은 직접 읽고 편집한다. '
@@ -370,8 +378,11 @@ class Runner:
                   '작업 중이면 continue와 구체적 다음 행동. AI가 해결할 일반 명령 오류는 사용자에게 넘기지 않는다. '
                   '사람 조치가 정말 필요하면 wait payload에 preparation,steps,expected,reply를 구체적인 한국어 문자열로 모두 제공한다. '
                   'steps는 어느 기기/앱/화면에서 무엇을 누를지 순서대로, expected는 성공 모습, reply는 전달할 결과를 적는다.\n'
-                  + json.dumps({k: self.data.get(k) for k in (
-                      'stage', 'plan', 'results', 'review', 'incident', 'next_action', 'user_result')}, ensure_ascii=False))
+                  '같은 스레드에서 이미 확인한 문서를 무조건 다시 읽지 않는다. 현재 변경·오류·필요한 원문 절만 읽는다. '
+                  '원문 완료 기준과 검토 근거는 task-context.json 및 연결된 원문에서 확인한다. '
+                  'AI가 문서의 검사 수치·SHA를 재작성하지 않는다. 제어기가 사실 기록을 만든다.\n'
+                  + json.dumps(compact_context(self.data), ensure_ascii=False))
+        self.event('prompt_context', {'stage': self.data['stage'], 'characters': len(prompt)})
         protected_names = ['AGENTS.md', 'docs/workflow-state.json']
         protected_names += git(self.root, 'ls-files', 'tools', '.github').splitlines()
         protected = {p: git(self.root, 'hash-object', p) for p in protected_names}
@@ -410,6 +421,8 @@ class Runner:
             return None
         if response['action'] == 'continue':
             self.data['call']['phase'] = 'consumed'
+            if payload.get('reclassify'):
+                self.data.setdefault('diagnosis', {})['kind'] = 'core'
             signature = hashlib.sha256((self.source() + response['payload']).encode()).hexdigest()
             if signature == self.data.get('last_continue'):
                 # Exact duplicate handoff is invalid, not an invented numeric retry budget.
@@ -422,45 +435,98 @@ class Runner:
         self.data.pop('last_continue', None)
         return payload
 
-    def validate(self):
-        current = self.source()
-        self.data['results'] = []
+    def queue_failure(self, event_id, details):
+        self.data.update(stage='DIAGNOSE', status='READY',
+                         pending_failure={'id': event_id, 'details': details})
         self.save()
-        for check in self.data['plan']['checks']:
+
+    def write_final_facts(self):
+        """Write verified facts once without a generative round trip."""
+        if not self.checks_valid() or not self.data.get('review', {}).get('approved'):
+            raise Blocked('FINAL_FACTS_REQUIRE_VALIDATION_AND_REVIEW')
+        if self.data.get('ci', {}).get('overall') not in ('PASS', 'NOT_REQUIRED'):
+            raise Blocked('FINAL_FACTS_REQUIRE_CI')
+        facts = {'task_id': self.data['task_id'], 'commit': self.data['target_commit'],
+                 'base_commit': self.data['push_base_commit'], 'ci': self.data['ci'],
+                 'checks': [], 'manual_required': self.data['plan']['manual']['required'],
+                 'manual_pass': self.data.get('manual_pass'),
+                 'acceptance_reviewed': self.data['review']['acceptance_reviewed']}
+        for row in self.data['results']:
+            item = {k: row[k] for k in ('id', 'status', 'exit_code', 'log_directory') if k in row}
+            if 'test' in row.get('argv', []) and '--reporter' in row['argv']:
+                events = []
+                for line in (self.root / row['log_directory'] / 'stdout.log').read_text(encoding='utf-8').splitlines():
+                    try:
+                        events.append(json.loads(line))
+                    except ValueError:
+                        pass
+                item['passed_tests'] = sum(e.get('type') == 'testDone' and not e.get('hidden')
+                    and not e.get('skipped') and e.get('result') == 'success' for e in events)
+            facts['checks'].append(item)
+        atomic_json(self.directory / 'final-facts.json', facts)
+        marker = f"<!-- runner-facts:{facts['task_id']}:{facts['commit']} -->"
+        body = (f"\n{marker}\n### {facts['task_id']} 실행기 검증 사실\n\n"
+                f"- 대상 커밋: {facts['commit']}\n- 푸시 기준: {facts['base_commit']}\n"
+                f"- 필수 CI 판정: {facts['ci']['overall']}\n"
+                + ''.join(f"- {c['id']}: {c['status']}" +
+                          (f" / 테스트 {c['passed_tests']}개" if 'passed_tests' in c else '') + '\n'
+                          for c in facts['checks']) +
+                '- 검토 완료 기준: ' + ', '.join(facts['acceptance_reviewed']) + '\n'
+                '- 원시 근거: .local/workflow/runs/sequential/final-facts.json\n')
+        path = relative_path(self.root, self.data['plan']['verification_file'])
+        text = path.read_text(encoding='utf-8') if path.exists() else ''
+        if marker not in text:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text.rstrip() + '\n' + body, encoding='utf-8')
+        progress = self.root / 'docs/progress.md'
+        text = progress.read_text(encoding='utf-8')
+        if marker not in text:
+            progress.write_text(text.rstrip() + '\n\n' + marker + '\n' +
+                f"{facts['task_id']} 검증·검토·필수 CI 확인: {facts['commit']}. " +
+                f"근거: {self.data['plan']['verification_file']}. 최종 판정은 제어기 관문에서 확인한다.\n", encoding='utf-8')
+
+    def validate(self, fast=False):
+        current = self.source()
+        key = 'fast_results' if fast else 'results'
+        self.data[key] = []
+        self.save()
+        checks = self.data['plan'].get('fast_checks') if fast else self.data['plan']['checks']
+        if not checks:
+            checks = [self.data['plan']['checks'][0]]
+        for check in checks:
             execution_id = str(uuid.uuid4())
             directory = self.directory / 'commands' / execution_id
             argv, cwd = resolve_check(self.root, check)
             self.data['command'] = {'id': execution_id, 'check': check, 'status': 'INTENT'}
             self.save()
-            result = execute(argv, cwd, directory, min(int(check.get('timeout', 1800)), 7200), self.stopped)
+            cached = next((r for r in self.data.get('fast_results', []) if not fast
+                           and r.get('fingerprint') == current and r.get('argv') == argv
+                           and r.get('status') == 'PASS'), None)
+            if cached:
+                directory = self.root / cached['log_directory']
+                execution_id = cached['execution_id']
+                result = dict(cached, reused_fast_result=True)
+            else:
+                result = execute(argv, cwd, directory, min(int(check.get('timeout', 1800)), 7200), self.stopped)
             result.update(id=check['id'], fingerprint=current, execution_id=execution_id,
                           log_directory=str(directory.relative_to(self.root)))
             if not verify_report(check, result, directory, self.root):
                 result['status'] = 'FAIL' if result['status'] == 'PASS' else result['status']
-            self.data['results'].append(result)
+            self.data[key].append(result)
             self.data['command']['status'] = result['status']
             self.save()
             if result['status'] != 'PASS':
                 if self.stopped():
                     self.pause('PAUSED_USER', 'USER_STOP')
                     return
-                incident = self.data.setdefault('incident', {'id': self.data['task_id'] + ':validation'})
-                logs = '\n'.join((directory / f).read_text(encoding='utf-8') for f in ('stdout.log', 'stderr.log'))
-                environment = re.search(r'Unable to establish loopback|Could not resolve host|Connection refused|Access is denied|Docker.*not running|pub get|SocketException.*host', logs, re.I)
-                disposition = record_failure(incident, execution_id, self.data.get('maximum_observed', False),
-                                             repaired=self.data.pop('repair_applied', False),
-                                             category='environment' if environment else 'code')
-                self.data['stage'] = 'IMPLEMENT'
-                if disposition in ('BLOCKED', 'BLOCKED_ENVIRONMENT'):
-                    reason = 'ENVIRONMENT_REQUIRES_ACTION' if environment else 'REPAIR_BUDGET_EXHAUSTED'
-                    self.pause('BLOCKED', reason)
-                    self.record_request(reason)
-                else:
-                    self.save()
+                self.queue_failure(execution_id, {'check': check, 'result': result})
                 return
         if self.source() != current:
             raise Blocked('SOURCE_CHANGED_DURING_VALIDATION')
-        self.data.update(stage='REVIEW', validated_fingerprint=current)
+        if fast:
+            self.data['stage'] = 'VALIDATE' if self.data.get('implementation_done', True) else 'IMPLEMENT'
+        else:
+            self.data.update(stage='REVIEW', validated_fingerprint=current)
         self.save()
 
     def checks_valid(self):
@@ -544,13 +610,7 @@ class Runner:
         elif report.get('overall') in ('PASS', 'NOT_REQUIRED') and result['exit_code'] == 0:
             self.data.update(stage='FINALIZE', status='READY', ci_errors=0)
         elif report.get('overall') == 'FAIL':
-            self.data.update(stage='IMPLEMENT', status='READY', next_action={'ci_report': str(report_path)})
-            incident = self.data.setdefault('incident', {'id': self.data['task_id'] + ':ci'})
-            disposition = record_failure(incident, 'ci:' + target, self.data.get('maximum_observed', False),
-                                         self.data.pop('repair_applied', False))
-            if disposition == 'BLOCKED':
-                self.pause('BLOCKED', 'REPAIR_BUDGET_EXHAUSTED')
-                self.record_request('REPAIR_BUDGET_EXHAUSTED')
+            self.queue_failure('ci:' + target, {'ci_report': str(report_path)})
         elif result['exit_code'] not in (0, 2):
             self.data['ci_errors'] += 1
         else:
@@ -594,8 +654,9 @@ class Runner:
                 'payload keys: task_id,title,objective,risk(general/complex/sensitive),'
                 'acceptance(array of {id,criterion,basis,checks:[check_id or review or manual]}),'
                 'sources(repo paths),scope(repo paths),verification_file(existing file),'
-                'checks(array {id,kind,targets,timeout}),manual({required:boolean,reason:string,preparation,steps,expected,reply}). '
+                'checks(array {id,kind,targets,timeout}),fast_checks(같은 형식, 작은 분석/초점 테스트),manual({required:boolean,reason:string,preparation,steps,expected,reply}). '
                 'check kinds: flutter-test,flutter-analyze,flutter-build-dev,api-test,workflow-quick,sources,diff. '
+                'fast_checks는 작은 구현 직후 실행할 분석과 가장 좁은 관련 테스트다. 전체 회귀는 checks에 유지한다. '
                 'scope는 필요한 제품·테스트로 한정한다. 동기화·인증·DB 핵심은 sensitive로 지정한다.')
             result = self.ai(instruction, 'plan', read_only=True)
             if result:
@@ -607,17 +668,58 @@ class Runner:
                 self.data['source_refs'] = {name: hashlib.sha256(relative_path(self.root, name).read_bytes()).hexdigest()
                                             for name in result['sources'] if relative_path(self.root, name).is_file()}
                 self.save()
+        elif stage == 'DIAGNOSE':
+            result = self.ai(
+                '읽기 전용 원인 분류. pending_failure의 실제 로그/코드를 읽고 모든 과거 원인과 비교한다. '
+                '오류 문구나 테스트 이름만으로 다른 문제로 만들지 않는다. 원인이 같으면 기존 ID를 재사용한다. '
+                'payload={incident_id:existing_id or new,cause,evidence,fix,identity_basis,'
+                'comparisons:[{id,relation:same/different,evidence}],kind:syntax_import/format/fixture_contract/core/environment,'
+                'cause_clear:boolean,behavior_unchanged:boolean,checkable:boolean,contract_basis,files:[repo path]}. '
+                '단순 수정은 원인·방법 명확/행동 계약 불변/검증 가능 세 조건과 기존 계약 출처가 모두 있어야 한다. '
+                '테스트 기대값을 통과 목적으로 바꾸지 않는다. 인증·동기화·DB 의미 변경 또는 불명확하면 core. '
+                '실제 사람이 해야 하는 환경 조치는 wait와 구체적 절차; AI가 해결 가능한 환경은 environment.',
+                'diagnosed', read_only=True)
+            if result:
+                for name in result.get('files', []):
+                    relative_path(self.root, name)
+                    if name not in self.data['plan']['scope']:
+                        raise Blocked('DIAGNOSIS_OUTSIDE_APPROVED_SCOPE')
+                action = bind_diagnosis(self.data, result, self.source())
+                self.data['stage'] = 'IMPLEMENT'
+                if action == 'BLOCKED':
+                    self.pause('BLOCKED', 'REPAIR_BUDGET_EXHAUSTED')
+                    self.record_request('REPAIR_BUDGET_EXHAUSTED')
+                elif result.get('kind') == 'environment':
+                    self.pause('WAITING_AI', 'ENVIRONMENT_REQUIRES_HOST_TRIAGE')
+                    self.data['ai_handoff'] = {'owner': 'AI', 'status': 'NEEDS_HOST_TRIAGE',
+                                              'reason': 'Inspect diagnosis and perform authorized environment recovery first.'}
+                self.save()
         elif stage == 'IMPLEMENT':
             before = self.source()
-            result = self.ai('계획의 남은 전체 범위를 직접 구현한다. 오류가 있으면 로그를 읽고 원인·수정·관련 검사를 연결한다. '
-                             '검사는 제어기가 실행한다. 환경 오류면 코드 수정으로 우회하지 말고 wait. '
-                             'payload={changed_files:[...],reason:string}.', 'implemented')
+            issue_id = self.data.get('active_incident')
+            result = self.ai('현재 남은 범위에서 컴파일/검사 가능한 작은 연결 단위 하나를 구현하고 즉시 인계한다. '
+                             '큰 전체 구현을 다 작성한 뒤 처음 검사하지 않는다. 선언된 fast_checks는 제어기가 실행한다. '
+                             '진행 중 문서 재작성·포맷 명령은 생략한다. 의미 변경이 필요해 단순 분류가 틀렸다면 편집 전 '
+                             'continue payload에 reclassify=true와 이유를 적어 핵심 분류로 돌린다. '
+                             '단순 수정은 diagnosis.files와 fix만 따른다. 환경 문제도 가능한 안전한 조치를 직접 처리한다. '
+                             'payload={changed_files:[...],reason:string,complete:boolean}. '
+                             'complete=false이면 빠른 검사 뒤 같은 P번호 구현 계속, true여도 전체 지정 검증과 검토는 필수다.',
+                             'implemented')
             if result:
-                self.data['repair_applied'] = bool(self.data.get('incident') and before != self.source())
-                if self.data.get('incident') and not self.data['repair_applied']:
+                if not isinstance(result.get('complete', True), bool):
+                    raise Blocked('IMPLEMENTATION_COMPLETE_MUST_BE_BOOLEAN')
+                changed = before != self.source()
+                if issue_id and not changed:
                     raise Blocked('FAILED_CHECK_REPAIR_WITHOUT_CHANGE')
-                self.data.update(stage='VALIDATE', implementation=result)
+                if issue_id:
+                    self.data['repair_attempt'] = {'incident_id': issue_id, 'changed': changed,
+                        'maximum': self.data.get('maximum_observed', False), 'turn_id': self.data['call']['turn_id']}
+                    self.data['incidents'][issue_id]['last_attempt'] = dict(self.data['repair_attempt'])
+                self.data.update(stage='FAST_VALIDATE', implementation=result,
+                                 implementation_done=result.get('complete', True))
                 self.save()
+        elif stage == 'FAST_VALIDATE':
+            self.validate(fast=True)
         elif stage == 'VALIDATE':
             self.validate()
         elif stage == 'REVIEW':
@@ -629,6 +731,12 @@ class Runner:
                     raise Blocked('REVIEW_COVERAGE_INCOMPLETE')
                 self.data['review'] = result
                 if result.get('approved') and self.checks_valid():
+                    for issue in self.data.get('incidents', {}).values():
+                        issue['status'] = 'resolved'
+                    self.data.pop('active_incident', None)
+                    self.data.pop('repair_attempt', None)
+                    self.data.pop('pending_failure', None)
+                    self.data.pop('diagnosis', None)
                     if self.data['plan']['manual']['required']:
                         self.data['stage'] = 'MANUAL'
                         self.pause('WAITING_USER', 'MANUAL_TEST_REQUIRED')
@@ -636,14 +744,7 @@ class Runner:
                     else:
                         self.data['stage'] = 'COMMIT'
                 else:
-                    self.data['stage'] = 'IMPLEMENT'
-                    incident = self.data.setdefault('incident', {'id': self.data['task_id'] + ':review'})
-                    disposition = record_failure(incident, 'review:' + self.data['call']['turn_id'],
-                                                 self.data.get('maximum_observed', False),
-                                                 self.data.pop('repair_applied', False))
-                    if disposition == 'BLOCKED':
-                        self.pause('BLOCKED', 'REPAIR_BUDGET_EXHAUSTED')
-                        self.record_request('REPAIR_BUDGET_EXHAUSTED')
+                    self.queue_failure('review:' + self.data['call']['turn_id'], {'review': result})
                 self.save()
         elif stage == 'COMMIT':
             self.commit()
@@ -652,7 +753,8 @@ class Runner:
         elif stage == 'CI':
             self.ci_once()
         elif stage == 'FINALIZE':
-            result = self.ai('검증 결과를 기존 검증 문서와 progress에 짧게 기록한다. 대상 SHA=' + self.data['target_commit'] +
+            self.write_final_facts()
+            result = self.ai('기계 기록 final-facts.json과 기존 검토를 읽고 판정 이유/후속 경계만 기존 검증 문서에 짧게 보완한다. 수치·SHA·실행 목록을 다시 쓰지 않는다. 대상 SHA=' + self.data['target_commit'] +
                              '. 제품 파일 수정 금지. 사후 기록 전용 커밋은 만들지 않는다. 모든 유효 완료 조건을 대조하고 '
                              'payload={acceptance_passed:[id,...]}를 반환한다.', 'finalized')
             if result:
@@ -664,10 +766,10 @@ class Runner:
         unit, task = item
         history = self.data.get('history', [])
         if self.data.get('task_id'):
-            history += [{k: self.data.get(k) for k in ('task_id', 'unit_id', 'target_commit', 'incident', 'stage')}]
+            history += [{k: self.data.get(k) for k in ('task_id', 'unit_id', 'target_commit', 'incident', 'incidents', 'stage')}]
         thread = self.data.get('thread_id')
         pending_records = self.data.get('pending_records', {})
-        self.data = {'schema': 1, 'root': str(self.root), 'branch': git(self.root, 'branch', '--show-current'),
+        self.data = {'schema': 2, 'root': str(self.root), 'branch': git(self.root, 'branch', '--show-current'),
                      'task_id': task, 'unit_id': unit['id'], 'end_task': end_task, 'stage': 'PLAN',
                      'status': 'READY', 'task_base_commit': git(self.root, 'rev-parse', 'HEAD'),
                      'thread_id': thread, 'history': history, 'pending_records': pending_records, 'created': utc()}
@@ -681,6 +783,12 @@ class Runner:
             state = self.guards()
             if self.data.get('status') == 'RUN_FINISHED':
                 self.notify_completion()
+                return
+            if self.data.get('incident') and not self.data.get('incidents'):
+                self.pause('WAITING_AI', 'LEGACY_CAUSE_RECONCILIATION_REQUIRED')
+                self.data['ai_handoff'] = {'owner': 'AI', 'status': 'NEEDS_HOST_TRIAGE',
+                    'reason': 'Preserve legacy attempts; assign causes from original evidence before resuming.'}
+                self.save()
                 return
             if not state.get('runner', {}).get('enabled'):
                 raise Blocked('RUNNER_NOT_ACTIVATED')

@@ -1,6 +1,6 @@
 # P10-04 — canonical ID 보존 계약 대조 (구현 전)
 
-> 최신 구현 인계는 아래 **2026-10-02 P10-04 미전송 참조 연결** 절을 따른다. 이 문서 앞부분의 구현 전 설명과 별도 작업자/검수 기록은 당시 이력으로 보존한다.
+> 최신 판정은 아래 **2026-10-02 P10-04 FINALIZE** 절을 따른다. 앞부분의 구현 전·검증 대기 설명과 별도 작업자/검수 기록은 당시 이력으로 보존한다.
 
 최신 상태: P10-04a 부가 v4 저장 기반은 `5c23040abf78e34ea537016545ab78244764a79d`로 통합·푸시했고 [별도 검증 기록](P10-04a-preservation-schema.md)에서 추적한다. 아래 “제품 코드 아직 없음/v3”는 최초 계약 대조 당시 기록이다. 전체 P10-04 원자 매핑은 아직 완료가 아니다.
 
@@ -105,3 +105,24 @@ R026·R036·R037·R039, 계획 p00584~p00586 및 설계 p00293~p00294에 따라 
 해당 사례에서 정확한 1분 뒤 예약, RETRY/AUTO·attempt=1·자동 재시도 사용량=0을 검사하도록 수정했다. 예약 조회 및 만료 전 claim 거절 전후에 복구 테이블 전체가 같아야 하며, 명시적 재시도 승인만으로 시도·예산을 소비하거나 저장 보류를 해제하지 않는 검사도 추가했다. 실제 수동 ACK 뒤 attempt=2·MANUAL·자동 사용량=0 및 기존 동일 frozen 요청·후속 저장·파일/저널 보존 검사를 유지한다. 해결 요청의 재시도 예약과 아직 ACK되지 않은 후속 저장의 보류를 구별하며 P10-04-A4·A5·A6·A7의 기준을 낮추지 않는다.
 
 수정 파일은 `canonical_reference_dispatch_test.dart`와 이 문서다. 테스트·분석·포맷 실행 및 실행기 상태 변경 없이 `canonical-tests` 재검사와 나머지 지정 검사·REVIEW를 제어기에 인계한다. 이번 수정 후 결과는 미확인이고 P10-05는 착수하지 않는다.
+
+## 2026-10-02 P10-04 FINALIZE
+
+대상 `ab3fec601e817c43001fe0c68526ba1c246b34ef`, push 기준 `1b1ce22120c8accf00c391fe57eb4e0c1b78909c`. 제어기의 검증 지문은 `62031fbf8080fb8ed6830c1308735566560495a2286f9aaff9a4017c41a0fc74`이며, 기록 전 HEAD·로컬 origin/main은 대상 SHA와 같고 제품 diff는 없다. R014·R026·R036·R037·R039, 계획 p00584~p00586·설계 p00293~p00294 및 승인 계획의 **P10-04-A1~A8을 모두 충족**한다. 기존 P10-04a·DECODER·ATOMIC·GATE·EXPORT·CONNECT, P10-03 완료와 사용자 확인 이력은 유지한다.
+
+| 완료 조건 | 최종 대조 결과 |
+| --- | --- |
+| P10-04-A1 | 소유한 frozen SONG CREATE와 검증된 직접 alias만 사용하며 잘못된 응답·계정·재지정 거절과 반복 응답 중복 방지 회귀 유지. |
+| P10-04-A2 | 안전한 미전송 참조만 새 op_id로 대체하고 원문·기준·물리/논리 순서 및 개인 입력 보존. 목록 HTTP 송신은 추가하지 않음. |
+| P10-04-A3 | 원장·보류 근거·참조 변경의 원자성, SQL 실패/lease 상실 롤백, 재개방 중복 방지 통과. 원본 미전송 ACK와 스키마 변경 없음. |
+| P10-04-A4 | 실제 ACK 뒤 후속 저장 진행, 충돌의 명시적 LOCAL 해결→대체 ACK→저장 연결 통과. 조회 무변경·재시도 자격·미지원 요청 예약 종료 확인. |
+| P10-04-A5 | frozen 요청·예산·null/다른 곡 선택·편집 후보·높은 revision/tombstone 보존 및 무관한 요청 진행 회귀 통과. |
+| P10-04-A6 | 임시 계정 DB에 등록한 합성 파일·저널·UUID·당시 입력·원본 큐·복구 원장·계정 격리·cursor 보존과 제한된 임시 경로 정리 확인. |
+| P10-04-A7 | 테스트 삭제·약화 없이 149+121+73=343개 PASS, 지정 분석·원본 색인·diff 검사 PASS. 이번 로그의 제외 항목은 0이며 과거 플랫폼 제외 이력은 별도 보존. |
+| P10-04-A8 | 현재 모델의 별도 REVIEW에서 원문·전체 diff·로그·보존·미연결 범위를 대조해 A1~A8 승인, 남은 지적 0건. 아래 후속 경계 유지. |
+
+제어기 실행 명령은 `flutter test --no-pub --reporter json`(canonical 4파일·dispatch 10파일·preservation 5파일), `flutter analyze --no-pub`(승인된 10파일), `python tools/index_sources.py --check`, 저장소 한정 `git -c safe.directory=C:/Users/ksh/Documents/GitHub/Song_Record diff --check`이며 모두 종료 0이다. 테스트 실행 ID는 순서대로 `6acba1f0-2c6e-4805-9ad0-a2a2cf01b564`, `9d5e641d-80f0-4d31-a109-87967b8ac51e`, `3a2aa5de-8f55-40be-ab94-616ce7b40a7e`다. 정확한 argv와 원시 결과는 `.local/workflow/runs/sequential/commands/<실행 ID>/`에 보존된다. 앞선 충돌 해결 보류 지적 및 응답 유실 예약 기대값 오류는 수정 후 두 통합 사례 모두 통과했다. 동기화·DB 핵심(sensitive) 범위에 대해 현재 모델이 직접 검토했으며 별도 검수 에이전트를 사용하지 않았다.
+
+제어기의 저장 보고서 `.local/workflow/ci-ab3fec601e817c43001fe0c68526ba1c246b34ef.json`(2026-10-02 10:54:17 UTC)을 읽어 위 SHA/BaseCommit의 전체 판정 PASS를 확인했다. [CI 36996900749](https://github.com/ksh321/Song_Record/actions/runs/36996900749)의 필수 `Scope changed files`, `Flutter analyze, test, and Android build`는 success다. Spring Boot·MySQL job은 영향 범위 밖 skipped이고, API contract·Idempotency MySQL·Development workflow는 NOT_APPLICABLE이며 통과 테스트로 세지 않는다. 이번 FINALIZE에서 원격 CI를 조회하거나 검사를 재실행하지 않았다.
+
+승인 계획상 새 실기는 불필요하다. 개인 편집 선택 UI는 P10-07-NEXT, 실제 목록 송신은 P19, V33 두 기기 종합 실기는 P10-10에 남는다. 실제 파일 업로드·백업 importer·화면 연결 완료를 주장하지 않는다. 이번에는 이 문서와 `docs/progress.md`만 기록하며 제품 파일·실행기·기존 ID를 변경하지 않는다. 사후 기록 전용 커밋·푸시·알림은 수행하지 않고 제어기에 FINALIZE 결과를 인계한다. 승인 종료 범위는 P10-04이며 P10-05는 착수하지 않았다.
