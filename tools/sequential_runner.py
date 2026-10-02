@@ -239,8 +239,15 @@ class Runner:
         revision = 1
         manual = self.data.get('plan', {}).get('manual', {})
         details = self.data.get('next_action') or {}
-        instructions = manual.get('steps') if reason == 'MANUAL_TEST_REQUIRED' else details.get('steps')
-        instructions = instructions or '현재 요청 기록의 사유를 확인하고 이 대화에 해결한 내용을 알려주세요.'
+        guidance = manual if reason == 'MANUAL_TEST_REQUIRED' else details
+        required = ('preparation', 'steps', 'expected', 'reply')
+        if not all(isinstance(guidance.get(key), str) and guidance[key].strip() for key in required):
+            self.data['notification_pending'] = {'reason': reason, 'needs': list(required),
+                                                 'owner': 'AI', 'status': 'NEEDS_ACTIONABLE_GUIDANCE'}
+            self.save()
+            self.event('notification_held', self.data['notification_pending'])
+            return
+        instructions = guidance['steps']
         if not isinstance(instructions, str):
             instructions = json.dumps(instructions, ensure_ascii=False)
         instructions = instructions.replace('\n', ' / ')
@@ -256,10 +263,10 @@ class Runner:
         records_path.write_text(records, encoding='utf-8')
         todo = todo.replace('현재 직접 할 일 없음', '').rstrip()
         todo += (f'\n\n- [ ] {item} — {task}: 실행기 확인\n'
-                 f"  - 준비: {manual.get('preparation', reason)}\n"
+                 f"  - 준비: {guidance['preparation']}\n"
                  f'  - 순서: {instructions}\n'
-                 f"  - 정상 결과: {manual.get('expected', '요청한 조건 해결')}\n"
-                 f'  - AI에게 알려줄 결과: {item} 판본 {revision}, 해결한 내용 또는 실기 결과.\n')
+                 f"  - 정상 결과: {guidance['expected']}\n"
+                 f"  - AI에게 알려줄 결과: {item} 판본 {revision}, {guidance['reply']}\n")
         count = len(re.findall(r'^- \[ \] USER-\d{3}', todo, re.M))
         todo = re.sub(r'사용자 확인 대기 \d+건', f'사용자 확인 대기 {count}건', todo)
         todo_path.write_text(todo, encoding='utf-8')
@@ -310,7 +317,9 @@ class Runner:
                   '직접 Git 쓰기·알림·CI 조회·실행기 파일 변경 금지. 관련 파일은 직접 읽고 편집한다. '
                   '완료 이력·사용자 변경·기존 ID를 보존한다.\n' + instruction + '\n'
                   '출력은 action,payload(JSON 문자열),summary. 기대 action=' + expected + '. '
-                  '작업 중이면 continue와 구체적 다음 행동, 사람/환경 조치가 필요하면 wait를 반환한다.\n'
+                  '작업 중이면 continue와 구체적 다음 행동. AI가 해결할 일반 명령 오류는 사용자에게 넘기지 않는다. '
+                  '사람 조치가 정말 필요하면 wait payload에 preparation,steps,expected,reply를 구체적인 한국어 문자열로 모두 제공한다. '
+                  'steps는 어느 기기/앱/화면에서 무엇을 누를지 순서대로, expected는 성공 모습, reply는 전달할 결과를 적는다.\n'
                   + json.dumps({k: self.data.get(k) for k in (
                       'stage', 'plan', 'results', 'review', 'incident', 'next_action', 'user_result')}, ensure_ascii=False))
         protected_names = ['AGENTS.md', 'docs/workflow-state.json']
@@ -627,7 +636,9 @@ class Runner:
             activation = read_json(activation_path) if activation_path.exists() else {}
             if activation.get('controller_hash') != controller_hash(self.root) or activation.get('status') != 'PASS':
                 raise Blocked('THIS_INSTALLATION_VALIDATION_REQUIRED')
-            receipt_path = self.root / '.local/workflow/phone/receipt.json'
+            receipt_path = self.root / '.local/workflow/phone/confirmed.json'
+            if not receipt_path.exists():
+                receipt_path = self.root / '.local/workflow/phone/receipt.json'
             receipt = read_json(receipt_path) if receipt_path.exists() else {}
             if state['runner'].get('notification_required', True) and receipt.get('status') != 'HUMAN_CONFIRMED':
                 raise Blocked('THIS_LAPTOP_NOTIFICATION_CONFIRMATION_REQUIRED')

@@ -108,6 +108,11 @@ class AppServer:
                       'Never edit tools/, AGENTS.md, docs/workflow-state.json or .local/workflow/runs/sequential/. '
                       'Never run git add/commit/push, notifications, or CI polling: the controller owns them. '
                       'Preserve all existing user data. Do not lower tests or acceptance criteria. '
+                      'On Windows every PowerShell command must begin with '
+                      '[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new(); '
+                      '$OutputEncoding = [Console]::OutputEncoding; '
+                      'Read text with Get-Content -Encoding UTF8. For read-only Git use '
+                      'git -c safe.directory=C:/Users/ksh/Documents/GitHub/Song_Record; never change global Git config. '
                       'Return the requested structured handoff; do not advance to another P number.')}
         if thread_id:
             params.update(threadId=thread_id, excludeTurns=True)

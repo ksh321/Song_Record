@@ -49,6 +49,7 @@ if ($Mode -eq 'Confirm') {
     # Master calls only after an explicit human reply confirming this trial on the phone.
     $r.status='HUMAN_CONFIRMED'; $r | Add-Member confirmed_utc ([DateTime]::UtcNow.ToString('o')) -Force
     $r | ConvertTo-Json | Set-Content $receipt -Encoding utf8
+    $r | ConvertTo-Json | Set-Content (Join-Path $dir 'confirmed.json') -Encoding utf8
     Write-Host 'Human receipt confirmation recorded.'; exit 0
 }
 $itemRecord=$null

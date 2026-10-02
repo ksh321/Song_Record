@@ -292,7 +292,15 @@ class RunnerFixture(unittest.TestCase):
         self.assertEqual(self.runner.accept_event(event), 'ALREADY_APPLIED')
         self.assertTrue(self.runner.stop_path.exists())
 
+    def test_notification_without_steps_is_held_for_ai(self):
+        with patch('sequential_runner.execute') as send:
+            self.runner.record_request('EXECUTION_BLOCKED')
+            send.assert_not_called()
+        self.assertEqual(self.runner.data['notification_pending']['owner'], 'AI')
+        self.assertNotIn('request', self.runner.data)
+
     def test_w39_notification_unknown_not_resent(self):
+        self.runner.data['next_action'] = dict(preparation='폰 잠금 해제', steps='폰 설정에서 USB 디버깅 허용을 누릅니다.', expected='연결 허용', reply='승인 여부')
         with patch('sequential_runner.execute', side_effect=OSError('unavailable')) as send:
             self.runner.record_request('ENVIRONMENT_REQUIRES_ACTION')
             self.runner.record_request('ENVIRONMENT_REQUIRES_ACTION')
@@ -338,7 +346,8 @@ class RunnerFixture(unittest.TestCase):
 
     def test_w38_run_loop_stops_at_authorized_endpoint(self):
         atomic_json(self.root / '.local/workflow/runner-verification.json', {'controller_hash': 'fixture', 'status': 'PASS'})
-        atomic_json(self.root / '.local/workflow/phone/receipt.json', {'status': 'HUMAN_CONFIRMED'})
+        atomic_json(self.root / '.local/workflow/phone/confirmed.json', {'status': 'HUMAN_CONFIRMED'})
+        atomic_json(self.root / '.local/workflow/phone/receipt.json', {'status': 'SERVER_ACCEPTED', 'kind': 'Intervention'})
         self.runner.ai = self.fake_ai
         self.runner.data['end_task'] = 'P10-02'
         self.runner.save()
@@ -353,7 +362,8 @@ class RunnerFixture(unittest.TestCase):
 
     def test_w37_run_after_stop_never_invokes_provider(self):
         atomic_json(self.root / '.local/workflow/runner-verification.json', {'controller_hash': 'fixture', 'status': 'PASS'})
-        atomic_json(self.root / '.local/workflow/phone/receipt.json', {'status': 'HUMAN_CONFIRMED'})
+        atomic_json(self.root / '.local/workflow/phone/confirmed.json', {'status': 'HUMAN_CONFIRMED'})
+        atomic_json(self.root / '.local/workflow/phone/receipt.json', {'status': 'SERVER_ACCEPTED', 'kind': 'Intervention'})
         atomic_json(self.runner.stop_path, {'requested': True})
         with patch('sequential_runner.controller_hash', return_value='fixture'), patch('sequential_runner.AppServer') as provider:
             with self.assertRaisesRegex(Blocked, 'EXPLICIT_RESUME_REQUIRED'):
