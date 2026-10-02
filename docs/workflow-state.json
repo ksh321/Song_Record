@@ -2249,7 +2249,7 @@
       ]
     }
   ],
-  "execution_policy": "current-session-only; no delegated CLI workers/reviewers",
+  "execution_policy": "single-local-controller; no delegated CLI workers/reviewers; subscription only",
   "priority_order": [
     "P00-03-TERMS",
     "P10-02-NEXT",
@@ -2277,5 +2277,18 @@
     "P25-PHASE"
   ],
   "execution_mode": "strict_sequential",
-  "sequence_start": "P10-02-NEXT"
+  "sequence_start": "P10-02-NEXT",
+  "runner": {
+    "version": "1.2.0",
+    "enabled": true,
+    "host_policy": "this-laptop-only",
+    "default_model": "gpt-6.1-sol",
+    "default_effort": "medium",
+    "sensitive_model": "gpt-6-astra",
+    "sensitive_effort": "high",
+    "maximum_effort": "resolve-model-list-excluding-ultra",
+    "checkpoint": "runs/sequential/checkpoint.json",
+    "activation_evidence": ".local/workflow/model-activation.json",
+    "notification_required": true
+  }
 }

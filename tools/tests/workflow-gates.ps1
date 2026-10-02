@@ -43,11 +43,13 @@ Assert-Equal (Get-AgentRisk 'Implement' 'RequirementsMissing') 'Complex' 'omissi
 Assert-Equal (Get-AgentRisk 'Complex' 'LogicError') 'Sensitive' 'logic escalates model'
 Assert-Equal (Get-AgentRisk 'Sensitive' 'ReviewBlocker') 'Escalation' 'review escalates reasoning'
 Assert-Equal (Get-AgentRisk 'Explore' 'None') 'Explore' 'normal exploration'
-Assert-Equal (Get-AgentRunPlan 'Implement' 'None' 2 0).model 'gpt-6-sol' 'before escalation budget'
-Assert-Equal (Get-AgentRunPlan 'Implement' 'LogicError' 3 0).effort 'ultra' 'third failure escalates without approval'
+Assert-Equal (Get-AgentRunPlan 'Implement' 'None' 2 0).model 'gpt-6.1-sol' 'before escalation budget'
+Assert-Equal (Get-AgentRunPlan 'Implement' 'LogicError' 3 0).effort 'max' 'third failure plans supported single-agent ceiling'
 Assert-Equal (Get-AgentRunPlan 'Explore' 'LogicError' 4 1).model 'gpt-6-astra' 'escalated model persists'
-Assert-Equal (Get-AgentRunPlan 'Sensitive' 'ReviewBlocker' 5 2).effort 'ultra' 'last additional attempt allowed'
-Assert-Equal (Get-AgentRunPlan 'Sensitive' 'ReviewBlocker' 6 3 $true).effort 'ultra' 'explicit review after confirmed user fix preserves maximum model'
+Assert-Equal (Get-AgentRunPlan 'Sensitive' 'ReviewBlocker' 5 2).effort 'max' 'last additional attempt allowed'
+$budgetStillBlocked=$false
+try { Get-AgentRunPlan 'Sensitive' 'ReviewBlocker' 6 3 $true | Out-Null } catch { $budgetStillBlocked=$true }
+Assert-Equal $budgetStillBlocked $true 'user fix cannot silently reset exhausted budget'
 foreach($role in @('Worker','Reviewer')) {
     $reason=''
     try { & (Join-Path $root 'tools/run-agent.ps1') -Role $role -PromptFile 'unused-no-login.txt' } catch { $reason=$_.Exception.Message }
@@ -134,8 +136,8 @@ $recordFile=Join-Path $fixture 'docs/verification/user-action-records.md'
 "- [ ] USER-099 — WORKFLOW-02: synthetic escalation`n  - 준비: fixture`n  - 순서: synthetic`n  - 정상 결과: expected`n  - AI에게 알려줄 결과: result" | Set-Content (Join-Path $fixture '내가할일.md')
 "### USER-099 — synthetic escalation`n- 상태: **확인 필요**`n- 작업 ID: WORKFLOW-02`n- 요청 판본: 1`n- 알림 종류: Escalation`n- 알림 행동: Details`n" | Set-Content $recordFile
 $global:SongRecordTestTitle='WORKFLOW-02 USER-099'
-& $sender -Mode Send -Kind Escalation -ItemId USER-099 -BeforeModel Sol -BeforeReasoning high -AfterReasoning ultra -FailureCode SchedulerRecovery
-Assert-Equal ($global:SongRecordTestMessage -match 'Sol/high.*Astra/ultra') $true 'escalation models included'
+& $sender -Mode Send -Kind Escalation -ItemId USER-099 -BeforeModel Sol -BeforeReasoning high -AfterReasoning max -FailureCode SchedulerRecovery
+Assert-Equal ($global:SongRecordTestMessage -match 'Sol/high.*Astra/max') $true 'single-agent escalation models included'
 Assert-Equal ($global:SongRecordTestMessage -match '복귀 후 재시도 예약 문제.*판단 필요') $true 'failure and requested action included'
 Assert-Equal ((Get-Content (Join-Path $phoneDir 'receipt.json') -Raw|ConvertFrom-Json).status) 'SERVER_ACCEPTED' 'escalation acceptance not receipt'
 $before=$global:SongRecordTestHttpCalls

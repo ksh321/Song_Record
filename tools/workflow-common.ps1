@@ -2,14 +2,15 @@ function Get-AgentRunPlan([string]$Risk, [string]$Finding, [int]$Failures, [int]
     if ($Failures -lt 0 -or $MaximumFailures -lt 0 -or $MaximumFailures -gt $Failures) {
         throw 'Invalid cumulative failure counters'
     }
-    if ($MaximumFailures -ge 3 -and -not $ReviewAfterUserFix) { throw 'Maximum reasoning failed three times; notify user and preserve resume state.' }
+    if ($MaximumFailures -ge 3 -or $Failures -ge 6) { throw 'Maximum reasoning failed three times; notify user and preserve resume state.' }
     if ($Failures -ge 3 -and $Finding -eq 'EnvironmentOnly') {
         throw 'Environment intervention required; reasoning escalation cannot grant access or install missing tools.'
     }
     $selected = Get-AgentRisk $Risk $Finding
-    $model = switch ($selected) { Explore {'gpt-6-luna'} Sensitive {'gpt-6-astra'} Escalation {'gpt-6-astra'} default {'gpt-6-sol'} }
+    $model = switch ($selected) { Explore {'gpt-6-luna'} Sensitive {'gpt-6-astra'} Escalation {'gpt-6-astra'} default {'gpt-6.1-sol'} }
     $effort = switch ($selected) { Complex {'high'} Sensitive {'high'} Escalation {'xhigh'} default {'medium'} }
-    if ($Failures -ge 3 -or $MaximumFailures -gt 0) { $model='gpt-6-astra'; $effort='ultra' }
+    # Planning helper only. The live controller checks model/list and per-turn context.
+    if ($Failures -ge 3 -or $MaximumFailures -gt 0) { $model='gpt-6-astra'; $effort='max' }
     return @{risk=$selected; model=$model; effort=$effort}
 }
 

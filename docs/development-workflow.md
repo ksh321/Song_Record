@@ -135,11 +135,11 @@ D06/P09-07b-C1 계약 보정은 ace5703에서 완료됐다. 검증 문서 최종
 
 ## 현재 작업 모델과 속도
 
-2026-09-30 최신 지시에 따라 새 Codex CLI 작업자·검수자 호출을 폐기했다. 현재 작업 모델이 직접 구현하고 구현 이후 별도 검토 단계에서 요구사항·diff·회귀·실행 증거를 대조한다. 독립 에이전트 검수로 표현하지 않는다. tools/run-agent.ps1은 실수로 호출해도 자료 읽기·로그인·codex 실행 전에 차단한다. 과거 모델 선택 helper/검수 기록은 역사적 근거이며 runner 실행 지시가 아니다.
+2026-10-02 사용자 요청은 기존 구독을 사용하는 **단일 로컬 제어기**가 같은 스레드를 이어가며 호출별 모델을 지정하도록 승인했다. 새 Worker/Reviewer와 하위 에이전트는 계속 금지한다. `tools/run-agent.ps1`의 폐기 차단은 유지한다. 현재 채팅 모델을 바꿨다고 주장하지 않는다.
 
-복잡도·위험도에 따라 현재 작업의 성능을 상향한다. Astra/medium 기본, 인증·동기화·DB 등 high 이상, 중요한 누락/논리 오류는 xhigh 또는 실제 지원 최대를 목표로 한다. 동일 문제 3회 실패 후 현재 작업에서 최대 수준을 실제 적용할 수 있으면 3회 추가 시도하고, 이미 최대에서 3회 실패했다면 중단·ntfy 알림한다. 실제 설정 변경 불가면 같은 작업의 설정 조작이 필요한 때만 사용자에게 알린다. 새 세션으로 대체하거나 실패 횟수를 초기화하지 않는다.
+일반 GPT-6.1 Sol/medium, 복잡한 연결 Sol/high, 인증·동기화·DB 핵심 Astra/high. 같은 문제의 분석·수정·재검증 실패3회 뒤 지원되는 단일 에이전트 상한으로 전환하며 이 노트북은 Astra/max를 확인했다. 상한에서 추가3회 또는 총6회 중 먼저 도달하면 중단한다. 처음부터 최대라면3회다. 환경 실패·최초 실패 발견·단순 명령 반복은 코드 수정 실패 수와 구분한다. 모델·세션 변경으로 이력을 초기화하지 않는다. Ultra는 제외한다.
 
-현재 사용 가능한 도구 목록에는 진행 중인 이 턴의 모델/추론을 직접 변경하는 전용 기능이 확인되지 않았다. 따라서 이번 문서 변경을 모델 상향 실행으로 보고하지 않는다. [공식 설정 안내](https://learn.chatgpt.com/docs/reference/settings)는 앱 설정을 설명하지만 현재 턴 자체 변경을 입증하지 않는다. 설정 파일을 바꾸는 것과 실행 중 모델 변경은 별개다. UI에서 보이는 지원 선택지를 확인한 경우에만 구체적 설정을 안내한다. Standard·Fast 끔 요청과 실제 관측 여부, 구독 사용·추가 결제 금지 유지.
+모델 목록과 실제 호출의 `turn_context`를 대조한다. 설정 수락과 관측값을 분리하고 미관측은 unknown으로 둔다. 최고 수준 연결 근거 없이는 추가 해결 시도를 열지 않는다. 매 호출 Standard(default)를 명시하고 Fast를 요청하지 않는다. 서비스 처리 속도 자체를 실측했다고 표현하지 않는다. API 키·추가 결제·자동 리셋은 금지한다.
 
 ## 커밋 푸시 CI
 
@@ -174,7 +174,7 @@ CI 자체의 성공과 서버 보호 규칙을 모두 만족했는지는 구분�
 재개 시 Git 상태/원격/코드/진행 기록과 실행 중 프로세스를 확인한다. 작업별 구현→관련 테스트→
 현재 모델 코드 검토(원본·실제 diff·실행 결과 대조)→필요 통합→커밋/푸시→정확한 SHA 필수 CI→기록 갱신을
 완료하면 다음 작업을 선정한다. 난이도·위험도에 따른 모델 기준은 AGENTS.md를 따른다.
-마스터는 Astra/medium 기본이며 속도 요청과 관측을 구분하고 미노출 속도 탐색은 반복하지 않는다.
+일반 작업은 Sol/medium 기본이며 속도 요청과 관측을 구분하고 미노출 속도 탐색은 반복하지 않는다.
 
 progress의 현재 작업 표에는 상태/검증/대기 사유/사용자 요청/다음을 남긴다. 실패는 문제 ID로
 누적하며 최대 추론 실패 횟수도 따로 남긴다. 기존 모델 3회 실패는 현재 작업의 실제 상향 가능 여부를 확인하는 지점이고 최대 수준
@@ -186,7 +186,7 @@ progress의 현재 작업 표에는 상태/검증/대기 사유/사용자 요청
 폰 조작/청취/테스트, 미승인 정책 선택, 로그인/기기/권한, 최대 추론 3회 실패, 별도 승인이 필요하면
 현재 작업을 사용자 응답 대기로 두고 ntfy를 보낸다. 이유/절차/기대 결과/답할 내용을 대화에 적는다.
 구체적 결과나 정책 선택은 해당 조건과 대응시켜 재개하고, 결과 없는 “이어서 진행”을 통과로
-기록하지 않는다. 무관하고 파일 충돌 없는 작업은 계속하며 모든 진행 가능한 작업이 막힐 때만 전체 대기한다.
+기록하지 않는다. 현재 번호가 막히면 상태를 보존하고 대기한다. 독립적인 뒤 번호로 우회하지 않는다.
 
 작업별 verification 문서에 작업/요구사항 ID, 선행 조건, 변경 파일, 명령·종료코드·실제 결과,
 대상 SHA, 검수 지적과 해결, 수동 대기, 다음 ID를 적고 progress.md 최신 절을 갱신한다.
@@ -208,7 +208,7 @@ D06/P06 선행 조건을 기록한다. 현재 모델의 요구사항 누락·논
 해당 작업 ID와 문서에 먼저 등록한 `-ItemId USER-NNN -Revision N -Action PhoneSteps`를 지정해 `-Kind PhoneTest`로 실행한다. 과거 P06 실기를 다시 요청하는 예시가 아니다.
 사람 개입 요청은 `-Kind Intervention`이며 기록된 항목 ID가 필수다. 푸시 실패 시 대화로 알리고 실기는 계속 대기다.
 최대 추론 실패/설정 개입은 `-Kind Escalation -BeforeModel Astra -BeforeReasoning high/xhigh
--AfterReasoning ultra -FailureCode SchedulerRecovery`로 작업 ID와 상향 전후 모델·추론, 안전한 실패 요약·
+-AfterReasoning max -FailureCode SchedulerRecovery`로 작업 ID와 상향 전후 모델·추론, 안전한 실패 요약·
 판단 요청을 보낸다. 모델 실행 미확인은 AfterReasoning=unconfirmed, FailureCode=ModelUnavailable이다.
 열거형 고정 문구만 허용해 로그·키·개인 정보를 알림에 넣지 않는다. 필요한 구체 조치/상세 시도는 대화와 문서에 적는다.
 무작위 topic/config는 `.local` 밖으로 복사하지 않는다. 이 스크립트는 예약 실행 서비스가 아니며
@@ -267,3 +267,36 @@ D06/P06 선행 조건을 기록한다. 현재 모델의 요구사항 누락·논
 최신 승인 범위: USER019는 이미 끝난 과거 두 검수에 대한 기록으로만 보존한다. USER020 새 Worker/Reviewer 자료 전달 요청은 취소했다. 앞으로 이런 자료 전달 승인을 요청하지 않는다. 기존 ‘노래 기록 → 워크플로우 순서 검토’ 상담은 과거 맥락이 불명확한 때만 사용하며 새 Codex 작업 세션과 혼동하지 않는다. 비밀번호·토큰·개인 데이터·기기 원본 로그·서명 키·로그인 설정은 상담 자료에 넣지 않는다.
 
 현재 선택기 설정: `execution_mode=strict_sequential`, `sequence_start=P10-02-NEXT`. 이는 사용자가 지정한 현재 재개 지점이다. 앞 단계의 기존 완료와 과거 출시 전 이용조건 확인 이력을 재구현 대상으로 되돌리지 않는다. 뒤 순서의 차단 시 WAIT를 반환하며 우회 실행하지 않는다.
+
+## 단일 로컬 실행기 — WORKFLOW-09 / 2026-10-02
+
+[상세 설계 v1.2](https://chatgpt.com/space/page_68f00f41aa848191a8d036aa8149da26)를 실제 노트북에 적용한다. 현재 PC만 사용한다. 새 정책 디렉터리나 두 번째 수동 진행표는 만들지 않는다.
+
+- `docs/workflow-state.json`: 기존 ID·coverage·순서·완료 근거와 runner 활성화 설정의 기준. strict_sequential 누락/오타는 거부한다. 과거 비순차 테스트는 명시적 테스트 전용 옵션으로만 보존한다.
+- `tools/sequential_runner.py`: 기존 선택기를 재사용하여 원래 P번호별 PLAN → IMPLEMENT → VALIDATE → REVIEW → 필요한 MANUAL → COMMIT → PUSH → CI → FINALIZE를 수행한다. 기존 PHASE 단위는 원본 tasks.json의 P번호 순서로 처리하고 단위 ID를 삭제하거나 재번호하지 않는다.
+- `tools/codex_transport.py`: 구독 인증·model/list·같은 thread의 turn/start. multi_agent를 끄고 read-only/ workspace-write, on-request 승인을 유지한다. 별도 검수 스레드를 만들지 않는다. 승인 요청은 취소·체크포인트·사용자 요청으로 남기며 자동 승인하지 않는다.
+- `tools/workflow_runtime.py`: OS 파일 잠금, 원자적 교체·직전 정상본, 소스 해시, 실제 종료 코드·보고서 검증, 3+3 누적. `docs/workflow-state.json` 직전본은 Git 제외 로컬 실행 폴더에만 저장한다.
+- `.local/workflow/runs/sequential/`: checkpoint/events/명령 로그/요청 기록. 여기는 실행·복구 근거이며 별도 수동 제품 완료 DB가 아니다. 완료는 기존 units의 evidence에 반영한다. 모델 요청 전 의도를 저장하고 응답 유실 시 thread/read로 실제 기존 호출을 대조한다. 실행 중인 기존 호출·명령은 중복 시작하지 않는다.
+
+정상 명령·오류 수집·Git은 제어기가 처리한다. 검사 종류는 등록된 Flutter 분석/지정 테스트/dev APK, 지정 서버 테스트, 기존 Quick/원본 검사/diff 검사다. 새 명령 종류가 필요한 경우 등록·검증 후 사용한다. Mobile의 기존2개 테스트를 전체 검증으로 사용하지 않는다. Flutter JSON에서 실행된 테스트와 최종 성공을 확인하고 서버는 새 XML 보고서를 확인한다. 실패 로그는 같은 작업의 다음 구현 입력으로 연결한다. 구현 후 같은 모델이 별도 코드 검토 단계를 수행한다.
+
+커밋은 이번 범위의 명시 파일만 추가하고 검증한 소스가 바뀌면 거부한다. 원격 main을 push 직전에 다시 조회하고 BaseCommit을 CI에 전달한다. CI는 기존 github-check/ci-policy로 판정한다. 120초 간격·12시간·연속 조회 오류3회 제한은 일반 프로세스가 처리하며 대기 중 AI 호출은 없다. 최신 조회에 실패하면 이전 성공 파일을 재사용하지 않는다. 기록 전용 추가 커밋 없이 다음 관련 커밋에 결과를 함께 보존하며 해당 기록 해시가 달라지면 자동 혼합을 거부한다.
+
+사용자는 이 대화로 실기/해결 결과를 전달한다. 현재 AI가 실제 발언을 현재 USER ID·판본·소스 해시에 연결한 event JSON으로 저장하고 `event --event-file`로 접수한 뒤 `resume`을 실행한다. 결과 없는 “진행해”를 실기 통과로 바꾸지 않는다. 중복/옛 판본/다른 소스 결과는 거부한다. 명시적 Stop은 사건 수신만으로 해제되지 않는다. 알림은 기존 phone-notify와 USER 문서 형식을 재사용하며 서버 접수와 실제 수신을 구분한다.
+
+다음 명령은 AI가 직접 실행한다. 사용자에게 설치 파일 다운로드나 스크립트 수동 실행을 넘기지 않는다.
+
+```powershell
+pwsh -NoProfile -File tools/workflow.ps1 -Mode Plan
+pwsh -NoProfile -File tools/workflow.ps1 -Mode RunnerDoctor
+pwsh -NoProfile -File tools/workflow.ps1 -Mode Run -EndTask P10-02
+pwsh -NoProfile -File tools/workflow.ps1 -Mode Status
+pwsh -NoProfile -File tools/workflow.ps1 -Mode Stop
+pwsh -NoProfile -File tools/workflow.ps1 -Mode Resume
+```
+
+Run의 종료 P번호는 승인된 범위를 명시한다. 이 예시의 P10-02를 전체 계획 실행 승인으로 해석하지 않는다. Plan/Status는 AI 호출이 없다. 백그라운드 실행 시에는 `Start-Process -WindowStyle Hidden`을 사용하고 실제 PID와 체크포인트를 확인한다. 부팅 시 자동 시작 작업은 설치하지 않는다.
+
+활성화는 해당 코드 해시의 로컬 검증 보고서 `.local/workflow/runner-verification.json`, 구독 모델 실호출 기록 `model-activation.json`, 이 노트북의 실제 ntfy 수신 확인을 요구한다. 저장소 설정만 복제한 다른 PC에서는 실행할 수 없다. 현재 구축/미확인 항목과 수치는 [기존 자동화 검증 문서의 노트북 적용 절](verification/WORKFLOW-01-bootstrap.md#노트북-단일-실행기-적용--2026-10-02)에 기록한다.
+
+복구 불확실성은 성공으로 바꾸지 않는다. 손상 상태의 직전본 복원 뒤 외부 동작 대조, 살아 있는 기존 명령, 권한 요청, 원격 변경/보호 거절은 근거를 보존하고 필요한 조치에서 멈춘다. runner는 현재 main 일반 push 경로를 지원하며 보호 규칙을 우회하거나 자동 변경하지 않는다. 새 PR 경로·새 검증 명령이 필요한 경우 현재 작업을 유지해 연결한다. 장기 무인 실행·실제 재부팅·전체 제품 완료를 모의 시험만으로 보장하지 않는다.

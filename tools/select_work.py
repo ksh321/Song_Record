@@ -20,7 +20,10 @@ def overlaps(left, right):
     return a == b or a.startswith(b + '/') or b.startswith(a + '/')
 
 
-def select(state, planned_ids):
+def select(state, planned_ids, *, allow_legacy=False):
+    # Historical fixtures only; neither CLI nor runner exposes the legacy mode.
+    if not allow_legacy and state.get('execution_mode') != 'strict_sequential':
+        raise ValueError('Explicit strict_sequential execution mode is required')
     # Coverage is an assessment, not a declaration of implementation completion.
     coverage = state['coverage']
     if set(coverage) != set(planned_ids):
@@ -44,6 +47,8 @@ def select(state, planned_ids):
     grants = set(state['grants'])
     facts = set(state['facts'])
     active = [u for u in units if u['state'] == 'active']
+    if not allow_legacy and len(active) > 1:
+        raise ValueError('Only one active execution is allowed')
     ready, blocked, running, selected = [], [], [], []
     for unit in units:
         if unit['state'] not in ('pending', 'active', 'done'):

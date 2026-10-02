@@ -1,11 +1,12 @@
 #requires -Version 7.0
 [CmdletBinding()]
 param(
-    [ValidateSet('Doctor','Quick','Mobile','Api','Phone')][string]$Mode = 'Doctor',
+    [ValidateSet('Doctor','Quick','Mobile','Api','Phone','Plan','Run','Resume','Stop','Status','RunnerDoctor')][string]$Mode = 'Doctor',
     [string]$SourcePath,
     [string]$Python,
     [string]$DeviceId,
-    [switch]$Reverse
+    [switch]$Reverse,
+    [string]$EndTask
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
@@ -44,6 +45,14 @@ if (-not $Python) {
     if (-not $Python) {
         $Python = Resolve-Tool '__bundled_python__' @("$env:USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe")
     }
+}
+if ($Mode -in @('Plan','Run','Resume','Stop','Status','RunnerDoctor')) {
+    if (-not $Python) { throw 'Python is required for the local sequential controller.' }
+    $runnerMode = if ($Mode -eq 'RunnerDoctor') { 'doctor' } else { $Mode.ToLowerInvariant() }
+    $runnerArgs = @('tools/sequential_runner.py', $runnerMode)
+    if ($EndTask) { $runnerArgs += @('--end-task', $EndTask) }
+    & $Python @runnerArgs
+    exit $LASTEXITCODE
 }
 $commit = (& $git -c "safe.directory=$($root.Replace('\','/'))" rev-parse HEAD 2>$null)
 if ($LASTEXITCODE -ne 0) { throw 'Cannot identify target commit' }

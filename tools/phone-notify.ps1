@@ -9,7 +9,7 @@ param(
     [ValidateSet('Details','LoginSetup','Device','PhoneSteps','Decision')][string]$Action='Details',
     [ValidateSet('Luna','Sol','Astra')][string]$BeforeModel='Astra',
     [ValidateSet('medium','high','xhigh','max','ultra','high/xhigh')][string]$BeforeReasoning='high',
-    [ValidateSet('ultra','unconfirmed')][string]$AfterReasoning='ultra',
+    [ValidateSet('high','xhigh','max','unconfirmed')][string]$AfterReasoning='unconfirmed',
     [ValidateSet('SchedulerRecovery','AuthFollowup','LogicContract','EnvironmentBlocked','ModelUnavailable')][string]$FailureCode='LogicContract',
     [string]$Adb='adb'
 )

@@ -17,7 +17,7 @@ class SelectionTests(unittest.TestCase):
                           grants=[], facts=[], units=[])
 
     def result(self):
-        return select(self.state, ['P10-03'])
+        return select(self.state, ['P10-03'], allow_legacy=True)
 
     def test_strict_order_stops_at_first_blocked_and_advances_only_after_done(self):
         a, b = unit('a', blocker='user result'), unit('b')
@@ -130,6 +130,7 @@ class SelectionTests(unittest.TestCase):
                     work = unit('work'); work['state'] = status
                     if blocker: work['blocker'] = blocker
                     self.state['units'] = [work]
+                    self.state['execution_mode'] = 'strict_sequential'
                     state_file.write_text(json.dumps(self.state), encoding='utf-8')
                     with patch.object(select_work, 'ROOT', root), patch.object(sys, 'argv',
                             ['select_work.py', '--state', str(state_file), '--check-stop']), contextlib.redirect_stdout(io.StringIO()):
@@ -161,7 +162,7 @@ class SelectionTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[2]
         state = json.loads((root / 'docs/workflow-state.json').read_text(encoding='utf-8-sig'))
         planned = json.loads((root / 'docs/reference/search/tasks.json').read_text(encoding='utf-8-sig'))
-        self.assertIn('current-session-only', state['execution_policy'])
+        self.assertIn('no delegated CLI workers/reviewers', state['execution_policy'])
         self.assertEqual(state['grants'], [])
         for u in state['units']:
             if u['state'] != 'done':
