@@ -96,7 +96,10 @@ Future<MappingEligibility> metadataFollowupEligibility(
     }
     if (valid) {
       superseded.add(id);
-      orders[nextId] = edge.read<int>('logical_order');
+      // The immutable ledger retains its physical-root contract. Projection
+      // additionally inherits a validated canonical reference's earlier order.
+      orders[nextId] =
+          mapping.logicalOrders[id] ?? edge.read<int>('logical_order');
     } else {
       blocked.addAll([id, nextId]);
     }

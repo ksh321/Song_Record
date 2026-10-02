@@ -18,6 +18,7 @@ import '../sync/metadata_response.dart';
 import '../sync/mutation_request.dart';
 import 'account_database.dart' show AccountDatabase;
 import 'account_paths.dart';
+import 'canonical_reference_store.dart';
 import 'change_feed_store.dart';
 import 'conflict_resolution_store.dart';
 import 'local_models.dart';
@@ -442,6 +443,8 @@ final class AccountStore {
         ) VALUES(?,0,'INITIAL','INITIAL')''',
         [edit.opId],
       );
+      await materializeCanonicalReferences(_database, _retry.nowMs);
+      requireActive();
     });
   });
 
@@ -462,7 +465,7 @@ final class AccountStore {
       final mapping = await readMappingEligibility(_database);
       final resolutions = await _database
           .customSelect(
-            'SELECT original_op_id FROM mutation_conflict_resolutions UNION SELECT original_op_id FROM recording_followups',
+            'SELECT original_op_id FROM mutation_conflict_resolutions UNION SELECT original_op_id FROM recording_followups UNION SELECT original_op_id FROM mutation_supersessions',
           )
           .get();
       final resolved = resolutions
@@ -604,6 +607,7 @@ final class AccountStore {
 
   Future<MutationRequest?> claimMutation() => _run(
     () => _database.transaction(() async {
+      await materializeCanonicalReferences(_database, _retry.nowMs);
       await materializeMetadataFollowup(
         _database,
         await readMappingEligibility(_database),
@@ -649,6 +653,14 @@ final class AccountStore {
 
   Future<DateTime?> _nextDispatchAt({required bool includeReady}) => _run(
     () => _database.transaction(() async {
+      if (includeReady &&
+          await materializeCanonicalReferences(
+            _database,
+            _retry.nowMs,
+            previewOnly: true,
+          )) {
+        return _retry.now;
+      }
       if (includeReady &&
           await materializeMetadataFollowup(
             _database,
@@ -1033,6 +1045,7 @@ final class AccountStore {
     }
 
     await _retry.finish(mutation.opId);
+    await materializeCanonicalReferences(_database, now);
     requireActive();
     return true;
   }
@@ -1066,7 +1079,7 @@ final class AccountStore {
       final eligibility = await readMappingEligibility(_database);
       final resolvedRows = await _database
           .customSelect(
-            'SELECT original_op_id FROM mutation_conflict_resolutions UNION SELECT original_op_id FROM recording_followups',
+            'SELECT original_op_id FROM mutation_conflict_resolutions UNION SELECT original_op_id FROM recording_followups UNION SELECT original_op_id FROM mutation_supersessions',
           )
           .get();
       final resolved = {

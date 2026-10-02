@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import 'account_database.dart';
+import 'canonical_reference_store.dart';
 import 'conflict_eligibility.dart';
 import 'local_models.dart';
 import 'metadata_followup_store.dart';
@@ -11,8 +12,8 @@ import 'metadata_followup_store.dart';
 ///
 /// Supported supersession:
 /// - one edge only;
-/// - original is an unattempted PENDING PATCH;
-/// - replacement is a PATCH on the same logical target;
+/// - legacy PATCH edges on the same logical target;
+/// - evidenced CREATE/PATCH reference substitutions (canonical-reference-v1);
 /// - target is SONG, RECORDING or PLAYLIST_ITEM;
 /// - root and logical order match the original physical row.
 ///
@@ -42,7 +43,7 @@ Future<MappingEligibility> readMappingEligibility(
     );
   }
   final mutations = await database.customSelect('''
-    SELECT rowid AS local_order,op_id,entity_type,entity_id,operation,queue_state,attempt_count,payload,base_payload FROM local_mutations
+    SELECT rowid AS local_order,* FROM local_mutations
   ''').get();
 
   final byOp = {for (final row in mutations) row.read<String>('op_id'): row};
@@ -122,6 +123,7 @@ Future<MappingEligibility> readMappingEligibility(
   final blocked = <String>{...activeHolds};
   final superseded = <String>{};
   final logicalOrders = <String, int>{};
+  final verifiedReferences = <String>{};
 
   for (final edge in supersessions) {
     final originalId = edge.read<String>('original_op_id');
@@ -142,6 +144,12 @@ Future<MappingEligibility> readMappingEligibility(
     final replacementTarget = targetOf(replacement);
     final sameLogicalTarget =
         aliasGroups[originalTarget] == aliasGroups[replacementTarget];
+    final referenceEdge = await canonicalReferenceEdge(
+      database,
+      edge,
+      original,
+      replacement,
+    );
     final supported =
         !replacements.contains(originalId) &&
         !originals.contains(replacementId) &&
@@ -151,8 +159,10 @@ Future<MappingEligibility> readMappingEligibility(
           LocalEntity.playlistItem,
         }.contains(originalTarget.entity) &&
         sameLogicalTarget &&
-        original.read<String>('operation') == 'PATCH' &&
-        replacement.read<String>('operation') == 'PATCH' &&
+        (referenceEdge == true ||
+            (referenceEdge == null &&
+                original.read<String>('operation') == 'PATCH' &&
+                replacement.read<String>('operation') == 'PATCH')) &&
         original.read<String>('queue_state') == 'PENDING' &&
         original.read<int>('attempt_count') == 0 &&
         replacement.read<int>('local_order') >
@@ -167,6 +177,9 @@ Future<MappingEligibility> readMappingEligibility(
 
     superseded.add(originalId);
     logicalOrders[replacementId] = edge.read<int>('logical_order');
+    if (referenceEdge == true) {
+      verifiedReferences.addAll([originalId, replacementId]);
+    }
 
     if (activeHolds.contains(originalId)) {
       // Retiring the original must not discard its unresolved hold, including
@@ -204,6 +217,7 @@ Future<MappingEligibility> readMappingEligibility(
 
     if ((target.entity == LocalEntity.recording ||
             target.entity == LocalEntity.playlistItem) &&
+        !verifiedReferences.contains(opId) &&
         (referencesSource(row.read<String>('payload')) ||
             referencesSource(row.readNullable<String>('base_payload')))) {
       // Covers PATCH bodies omitting song_id and immutable frozen requests.
