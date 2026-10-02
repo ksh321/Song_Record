@@ -1566,10 +1566,18 @@
         "apps/mobile/lib/core/sync/metadata_followup_plan.dart",
         "apps/mobile/test/metadata_followup_dispatch_test.dart"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
       "resume": "9469638 필수 CI4 PASS 확인됨. 정책 변경의 불필요한 원격 CI 대기 철회. 다음 P10-02 공통 의존 계획/후속 어댑터 경계 최종 대조. 관련36 PASS 및 새 실제 저장소 통합1 PASS, 분석 정상. 뒤 P10-07 미커밋 변경은 보존만 한다.",
-      "blocker": ""
+      "blocker": "",
+      "task_evidence": {
+        "P10-02": {
+          "commit": "38fa6961387e9846797c977b9944af4c5421ff4a",
+          "path": "docs/verification/P10-02-recording-save-dispatch.md",
+          "utc": "2026-10-02T08:59:53.539777+00:00"
+        }
+      },
+      "evidence": "docs/verification/P10-02-recording-save-dispatch.md"
     },
     {
       "id": "P10-05-NEXT",

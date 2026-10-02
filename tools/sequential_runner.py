@@ -225,6 +225,30 @@ class Runner:
         self.save()
         self.event('pause', {'status': status, 'reason': reason})
 
+    def notify_completion(self):
+        """Notify once after durable completion; uncertain delivery is never retried."""
+        if self.data.get('status') != 'RUN_FINISHED' or self.data.get('stage') != 'COMPLETE':
+            raise Blocked('COMPLETION_NOTIFICATION_REQUIRES_FINISHED_RUN')
+        if self.data.get('reason') not in ('APPROVED_END_REACHED', 'NO_REMAINING_WORK_IN_APPROVED_RANGE'):
+            raise Blocked('COMPLETION_NOTIFICATION_REQUIRES_APPROVED_END')
+        if self.data.get('completion_notification'):
+            return
+        key = hashlib.sha256(json.dumps([self.data.get('created'), self.data.get('end_task'),
+                                        self.data.get('target_commit')]).encode()).hexdigest()
+        notice = {'key': key, 'status': 'UNKNOWN', 'task_id': self.data['task_id'], 'created': utc()}
+        self.data['completion_notification'] = notice
+        self.save()
+        try:
+            result = execute(['pwsh', '-NoProfile', '-File', 'tools/phone-notify.ps1',
+                              '-Mode', 'Send', '-TaskId', self.data['task_id'],
+                              '-Kind', 'Completion', '-CompletionKey', key],
+                             self.root, self.directory / ('completion-' + key), 90)
+            notice['status'] = 'SERVER_ACCEPTED' if result['exit_code'] == 0 else 'UNCONFIRMED'
+        except Exception:
+            pass
+        self.save()
+        self.event('completion_notification', notice)
+
     def record_request(self, reason):
         """Use the existing USER record and sender, never send arbitrary provider output."""
         records_path = self.root / 'docs/verification/user-action-records.md'
@@ -630,6 +654,9 @@ class Runner:
         with RunLock(self.directory / 'runner.lock'):
             self.load()
             state = self.guards()
+            if self.data.get('status') == 'RUN_FINISHED':
+                self.notify_completion()
+                return
             if not state.get('runner', {}).get('enabled'):
                 raise Blocked('RUNNER_NOT_ACTIVATED')
             activation_path = self.root / '.local/workflow/runner-verification.json'
@@ -683,6 +710,7 @@ class Runner:
                     if self.data['stage'] == 'COMPLETE':
                         if self.data['task_id'] == self.data['end_task']:
                             self.pause('RUN_FINISHED', 'APPROVED_END_REACHED')
+                            self.notify_completion()
                             break
                         item, _ = next_task(self.state(), self.tasks)
                         if not item:
@@ -691,6 +719,7 @@ class Runner:
                         ids = [t['id'] for t in self.tasks]
                         if ids.index(item[1]) > ids.index(self.data['end_task']):
                             self.pause('RUN_FINISHED', 'NO_REMAINING_WORK_IN_APPROVED_RANGE')
+                            self.notify_completion()
                             break
                         self.initialize_task(item, self.data['end_task'])
                     previous_stage = self.data['stage']

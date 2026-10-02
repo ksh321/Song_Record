@@ -231,6 +231,28 @@ $reason=''
 try { & $sender -Mode Send -ItemId USER-001 -Revision 3 -Kind Intervention -Action LoginSetup } catch { $reason=$_.Exception.Message }
 Assert-Equal $reason 'Record the pending state, matching task/revision and revision change reason before notifying.' 'completed item rejects for recorded status'
 Assert-Equal $global:SongRecordTestHttpCalls $before 'rejected requests never call HTTP'
+# Completion is informational, not a USER task; deduplicate across restarts.
+'현재 직접 할 일 없음' | Set-Content (Join-Path $fixture '내가할일.md')
+$global:SongRecordTestTitle='WORKFLOW-02 완료 · 자동 개발 종료'
+$global:SongRecordTestHttpFail=$false
+$reason=''
+try { & $sender -Mode Send -Kind Completion } catch { $reason=$_.Exception.Message }
+Assert-Equal $reason 'Completion requires a run key and no user-action item.' 'completion needs durable run identity'
+& $sender -Mode Send -Kind Completion -CompletionKey ('b'*64)
+Assert-Equal ($global:SongRecordTestMessage -match '다음 작업은 시작하지 않았으며') $true 'completion explains stopped scope'
+$before=$global:SongRecordTestHttpCalls
+@{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='NOT_SENT'}|ConvertTo-Json|Set-Content $attemptFile
+$failed=$false
+try { & $sender -Mode Send -Kind Completion -CompletionKey ('b'*64) } catch { $failed=$true }
+Assert-Equal $failed $true 'completion duplicate blocked'
+Assert-Equal $global:SongRecordTestHttpCalls $before 'completion duplicate sends zero HTTP'
+$global:SongRecordTestHttpFail=$true
+try { & $sender -Mode Send -Kind Completion -CompletionKey ('c'*64) } catch { }
+Assert-Equal ((Get-Content (Join-Path $phoneDir ('completions/'+('c'*64)+'.json')) -Raw|ConvertFrom-Json).status) 'UNKNOWN' 'completion uncertain intent retained'
+$before=$global:SongRecordTestHttpCalls
+@{utc=[DateTime]::UtcNow.AddMinutes(-2).ToString('o');status='NOT_SENT'}|ConvertTo-Json|Set-Content $attemptFile
+try { & $sender -Mode Send -Kind Completion -CompletionKey ('c'*64) } catch { }
+Assert-Equal $global:SongRecordTestHttpCalls $before 'unknown completion not automatically resent'
 Remove-Item Function:Invoke-RestMethod
 Remove-Variable SongRecordTestHttpCalls,SongRecordTestHttpFail,SongRecordTestMessage,SongRecordTestTitle -Scope Global
 & pwsh -NoProfile -File (Join-Path $root 'tools/workflow.ps1') -Mode Quick -Python '__nonexistent_python_workflow_test__' *> $null

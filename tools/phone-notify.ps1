@@ -3,7 +3,7 @@
 param(
     [ValidateSet('Init','Subscribe','Send','Confirm')][string]$Mode='Send',
     [ValidatePattern('^(WORKFLOW-\d{2}|P\d{2}-\d{2}[a-z]?)(-[A-Z0-9]+)?$')][string]$TaskId='WORKFLOW-02',
-    [ValidateSet('Trial','PhoneTest','Intervention','Escalation')][string]$Kind='Trial',
+    [ValidateSet('Trial','PhoneTest','Intervention','Escalation','Completion')][string]$Kind='Trial',
     [ValidatePattern('^USER-\d{3}$')][string]$ItemId,
     [ValidateRange(1,999)][int]$Revision=1,
     [ValidateSet('Details','LoginSetup','Device','PhoneSteps','Decision')][string]$Action='Details',
@@ -11,6 +11,7 @@ param(
     [ValidateSet('medium','high','xhigh','max','ultra','high/xhigh')][string]$BeforeReasoning='high',
     [ValidateSet('high','xhigh','max','unconfirmed')][string]$AfterReasoning='unconfirmed',
     [ValidateSet('SchedulerRecovery','AuthFollowup','LogicContract','EnvironmentBlocked','ModelUnavailable')][string]$FailureCode='LogicContract',
+    [ValidatePattern('^[0-9a-f]{64}$')][string]$CompletionKey,
     [string]$Adb='adb'
 )
 $ErrorActionPreference='Stop'
@@ -53,7 +54,15 @@ if ($Mode -eq 'Confirm') {
     Write-Host 'Human receipt confirmation recorded.'; exit 0
 }
 $itemRecord=$null
-if ($Kind -ne 'Trial' -and -not $ItemId) { throw 'User action notifications require an item ID recorded in 내가할일.md.' }
+$completionRecord=$null
+if ($Kind -eq 'Completion') {
+    if (-not $CompletionKey -or $ItemId) { throw 'Completion requires a run key and no user-action item.' }
+    $completionDir=Join-Path $dir 'completions'
+    New-Item -ItemType Directory -Force $completionDir | Out-Null
+    $completionRecord=Join-Path $completionDir ($CompletionKey+'.json')
+    if (Test-Path $completionRecord) { throw 'Completion already attempted; do not duplicate even if UNKNOWN.' }
+}
+if ($Kind -notin @('Trial','Completion') -and -not $ItemId) { throw 'User action notifications require an item ID recorded in 내가할일.md.' }
 if ($ItemId) {
     $todo=Join-Path (Split-Path $PSScriptRoot -Parent) '내가할일.md'
     if (-not (Test-Path $todo)) {
@@ -99,6 +108,7 @@ if (Test-Path $attempt) {
 }
 # Fixed templates only: no logs, URLs, free text, account names or credentials.
 $message=switch($Kind) {
+    Completion {'승인한 작업 범위를 모두 완료하고 자동 개발을 종료했습니다. 다음 작업은 시작하지 않았으며, 지금 하실 일은 없습니다. 자세한 결과는 현재 대화를 확인해 주세요.'}
     Trial {'시험 알림입니다. 휴대폰 수신 여부를 대화에 알려주세요.'}
     PhoneTest {'휴대폰 테스트가 필요합니다. 대화의 조작 순서를 확인해 주세요.'}
     Intervention {'사용자 조작이 필요합니다. 대화의 요청 사항을 확인해 주세요.'}
@@ -115,6 +125,7 @@ $message=switch($Kind) {
     }
 }
 $title=$TaskId
+if ($Kind -eq 'Completion') { $title="$TaskId 완료 · 자동 개발 종료" }
 if ($ItemId) {
     $title="$TaskId $ItemId"
     $actionText=switch($Action) {
@@ -133,12 +144,14 @@ if ($ItemId) {
     $sendAttempt.item_id=$ItemId; $sendAttempt.revision=$Revision
     $sendAttempt | ConvertTo-Json | Set-Content $itemRecord -Encoding utf8
 }
+if ($completionRecord) { $sendAttempt | ConvertTo-Json | Set-Content $completionRecord -Encoding utf8 }
 $sendAttempt | ConvertTo-Json | Set-Content $attempt -Encoding utf8
 try {
     $response=Invoke-RestMethod -Uri 'https://ntfy.sh/' -Method Post -ContentType 'application/json; charset=utf-8' -Headers @{Cache='no'} -Body ([Text.Encoding]::UTF8.GetBytes($payload)) -TimeoutSec 20
     if ($response.event -ne 'message' -or -not $response.id) { throw 'Unexpected response' }
 } catch { throw 'Notification send failed or uncertain. Do not claim delivery; retry only after checking state.' }
 $sendAttempt.status='SERVER_ACCEPTED'
+if ($completionRecord) { $sendAttempt | ConvertTo-Json | Set-Content $completionRecord -Encoding utf8 }
 if ($itemRecord) { $sendAttempt | ConvertTo-Json | Set-Content $itemRecord -Encoding utf8 }
 $sendAttempt | ConvertTo-Json | Set-Content $attempt -Encoding utf8
 @{attempt_id=$sendAttempt.attempt_id;utc=[DateTime]::UtcNow.ToString('o');task=$TaskId;kind=$Kind;status='SERVER_ACCEPTED';message_id=$response.id} |

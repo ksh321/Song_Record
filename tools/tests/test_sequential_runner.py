@@ -354,11 +354,37 @@ class RunnerFixture(unittest.TestCase):
         def ci_complete():
             self.runner.data.update(ci={'overall': 'NOT_REQUIRED'}, stage='FINALIZE', status='READY')
         self.runner.ci_once = ci_complete
-        with patch('sequential_runner.controller_hash', return_value='fixture'), patch('sequential_runner.AppServer'):
+        with patch('sequential_runner.controller_hash', return_value='fixture'), patch('sequential_runner.AppServer'), patch.object(self.runner, 'notify_completion') as notice:
             self.runner.run()
+            notice.assert_called_once()
         self.assertEqual(self.runner.data['status'], 'RUN_FINISHED')
         self.assertEqual(self.runner.data['task_id'], 'P10-02')
         self.assertFalse((self.root / 'P10-10.txt').exists())
+
+    def test_completion_notice_once_after_restart(self):
+        self.runner.data.update(stage='COMPLETE', status='RUN_FINISHED', reason='APPROVED_END_REACHED')
+        with patch('sequential_runner.execute', return_value={'exit_code': 0}) as send:
+            self.runner.notify_completion()
+            self.runner.load()
+            self.runner.notify_completion()
+            self.assertEqual(send.call_count, 1)
+            self.assertIn('Completion', send.call_args.args[0])
+        self.assertEqual(self.runner.data['completion_notification']['status'], 'SERVER_ACCEPTED')
+
+    def test_completion_unknown_not_resent_or_claimed_received(self):
+        self.runner.data.update(stage='COMPLETE', status='RUN_FINISHED', reason='APPROVED_END_REACHED')
+        with patch('sequential_runner.execute', side_effect=OSError('response lost')) as send:
+            self.runner.notify_completion()
+            self.runner.load()
+            self.runner.notify_completion()
+            self.assertEqual(send.call_count, 1)
+        self.assertEqual(self.runner.data['completion_notification']['status'], 'UNKNOWN')
+
+    def test_completion_notice_rejects_incomplete_run(self):
+        with patch('sequential_runner.execute') as send:
+            with self.assertRaises(Blocked):
+                self.runner.notify_completion()
+            send.assert_not_called()
 
     def test_w37_run_after_stop_never_invokes_provider(self):
         atomic_json(self.root / '.local/workflow/runner-verification.json', {'controller_hash': 'fixture', 'status': 'PASS'})

@@ -131,3 +131,23 @@ P10-02 / R002: 기록만이 아니라 곡·태그의 CREATE ACK 뒤 기준 revis
 - 후속 제어기 인계: 제어기를 관리하는 AI가 동일 `dart format` 명령을 실제 사용자 환경에서 직접 실행하여 종료 코드 0을 확인했다고 전달했다. 이 결과에 따라 포맷 환경 대기는 해소하며 추가 승인을 요청하지 않는다. 현재 모델이 해당 재실행을 직접 관측한 결과 또는 테스트 통과로 바꾸어 기록하지 않는다.
 - 계획의 `dependency-tests`, `regression-tests`, `analyze`, `sources-check`, `diff-check`는 제어기가 실행한다. 이 IMPLEMENT 호출에서는 실행하지 않았으며 새 PASS 수치나 대상 SHA CI 결과가 없다. 구현 후 별도 코드 검토도 제어기의 REVIEW 단계에 남는다.
 - 새 폰 실기는 불필요하다. 기존 사용자 확인 범위를 유지하며 사용자 DB 초기화·앱 삭제·재설치·새 정책 선택이 없다. Git 쓰기·알림·CI 조회는 수행하지 않았다.
+
+### P10-02-NEXT 최종 검증 기록 — 2026-10-02 / FINALIZE
+
+대상 SHA는 `38fa6961387e9846797c977b9944af4c5421ff4a`다. FINALIZE 시작 시 HEAD·로컬 origin/main이 대상과 같고 작업 트리는 깨끗했다. 현재 소스 지문 `6849078c05481f7ee37f31b94eb805b81571d7793f5db604f6d027be63cfcd28`이 제어기의 검증 지문과 일치했다. 아래는 제어기가 실행한 로그를 현재 모델이 읽어 확인한 결과이며, 앞선 IMPLEMENT 절의 검증 대기를 해소한다.
+
+| 검사 | 실제 명령과 결과 | 실행 ID |
+|---|---|---|
+| dependency-tests | `flutter test --no-pub --reporter json test/dependency_planner_test.dart test/dependency_dispatch_integration_test.dart` — 21 PASS, 실패·건너뜀0 | `4fdc5cd6-3eb8-494a-9934-ab9db13315ff` |
+| regression-tests | `flutter test --no-pub --reporter json test/local_repository_test.dart test/metadata_dispatcher_test.dart test/metadata_followup_dispatch_test.dart test/recording_followup_plan_test.dart test/recording_followup_conflict_test.dart test/recording_save_dispatch_test.dart test/recording_tier_dispatch_test.dart test/recording_link_dispatch_test.dart test/mutation_retry_test.dart` — 80 PASS, 실패·건너뜀0 | `ffeecc6c-c432-43e5-add4-89c8243a686f` |
+| analyze | `flutter analyze --no-pub test/dependency_planner_test.dart test/dependency_dispatch_integration_test.dart` — No issues found | `0642c41d-70b7-46b1-9933-a6e892e2b95f` |
+| sources-check | `python tools/index_sources.py --check` — 저장소 원본6개 해시·검색 색인 PASS | `d77b72b9-592f-49d1-abad-fde2a25bd2c7` |
+| diff-check | `git -c safe.directory=C:/Users/ksh/Documents/GitHub/Song_Record diff --check` — PASS | `7c9307a4-9644-4d08-be77-2dec5dccae61` |
+
+모든 명령 종료 코드는0이다. Flutter 명령 작업 디렉터리는 `apps/mobile`, 나머지는 저장소 루트다. 원시 로그는 `.local/workflow/runs/sequential/commands/<실행 ID>/`에 있다. diff의 LF→CRLF 안내는 실패가 아니다.
+
+현재 모델이 원문·승인 변경·전체 diff·실행 로그·회귀·데이터 보존·미연결 범위를 별도 REVIEW 단계에서 대조하여 승인했고 지적은0건이다. 동기화·계정 격리·DB 보존을 다루므로 위험도 sensitive를 유지하며 위임 또는 모델 설정 변경을 주장하지 않는다. **P10-02-A1~A7 모두 충족**: A1 참조별 ACK·논리 순서, A2 부모 실패 격리·수동 재시도, A3 계정 전환/재개방 시 등록 파일·저널·입력 보존, A4 미지원 원문·시도/예산 보존과 즉시 재예약 방지, A5 기존 후속 원장·frozen 재전송·커서 분리 회귀, A6 공통 계층과 후속 연결 경계 기록, A7 임시 자료 정리 범위·기존 검사 유지·결과 및 검토 기록을 확인했다. 승인 계획상 새 실기는 불필요하며 기존 사용자 확인을 유지한다.
+
+제어기가 저장한 `.local/workflow/ci-38fa6961387e9846797c977b9944af4c5421ff4a.json`(2026-10-02 08:56:34 UTC)을 읽어 대상 SHA와 push 기준 `1227a1694c9c44de8ded5b194e2a658856c1df4d`를 대조했다. 전체 판정 PASS, [CI36985529233](https://github.com/ksh321/Song_Record/actions/runs/36985529233)의 필수 `Scope changed files` 및 `Flutter analyze, test, and Android build`가 success다. API contract·Idempotency MySQL·Development workflow는 NOT_APPLICABLE이며 CI 내부 서버/MySQL job의 skipped도 제외 범위다. 이를 통과 실적으로 세지 않으며 이 보고서는 서버 브랜치 보호 규칙 확인 증거가 아니다. 이번 호출에서 원격 CI 조회는 하지 않았다.
+
+P10-02-NEXT의 승인된 남은 범위는 충족했다. P12-05 실제 파일 전송, P19-01~04 목록 쓰기·관계 연결, P18-02/04 녹음 입력·저장 UI는 앞선 표의 후속 통합 조건으로 유지하며 전체 P10 또는 후속 기능 완료를 주장하지 않는다. 이 FINALIZE는 기존 검증 문서와 progress만 갱신한다. 제품·실행기·기존 ID/완료 이력을 바꾸거나 사후 기록 전용 커밋을 만들지 않고 최종 상태 반영을 제어기에 인계한다.
