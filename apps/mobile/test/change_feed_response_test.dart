@@ -7,6 +7,30 @@ import 'package:song_record/core/sync/change_feed_response.dart';
 
 void main() {
   const owner = '11111111-1111-4111-8111-111111111111';
+  test('shared server fixture retains all seven kinds and their version axes', () {
+    final fixture = jsonDecode(File('../../fixtures/contracts/change-feed-wire.json')
+        .readAsStringSync()) as Map<String, dynamic>;
+    final kinds = <LocalEntity>{};
+    for (final value in fixture['pages'] as List<dynamic>) {
+      final decoded = ChangeFeedPage.decode(jsonEncode(value), owner: owner,
+          expectedAfter: value['after_seq'] as int);
+      expect(decoded.nextSequence, value['next_seq']);
+      for (var index = 0; index < decoded.entries.length; index++) {
+        final entry = decoded.entries[index];
+        kinds.add(entry.entity);
+        expect(entry.payload, value['changes'][index]['payload']);
+        if (entry.entity == LocalEntity.recordingAsset) {
+          expect(entry.revision, entry.payload['cloud_revision']);
+        }
+        if (entry.payload.containsKey('playlist')) {
+          expect(entry.revision, entry.payload['playlist']['revision']);
+        }
+      }
+    }
+    expect(kinds, {LocalEntity.song, LocalEntity.recording, LocalEntity.tag,
+      LocalEntity.recordingCondition, LocalEntity.playlist,
+      LocalEntity.playlistItem, LocalEntity.recordingAsset});
+  });
   const id = '22222222-2222-4222-8222-222222222222';
   Map<String, dynamic> page() => {
     'after_seq': 3,

@@ -1,0 +1,227 @@
+{
+  "description": "P10-06 수신 계약 합성 자료. 목록·자산 업무 writer 구현 완료 근거가 아님.",
+  "owner": "11111111-1111-4111-8111-111111111111",
+  "pages": [
+    {
+      "after_seq": 7,
+      "next_seq": 14,
+      "head_seq": 14,
+      "has_more": false,
+      "changes": [
+        {
+          "change_seq": 8,
+          "entity_type": "SONG",
+          "entity_id": "33333333-3333-4333-8333-333333333333",
+          "revision": 2,
+          "operation": "UPSERT",
+          "payload": {
+            "id": "33333333-3333-4333-8333-333333333333",
+            "revision": 2,
+            "updated_at": "2026-10-01T00:00:00Z",
+            "source_type": "MANUAL",
+            "tj_number": null,
+            "title": "received song",
+            "artist": "artist",
+            "version_code": "NORMAL",
+            "tier": null,
+            "note": "한글 🎵",
+            "lifecycle_state": "ACTIVE",
+            "representative_recording_id": null,
+            "representative_key_mode": null,
+            "representative_key_shift": null
+          }
+        },
+        {
+          "change_seq": 9,
+          "entity_type": "RECORDING",
+          "entity_id": "66666666-6666-4666-8666-666666666666",
+          "revision": 1,
+          "operation": "UPSERT",
+          "payload": {
+            "id": "66666666-6666-4666-8666-666666666666",
+            "origin_device_id": "11111111-1111-4111-8111-111111111111",
+            "metadata_state": "DRAFT",
+            "lifecycle_state": "ACTIVE",
+            "revision": 1,
+            "link_revision": 1,
+            "updated_at": "2026-10-01T00:00:00Z",
+            "recorded_at": "2026-09-28T07:00:00.123Z",
+            "timezone_id": "Asia/Seoul",
+            "timezone_offset_minutes": 540,
+            "song_id": "33333333-3333-4333-8333-333333333333",
+            "title_snapshot": "당시 곡",
+            "artist_snapshot": "당시 가수",
+            "version_code": "NORMAL",
+            "key_mode": null,
+            "key_shift": null,
+            "note": "recording note"
+          }
+        },
+        {
+          "change_seq": 10,
+          "entity_type": "TAG",
+          "entity_id": "77777777-7777-4777-8777-777777777777",
+          "revision": 1,
+          "operation": "UPSERT",
+          "payload": {
+            "id": "77777777-7777-4777-8777-777777777777",
+            "revision": 1,
+            "name": "현재 태그",
+            "archived_at": null,
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        },
+        {
+          "change_seq": 11,
+          "entity_type": "CONDITION",
+          "entity_id": "88888888-8888-4888-8888-888888888888",
+          "revision": 1,
+          "operation": "UPSERT",
+          "payload": {
+            "id": "88888888-8888-4888-8888-888888888888",
+            "revision": 1,
+            "name": "과거 컨디션",
+            "code": "88888888-8888-4888-8888-888888888888",
+            "archived_at": null,
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        },
+        {
+          "change_seq": 12,
+          "entity_type": "PLAYLIST",
+          "entity_id": "44444444-4444-4444-8444-444444444444",
+          "revision": 1,
+          "operation": "UPSERT",
+          "payload": {
+            "playlist": {
+              "id": "44444444-4444-4444-8444-444444444444",
+              "name": "연습",
+              "revision": 1,
+              "deleted_at": null,
+              "created_at": "2026-10-01T00:00:00Z",
+              "updated_at": "2026-10-01T00:00:00Z"
+            },
+            "items": [
+              {
+                "id": "99999999-9999-4999-8999-999999999999",
+                "playlist_id": "44444444-4444-4444-8444-444444444444",
+                "song_id": null,
+                "candidate_brand": "TJ",
+                "candidate_number": "00123",
+                "candidate_snapshot": {
+                  "title": "후보",
+                  "artist": "합성"
+                },
+                "entry_key": "tj:00123",
+                "position": 0,
+                "hidden_by_batch_id": null,
+                "created_at": "2026-10-01T00:00:00Z",
+                "updated_at": "2026-10-01T00:00:00Z"
+              }
+            ]
+          }
+        },
+        {
+          "change_seq": 13,
+          "entity_type": "PLAYLIST_ITEM",
+          "entity_id": "99999999-9999-4999-8999-999999999999",
+          "revision": 2,
+          "operation": "UPSERT",
+          "payload": {
+            "playlist": {
+              "id": "44444444-4444-4444-8444-444444444444",
+              "name": "연습",
+              "revision": 2,
+              "deleted_at": null,
+              "created_at": "2026-10-01T00:00:00Z",
+              "updated_at": "2026-10-01T00:00:00Z"
+            },
+            "items": [
+              {
+                "id": "99999999-9999-4999-8999-999999999999",
+                "playlist_id": "44444444-4444-4444-8444-444444444444",
+                "song_id": null,
+                "candidate_brand": "TJ",
+                "candidate_number": "00123",
+                "candidate_snapshot": {
+                  "title": "수정 후보",
+                  "artist": "합성"
+                },
+                "entry_key": "tj:00123",
+                "position": 0,
+                "hidden_by_batch_id": null,
+                "created_at": "2026-10-01T00:00:00Z",
+                "updated_at": "2026-10-01T00:00:00Z"
+              }
+            ]
+          }
+        },
+        {
+          "change_seq": 14,
+          "entity_type": "RECORDING_ASSET",
+          "entity_id": "66666666-6666-4666-8666-666666666666",
+          "revision": 1,
+          "operation": "UPSERT",
+          "payload": {
+            "recording_id": "66666666-6666-4666-8666-666666666666",
+            "cloud_state": "STORED",
+            "blocked_reason": null,
+            "generation": "55555555-5555-4555-8555-555555555555",
+            "verified_size": 32,
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "stored_at": "2026-10-01T00:00:00Z",
+            "cloud_revision": 1,
+            "created_at": "2026-10-01T00:00:00Z",
+            "updated_at": "2026-10-01T00:00:00Z"
+          }
+        }
+      ]
+    },
+    {
+      "after_seq": 14,
+      "next_seq": 17,
+      "head_seq": 17,
+      "has_more": false,
+      "changes": [
+        {
+          "change_seq": 15,
+          "entity_type": "RECORDING_ASSET",
+          "entity_id": "66666666-6666-4666-8666-666666666666",
+          "revision": 2,
+          "operation": "DELETE",
+          "payload": {
+            "recording_id": "66666666-6666-4666-8666-666666666666",
+            "generation": "55555555-5555-4555-8555-555555555555",
+            "cloud_revision": 2,
+            "purged_at": "2026-10-01T00:00:00Z"
+          }
+        },
+        {
+          "change_seq": 16,
+          "entity_type": "PLAYLIST",
+          "entity_id": "44444444-4444-4444-8444-444444444444",
+          "revision": 3,
+          "operation": "DELETE",
+          "payload": {
+            "id": "44444444-4444-4444-8444-444444444444",
+            "status": "DELETED",
+            "revision": 3,
+            "deleted_at": "2026-10-01T00:00:00Z"
+          }
+        },
+        {
+          "change_seq": 17,
+          "entity_type": "TAG",
+          "entity_id": "77777777-7777-4777-8777-777777777777",
+          "revision": 2,
+          "operation": "DELETE",
+          "payload": {
+            "id": "77777777-7777-4777-8777-777777777777",
+            "revision": 2,
+            "status": "DELETED"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -930,3 +930,7 @@ P10-02 다음: mutation_supersessions.mapping_source_id는 song_aliases 필수 �
 ### 2026-10-07 WORKFLOW-09 단계별 사용량 집계·운영 문서 정리
 
 사용자 선택 ①④를 적용했다. 기존 응답 로그로 P번호/단계/관측 모델별 사용량·호출 수·시간을 집계하며 추가 AI 호출 없이 Usage 명령과 호출 완료 후 자동 갱신한다. 불완전 근거는 PARTIAL/UNKNOWN으로 표시하고 제품 체크포인트는 그대로 유지한다. 운영 문서는 현재 절차로 통합하고 과거 설명 17문단을 기존 검증 문서에 보존했다. Quick Python 100개·PowerShell 103개·원본/공백 검사와 최종 집계 영향 검사 9개 PASS. 상세는 WORKFLOW-01-bootstrap.md 해당 절. 제품 재개·원격 CI·Spaces 편집은 수행하지 않음.
+
+## P10-05 완료 대조와 P10-06 재개 — 2026-10-07
+
+P10-05 일관된 초기 스냅샷은 사용자 검사 통과·직접 코드 검토·9f499baa75a262f11f4c7c3d9c727df1ba7466be 필수 CI 37552635532 PASS로 완료 확인했다. 상세는 [기존 검증 기록](verification/P10-05o-recording-baseline.md) 최신 절. USER-035는 AI 해결로 종료했다. 현재 main fab47aa2bbb3d353056338f2e541e15124e1b44e와 실제 원격 HEAD 일치, 재개 전 미커밋 변경 없음. 사용자 요청으로 P10-06 증분 변경 수신까지 같은 단일 실행기를 재개하며 P10-07 이후는 제외한다. 기존 설치본 검증 해시 및 HUMAN_CONFIRMED 알림 수신 근거가 일치한다.

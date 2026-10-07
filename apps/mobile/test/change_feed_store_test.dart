@@ -167,6 +167,297 @@ void main() {
       'items': items,
     },
   };
+  test('shared HTTP wire applies every supported entity and deletion proof', () async {
+    final fixture = jsonDecode(File('../../fixtures/contracts/change-feed-wire.json')
+        .readAsStringSync()) as Map<String, dynamic>;
+    for (final raw in fixture['pages'] as List<dynamic>) {
+      final decoded = ChangeFeedPage.decode(jsonEncode(raw), owner: owner,
+          expectedAfter: await cursor());
+      await store.apply(decoded, snapshotToken: token);
+      expect(await cursor(), raw['next_seq']);
+    }
+    final rows = await db.customSelect('SELECT * FROM metadata_copies').get();
+    final kinds = rows.map((row) => row.read<String>('entity_type')).toSet();
+    expect(kinds, containsAll(['SONG', 'RECORDING', 'TAG',
+      'RECORDING_CONDITION', 'PLAYLIST', 'PLAYLIST_ITEM', 'RECORDING_ASSET',
+      'DELETION_LEDGER']));
+    for (final kind in ['PLAYLIST', 'PLAYLIST_ITEM', 'TAG']) {
+      expect(rows.singleWhere((row) => row.read<String>('entity_type') == kind)
+          .read<int>('tombstone'), 1);
+    }
+    final recording = rows.singleWhere((row) => row.read<String>('entity_type') == 'RECORDING');
+    expect(recording.read<int>('tombstone'), 0);
+    expect(jsonDecode(recording.read<String>('server_payload'))['title_snapshot'], '당시 곡');
+    final asset = rows.singleWhere((row) => row.read<String>('entity_type') == 'RECORDING_ASSET');
+    expect(asset.read<int>('tombstone'), 0);
+    expect(jsonDecode(asset.read<String>('server_payload'))['cloud_state'], 'NONE');
+  });
+  for (final kind in ['SONG', 'TAG', 'RECORDING_CONDITION', 'PLAYLIST']) {
+    test('equal baseline $kind compares content and rolls back earlier writes', () async {
+      final source = <String, dynamic>{
+        if (kind == 'SONG') ...songChange(id, 5)
+        else ...{'id': id, 'revision': 5, 'updated_at': '2026-10-01T00:00:00Z',
+          'name': 'original',
+          if (kind == 'PLAYLIST') 'deleted_at': null else 'archived_at': null,
+          if (kind == 'RECORDING_CONDITION') 'code': id},
+        if (kind == 'SONG' || kind == 'PLAYLIST')
+          'created_at': '2026-09-01T00:00:00Z',
+        if (kind == 'SONG') 'latest_recorded_at': '2026-09-30T00:00:00Z',
+        'user_id': owner,
+      };
+      final active = await replaceBaseline(kind, source);
+      await store.apply(page([]), snapshotToken: active);
+      final before = (await db.customSelect('SELECT * FROM metadata_copies').get())
+          .map((row) => row.data).toList();
+      final payload = {...source}
+        ..remove('user_id')
+        ..remove('created_at')
+        ..remove('latest_recorded_at');
+      Map<String, Object?> update(int seq, Map<String, dynamic> value) => {
+        'change_seq': seq,
+        'entity_type': kind == 'RECORDING_CONDITION' ? 'CONDITION' : kind,
+        'entity_id': id, 'revision': 5, 'operation': 'UPSERT', 'payload': value,
+      };
+      await expectLater(store.apply(page([
+        entry(8, other),
+        update(9, {...payload, if (kind == 'SONG') 'title': 'divergent' else 'name': 'divergent'}),
+      ]), snapshotToken: active), throwsStateError);
+      expect(await cursor(), 7);
+      expect((await db.customSelect('SELECT * FROM metadata_copies').get())
+          .map((row) => row.data).toList(), before);
+      await store.apply(page([update(8, payload)]), snapshotToken: active);
+      expect(await cursor(), 8);
+      expect((await db.customSelect('SELECT * FROM metadata_copies').get())
+          .map((row) => row.data).toList(), before);
+      if (kind == 'SONG' || kind == 'PLAYLIST') {
+        final conflicts = <Map<String, dynamic>>[
+          {...payload, 'created_at': '2026-09-02T00:00:00Z'},
+          if (kind == 'SONG') {...payload, 'latest_recorded_at': null},
+        ];
+        for (final conflict in conflicts) {
+          await expectLater(store.apply(page([
+            entry(9, other), update(10, conflict),
+          ], after: 8), snapshotToken: active), throwsStateError);
+          expect(await cursor(), 8);
+          expect((await db.customSelect('SELECT * FROM metadata_copies').get())
+              .map((row) => row.data).toList(), before);
+        }
+      }
+    });
+  }
+  test('equal recording baseline compares core after preserving omitted relations', () async {
+    final incoming = {...recordingWire('RecordingDraft'), 'id': id, 'revision': 1};
+    final file = Map<String, dynamic>.from(recordingWire('RecordingSaved')['file'] as Map);
+    final active = await replaceBaseline('RECORDING', {
+      ...incoming, 'user_id': owner, 'tier': 'B',
+      'condition_code': 'GOOD', 'condition_name_snapshot': '당시 좋음',
+    }, relations: {
+      'RECORDING_FILE_SPEC': [{...file, 'recording_id': id, 'user_id': owner}],
+      'RECORDING_TAG': [{'recording_id': id, 'user_id': owner,
+        'tag_id': other, 'name_snapshot': '당시 태그'}],
+    });
+    await store.apply(page([]), snapshotToken: active);
+    final before = (await db.customSelect('SELECT * FROM metadata_copies').getSingle()).data;
+    Map<String, Object?> update(String note) => {
+      'change_seq': 8, 'entity_type': 'RECORDING', 'entity_id': id,
+      'revision': 1, 'operation': 'UPSERT', 'payload': {...incoming, 'note': note},
+    };
+    await expectLater(store.apply(page([update('conflicting note')]),
+        snapshotToken: active), throwsStateError);
+    expect(await cursor(), 7);
+    await store.apply(page([update(incoming['note'] as String)]), snapshotToken: active);
+    expect(await cursor(), 8);
+    expect((await db.customSelect('SELECT * FROM metadata_copies').getSingle()).data, before);
+  });
+  for (final summary in [false, true]) {
+    test('parent deletion cascades known children and preserves drafts: summary=$summary', () async {
+      const pending = '77777777-7777-4777-8777-777777777777';
+      final active = await replaceBaseline('PLAYLIST_ITEM', playlistItemSource(),
+          relations: {'PLAYLIST': [playlistSource()]});
+      await store.apply(page([]), snapshotToken: active);
+      await db.customStatement("UPDATE metadata_copies SET local_payload=? WHERE entity_type='PLAYLIST_ITEM'",
+          [jsonEncode({'playlist_id': other, 'note': 'private'})]);
+      await db.customStatement('INSERT INTO metadata_copies VALUES(?,?,?,?,?,?,?,?)',
+          [owner, 'PLAYLIST_ITEM', pending, 0, null,
+            jsonEncode({'playlist_id': other, 'note': 'unsent'}), 0, 0]);
+      final before = (await db.customSelect('SELECT * FROM metadata_copies ORDER BY entity_id').get())
+          .map((row) => row.data).toList();
+      final raw = (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+          .map((row) => row.data).toList();
+      final deletion = <String, dynamic>{
+        if (summary) ...{'id': other, 'status': 'DELETED', 'revision': 9}
+        else ...({...playlistSource(), 'revision': 9}..remove('user_id')),
+        'deleted_at': '2026-10-02T00:00:00Z',
+      };
+      Map<String, Object?> event(int seq) => {'change_seq': seq,
+        'entity_type': 'PLAYLIST', 'entity_id': other, 'revision': 9,
+        'operation': summary ? 'DELETE' : 'UPSERT', 'payload': deletion};
+      await db.customStatement("CREATE TRIGGER reject_parent BEFORE UPDATE ON metadata_copies WHEN NEW.entity_type='PLAYLIST' BEGIN SELECT RAISE(ABORT,'synthetic parent failure'); END");
+      await expectLater(store.apply(page([event(8)]), snapshotToken: active),
+          throwsA(predicate<Object>((error) =>
+              error.toString().contains('synthetic parent failure'))));
+      expect(await cursor(), 7);
+      expect((await db.customSelect('SELECT * FROM metadata_copies ORDER BY entity_id').get())
+          .map((row) => row.data).toList(), before);
+      await db.customStatement('DROP TRIGGER reject_parent');
+      await store.apply(page([event(8)]), snapshotToken: active);
+      final after = (await db.customSelect('SELECT * FROM metadata_copies ORDER BY entity_id').get())
+          .map((row) => row.data).toList();
+      for (final old in before) {
+        final updated = after.singleWhere((row) => row['entity_id'] == old['entity_id']);
+        if (old['entity_id'] == pending) {
+          expect(updated, old);
+        } else {
+          expect(updated['tombstone'], 1);
+          expect(updated['server_revision'], 9);
+          if (old['entity_type'] == 'PLAYLIST_ITEM') {
+            expect(updated['local_payload'], old['local_payload']);
+          }
+        }
+      }
+      await store.apply(page([event(9)], after: 8), snapshotToken: active);
+      expect((await db.customSelect('SELECT * FROM metadata_copies ORDER BY entity_id').get())
+          .map((row) => row.data).toList(), after);
+      expect((await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+          .map((row) => row.data).toList(), raw);
+      expect(await cursor(), 9);
+    });
+  }
+  for (final shape in ['summary', 'empty aggregate', 'aggregate with items']) {
+    test('legacy parent-only tombstone repairs children atomically: $shape', () async {
+      const pending = '77777777-7777-4777-8777-777777777777';
+      const opId = '88888888-8888-4888-8888-888888888888';
+      final active = await replaceBaseline('PLAYLIST_ITEM', playlistItemSource(),
+          relations: {'PLAYLIST': [playlistSource()]});
+      await store.apply(page([]), snapshotToken: active);
+      final receipt = <String, dynamic>{
+        'id': other, 'status': 'DELETED', 'revision': 9,
+        'deleted_at': '2026-10-02T00:00:00Z',
+      };
+      // This is the persisted state left by the previous header-only writer.
+      await db.customStatement(
+          "UPDATE metadata_copies SET server_revision=9,server_payload=?,tombstone=1 WHERE entity_type='PLAYLIST'",
+          [jsonEncode(receipt)]);
+      await db.customStatement(
+          "UPDATE metadata_copies SET local_payload=? WHERE entity_type='PLAYLIST_ITEM'",
+          [jsonEncode({'playlist_id': other, 'note': 'private'})]);
+      await db.customStatement('INSERT INTO metadata_copies VALUES(?,?,?,?,?,?,?,?)',
+          [owner, 'PLAYLIST_ITEM', pending, 0, null,
+            jsonEncode({'playlist_id': other, 'note': 'unsent'}), 0, 0]);
+      await db.customStatement('''
+        INSERT INTO local_mutations(op_id,user_id,entity_type,entity_id,operation,
+          base_revision,payload,request_hash,created_at,updated_at)
+        VALUES(?,?,'PLAYLIST_ITEM',?,'CREATE',0,?,?,0,0)
+      ''', [opId, owner, pending, jsonEncode({'playlist_id': other, 'note': 'unsent'}),
+        List.filled(64, 'a').join()]);
+      Future<List<Map<String, dynamic>>> copies() async =>
+          (await db.customSelect('SELECT * FROM metadata_copies ORDER BY entity_id').get())
+              .map((row) => row.data).toList();
+      final before = await copies();
+      final queued = (await db.customSelect('SELECT * FROM local_mutations').getSingle()).data;
+      final raw = (await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+          .map((row) => row.data).toList();
+      Map<String, Object?> event(int seq, {int revision = 9}) => {
+        'change_seq': seq, 'entity_type': 'PLAYLIST', 'entity_id': other,
+        'revision': revision, 'operation': 'DELETE',
+        'payload': shape == 'summary' ? {...receipt, 'revision': revision} : {
+          'playlist': {...playlistSource(), 'revision': revision,
+            'deleted_at': receipt['deleted_at']},
+          'items': <Map<String, dynamic>>[
+            if (shape == 'aggregate with items') playlistItemSource(),
+          ],
+        },
+      };
+      // An older deletion cannot repair children by rewinding the parent.
+      await store.apply(page([event(8, revision: 8)]), snapshotToken: active);
+      expect(await cursor(), 8);
+      expect(await copies(), before);
+      if (shape != 'summary') {
+        for (final invalidItems in <List<Map<String, dynamic>>>[
+          [{...playlistItemSource(), 'playlist_id': pending}],
+          [{...playlistItemSource(), 'user_id': other}],
+          [playlistItemSource(), playlistItemSource()],
+        ]) {
+          final invalid = event(9);
+          invalid['payload'] = {
+            'playlist': {...playlistSource(), 'revision': 9,
+              'deleted_at': receipt['deleted_at']},
+            'items': invalidItems,
+          };
+          await expectLater(store.apply(page([invalid], after: 8), snapshotToken: active),
+              throwsFormatException);
+          expect(await cursor(), 8);
+          expect(await copies(), before);
+        }
+      }
+      await db.customStatement(
+          "UPDATE metadata_copies SET server_revision=10 WHERE entity_type='PLAYLIST_ITEM' AND entity_id=?", [id]);
+      final newerChild = await copies();
+      await expectLater(store.apply(page([event(9)], after: 8), snapshotToken: active),
+          throwsA(anyOf(isA<FormatException>(), isA<StateError>())));
+      expect(await cursor(), 8);
+      expect(await copies(), newerChild);
+      await db.customStatement(
+          "UPDATE metadata_copies SET server_revision=8 WHERE entity_type='PLAYLIST_ITEM' AND entity_id=?", [id]);
+      await db.customStatement("CREATE TRIGGER reject_repair_cursor BEFORE UPDATE ON sync_cursors BEGIN SELECT RAISE(ABORT,'synthetic repair cursor failure'); END");
+      await expectLater(store.apply(page([event(9)], after: 8), snapshotToken: active),
+          throwsA(predicate<Object>((error) =>
+              error.toString().contains('synthetic repair cursor failure'))));
+      expect(await cursor(), 8);
+      expect(await copies(), before);
+      expect((await db.customSelect('SELECT * FROM local_mutations').getSingle()).data, queued);
+      await db.customStatement('DROP TRIGGER reject_repair_cursor');
+      await store.apply(page([event(9)], after: 8), snapshotToken: active);
+      final repaired = await copies();
+      for (final old in before) {
+        final updated = repaired.singleWhere((row) => row['entity_id'] == old['entity_id']);
+        if (old['entity_id'] == id) {
+          expect(updated['tombstone'], 1);
+          expect(updated['server_revision'], 9);
+          expect(updated['local_payload'], old['local_payload']);
+        } else {
+          // Both the original parent receipt and unsent creation stay intact.
+          expect(updated, old);
+        }
+      }
+      await store.apply(page([event(10)], after: 9), snapshotToken: active);
+      expect(await cursor(), 10);
+      expect(await copies(), repaired);
+      expect((await db.customSelect('SELECT * FROM local_mutations').getSingle()).data, queued);
+      expect((await db.customSelect('SELECT * FROM snapshot_download_rows').get())
+          .map((row) => row.data).toList(), raw);
+    });
+  }
+  test('parent deletion respects parent and child versions without partial writes', () async {
+    final active = await replaceBaseline('PLAYLIST_ITEM', playlistItemSource(),
+        relations: {'PLAYLIST': [playlistSource()]});
+    await store.apply(page([]), snapshotToken: active);
+    Map<String, Object?> deletion(int seq, int revision) => {
+      'change_seq': seq, 'entity_type': 'PLAYLIST', 'entity_id': other,
+      'revision': revision, 'operation': 'DELETE', 'payload': {
+        'id': other, 'status': 'DELETED', 'revision': revision,
+        'deleted_at': '2026-10-02T00:00:00Z',
+      },
+    };
+    final original = (await db.customSelect('SELECT * FROM metadata_copies').get())
+        .map((row) => row.data).toList();
+    await expectLater(store.apply(page([deletion(8, 8)]), snapshotToken: active),
+        throwsStateError);
+    expect(await cursor(), 7);
+    await store.apply(page([deletion(8, 7)]), snapshotToken: active);
+    expect(await cursor(), 8);
+    expect((await db.customSelect('SELECT * FROM metadata_copies').get())
+        .map((row) => row.data).toList(), original);
+    await db.customStatement(
+        "UPDATE metadata_copies SET server_revision=10 WHERE entity_type='PLAYLIST_ITEM'");
+    final before = (await db.customSelect('SELECT * FROM metadata_copies').get())
+        .map((row) => row.data).toList();
+    await expectLater(store.apply(page([entry(9, id), deletion(10, 9)], after: 8),
+        snapshotToken: active), throwsStateError);
+    expect(await cursor(), 8);
+    expect((await db.customSelect('SELECT * FROM metadata_copies').get())
+        .map((row) => row.data).toList(), before);
+  });
   test('complete playlist operation atomically reorders/removes items while preserving drafts and original snapshot', () async {
     const addedId = '55555555-5555-4555-8555-555555555555';
     const pendingId = '77777777-7777-4777-8777-777777777777';

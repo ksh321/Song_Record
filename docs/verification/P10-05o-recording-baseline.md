@@ -23,3 +23,9 @@ SnapshotDownloadStore.recordingBaseline과 AccountStore.snapshotRecordingBaselin
 - 미전송 큐/고정 wire/재시도 예산/canonical hold/충돌 해결 원장/개인 입력 보존 조건, 다중 페이지·재개방·증분 실패·SQL/lease/만료 실패·등록 합성 녹음 파일 및 저널 검사를 대조했다. 기존 검사를 삭제하거나 보호 조건을 제거한 변경 없음. 초기 적용 후 조회 기대값과 resync의 기존 곡 PATCH 준비 수정은 새 동작 계약에 부합한다.
 - 실행 근거: 사용자가 이 대화에서 초기 관련 검사, resync 2개, receive-regression·preservation-regression·analyze, 원본 정합성·diff 검사 통과를 보고했다. 이번 검토에서 테스트를 재실행하지 않았고 독립 재실행 결과로 표현하지 않는다. 대상 커밋 범위 `git diff --check`는 직접 종료0 확인했다.
 - 남은 단계: 원격 푸시 여부 및 대상 SHA의 필요한 CI 확인. 제품 전체 완료나 P10-06 착수로 처리하지 않는다. USER-035는 실행기 원인 비교 형식 오류에서 생성된 과거 요청이며 실제 로그인/사용자 조작 필요의 근거가 아니다. 자동 실행기 상태 복구는 이번 제품 정적 검토 범위에 포함하지 않았다.
+
+## 2026-10-07 P10-05 수동 완료 근거 대조 및 실행기 재개
+
+사용자 로컬 검사 통과 확인과 위 직접 코드 검토에 더해, 대상 `9f499baa75a262f11f4c7c3d9c727df1ba7466be`의 필수 [CI 37552635532](https://github.com/ksh321/Song_Record/actions/runs/37552635532) PASS를 직접 확인했다. 원격 추적 reflog의 직전 push `cd0b6da1f3c14e081613df7bd38f0974ad79d91e`를 BaseCommit으로 사용해 github-check.ps1 종료0/Overall PASS를 확인했다. API contract·Idempotency MySQL·Development workflow는 NOT_APPLICABLE이며 통과 실적으로 세지 않는다. 기존 계획의 새 실기 불필요 판단을 유지한다. P10-05-NEXT 완료, 기존 세부 ID·완료 이력 보존.
+
+이 판정은 사용자 수동 검증·커밋 이후의 외부 완료 근거 대조다. 과거 실행기의 실패 로그를 PASS로 바꾸거나 새 REVIEW 호출이 있었다고 기록하지 않는다. 기존 체크포인트 전문은 로컬 P10-05-before-manual-completion-reconciliation.json에 보존하고 실패 원인 이력은 유지한다. USER-035는 원인 비교 형식 오류에서 생성된 불필요한 요청으로 AI가 종료했다. 사용자 승인 종료 번호는 P10-06이며 이후 번호는 시작하지 않는다.

@@ -5,6 +5,25 @@ void _require(bool valid) {
   if (!valid) throw const FormatException('Invalid change entity payload');
 }
 
+/// D07's minimal deletion receipt, also carried by a playlist DELETE event.
+/// Full playlist headers are validated separately by validateChangePayload.
+void validatePlaylistDeletion(Map<String, dynamic> value) {
+  const keys = {'id', 'status', 'revision', 'deleted_at'};
+  _require(value.length == keys.length && value.keys.every(keys.contains));
+  final Object? id = value['id'], revision = value['revision'];
+  _require(id is String && UuidValue(id).value == id);
+  _require(revision is int && revision > 0 && revision <= 9223372036854775807);
+  _require(value['status'] == 'DELETED');
+  final Object? deletedAt = value['deleted_at'];
+  _require(deletedAt is String &&
+      RegExp(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$')
+          .hasMatch(deletedAt));
+  final parsed = DateTime.tryParse(deletedAt as String);
+  _require(parsed != null && parsed.year >= 1000 &&
+      parsed.toUtc().toIso8601String().substring(0, 19) ==
+          deletedAt.substring(0, 19));
+}
+
 /// Current change writers emit SONG, RECORDING and TAG snapshots. This validates
 /// their wire fields and the legacy Condition response without normalizing
 /// historical values or inventing missing

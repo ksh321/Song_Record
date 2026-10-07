@@ -39,6 +39,20 @@ Map<String, dynamic> recordingWire(String schema) {
 }
 
 void main() {
+  test('D07 deletion receipt requires identity, revision and a real UTC date', () {
+    final valid = <String, dynamic>{'id': payloadId, 'status': 'DELETED',
+      'revision': 2, 'deleted_at': '2026-10-01T00:00:00Z'};
+    validatePlaylistDeletion(valid);
+    for (final invalid in <Map<String, dynamic>>[
+      {...valid}..remove('deleted_at'),
+      {...valid, 'status': 'ACTIVE'}, {...valid, 'revision': 0},
+      {...valid, 'revision': 2.0}, {...valid, 'id': 'invalid'},
+      {...valid, 'deleted_at': '2026-02-30T00:00:00Z'},
+      {...valid, 'deleted_at': null}, {...valid, 'items': <dynamic>[]},
+    ]) {
+      expect(() => validatePlaylistDeletion(invalid), throwsFormatException);
+    }
+  });
   test(
     'playlist header validates its own fields without inventing item revision',
     () {

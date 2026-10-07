@@ -1430,7 +1430,35 @@ components:
         entity_id: {type: string, format: uuid}
         revision: {type: integer, format: int64, minimum: 1, maximum: 9223372036854775807}
         operation: {type: string, enum: [UPSERT, DELETE]}
-        payload: {type: object}
+        payload:
+          type: object
+          description: >-
+            계정에 귀속된 변경 당시의 업무 사본이다. 공통 조회 계층은 저장된 본문을
+            재구성하지 않는다. 앱은 아래 엔터티별 수신 형태와 envelope의 UUID/revision을
+            함께 검사한 뒤 페이지 전체와 next_seq를 한 로컬 트랜잭션으로 적용한다.
+            SONG은 Song 사본, TAG는 Tag 사본, CONDITION은 Condition 사본이며
+            CONDITION은 로컬 RECORDING_CONDITION으로 매핑한다. RECORDING은 기존
+            RecordingDraft/RecordingSaved/RecordingEdited 생산 응답을 받는다.
+            녹음의 file/tier/tag_ids+tags/condition_code/condition_name_snapshot 생략은
+            이미 아는 값을 삭제한다는 뜻이 아니다. 명시 null/빈 집합은 각 필드 계약을 따른다.
+            일반 UUID DELETE는 envelope의 대상을 삭제 상태로 보존하며 자산 세대 삭제와 구별한다.
+            PLAYLIST UPSERT는 기존 목록 header 또는 {playlist,items} 전체 묶음이다.
+            PLAYLIST_ITEM은 UPSERT/DELETE 모두 {playlist,items} 전체 묶음을 사용한다.
+            playlist는 id/name/revision/deleted_at/updated_at 및 선택적 created_at을 가지며,
+            items는 같은 부모의 전체 항목 사본이다. 항목 필드는 초기 PLAYLIST_ITEM과 같고
+            독립 revision은 없다. envelope revision은 playlist.revision과 같아야 한다.
+            항목 UPSERT 대상은 items 안에, DELETE 대상은 items 밖에 있어야 한다.
+            목록 삭제는 deleted_at이 있는 header/전체 묶음 또는 DELETE의
+            {id,status:DELETED,revision,deleted_at} 요약을 사용한다. 부모 삭제는 알려진
+            서버 항목에도 전파하되 미전송 입력과 다른 곡·녹음·파일을 제거하지 않는다.
+            RECORDING_ASSET UPSERT는 recording_id/cloud_state/blocked_reason/generation/
+            verified_size/sha256/stored_at/cloud_revision/created_at/updated_at을 가진다.
+            envelope entity_id는 recording_id, revision은 cloud_revision과 같아야 한다.
+            자산 DELETE는 {recording_id,generation,cloud_revision,purged_at}이며 해당
+            세대의 삭제 근거이다. NONE과 세대 삭제는 녹음 UUID 삭제가 아니다.
+            포함된 user_id는 인증된 계정과 같아야 한다. 동일 버전의 상충 내용은 거절한다.
+            목록·자산 형태는 수신 계약이며 후속 업무 writer/API 구현 완료를 의미하지 않는다.
+          x-wire-fixture: fixtures/contracts/change-feed-wire.json
     SnapshotCreate:
       type: object
       additionalProperties: false

@@ -110,6 +110,12 @@ final class ChangeFeedStore {
         await PlaylistChangeStore(db, requireActive, business.writeCopy).apply(entry);
         continue;
       }
+      if (entry.entity == LocalEntity.playlist &&
+          (entry.deleted || entry.payload['deleted_at'] != null)) {
+        await PlaylistChangeStore(db, requireActive, business.writeCopy)
+            .applyParentDeletion(entry);
+        continue;
+      }
       // Only explicitly supported business adapters can advance the cursor.
       // Assets use cloud_revision; playlist operations were handled above.
       if (!{
@@ -209,7 +215,21 @@ final class ChangeFeedStore {
       }
       final projected = entry.entity == LocalEntity.recording && !entry.deleted
           ? projectRecordingChange(previous, payload)
-          : payload;
+          : Map<String, dynamic>.of(payload);
+      if (!entry.deleted && currentRevision == entry.revision && previous != null) {
+        // These fields are optional in the business wire, even when retained
+        // by the initial snapshot. Omission is not an explicit value change.
+        final optional = switch (entry.entity) {
+          LocalEntity.song => const ['created_at', 'latest_recorded_at'],
+          LocalEntity.playlist => const ['created_at'],
+          _ => const <String>[],
+        };
+        for (final field in optional) {
+          if (!projected.containsKey(field) && previous.containsKey(field)) {
+            projected[field] = previous[field];
+          }
+        }
+      }
       if (!entry.deleted && !asset) {
         validateChangePayload(entry.entity, projected);
       }
@@ -226,7 +246,9 @@ final class ChangeFeedStore {
         if (entry.deleted) {
           throw StateError('Deletion did not advance baseline revision');
         }
-        continue;
+        // The shared baseline projection has populated the business copy.
+        // Equal versions still need the comparison below: a baseline is not
+        // permission to silently accept divergent fields at the same version.
       }
       if (currentRevision == entry.revision) {
         final previous = canonicalJson(

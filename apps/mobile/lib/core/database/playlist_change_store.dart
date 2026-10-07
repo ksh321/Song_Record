@@ -25,6 +25,79 @@ final class PlaylistChangeStore {
   final void Function() requireActive;
   final WriteMetadataCopy writeCopy;
 
+  /// A header/receipt proves deletion of the parent, not an empty partial item
+  /// list. Propagate it only to known server children; keep unsent creations.
+  Future<void> applyParentDeletion(ChangeFeedEntry entry) async {
+    requireActive();
+    final payload = Map<String, dynamic>.of(entry.payload);
+    if (payload.containsKey('user_id') && payload['user_id'] != db.userId) {
+      throw const FormatException('Foreign playlist deletion');
+    }
+    payload.remove('user_id');
+    if (payload.containsKey('status')) {
+      validatePlaylistDeletion(payload);
+      if (!entry.deleted) {
+        throw const FormatException('Deletion receipt requires DELETE');
+      }
+    } else {
+      validateChangePayload(LocalEntity.playlist, payload);
+    }
+    if (entry.entity != LocalEntity.playlist || payload['id'] != entry.id ||
+        payload['revision'] != entry.revision || payload['deleted_at'] == null) {
+      throw const FormatException('Invalid playlist deletion identity');
+    }
+    await _applyParentDeletion(entry.id, entry.revision, payload);
+  }
+
+  Future<void> _applyParentDeletion(
+    String playlistId,
+    int incomingRevision,
+    Map<String, dynamic> payload,
+  ) async {
+    final parent = await db.customSelect(
+      "SELECT server_revision,tombstone FROM metadata_copies WHERE entity_type='PLAYLIST' AND entity_id=?",
+      variables: [Variable(playlistId)],
+    ).getSingleOrNull();
+    final revision = parent?.read<int>('server_revision') ?? 0;
+    if (revision > incomingRevision) {
+      return;
+    }
+    if (revision == incomingRevision && parent?.read<int>('tombstone') == 0) {
+      throw StateError('Deletion did not advance playlist revision');
+    }
+    final children = await db.customSelect(
+      "SELECT * FROM metadata_copies WHERE entity_type='PLAYLIST_ITEM' AND user_id=?",
+      variables: [Variable(db.userId)],
+    ).get();
+    for (final row in children) {
+      requireActive();
+      final encoded = row.readNullable<String>('server_payload');
+      if (encoded == null) {
+        continue;
+      }
+      final saved = jsonDecode(encoded) as Map<String, dynamic>;
+      if (saved['playlist_id'] != playlistId) {
+        continue;
+      }
+      if (row.read<int>('server_revision') > incomingRevision) {
+        throw StateError('Playlist deletion predates a known child');
+      }
+      if (row.read<int>('tombstone') == 1) {
+        continue;
+      }
+      final id = row.read<String>('entity_id');
+      await writeCopy('PLAYLIST_ITEM', id, incomingRevision, canonicalJson({
+        'id': id, 'playlist_id': playlistId, 'revision': incomingRevision,
+        'playlist_revision': incomingRevision, 'status': 'DELETED',
+      }), true);
+    }
+    if (parent?.read<int>('tombstone') != 1) {
+      await writeCopy('PLAYLIST', playlistId, incomingRevision,
+          canonicalJson(payload), true);
+    }
+    requireActive();
+  }
+
   Future<void> apply(ChangeFeedEntry entry) async {
     void require(bool value) {
       if (!value) {
@@ -107,11 +180,14 @@ final class PlaylistChangeStore {
           variables: [Variable(playlistId)],
         )
         .getSingleOrNull();
-    if (currentParent?.read<int>('tombstone') == 1 ||
-        (currentParent?.read<int>('server_revision') ?? 0) > entry.revision) {
+    final parentTombstoned = currentParent?.read<int>('tombstone') == 1;
+    final deletedParent = projectedParent['deleted_at'] != null;
+    if ((currentParent?.read<int>('server_revision') ?? 0) > entry.revision ||
+        parentTombstoned && !deletedParent) {
       return;
     }
-    if (currentParent?.read<int>('server_revision') == entry.revision) {
+    if (!parentTombstoned &&
+        currentParent?.read<int>('server_revision') == entry.revision) {
       require(
         canonicalJson(
               jsonDecode(currentParent!.read<String>('server_payload'))
@@ -128,7 +204,6 @@ final class PlaylistChangeStore {
     final current = {
       for (final row in rows) row.read<String>('entity_id'): row,
     };
-    final deletedParent = projectedParent['deleted_at'] != null;
     for (final item in projectedItems.entries) {
       final previous = current[item.key];
       if (previous != null) {
@@ -147,10 +222,18 @@ final class PlaylistChangeStore {
         require(saved == null || saved['playlist_id'] == parentId);
         require(previous.read<int>('tombstone') == 0 || deletedParent);
         require(previous.read<int>('server_revision') <= entry.revision);
-        if (previous.read<int>('server_revision') == entry.revision) {
+        if (previous.read<int>('server_revision') == entry.revision &&
+            !(parentTombstoned && previous.read<int>('tombstone') == 1)) {
           require(canonicalJson(saved!) == canonicalJson(item.value));
         }
       }
+    }
+    if (parentTombstoned) {
+      // Older receivers could store only the parent deletion. Validate the
+      // aggregate first, then repair known children without replacing that
+      // parent's deletion proof or creating server rows for unsent drafts.
+      await _applyParentDeletion(playlistId, entry.revision, projectedParent);
+      return;
     }
     for (final row in rows) {
       final encoded = row.readNullable<String>('server_payload');

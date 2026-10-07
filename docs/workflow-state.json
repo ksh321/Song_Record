@@ -1592,9 +1592,18 @@
         "apps/mobile/lib/features/sync",
         "apps/mobile/lib/core/database"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
-      "resume": "초기 목록 관계 c8f0f72 필수 CI4 PASS. 세대 삭제e214b3a CI4 PASS. 초기 사본 잔여 범위 최종 대조는 유지하며 현재 P10-09와 충돌하지 않는 분석 가능"
+      "resume": "초기 목록 관계 c8f0f72 필수 CI4 PASS. 세대 삭제e214b3a CI4 PASS. 초기 사본 잔여 범위 최종 대조는 유지하며 현재 P10-09와 충돌하지 않는 분석 가능",
+      "evidence": "docs/verification/P10-05o-recording-baseline.md",
+      "task_evidence": {
+        "P10-05": {
+          "commit": "9f499baa75a262f11f4c7c3d9c727df1ba7466be",
+          "path": "docs/verification/P10-05o-recording-baseline.md",
+          "utc": "2026-10-07T05:28:18.934317+00:00",
+          "basis": "user-confirmed local checks + recorded direct review + exact-SHA required CI PASS"
+        }
+      }
     },
     {
       "id": "P10-06-NEXT",

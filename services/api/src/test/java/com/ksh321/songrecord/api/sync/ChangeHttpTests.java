@@ -2,7 +2,10 @@ package com.ksh321.songrecord.api.sync;
 
 import com.ksh321.songrecord.api.auth.AccountAccess;
 import com.ksh321.songrecord.api.config.SecurityConfig;
+import com.ksh321.songrecord.api.idempotency.CanonicalRequest;
 import com.ksh321.songrecord.api.web.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.*;
@@ -36,6 +39,35 @@ class ChangeHttpTests {
         access=context.getBean(AccountAccess.class);view=context.getBean(ChangeReadView.class);
     }
     @AfterEach void close(){context.close();}
+    @Test void sharedMobileWireUsesActualHttpSerializationForEveryReceiveKind()throws Exception{
+        var json=new JsonMapper();
+        var fixture=json.readTree(Files.readString(Path.of("../../fixtures/contracts/change-feed-wire.json")));
+        var account=mock(AccountAccess.Account.class);
+        when(access.authenticate("Bearer fixture","fixture-device")).thenReturn(account);
+        var seen=EnumSet.noneOf(AccountChanges.Entity.class);
+        for(var expected:fixture.get("pages")){
+            var entries=new ArrayList<ChangeWindow.Entry>();
+            for(var row:expected.get("changes")){
+                var type=AccountChanges.Entity.valueOf(row.get("entity_type").asText());seen.add(type);
+                var change=new AccountChanges.Change(type,UUID.fromString(row.get("entity_id").asText()),
+                    row.get("revision").asLong(),AccountChanges.Operation.valueOf(row.get("operation").asText()),
+                    json.writeValueAsString(row.get("payload")));
+                entries.add(new ChangeWindow.Entry(row.get("change_seq").asLong(),change,Instant.parse("2030-01-01T00:00:00Z")));
+            }
+            long after=expected.get("after_seq").asLong();
+            when(view.read(account,after,50)).thenReturn(new ChangeWindow.Page(after,
+                expected.get("next_seq").asLong(),expected.get("head_seq").asLong(),false,entries));
+            var response=mvc.perform(get("/v1/sync/changes").header("Authorization","Bearer fixture")
+                .header("X-Device-Id","fixture-device").param("after_seq",Long.toString(after)))
+                .andReturn().getResponse();
+            assertThat(response.getStatus()).isEqualTo(200);
+            assertThat(CanonicalRequest.canonical(response.getContentAsString(java.nio.charset.StandardCharsets.UTF_8)))
+                .isEqualTo(CanonicalRequest.canonical(json.writeValueAsString(expected)));
+            assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");
+            verify(view).read(account,after,50);
+        }
+        assertThat(seen).isEqualTo(EnumSet.allOf(AccountChanges.Entity.class));
+    }
     @Test void authenticatesBeforeReadingEvenWhenQueryIsMalformed()throws Exception{
         when(access.authenticate(null,null)).thenThrow(new ApiException(HttpStatus.UNAUTHORIZED,"AUTH_INVALID_SESSION","Authentication required",false,Map.of()));
         assertThat(mvc.perform(get("/v1/sync/changes").param("after_seq","bad")).andReturn().getResponse().getStatus()).isEqualTo(401);
