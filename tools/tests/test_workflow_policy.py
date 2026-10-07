@@ -118,7 +118,7 @@ class BIntegrationTests(unittest.TestCase):
     plan = fixtures.RunnerFixture.plan
     fake_ai = fixtures.RunnerFixture.fake_ai
 
-    def test_small_slice_is_checked_before_more_implementation(self):
+    def test_incomplete_implementation_continues_without_early_checks(self):
         self.runner.ai = self.fake_ai
         self.runner.step()
         def small(*args, **kwargs):
@@ -126,15 +126,21 @@ class BIntegrationTests(unittest.TestCase):
             return {'complete': False, 'changed_files': ['P10-02.txt']}
         self.runner.ai = small
         self.runner.step()
-        self.assertEqual(self.runner.data['stage'], 'FAST_VALIDATE')
-        self.runner.step()
+        with patch('sequential_runner.execute') as execute:
+            self.runner.step()
+            execute.assert_not_called()
         self.assertEqual(self.runner.data['stage'], 'IMPLEMENT')
         self.assertFalse(self.runner.checks_valid())
 
-    def test_fast_pass_reused_only_for_same_command_and_source(self):
+    def test_complete_implementation_runs_all_checks_without_ai_and_reuses_only_same_source(self):
         self.runner.ai = self.fake_ai
-        self.runner.step(); self.runner.step(); self.runner.step()
+        self.runner.step(); self.runner.step()
         self.assertEqual(self.runner.data['stage'], 'VALIDATE')
+        with patch.object(self.runner, 'ai') as ai:
+            self.runner.step()
+            ai.assert_not_called()
+        self.assertEqual(self.runner.data['stage'], 'REVIEW')
+        self.runner.data['stage'] = 'VALIDATE'
         with patch('sequential_runner.execute') as execute:
             self.runner.step(); execute.assert_not_called()
         self.assertTrue(self.runner.checks_valid())
@@ -144,6 +150,38 @@ class BIntegrationTests(unittest.TestCase):
         from workflow_runtime import execute as real_execute
         with patch('sequential_runner.execute', wraps=real_execute) as execute:
             self.runner.step(); self.assertEqual(execute.call_count, 1)
+
+    def test_retained_fast_checkpoint_does_not_run_partial_checks(self):
+        for complete, expected in ((False, 'IMPLEMENT'), (True, 'VALIDATE')):
+            self.runner.data.update(stage='FAST_VALIDATE', implementation_done=complete)
+            with patch('sequential_runner.execute') as execute:
+                self.runner.step()
+                execute.assert_not_called()
+            self.assertEqual(self.runner.data['stage'], expected)
+
+    def test_one_command_checks_preserves_main_checkpoint_and_does_not_call_ai(self):
+        self.runner.ai = self.fake_ai
+        self.runner.step(); self.runner.step()
+        original = self.runner.path.read_bytes()
+        with patch('sequential_runner.AppServer') as server:
+            result = self.runner.local_checks()
+            server.assert_not_called()
+        self.assertEqual(result['status'], 'PASS')
+        self.assertEqual(self.runner.path.read_bytes(), original)
+
+    def test_one_command_failure_preserves_checkpoint_and_never_notifies(self):
+        self.runner.ai = self.fake_ai
+        self.runner.step(); self.runner.step()
+        (self.root / 'P10-02.txt').write_text('original\n')
+        from workflow_runtime import git
+        git(self.root, 'add', '--', 'P10-02.txt')
+        (self.root / 'P10-02.txt').write_text('trailing whitespace  \n')
+        original = self.runner.path.read_bytes()
+        with patch.object(fixtures.Runner, 'record_request') as notify:
+            result = self.runner.local_checks()
+            notify.assert_not_called()
+        self.assertEqual(result['status'], 'FAIL')
+        self.assertEqual(self.runner.path.read_bytes(), original)
 
     def test_final_facts_idempotent_and_completion_gates_retained(self):
         self.runner.ai = self.fake_ai

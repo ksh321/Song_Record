@@ -85,13 +85,7 @@ def validate_plan(root, plan, task_id):
         raise Blocked('CONCRETE_MANUAL_STEPS_REQUIRED')
     if len({a['id'] for a in plan['acceptance']}) != len(plan['acceptance']):
         raise Blocked('DUPLICATE_ACCEPTANCE_ID')
-    if not plan.get('fast_checks'):
-        # Compatibility for retained plans: analysis plus one focused test.
-        quick = [dict(c) for c in plan['checks'] if c['kind'] == 'flutter-analyze'][:1]
-        focused = next((c for c in plan['checks'] if c['kind'] in ('flutter-test', 'api-test')), None)
-        if focused:
-            quick.append(dict(focused, targets=focused['targets'][:1]))
-        plan['fast_checks'] = quick or [dict(plan['checks'][0])]
+    # Retained fast_checks are historical; new plans use one complete check set.
     for check in plan['checks'] + plan.get('fast_checks', []):
         resolve_check(root, check)
     if plan.get('fast_checks') and len({c['id'] for c in plan['fast_checks']}) != len(plan['fast_checks']):
@@ -485,34 +479,48 @@ class Runner:
                 f"{facts['task_id']} 검증·검토·필수 CI 확인: {facts['commit']}. " +
                 f"근거: {self.data['plan']['verification_file']}. 최종 판정은 제어기 관문에서 확인한다.\n", encoding='utf-8')
 
-    def validate(self, fast=False):
+    def local_checks(self):
+        """Run the retained plan without AI, Git writes, or advancing its checkpoint."""
+        with RunLock(self.directory / 'runner.lock'):
+            data = read_json(self.path)
+            if data.get('root') != str(self.root):
+                raise Blocked('CHECKPOINT_WORKSPACE_MISMATCH')
+            validate_plan(self.root, data.get('plan', {}), data.get('task_id'))
+            check = Runner(self.root)
+            check.directory = self.root / '.local/workflow/runs' / ('checks-' + str(uuid.uuid4()))
+            check.path = check.directory / 'checkpoint.json'
+            check.data = {'root': str(self.root), 'task_id': data['task_id'],
+                          'plan': data['plan'], 'stage': 'VALIDATE', 'status': 'READY'}
+            check.validate()
+            return {'status': 'PASS' if check.checks_valid() else 'FAIL',
+                    'task_id': data['task_id'], 'report': str(check.path)}
+
+    def validate(self):
         current = self.source()
-        key = 'fast_results' if fast else 'results'
-        self.data[key] = []
+        previous = self.data.get('results', [])
+        self.data['results'] = []
         self.save()
-        checks = self.data['plan'].get('fast_checks') if fast else self.data['plan']['checks']
-        if not checks:
-            checks = [self.data['plan']['checks'][0]]
+        checks = self.data['plan']['checks']
         for check in checks:
             execution_id = str(uuid.uuid4())
             directory = self.directory / 'commands' / execution_id
             argv, cwd = resolve_check(self.root, check)
             self.data['command'] = {'id': execution_id, 'check': check, 'status': 'INTENT'}
             self.save()
-            cached = next((r for r in self.data.get('fast_results', []) if not fast
+            cached = next((r for r in previous if r.get('id') == check['id']
                            and r.get('fingerprint') == current and r.get('argv') == argv
                            and r.get('status') == 'PASS'), None)
             if cached:
                 directory = self.root / cached['log_directory']
                 execution_id = cached['execution_id']
-                result = dict(cached, reused_fast_result=True)
+                result = dict(cached, reused_result=True)
             else:
                 result = execute(argv, cwd, directory, min(int(check.get('timeout', 1800)), 7200), self.stopped)
             result.update(id=check['id'], fingerprint=current, execution_id=execution_id,
                           log_directory=str(directory.relative_to(self.root)))
             if not verify_report(check, result, directory, self.root):
                 result['status'] = 'FAIL' if result['status'] == 'PASS' else result['status']
-            self.data[key].append(result)
+            self.data['results'].append(result)
             self.data['command']['status'] = result['status']
             self.save()
             if result['status'] != 'PASS':
@@ -523,10 +531,7 @@ class Runner:
                 return
         if self.source() != current:
             raise Blocked('SOURCE_CHANGED_DURING_VALIDATION')
-        if fast:
-            self.data['stage'] = 'VALIDATE' if self.data.get('implementation_done', True) else 'IMPLEMENT'
-        else:
-            self.data.update(stage='REVIEW', validated_fingerprint=current)
+        self.data.update(stage='REVIEW', validated_fingerprint=current)
         self.save()
 
     def checks_valid(self):
@@ -654,9 +659,9 @@ class Runner:
                 'payload keys: task_id,title,objective,risk(general/complex/sensitive),'
                 'acceptance(array of {id,criterion,basis,checks:[check_id or review or manual]}),'
                 'sources(repo paths),scope(repo paths),verification_file(existing file),'
-                'checks(array {id,kind,targets,timeout}),fast_checks(같은 형식, 작은 분석/초점 테스트),manual({required:boolean,reason:string,preparation,steps,expected,reply}). '
+                'checks(array {id,kind,targets,timeout}),manual({required:boolean,reason:string,preparation,steps,expected,reply}). '
                 'check kinds: flutter-test,flutter-analyze,flutter-build-dev,api-test,workflow-quick,sources,diff. '
-                'fast_checks는 작은 구현 직후 실행할 분석과 가장 좁은 관련 테스트다. 전체 회귀는 checks에 유지한다. '
+                'checks에 같은 P번호의 연결된 구현 완료 후 필요한 로컬 검사를 빠짐없이 한 번씩 선언한다. '
                 'scope는 필요한 제품·테스트로 한정한다. 동기화·인증·DB 핵심은 sensitive로 지정한다.')
             result = self.ai(instruction, 'plan', read_only=True)
             if result:
@@ -697,13 +702,15 @@ class Runner:
         elif stage == 'IMPLEMENT':
             before = self.source()
             issue_id = self.data.get('active_incident')
-            result = self.ai('현재 남은 범위에서 컴파일/검사 가능한 작은 연결 단위 하나를 구현하고 즉시 인계한다. '
-                             '큰 전체 구현을 다 작성한 뒤 처음 검사하지 않는다. 선언된 fast_checks는 제어기가 실행한다. '
+            result = self.ai('같은 P번호의 승인된 연결 구현 전체를 이번 작업에서 완료한 뒤 인계한다. '
+                             '파일이나 작은 구현 단위마다 인계하지 않는다. 완료 후 checks 전체를 제어기가 한 단계에서 실행한다. '
+                             '구체적인 오류 확인에 필요한 최소 검사는 직접 할 수 있으나 최종 검사와 불필요하게 중복하지 않는다. '
                              '진행 중 문서 재작성·포맷 명령은 생략한다. 의미 변경이 필요해 단순 분류가 틀렸다면 편집 전 '
                              'continue payload에 reclassify=true와 이유를 적어 핵심 분류로 돌린다. '
                              '단순 수정은 diagnosis.files와 fix만 따른다. 환경 문제도 가능한 안전한 조치를 직접 처리한다. '
                              'payload={changed_files:[...],reason:string,complete:boolean}. '
-                             'complete=false이면 빠른 검사 뒤 같은 P번호 구현 계속, true여도 전체 지정 검증과 검토는 필수다.',
+                             '불가피하게 구현이 남으면 complete=false와 남은 범위·이유를 기록한다. '
+                             'false이면 검사 없이 같은 P번호 구현을 계속하며 true이면 전체 지정 검증과 현재 모델 검토로 진행한다.',
                              'implemented')
             if result:
                 if not isinstance(result.get('complete', True), bool):
@@ -715,11 +722,13 @@ class Runner:
                     self.data['repair_attempt'] = {'incident_id': issue_id, 'changed': changed,
                         'maximum': self.data.get('maximum_observed', False), 'turn_id': self.data['call']['turn_id']}
                     self.data['incidents'][issue_id]['last_attempt'] = dict(self.data['repair_attempt'])
-                self.data.update(stage='FAST_VALIDATE', implementation=result,
+                self.data.update(stage='VALIDATE' if result.get('complete', True) else 'IMPLEMENT', implementation=result,
                                  implementation_done=result.get('complete', True))
                 self.save()
         elif stage == 'FAST_VALIDATE':
-            self.validate(fast=True)
+            # Migrate retained checkpoints without repeating the old slice loop.
+            self.data['stage'] = 'VALIDATE' if self.data.get('implementation_done', False) else 'IMPLEMENT'
+            self.save()
         elif stage == 'VALIDATE':
             self.validate()
         elif stage == 'REVIEW':
@@ -944,13 +953,17 @@ class Runner:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=('plan', 'status', 'run', 'resume', 'stop', 'event', 'doctor'))
+    parser.add_argument('mode', choices=('plan', 'status', 'run', 'resume', 'stop', 'event', 'doctor', 'checks'))
     parser.add_argument('--end-task')
     parser.add_argument('--event-file', type=Path)
     args = parser.parse_args()
     runner = Runner()
     try:
-        if args.mode == 'plan':
+        if args.mode == 'checks':
+            result = runner.local_checks()
+            print(json.dumps(result, ensure_ascii=True, indent=2))
+            return 0 if result['status'] == 'PASS' else 1
+        elif args.mode == 'plan':
             print(json.dumps(runner.plan_only(), ensure_ascii=True, indent=2))
         elif args.mode == 'status':
             runner.load()

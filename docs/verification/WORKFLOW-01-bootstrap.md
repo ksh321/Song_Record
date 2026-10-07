@@ -210,3 +210,12 @@ GitHub 계정 선택 보정: 사용자 스크린샷과 ksh321 선택 회신에 �
 - 최종 `pwsh -NoProfile -File tools/workflow.ps1 -Mode Quick` 종료 0: Python 80개, PowerShell 관문 103개, 원본 색인과 공백 검사 PASS. 로그: `.local/workflow/runs/20261002-203029-232-70c99fe3/`.
 - 설계 Page 「Song_Record 순차 개발 워크플로우 상세 설계 v1.2」 sequence 11의 모델 표·실패 집계·17.11절을 반영하고 저장 내용을 재조회했다.
 - 기존 구독 모델 연결 근거를 재사용한다. B안의 실제 제품 실행과 속도 개선 폭은 아직 미측정이다. P10-04 완료 상태를 보존하며 P10-05는 시작하지 않았다.
+
+### WORKFLOW-09 연결 구현 완료 후 일괄 검사 — 2026-10-07
+
+- 사용자 승인: 같은 P번호 연결 구현 완료 → 필요한 로컬 검사 일괄 실행 → 현재 AI 코드 검토 → 필수 실기 → 커밋·푸시 → 필요한 Actions 확인. 작은 편집 단위마다 IMPLEMENT/FAST_VALIDATE를 반복하던 흐름을 대체했다.
+- 변경: tools/sequential_runner.py의 계획·구현 지시와 상태 전환, 검증 결과 재사용 조건, tools/workflow.ps1의 Checks 진입점. Checks는 별도 보고서를 작성하며 주 체크포인트·제품 완료 상태·Git 이력을 변경하지 않고 AI나 알림을 호출하지 않는다. 이전 fast 상태는 구현 완료 여부에 따라 안전하게 전환한다.
+- 현재 AI 직접 검토: 전체 지정 검사 전에는 REVIEW로 넘어가지 않음, 부분 구현은 IMPLEMENT 유지, 실패는 DIAGNOSE 유지, 소스 변경 시 기존 결과 무효, 필수 실기·정확 SHA CI·기존 ID/이력 보존을 확인했다. 별도 검토 에이전트와 추가 모델 호출은 사용하지 않았다.
+- 검증: pwsh -NoProfile -File tools/workflow.ps1 -Mode Quick 종료 0. Python 83개, PowerShell 관문 103개, 원본 색인·공백 검사 PASS. 최종 로그 .local/workflow/runs/20261007-094943-891-ddc3469c/. 첫 실행의 신규 실패 테스트가 staged 변경만 만들어 실제 검사 입력과 불일치했던 자료 오류를 수정한 후 재검증했다. 제품 테스트를 약화하지 않았다.
+- 설계 Page v1.2 sequence 13에 정책·한 명령 검사·검증 결과를 반영했다. 기존 B안 검증 이력은 보존한다. 새 정책의 실제 제품 실행·사용량 절감 폭은 아직 측정하지 않았다.
+- 현재 P10-05 Actions 결과는 사용자가 알려주기로 했다. 이번 작업에서 Actions 조회·제품 재개·새 push는 하지 않는다. 제품 체크포인트는 수동 변경 및 검증 근거와 별도로 대조해야 하며 이번 변경으로 완료 처리하지 않았다. 자동화 도구·문서 변경 자체는 원격 CI NOT_REQUIRED, 새 실기 불필요.

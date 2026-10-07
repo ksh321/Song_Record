@@ -899,3 +899,8 @@ P10-02 다음: mutation_supersessions.mapping_source_id는 song_aliases 필수 �
 2026-10-01 사용자 직접 갱신 후 공식 사용량0% 확인. 5a985fc CI는 API/MySQL/Development workflow3 PASS, 앱 CI36833191071 진행 중. 동일 커밋 실행의 실제 결과를 확인하며 새 구현·테스트는 계속한다.
 
 2026-10-01 기능 흐름 우선 운영 규칙을 AGENTS.md 및 development-workflow.md에 통합했다. A1→A2→A3 후 의미 있는 검증/기록/커밋 경계로 묶고, 실제 차단 시에만 독립 작업으로 전환한다. P10-02 새 후속 연결은 미커밋: 관련83 PASS/기존 skip1·분석 정상. DB 보존 이관을 확인했으며 결합 순서 검토와 실제 녹음 입력 연결은 계속 필요. 제품 기준5a985fc 필수CI4 PASS 확인. 상세는 P10-02-recording-save-dispatch.md 마지막 절. 현재 사용자 행동0건, 로컬 테스트/생성 프로세스 종료.
+
+
+### 2026-10-07 WORKFLOW-09 일괄 로컬 검증 적용
+
+같은 P번호 연결 구현 완료 후 지정 로컬 검사 일괄 실행과 현재 AI 코드 검토로 변경. Python 83/PowerShell 103·색인·차이 검사 PASS. 상세 근거: docs/verification/WORKFLOW-01-bootstrap.md의 2026-10-07 절. 설계 Page sequence 13 반영. P10-05 Actions 결과는 사용자 회신 대기이며 제품 재개·새 push 없음.
