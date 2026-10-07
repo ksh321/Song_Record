@@ -904,3 +904,8 @@ P10-02 다음: mutation_supersessions.mapping_source_id는 song_aliases 필수 �
 ### 2026-10-07 WORKFLOW-09 일괄 로컬 검증 적용
 
 같은 P번호 연결 구현 완료 후 지정 로컬 검사 일괄 실행과 현재 AI 코드 검토로 변경. Python 83/PowerShell 103·색인·차이 검사 PASS. 상세 근거: docs/verification/WORKFLOW-01-bootstrap.md의 2026-10-07 절. 설계 Page sequence 13 반영. P10-05 Actions 결과는 사용자 회신 대기이며 제품 재개·새 push 없음.
+
+
+### 2026-10-07 WORKFLOW-09 입력 축소 B안
+
+현재 작업 요약·단계별 입력·오류 단서 축소·정상 완료 AI 호출 제거 적용. Python 87/PowerShell 103 및 관련 검증 근거는 docs/verification/WORKFLOW-01-bootstrap.md 참조. 설계 Page sequence 14 반영. 사용자가 앞선 Actions 완료를 알렸으며 이번 자동화 변경은 제품 재개·완료 판정과 별개다.

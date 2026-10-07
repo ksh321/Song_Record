@@ -73,25 +73,55 @@ def stage_model(data, models, source):
     return select_model(models, risk)
 
 
+def work_summary(data):
+    """Derived navigation aid; the checkpoint and original evidence own truth."""
+    plan = data.get('plan', {})
+    return {
+        'task_id': data.get('task_id'), 'title': plan.get('title'),
+        'stage': data.get('stage'), 'status': data.get('status'), 'updated': data.get('updated'),
+        'objective': plan.get('objective'), 'scope': plan.get('scope', []),
+        'implementation_done': data.get('implementation_done', False),
+        'remaining': None if data.get('implementation_done') else data.get('implementation', {}).get('reason'),
+        'checks': [{k: r[k] for k in ('id', 'status', 'log_directory') if k in r}
+                   for r in data.get('results', [])],
+        'review_approved': data.get('review', {}).get('approved', False),
+        'manual_required': plan.get('manual', {}).get('required'),
+        'manual_pass': data.get('manual_pass', False),
+        'target_commit': data.get('target_commit'),
+        'ci': {k: data.get('ci', {}).get(k) for k in ('overall', 'commit', 'base_commit')},
+        'sources': plan.get('sources', []), 'verification_file': plan.get('verification_file'),
+        'reason': data.get('reason'),
+        'note': '탐색용 요약. 완료 판정은 원본 요구사항·실제 소스·검증 관문으로 확인한다.',
+    }
+
+
 def compact_context(data):
     plan = data.get('plan', {})
     result = {k: data.get(k) for k in ('stage', 'next_action', 'user_result') if data.get(k) is not None}
     result['plan'] = {k: plan[k] for k in ('task_id', 'title', 'objective', 'risk', 'scope',
-                                            'verification_file', 'fast_checks') if k in plan}
-    result['acceptance'] = [{k: a[k] for k in ('id', 'criterion', 'checks')} for a in plan.get('acceptance', [])]
+                                            'verification_file') if k in plan}
+    result['acceptance'] = [{k: a[k] for k in ('id', 'criterion', 'basis', 'checks')} for a in plan.get('acceptance', [])]
     result['plan_evidence'] = '.local/workflow/runs/sequential/task-context.json'
-    result['checks'] = [{k: c[k] for k in ('id', 'kind', 'targets') if k in c} for c in plan.get('checks', [])]
-    result['results'] = [{k: r[k] for k in ('id', 'status', 'exit_code', 'log_directory') if k in r}
-                         for r in data.get('results', [])]
-    result['fast_results'] = [{k: r[k] for k in ('id', 'status', 'exit_code', 'log_directory') if k in r}
-                              for r in data.get('fast_results', [])]
+    result['summary_evidence'] = '.local/workflow/runs/sequential/task-summary.json'
+    if data['stage'] in ('IMPLEMENT', 'REVIEW'):
+        result['checks'] = [{k: c[k] for k in ('id', 'kind', 'targets') if k in c} for c in plan.get('checks', [])]
+    if data['stage'] == 'REVIEW':
+        result['results'] = [{k: r[k] for k in ('id', 'status', 'exit_code', 'log_directory') if k in r}
+                             for r in data.get('results', [])]
     if data['stage'] == 'IMPLEMENT':
-        result['last_slice'] = data.get('implementation')
+        result['implementation'] = data.get('implementation')
     if data['stage'] in ('DIAGNOSE', 'IMPLEMENT'):
-        result.update(pending_failure=data.get('pending_failure'), diagnosis=data.get('diagnosis'))
+        failure = data.get('pending_failure') or {}
+        details = failure.get('details', {})
+        result['failure'] = {'id': failure.get('id'),
+                             'log_directory': details.get('result', {}).get('log_directory'),
+                             'excerpt': failure.get('excerpt'),
+                             'evidence': '.local/workflow/runs/sequential/failure.json' if failure else None}
+        result['diagnosis'] = data.get('diagnosis')
     if data['stage'] == 'DIAGNOSE':
-        result['incidents'] = [{k: i.get(k) for k in ('id', 'cause', 'evidence', 'status', 'total', 'maximum')}
+        result['incidents'] = [{k: i.get(k) for k in ('id', 'cause', 'status', 'total', 'maximum')}
                                for i in data.get('incidents', {}).values()]
+        result['incident_evidence'] = '.local/workflow/runs/sequential/checkpoint.json'
     if data['stage'] in ('IMPLEMENT', 'REVIEW', 'FINALIZE'):
         result['review'] = data.get('review')
     if data['stage'] == 'FINALIZE':

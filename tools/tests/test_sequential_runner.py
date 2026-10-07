@@ -255,7 +255,8 @@ class RunnerFixture(unittest.TestCase):
             while self.runner.data['stage'] != 'CI':
                 self.runner.step()
             self.assertEqual(git(self.root, 'ls-remote', 'origin', 'refs/heads/main').split()[0], self.runner.data['target_commit'])
-            self.runner.data.update(ci={'overall': 'NOT_REQUIRED'}, stage='FINALIZE', status='READY')
+            self.runner.data.update(ci={'overall': 'NOT_REQUIRED', 'commit': self.runner.data['target_commit'],
+                                        'base_commit': self.runner.data['push_base_commit']}, stage='FINALIZE', status='READY')
             self.runner.step()
             self.assertEqual(self.runner.data['stage'], 'COMPLETE')
             if task == 'P10-02':
@@ -393,7 +394,8 @@ class RunnerFixture(unittest.TestCase):
         self.runner.data['end_task'] = 'P10-02'
         self.runner.save()
         def ci_complete():
-            self.runner.data.update(ci={'overall': 'NOT_REQUIRED'}, stage='FINALIZE', status='READY')
+            self.runner.data.update(ci={'overall': 'NOT_REQUIRED', 'commit': self.runner.data['target_commit'],
+                                        'base_commit': self.runner.data['push_base_commit']}, stage='FINALIZE', status='READY')
         self.runner.ci_once = ci_complete
         with patch('sequential_runner.controller_hash', return_value='fixture'), patch('sequential_runner.AppServer'), patch.object(self.runner, 'notify_completion') as notice:
             self.runner.run()

@@ -187,7 +187,8 @@ class BIntegrationTests(unittest.TestCase):
         self.runner.ai = self.fake_ai
         while self.runner.data['stage'] != 'CI': self.runner.step()
         with self.assertRaises(Blocked): self.runner.write_final_facts()
-        self.runner.data['ci'] = {'overall': 'NOT_REQUIRED'}
+        self.runner.data['ci'] = {'overall': 'NOT_REQUIRED', 'commit': self.runner.data['target_commit'],
+                                  'base_commit': self.runner.data['push_base_commit']}
         self.runner.write_final_facts()
         evidence = self.root / self.runner.data['plan']['verification_file']
         before = evidence.read_bytes()
@@ -202,6 +203,68 @@ class BIntegrationTests(unittest.TestCase):
         context = compact_context(self.runner.data)
         self.assertNotIn('results', context)
         self.assertIn('final-facts.json', context['record'])
+
+    def test_normal_completion_needs_no_ai_and_summary_tracks_completion(self):
+        self.runner.ai = self.fake_ai
+        while self.runner.data['stage'] != 'CI': self.runner.step()
+        self.runner.data.update(stage='FINALIZE', ci={'overall': 'NOT_REQUIRED',
+            'commit': self.runner.data['target_commit'], 'base_commit': self.runner.data['push_base_commit']})
+        with patch.object(self.runner, 'ai') as ai:
+            self.runner.step()
+            ai.assert_not_called()
+        self.assertEqual(self.runner.data['stage'], 'COMPLETE')
+        summary = read_json(self.runner.directory / 'task-summary.json')
+        self.assertEqual(summary['stage'], 'COMPLETE')
+        self.assertEqual(summary['target_commit'], self.runner.data['target_commit'])
+        self.assertIn('P10-02', self.runner.state()['units'][0]['task_evidence'])
+
+    def test_automatic_completion_rejects_missing_or_conflicting_evidence(self):
+        import copy
+        self.runner.ai = self.fake_ai
+        while self.runner.data['stage'] != 'CI': self.runner.step()
+        self.runner.data.update(stage='FINALIZE', ci={'overall': 'PASS',
+            'commit': self.runner.data['target_commit'], 'base_commit': self.runner.data['push_base_commit']})
+        valid = copy.deepcopy(self.runner.data)
+        cases = [
+            {'reviewed_fingerprint': 'stale'},
+            {'review': {'approved': True, 'findings': ['unresolved'], 'acceptance_reviewed': ['A1']}},
+            {'review': {'approved': True, 'findings': [], 'acceptance_reviewed': []}},
+            {'ci': dict(valid['ci'], commit='a' * 40)},
+            {'ci': dict(valid['ci'], base_commit='b' * 40)},
+            {'ci': dict(valid['ci'], overall='FAIL')},
+            {'plan': dict(valid['plan'], manual={'required': True}), 'manual_pass': False},
+        ]
+        for change in cases:
+            with self.subTest(change=change):
+                self.runner.data = copy.deepcopy(valid)
+                self.runner.data.update(change)
+                with self.assertRaises(Blocked): self.runner.step()
+                self.assertFalse((self.runner.directory / 'final-facts.json').exists())
+                self.assertNotEqual(self.runner.state()['units'][0]['state'], 'done')
+
+    def test_failure_excerpt_is_bounded_and_full_evidence_retained(self):
+        directory = self.runner.directory / 'commands' / 'failure-fixture'
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / 'stderr.log').write_text('irrelevant\n' * 5000 + 'Error: expected tail\n')
+        details = {'result': {'log_directory': str(directory.relative_to(self.root))}}
+        self.runner.queue_failure('example', details)
+        context = compact_context(self.runner.data)
+        self.assertNotIn('pending_failure', context)
+        self.assertIn('Error: expected tail', context['failure']['excerpt'])
+        self.assertLessEqual(len(context['failure']['excerpt']), 6000)
+        self.assertEqual(read_json(self.runner.directory / 'failure.json')['details'], details)
+
+    def test_context_is_stage_specific_and_does_not_carry_legacy_fast_results(self):
+        self.runner.data.update(stage='IMPLEMENT', plan=self.plan(),
+            results=[{'id': 'diff', 'status': 'PASS', 'stdout': 'large' * 10000}],
+            fast_results=[{'stdout': 'legacy' * 10000}], review={'approved': False})
+        context = compact_context(self.runner.data)
+        self.assertNotIn('results', context)
+        self.assertNotIn('fast_results', context)
+        self.assertIn('basis', context['acceptance'][0])
+        self.runner.data['stage'] = 'REVIEW'
+        context = compact_context(self.runner.data)
+        self.assertEqual(context['results'], [{'id': 'diff', 'status': 'PASS'}])
 
     def test_failure_is_diagnosed_before_repair_and_not_counted_as_task_total(self):
         self.runner.queue_failure('test-failure', {'message': 'test fixture'})

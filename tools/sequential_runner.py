@@ -16,11 +16,11 @@ from pathlib import Path
 
 from codex_transport import AppServer, ProviderError
 from select_work import select
-from workflow_policy import bind_diagnosis, compact_context, stage_model
+from workflow_policy import bind_diagnosis, compact_context, stage_model, work_summary
 from workflow_runtime import (Blocked, RunLock, atomic_json, execute,
                               fingerprint, git, observation_matches, quota_available,
                               read_json, recover_json, relative_path,
-                              select_model, utc, process_alive)
+                              select_model, utc, process_alive, redact)
 
 ROOT = Path(__file__).resolve().parents[1]
 HANDOFF = {'type': 'object', 'additionalProperties': False,
@@ -171,6 +171,7 @@ class Runner:
     def save(self):
         self.data['updated'] = utc()
         atomic_json(self.path, self.data)
+        atomic_json(self.directory / 'task-summary.json', work_summary(self.data))
 
     def event(self, kind, data):
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -373,6 +374,9 @@ class Runner:
                   '사람 조치가 정말 필요하면 wait payload에 preparation,steps,expected,reply를 구체적인 한국어 문자열로 모두 제공한다. '
                   'steps는 어느 기기/앱/화면에서 무엇을 누를지 순서대로, expected는 성공 모습, reply는 전달할 결과를 적는다.\n'
                   '같은 스레드에서 이미 확인한 문서를 무조건 다시 읽지 않는다. 현재 변경·오류·필요한 원문 절만 읽는다. '
+                  '먼저 task-summary.json과 전달된 현재 단계 근거를 사용한다. 문서는 rg -n으로 해당 P번호·요구사항을 찾고 '
+                  '관련 절·함수와 연결된 계약만 읽는다. 전체 파일 출력 대신 한 번에 120줄 이내를 읽고 근거가 부족할 때 확대한다. '
+                  '성공 로그는 상태·개수·경로로 확인하고 실패 로그는 오류 주변부터 읽는다. 중요한 지적·완료 조건을 생략하지 않는다. '
                   '원문 완료 기준과 검토 근거는 task-context.json 및 연결된 원문에서 확인한다. '
                   'AI가 문서의 검사 수치·SHA를 재작성하지 않는다. 제어기가 사실 기록을 만든다.\n'
                   + json.dumps(compact_context(self.data), ensure_ascii=False))
@@ -426,24 +430,57 @@ class Runner:
             return None
         if response['action'] != expected:
             raise Blocked('UNEXPECTED_STAGE_RESPONSE')
+        if expected == 'reviewed':
+            payload['summary'] = response.get('summary', '')
         self.data.pop('last_continue', None)
         return payload
 
     def queue_failure(self, event_id, details):
+        excerpt = ''
+        log_dir = details.get('result', {}).get('log_directory')
+        if log_dir:
+            directory = relative_path(self.root, log_dir)
+            for name in ('stderr.log', 'stdout.log'):
+                path = directory / name
+                if path.is_file():
+                    # Bounded initial clue, with the full local evidence retained.
+                    with path.open('rb') as stream:
+                        stream.seek(max(0, path.stat().st_size - 4096))
+                        excerpt += name + ':\n' + stream.read(4096).decode('utf-8', errors='replace') + '\n'
+        failure = {'id': event_id, 'details': details, 'excerpt': redact(excerpt)[-6000:]}
+        atomic_json(self.directory / 'failure.json', failure)
         self.data.update(stage='DIAGNOSE', status='READY',
-                         pending_failure={'id': event_id, 'details': details})
+                         pending_failure=failure)
         self.save()
+
+    def review_valid(self):
+        review = self.data.get('review', {})
+        required = {a['id'] for a in self.data['plan']['acceptance']}
+        return (review.get('approved') is True and not review.get('findings')
+                and set(review.get('acceptance_reviewed', [])) == required
+                and self.data.get('reviewed_fingerprint') == self.source())
+
+    def completion_gates(self):
+        if not self.checks_valid() or not self.review_valid():
+            raise Blocked('FINAL_CHECKS_INVALID')
+        if self.data['plan']['manual']['required'] and not self.data.get('manual_pass'):
+            raise Blocked('FINAL_MANUAL_MISSING')
+        ci = self.data.get('ci', {})
+        if (ci.get('overall') not in ('PASS', 'NOT_REQUIRED')
+                or ci.get('commit') != self.data.get('target_commit')
+                or ci.get('base_commit') != self.data.get('push_base_commit')):
+            raise Blocked('FINAL_CI_MISSING_OR_MISMATCHED')
+        if git(self.root, 'rev-parse', 'HEAD') != self.data.get('target_commit'):
+            raise Blocked('HEAD_CHANGED_BEFORE_COMPLETION')
 
     def write_final_facts(self):
         """Write verified facts once without a generative round trip."""
-        if not self.checks_valid() or not self.data.get('review', {}).get('approved'):
-            raise Blocked('FINAL_FACTS_REQUIRE_VALIDATION_AND_REVIEW')
-        if self.data.get('ci', {}).get('overall') not in ('PASS', 'NOT_REQUIRED'):
-            raise Blocked('FINAL_FACTS_REQUIRE_CI')
+        self.completion_gates()
         facts = {'task_id': self.data['task_id'], 'commit': self.data['target_commit'],
                  'base_commit': self.data['push_base_commit'], 'ci': self.data['ci'],
                  'checks': [], 'manual_required': self.data['plan']['manual']['required'],
                  'manual_pass': self.data.get('manual_pass'),
+                 'review_summary': self.data['review'].get('summary', ''),
                  'acceptance_reviewed': self.data['review']['acceptance_reviewed']}
         for row in self.data['results']:
             item = {k: row[k] for k in ('id', 'status', 'exit_code', 'log_directory') if k in row}
@@ -466,6 +503,7 @@ class Runner:
                           (f" / 테스트 {c['passed_tests']}개" if 'passed_tests' in c else '') + '\n'
                           for c in facts['checks']) +
                 '- 검토 완료 기준: ' + ', '.join(facts['acceptance_reviewed']) + '\n'
+                '- 현재 모델 검토: ' + (facts['review_summary'] or '등록된 모든 완료 기준 검토 승인') + '\n'
                 '- 원시 근거: .local/workflow/runs/sequential/final-facts.json\n')
         path = relative_path(self.root, self.data['plan']['verification_file'])
         text = path.read_text(encoding='utf-8') if path.exists() else ''
@@ -541,7 +579,7 @@ class Runner:
                 and {r['id'] for r in self.data['results']} == {c['id'] for c in self.data['plan']['checks']})
 
     def commit(self):
-        if not self.checks_valid() or not self.data.get('review', {}).get('approved'):
+        if not self.checks_valid() or not self.review_valid():
             raise Blocked('GIT_GATE_NOT_VALIDATED')
         if self.data['plan']['manual']['required'] and not self.data.get('manual_pass'):
             raise Blocked('MANUAL_GATE_REQUIRED')
@@ -626,12 +664,7 @@ class Runner:
         self.save()
 
     def complete(self, result):
-        if not self.checks_valid() or not self.data.get('review', {}).get('approved'):
-            raise Blocked('FINAL_CHECKS_INVALID')
-        if self.data['plan']['manual']['required'] and not self.data.get('manual_pass'):
-            raise Blocked('FINAL_MANUAL_MISSING')
-        if self.data.get('ci', {}).get('overall') not in ('PASS', 'NOT_REQUIRED'):
-            raise Blocked('FINAL_CI_MISSING')
+        self.completion_gates()
         required = {a['id'] for a in self.data['plan']['acceptance']}
         if set(result.get('acceptance_passed', [])) != required:
             raise Blocked('FINAL_ACCEPTANCE_MISSING')
@@ -653,8 +686,9 @@ class Runner:
         stage = self.data['stage']
         if stage == 'PLAN':
             instruction = (
-                'AGENTS.md, 최신 progress, development-workflow, 기존 verification, requirements, decisions, '
-                'reference/search/plan.txt와 design.txt, 관련 코드를 읽고 기존 성과를 보존하여 남은 전체 범위를 확정한다. '
+                'AGENTS.md의 필수 규칙과 최신 감사 절을 준수한다. progress/development-workflow/verification/requirements/decisions 및 '
+                'reference/search/plan.txt와 design.txt에서 현재 P번호·요구사항을 검색하여 관련 절과 연결된 계약·코드만 읽는다. '
+                '문서 전체를 일괄 출력하지 않는다. 기존 성과를 보존하여 남은 전체 범위를 확정한다. '
                 '설명과 payload는 한국어. 제품 파일 편집은 아직 하지 않는다. '
                 'payload keys: task_id,title,objective,risk(general/complex/sensitive),'
                 'acceptance(array of {id,criterion,basis,checks:[check_id or review or manual]}),'
@@ -675,7 +709,8 @@ class Runner:
                 self.save()
         elif stage == 'DIAGNOSE':
             result = self.ai(
-                '읽기 전용 원인 분류. pending_failure의 실제 로그/코드를 읽고 모든 과거 원인과 비교한다. '
+                '읽기 전용 원인 분류. failure의 실제 로그/코드를 읽고 전달된 incidents의 모든 원인 ID와 비교한다. '
+                'comparisons에는 현재 P번호의 전달된 ID만 정확히 포함한다. 전체 근거는 incident_evidence에서 확인한다. '
                 '오류 문구나 테스트 이름만으로 다른 문제로 만들지 않는다. 원인이 같으면 기존 ID를 재사용한다. '
                 'payload={incident_id:existing_id or new,cause,evidence,fix,identity_basis,'
                 'comparisons:[{id,relation:same/different,evidence}],kind:syntax_import/format/fixture_contract/core/environment,'
@@ -733,13 +768,15 @@ class Runner:
             self.validate()
         elif stage == 'REVIEW':
             result = self.ai('현재 모델의 별도 코드 검토 단계다. 원문·승인 변경·전체 diff·회귀·실행 로그·'
-                             '데이터 보존·미연결 범위를 대조한다. 독립 검수라고 표현하지 않는다. '
+                             '데이터 보존·미연결 범위를 대조한다. 지적에는 해결이 필요한 사항만 넣고 모든 지적이 해소돼야 승인한다. '
+                             '판정 이유와 후속 경계는 summary에 짧게 남긴다. 정상 완료 정리는 제어기가 담당한다. 독립 검수라고 표현하지 않는다. '
                              'payload={approved:boolean,findings:[...],acceptance_reviewed:[id,...]}.', 'reviewed', read_only=True)
             if result:
                 if set(result.get('acceptance_reviewed', [])) != {a['id'] for a in self.data['plan']['acceptance']}:
                     raise Blocked('REVIEW_COVERAGE_INCOMPLETE')
                 self.data['review'] = result
-                if result.get('approved') and self.checks_valid():
+                if result.get('approved') is True and not result.get('findings') and self.checks_valid():
+                    self.data['reviewed_fingerprint'] = self.source()
                     for issue in self.data.get('incidents', {}).values():
                         issue['status'] = 'resolved'
                     self.data.pop('active_incident', None)
@@ -763,11 +800,7 @@ class Runner:
             self.ci_once()
         elif stage == 'FINALIZE':
             self.write_final_facts()
-            result = self.ai('기계 기록 final-facts.json과 기존 검토를 읽고 판정 이유/후속 경계만 기존 검증 문서에 짧게 보완한다. 수치·SHA·실행 목록을 다시 쓰지 않는다. 대상 SHA=' + self.data['target_commit'] +
-                             '. 제품 파일 수정 금지. 사후 기록 전용 커밋은 만들지 않는다. 모든 유효 완료 조건을 대조하고 '
-                             'payload={acceptance_passed:[id,...]}를 반환한다.', 'finalized')
-            if result:
-                self.complete(result)
+            self.complete({'acceptance_passed': self.data['review']['acceptance_reviewed']})
         else:
             raise Blocked('UNKNOWN_STAGE:' + stage)
 
