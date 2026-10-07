@@ -397,7 +397,7 @@ class RunnerFixture(unittest.TestCase):
             self.runner.data.update(ci={'overall': 'NOT_REQUIRED', 'commit': self.runner.data['target_commit'],
                                         'base_commit': self.runner.data['push_base_commit']}, stage='FINALIZE', status='READY')
         self.runner.ci_once = ci_complete
-        with patch('sequential_runner.controller_hash', return_value='fixture'), patch('sequential_runner.AppServer'), patch.object(self.runner, 'notify_completion') as notice:
+        with patch('sequential_runner.controller_hash', return_value='fixture'), patch('sequential_runner.AppServer'), patch('sequential_runner.start_status_monitor'), patch.object(self.runner, 'notify_completion') as notice:
             self.runner.run()
             notice.assert_called_once()
         self.assertEqual(self.runner.data['status'], 'RUN_FINISHED')

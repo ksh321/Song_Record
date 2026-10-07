@@ -16,6 +16,7 @@ from pathlib import Path
 
 from codex_transport import AppServer, ProviderError
 from workflow_usage import write_report as write_usage_report
+from workflow_status import publish as publish_status, start as start_status_monitor, without_panel
 from select_work import select
 from workflow_policy import (bind_diagnosis, compact_context, stage_model,
                              simple_diagnostic_hint, simple_diagnosis_route, simple_repair)
@@ -35,7 +36,7 @@ PROTECTED = ('tools', 'AGENTS.md', 'docs/workflow-state.json', '.github')
 
 def controller_hash(root):
     digest = hashlib.sha256()
-    for name in ('tools/sequential_runner.py', 'tools/codex_transport.py', 'tools/workflow_runtime.py', 'tools/select_work.py', 'tools/workflow_policy.py', 'tools/workflow_usage.py'):
+    for name in ('tools/sequential_runner.py', 'tools/codex_transport.py', 'tools/workflow_runtime.py', 'tools/select_work.py', 'tools/workflow_policy.py', 'tools/workflow_usage.py', 'tools/workflow_status.py'):
         path = Path(root) / name
         digest.update(name.encode() + path.read_bytes())
     return digest.hexdigest()
@@ -169,10 +170,16 @@ class Runner:
         self.tasks = read_json(self.root / 'docs/reference/search/tasks.json')
         self.data = {}
         self.client = None
+        self.status_display = False
 
     def save(self):
         self.data['updated'] = utc()
         atomic_json(self.path, self.data)
+        if getattr(self, 'status_display', False):
+            try:
+                publish_status(self.root, self.data, True)
+            except (OSError, ValueError):
+                self.event('status_display_unavailable', {'reason': 'LOCAL_DISPLAY_WRITE_FAILED'})
 
     def event(self, kind, data):
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -604,7 +611,10 @@ class Runner:
                                               'docs/workflow-state.json', '내가할일.md', 'docs/verification/user-action-records.md']
         for name, expected_hash in self.data.get('pending_records', {}).items():
             path = relative_path(self.root, name)
-            if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != expected_hash:
+            content = path.read_bytes() if path.is_file() else b''
+            if name == '내가할일.md' and path.is_file():
+                content = without_panel(content.decode('utf-8')).encode('utf-8')
+            if not path.is_file() or hashlib.sha256(content).hexdigest() != expected_hash:
                 raise Blocked('CARRIED_EVIDENCE_CHANGED:' + name)
             allowed.append(name)
         for path in paths:
@@ -903,6 +913,9 @@ class Runner:
                 if git(self.root, 'branch', '--show-current') != 'main':
                     raise Blocked('CURRENT_AUTOMATION_REQUIRES_MAIN')
                 self.initialize_task(item, end_task)
+            start_status_monitor(self.root)
+            self.status_display = True
+            self.save()
             with AppServer(str(self.root)) as client:
                 self.client = client
                 self.reconcile_call()
