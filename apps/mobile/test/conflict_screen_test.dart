@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/core/database/local_models.dart';
+import 'package:song_record/core/sync/canonical_conflict_plan.dart';
 import 'package:song_record/core/sync/conflict_resolution_plan.dart';
 import 'package:song_record/core/sync/conflict_review.dart';
 import 'package:song_record/features/sync/conflict_screen.dart';
@@ -55,7 +56,61 @@ class Actions implements ConflictActions {
   }
 }
 
+final class CanonicalActions implements CanonicalConflictActions {
+  int calls = 0;
+  bool fail = false;
+  Completer<void>? pending;
+  ConflictChoice? choice;
+  @override
+  Future<List<CanonicalConflictReview>> canonicalCandidates() async => [await reviewCanonical('candidate')];
+  @override
+  Future<CanonicalConflictReview> reviewCanonical(String intentId) async => CanonicalConflictReview(
+    intentId: intentId, state: 'OPEN', evidence: '{}',
+    serverJson: jsonEncode({...songChange(payloadId, 2), 'note': '서버 개인 메모'}),
+    candidateJson: '{"note":"보존된 개인 메모"}',
+  );
+  @override
+  Future<void> resolveCanonical(CanonicalConflictReview review, ConflictChoice selected) async {
+    calls++;
+    choice = selected;
+    await pending?.future;
+    if (fail) throw StateError('stale');
+  }
+}
+
 void main() {
+  testWidgets('canonical choice shows both sides, blocks double taps and permits review after stale save', (tester) async {
+    final actions = CanonicalActions()..pending = Completer<void>()..fail = true;
+    await tester.pumpWidget(MaterialApp(home: CanonicalConflictScreen(actions: actions, intentId: 'candidate')));
+    await tester.pumpAndSettle();
+    expect(find.text('서버 값: 서버 개인 메모'), findsOneWidget);
+    expect(find.text('이 기기 입력: 보존된 개인 메모'), findsOneWidget);
+    expect(actions.calls, 0);
+    await tester.tap(find.text('이 기기 입력 사용'));
+    await tester.pump();
+    expect(tester.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, '이 기기 입력 사용')).onPressed, isNull);
+    expect(actions.calls, 1);
+    actions.pending!.complete();
+    await tester.pumpAndSettle();
+    expect(find.textContaining('정보가 바뀌었거나'), findsOneWidget);
+    await tester.tap(find.text('다시 확인'));
+    await tester.pumpAndSettle();
+    expect(find.text('서버 값: 서버 개인 메모'), findsOneWidget);
+    expect(actions.calls, 1);
+  });
+  testWidgets('canonical cancellation leaves the candidate untouched', (tester) async {
+    final actions = CanonicalActions();
+    await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) => TextButton(
+      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CanonicalConflictScreen(actions: actions, intentId: 'candidate'))),
+      child: const Text('검토 열기'),
+    ))));
+    await tester.tap(find.text('검토 열기'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(actions.calls, 0);
+    expect(find.text('검토 열기'), findsOneWidget);
+  });
   testWidgets('condition choice uses approved D06 labels', (tester) async {
     final base = {
       ...recordingWire('RecordingEdited'),

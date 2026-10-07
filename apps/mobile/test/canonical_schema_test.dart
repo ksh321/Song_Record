@@ -18,7 +18,7 @@ const canonicalTables = [
   'canonical_edit_intents',
   'mutation_mapping_holds',
 ];
-const added = [...canonicalTables, 'mutation_conflict_resolutions'];
+const added = [...canonicalTables, 'mutation_conflict_resolutions', 'pending_edit_resolutions'];
 
 Future<void> assertOrderProtected(AccountDatabase db) async {
   final before =
@@ -123,8 +123,8 @@ void main() {
       await directory.delete(recursive: true);
     }
   });
-  for (final version in [1, 2, 3, 4, 5, 6, 7]) {
-    test('v$version to v8 preserves old rows, wire, budget, cursor and synthetic file', () async {
+  for (final version in [1, 2, 3, 4, 5, 6, 7, 8]) {
+    test('v$version to v9 preserves old rows, wire, budget, cursor and synthetic file', () async {
       final directory = await Directory.systemTemp.createTemp(
         'sr-canonical-migration-',
       );
@@ -232,7 +232,7 @@ void main() {
           owner,
         ]);
       }
-      if (version == 7) {
+      if (version >= 7) {
         // Nonempty v7 history must survive the trigger-only v8 migration.
         final recorded = jsonEncode({'id': recording, 'revision': 1});
         old.execute(
@@ -314,7 +314,7 @@ void main() {
               .data
               .values
               .single,
-          8,
+          9,
         );
         for (final entry in before.entries) {
           expect(
@@ -632,7 +632,7 @@ void main() {
       }
       expect(exported['format'], 'song-record-local-recovery');
       expect(exported['version'], 2);
-      expect(exported['schema_version'], 8);
+      expect(exported['schema_version'], 9);
       expect(tables['local_mutations'], mutationsBefore);
 
       final mutations = (tables['local_mutations'] as List)

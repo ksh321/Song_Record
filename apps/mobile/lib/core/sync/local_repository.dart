@@ -5,6 +5,7 @@ import '../../features/auth/auth_session.dart';
 import '../database/account_store.dart';
 import '../database/local_models.dart';
 import '../domain/identifiers.dart';
+import 'canonical_conflict_plan.dart';
 import 'conflict_resolution_plan.dart';
 import 'conflict_review.dart';
 import 'dependency_planner.dart';
@@ -13,7 +14,7 @@ import 'mutation_transport.dart';
 
 /// Prepare once, retain the command, then save. A failed save is retried with
 /// the same command, never by calling prepare again. Network sending is P10-02.
-final class LocalRepository implements ConflictActions {
+final class LocalRepository implements ConflictActions, CanonicalConflictActions {
   LocalRepository(this._store, {String Function()? newId})
     : _newId = newId ?? _uuid;
 
@@ -92,6 +93,14 @@ final class LocalRepository implements ConflictActions {
 
   Future<List<QueuedMutation>> pendingWork() => _store.pendingWorkMutations();
 
+  @override
+  Future<List<CanonicalConflictReview>> canonicalCandidates() => _store.canonicalCandidates();
+  @override
+  Future<CanonicalConflictReview> reviewCanonical(String intentId) => _store.readCanonicalConflict(intentId);
+  @override
+  Future<void> resolveCanonical(CanonicalConflictReview review, ConflictChoice choice) =>
+      _store.resolveCanonicalConflict(review, choice, _newId());
+
   Future<int> unlinkedOfflineRecordingCount() =>
       _store.unlinkedOfflineRecordingCount();
 
@@ -103,12 +112,18 @@ final class LocalRepository implements ConflictActions {
     ConflictReview review,
     Map<String, ConflictChoice> choices,
   ) {
-    final plan = prepareConflictResolution(review.mutation, choices: choices);
+    final plan = prepareConflictResolution(
+      review.mutation, choices: choices, serverSnapshot: review.server,
+      pendingReview: review.pendingReview,
+    );
     return _store.resolveMetadataConflict(
       expected: review.mutation,
       expectedLocalJson: review.localJson,
       replacementOpId: plan.needsRequest ? _newId() : null,
       choices: choices,
+      expectedServerJson: review.serverJson,
+      expectedQueueEvidence: review.queueEvidence,
+      pendingReview: review.pendingReview,
     );
   }
 

@@ -632,3 +632,34 @@ AI 해결: 저장소 경로 한정 safe.directory로 읽기 Git 조회. 전역 �
 - 준비·결과: 현재 대화에 "USER-035 중단 원인과 해결 절차 알려줘"라고 보내 주세요. AI가 저장된 오류를 확인해 실제 필요한 로그인 화면·승인 버튼 또는 판단 사항을 안내합니다. 아직 특정 조작 방법은 확인되지 않았으므로 임의 설정 변경은 필요 없습니다.
 
 - 2026-10-07 해결: 과거 ALL_RETAINED_CAUSES_MUST_BE_COMPARED 원인 비교 형식 오류의 요청. 사용자 수동 제품 수정·검사·커밋과 코드 검토·정확 SHA CI 완료를 대조하고 체크포인트를 복구했다. 로그인/승인/추가 회신 불필요. 원래 실패 이력은 보존한다.
+
+### USER-036 — P10-07 실행기 확인
+
+- 상태: **응답 수신**
+- 작업 ID: P10-07
+- 요청 판본: 2
+- 알림 종류: PhoneTest
+- 알림 행동: PhoneSteps
+- 요청 시각: 2026-10-07T08:50:58.148488+00:00
+- 대상: fb95e338537a5781446d30165c59b86086d79c2a8078f34ae06914cb1eb30d2f
+- 이유: MANUAL_TEST_REQUIRED
+- 준비·결과: 1. 안내된 Android 휴대폰에서 별도 ‘노래기록 동기화 검증’ 앱을 연다. 2. 새 canonical 개인 편집 검증 사례를 열고 서버 값과 이 기기 후보가 구분되는지 확인한다. 3. 뒤로 가기로 취소한 뒤 다시 열어 후보가 그대로 남는지 확인한다. 4. 서로 별도로 준비된 합성 사례에서 서버 값 사용과 이 기기 값 사용을 각각 선택하고 대기·완료 표시를 확인한다. 5. 화면을 연 상태에서 합성 최신 값 변경 사례를 수행해 이전 선택이 그대로 저장되지 않고 다시 비교되는지 확인한다. 6. 글자 크기를 키운 상태에서 값과 버튼이 잘리지 않는지 확인한다. 정확한 사례 버튼과 결과 표시는 구현 완료 판본에 맞춰 제어기가 안내한다.
+
+- 변경 이유: 최신 검증 앱 설치 완료. 기존 폰 앱 서명 불일치 때문에 기존 앱을 보존한 .verification.laptop 패키지로 설치했다. 실제 버튼과 관찰 순서를 판본2로 구체화했다.
+- 설치 근거: .local/workflow/runs/sequential/P10-07-phone-install.json. adb install Success 및 activity 실행 접수 확인, 실기 결과는 아직 대기.
+
+- 사용자 결과: User explicitly confirmed USER-036 revision 2 scenarios 1 through 5 all passed. Earlier apparent stall was corrected by user: mistakenly selected server values instead of local input. USB-disconnected synthetic verification passed; no real server/device-pair validation claimed.
+
+### USER-037 — P10-07 실행기 확인
+
+- 상태: **AI 해결 완료**
+- 작업 ID: P10-07
+- 요청 판본: 1
+- 알림 종류: Intervention
+- 알림 행동: Details
+- 요청 시각: 2026-10-07T10:09:06.592989+00:00
+- 대상: fb95e338537a5781446d30165c59b86086d79c2a8078f34ae06914cb1eb30d2f
+- 이유: EXECUTION_BLOCKED
+- 준비·결과: 현재 대화에 "USER-037 중단 원인과 해결 절차 알려줘"라고 보내 주세요. AI가 저장된 오류를 확인해 실제 필요한 로그인 화면·승인 버튼 또는 판단 사항을 안내합니다. 아직 특정 조작 방법은 확인되지 않았으므로 임의 설정 변경은 필요 없습니다.
+
+- 해결: 검증·검토된 v9 DB 파일의 계획 소유 목록 누락을 AI가 보정했다. 사용자 조치 불필요. USER-036 판본2의 1~5 통과 확인은 유지한다.

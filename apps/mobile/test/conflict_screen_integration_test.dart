@@ -11,8 +11,9 @@ import 'package:song_record/core/sync/conflict_resolution_plan.dart';
 import 'package:song_record/core/sync/conflict_review.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/features/sync/conflict_screen.dart';
+import 'package:song_record/features/sync/sync_controller.dart';
 
-import 'metadata_dispatcher_test.dart' show id, tag;
+import 'metadata_dispatcher_test.dart' show id, tag, FakeTransport;
 
 // Observes completion only: all reads and writes use the real repository.
 class ObservedActions implements ConflictActions {
@@ -46,7 +47,7 @@ class ObservedActions implements ConflictActions {
 }
 
 void main() {
-  for (final selection in ['local', 'server', 'accountChanged']) {
+  for (final selection in ['local', 'server', 'accountChanged', 'pendingLocal', 'pendingServer']) {
     testWidgets(
       'real conflict screen persists $selection choice without losing original request',
       (tester) async {
@@ -98,6 +99,21 @@ void main() {
             serverSnapshot: tag(id(10), name: 'remote', revision: 2),
           );
           original = (await store.pendingMutations()).single;
+          if (selection.startsWith('pending')) {
+            final younger = repository.preparePatch(entity: LocalEntity.tag,
+              entityId: id(10), baseRevision: 1,
+              draft: tag(id(10), name: 'local'), changes: {'name': 'local'});
+            await repository.save(younger);
+            await repository.resolve(await repository.review(original.opId), {'name': ConflictChoice.server});
+            original = (await store.pendingMutations()).singleWhere((m) => m.opId == younger.opId);
+            expect(original.state, 'PENDING');
+            expect(original.serverResponse, isNull);
+            expect(await store.claimMutation(), isNull);
+            final backend = RepositorySyncBackend(repository,
+              FakeTransport((_) async => throw StateError('read must not send')),
+              () async => throw StateError('read must not authenticate'));
+            expect((await backend.load()).single.pendingReview, isTrue);
+          }
           originalDraft = (await store.readMetadata(
             LocalEntity.tag,
             id(10),
@@ -140,7 +156,7 @@ void main() {
             });
           }
           final button = find.text(
-            selection == 'server' ? '서버 값 사용' : '이 기기 입력 사용',
+            selection == 'server' || selection == 'pendingServer' ? '서버 값 사용' : '이 기기 입력 사용',
           );
           await tester.ensureVisible(button);
           await tester.runAsync(() async {
@@ -172,7 +188,7 @@ void main() {
               final other = await manager.openAccount(id(2));
               expect(await other.pendingMutations(), isEmpty);
               expect(await other.readMetadata(LocalEntity.tag, id(10)), isNull);
-            } else if (selection == 'server') {
+            } else if (selection == 'server' || selection == 'pendingServer') {
               expect(remaining, isEmpty);
               expect(jsonDecode(copy.localJson!)['name'], 'remote');
               expect(jsonDecode(copy.serverJson!)['name'], 'remote');

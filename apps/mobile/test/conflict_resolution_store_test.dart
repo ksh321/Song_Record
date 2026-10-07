@@ -127,6 +127,26 @@ void main() {
     },
   );
 
+  test('review refreshes a received newer server but rejects changes after review', () async {
+    final db = await raw();
+    try {
+      await db.customStatement("UPDATE metadata_copies SET server_revision=3,server_payload=? WHERE entity_type='TAG' AND entity_id=?",
+        [canonicalJson(tag(id(10), name: 'latest', revision: 3)), id(10)]);
+      final review = await repo.review(conflict.opId);
+      expect(review.server['revision'], 3);
+      expect(review.mutation.serverResponse, conflict.serverResponse);
+      await db.customStatement("UPDATE metadata_copies SET server_revision=4,server_payload=? WHERE entity_type='TAG' AND entity_id=?",
+        [canonicalJson(tag(id(10), name: 'latest again', revision: 4)), id(10)]);
+      final before = await tables();
+      await expectLater(repo.resolve(review, {'name': ConflictChoice.local}), throwsStateError);
+      expect(await tables(), before);
+      final refreshed = await repo.review(conflict.opId);
+      await repo.resolve(refreshed, {'name': ConflictChoice.local});
+      expect((await store.pendingWorkMutations()).single.baseRevision, 4);
+      expect((await store.pendingMutations()).first.serverResponse, conflict.serverResponse);
+    } finally { await db.close(); }
+  });
+
   for (final mode in ['newer', 'deleted', 'different']) {
     test(
       'changed server baseline $mode rejects stale conflict resolution',
@@ -275,7 +295,72 @@ void main() {
           .attemptCount,
       0,
     );
+    final beforeReview = await tables();
+    final review = await repo.review(younger.opId);
+    expect(review.pendingReview, isTrue);
+    expect(review.server['revision'], 3);
+    expect(review.local['name'], 'newer');
+    expect(await tables(), beforeReview);
+    await repo.resolve(review, {'name': ConflictChoice.local});
+    await expectLater(repo.resolve(review, {'name': ConflictChoice.local}), throwsStateError);
+    final selected = await tables();
+    expect(selected['mutation_conflict_resolutions'], beforeReview['mutation_conflict_resolutions']);
+    expect(selected['pending_edit_resolutions'], hasLength(1));
+    for (final table in ['local_mutations', 'mutation_wire_requests', 'mutation_retry_controls']) {
+      for (final old in beforeReview[table] as List<dynamic>) {
+        expect((selected[table] as List<dynamic>).where((r) => (r as Map)['op_id'] == (old as Map)['op_id']).single, old);
+      }
+    }
+    await manager.logout();
+    store = await manager.openAccount(id(1));
+    final replacement = (await store.claimMutation())!;
+    expect(replacement.mutation.opId, isNot(younger.opId));
+    expect(replacement.mutation.baseRevision, 3);
+    expect(jsonDecode(replacement.mutation.payload)['name'], 'newer');
+    await store.acknowledgeMutation(replacement, tag(id(10), name: 'newer', revision: 4));
+    expect(await store.pendingWorkMutations(), isEmpty);
+    expect(await store.claimMutation(), isNull);
   });
+
+  for (final failure in ['sql', 'lease', 'queue', 'server', 'account']) {
+    test('pending review rejects $failure without losing retained history', () async {
+      final younger = repo.preparePatch(entity: LocalEntity.tag, entityId: id(10),
+        baseRevision: 1, draft: tag(id(10), name: 'newer'), changes: {'name': 'newer'});
+      await repo.save(younger);
+      await resolve(expectedDraft: (await store.readMetadata(LocalEntity.tag, id(10)))!.localJson);
+      await store.acknowledgeMutation((await store.claimMutation())!, tag(id(10), name: 'local', revision: 3));
+      final review = await repo.review(younger.opId);
+      if (failure == 'queue') {
+        await repo.save(repo.preparePatch(entity: LocalEntity.tag, entityId: id(10),
+          baseRevision: 3, draft: tag(id(10), name: 'latest', revision: 3), changes: {'name': 'latest'}));
+      }
+      final db = await raw();
+      try {
+        if (failure == 'server') {
+          await db.customStatement('UPDATE metadata_copies SET server_revision=4,server_payload=? WHERE entity_id=?',
+            [jsonEncode(tag(id(10), name: 'changed', revision: 4)), id(10)]);
+        }
+        final before = await tables();
+        if (failure == 'sql') {
+          await db.customStatement("CREATE TEMP TRIGGER reject_pending BEFORE UPDATE ON metadata_copies BEGIN SELECT RAISE(ABORT,'injected late failure'); END");
+        }
+        if (failure == 'account') {
+          await manager.openAccount(id(2));
+          await expectLater(repo.resolve(review, {'name': ConflictChoice.local}), throwsStateError);
+          store = await manager.openAccount(id(1));
+        } else {
+          var fences = 0;
+          await expectLater(db.transaction(() => ConflictResolutionStore(db, () {
+            if (failure == 'lease' && ++fences == 2) throw StateError('lost lease');
+          }).resolve(expected: review.mutation, expectedLocalJson: review.localJson,
+            replacementOpId: id(40), choices: {'name': ConflictChoice.local}, now: 1,
+            expectedServerJson: review.serverJson, expectedQueueEvidence: review.queueEvidence,
+            pendingReview: true)), throwsA(anyOf(isA<StateError>(), isA<Exception>())));
+        }
+        expect(await tables(), before);
+      } finally { await db.close(); }
+    });
+  }
   test('duplicate application rejects without another queue entry', () async {
     await resolve();
     final before = await tables();

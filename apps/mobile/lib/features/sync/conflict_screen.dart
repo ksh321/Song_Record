@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
+import '../../core/database/local_models.dart';
+import '../../core/sync/canonical_conflict_plan.dart';
 import '../../core/sync/conflict_resolution_plan.dart';
 import '../../core/sync/conflict_review.dart';
 import '../../core/theme/app_tokens.dart';
@@ -162,6 +166,8 @@ class _ConflictScreenState extends State<ConflictScreen> {
                 ),
               ],
               if (review != null) ...[
+                if (review.pendingReview)
+                  const Text('자동 전송을 보류한 입력이에요. 최신 서버 값과 비교해 다시 선택해 주세요.'),
                 Text(
                   review.comparison.requiresChoice
                       ? '같은 항목이 다르게 수정됐어요'
@@ -169,6 +175,10 @@ class _ConflictScreenState extends State<ConflictScreen> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: AppSpacing.md),
+                if (review.localJson != null &&
+                    canonicalJson(jsonDecode(review.localJson!) as Map<String, dynamic>) !=
+                        canonicalJson(review.local))
+                  const Text('이 충돌 이후 저장된 초안은 별도로 보존돼요. 아래 선택은 충돌한 요청의 입력에 적용돼요.'),
                 Text(
                   review.comparison.requiresChoice
                       ? '아래 두 입력을 확인하고 사용할 쪽을 선택해 주세요. 충돌하지 않은 변경은 함께 유지돼요.'
@@ -216,5 +226,93 @@ class _ConflictScreenState extends State<ConflictScreen> {
         ),
       ),
     );
+  }
+}
+
+class CanonicalConflictScreen extends StatefulWidget {
+  const CanonicalConflictScreen({required this.actions, required this.intentId, super.key});
+  final CanonicalConflictActions actions;
+  final String intentId;
+  @override
+  State<CanonicalConflictScreen> createState() => _CanonicalConflictScreenState();
+}
+
+class _CanonicalConflictScreenState extends State<CanonicalConflictScreen> {
+  CanonicalConflictReview? _review;
+  bool _busy = false;
+  String? _message;
+  @override
+  void initState() { super.initState(); _load(); }
+
+  Future<void> _load() async {
+    if (_busy) return;
+    setState(() { _busy = true; _message = null; _review = null; });
+    try {
+      final value = await widget.actions.reviewCanonical(widget.intentId);
+      if (mounted) setState(() => _review = value);
+    } catch (_) {
+      if (mounted) setState(() => _message = '정보를 확인하지 못했어요. 입력은 보존돼요.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _choose(ConflictChoice choice) async {
+    final review = _review;
+    if (_busy || review == null || !review.canChoose) return;
+    setState(() => _busy = true);
+    try {
+      await widget.actions.resolveCanonical(review, choice);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _review = null;
+          _message = '정보가 바뀌었거나 저장하지 못했어요. 다시 확인한 뒤 선택해 주세요. 입력은 보존돼요.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final review = _review;
+    return PopScope(canPop: !_busy, child: Scaffold(
+      appBar: AppBar(title: const Text('같은 곡의 개인 편집')),
+      body: SafeArea(child: ListView(padding: const EdgeInsets.all(AppSpacing.lg), children: [
+        if (_busy) const LinearProgressIndicator(),
+        if (_message != null) Text(_message!),
+        if (review?.blockedReason != null) Text(review!.blockedReason!),
+        if (review != null && review.canChoose) ...[
+          const Text('같은 곡으로 연결되기 전의 입력이에요. 서로 다른 곡의 값을 자동으로 합치지 않아요. 사용할 쪽을 선택해 주세요.'),
+          if (review.latestDraft case final Map<String, dynamic> draft)
+            if (canonicalSongFields.any((key) => draft[key] != review.server[key] && draft[key] != review.candidate[key]))
+              Card(child: Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('별도로 보존되는 최신 초안'),
+                  for (final key in canonicalSongFields)
+                    if (draft[key] != review.server[key])
+                      Text('${_ConflictScreenState._labels[key]}: ${draft[key] ?? '없음'}'),
+                ],
+              ))),
+          for (final field in review.candidate.keys)
+            Card(child: Padding(padding: const EdgeInsets.all(AppSpacing.md), child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_ConflictScreenState._labels[field] ?? '변경 항목'),
+                Text('서버 값: ${review.server[field] ?? '없음'}'),
+                Text('이 기기 입력: ${review.candidate[field] ?? '없음'}'),
+              ],
+            ))),
+          FilledButton(onPressed: _busy ? null : () => _choose(ConflictChoice.server), child: const Text('서버 값 사용')),
+          OutlinedButton(onPressed: _busy ? null : () => _choose(ConflictChoice.local), child: const Text('이 기기 입력 사용')),
+          const Text('선택 후에도 서버 전송이 필요한 변경은 대기 상태로 남아요. 이후에 저장한 초안과 원본 입력은 보존돼요.'),
+        ],
+        OutlinedButton(onPressed: _busy ? null : _load, child: const Text('다시 확인')),
+      ])),
+    ));
   }
 }

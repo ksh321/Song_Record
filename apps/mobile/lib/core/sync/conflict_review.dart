@@ -10,12 +10,24 @@ final class ConflictReview {
     this.mutation,
     this.localJson, {
     Map<String, String> tagNames = const {},
+    this.serverJson,
+    this.queueEvidence,
+    this.pendingReview = false,
   }) : tagNames = Map.unmodifiable(tagNames),
        comparison =
-           compareMetadataConflict(mutation) ??
+           compareMetadataConflict(
+             mutation,
+             pendingReview: pendingReview,
+             serverSnapshot: serverJson == null
+                 ? null
+                 : jsonDecode(serverJson) as Map<String, dynamic>,
+           ) ??
            (throw StateError('This conflict needs another resolution path'));
   final QueuedMutation mutation;
   final String? localJson;
+  final String? serverJson;
+  final String? queueEvidence;
+  final bool pendingReview;
   final ThreeWayComparison comparison;
   final Map<String, String> tagNames;
 
@@ -31,7 +43,9 @@ final class ConflictReview {
   }
 
   Map<String, dynamic> get server => Map<String, dynamic>.from(
-    (jsonDecode(mutation.serverResponse!) as Map)['current'] as Map,
+    serverJson == null
+        ? (jsonDecode(mutation.serverResponse!) as Map)['current'] as Map
+        : jsonDecode(serverJson!) as Map,
   );
   Map<String, dynamic> get local => {
     ...jsonDecode(mutation.basePayload!) as Map<String, dynamic>,

@@ -258,8 +258,8 @@ Future<bool> materializeCanonicalReferences(
       if (row.read<String>('user_id') != db.userId) continue;
       if ((await _select(
         db,
-        'SELECT original_op_id FROM mutation_supersessions WHERE original_op_id=? OR replacement_op_id=? UNION SELECT original_op_id FROM recording_followups WHERE original_op_id=? OR replacement_op_id=? UNION SELECT original_op_id FROM mutation_conflict_resolutions WHERE original_op_id=? OR replacement_op_id=?',
-        List.filled(6, original.opId),
+        'SELECT original_op_id FROM mutation_supersessions WHERE original_op_id=? OR replacement_op_id=? UNION SELECT original_op_id FROM recording_followups WHERE original_op_id=? OR replacement_op_id=? UNION SELECT original_op_id FROM mutation_conflict_resolutions WHERE original_op_id=? OR replacement_op_id=? UNION SELECT original_op_id FROM pending_edit_resolutions WHERE original_op_id=? OR replacement_op_id=?',
+        List.filled(8, original.opId),
       )).isNotEmpty) {
         continue;
       }

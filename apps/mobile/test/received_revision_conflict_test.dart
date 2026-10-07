@@ -122,15 +122,25 @@ void main() {
       expect(review.comparison.requiresChoice, isTrue);
       expect(review.local['note'], 'my offline note');
       expect(review.server['note'], 'other device note');
-      await repository.resolve(review, {'note': ConflictChoice.local});
+      final newest = {...remote, 'revision': 3, 'note': 'newest server note'};
+      await store.applyChangeFeed(ChangeFeedPage.decode(jsonEncode({
+        'after_seq': 8, 'next_seq': 9, 'head_seq': 9, 'has_more': false,
+        'changes': [{'change_seq': 9, 'entity_type': 'SONG', 'entity_id': target,
+          'revision': 3, 'operation': 'UPSERT', 'payload': newest}],
+      }), owner: owner, expectedAfter: 8), snapshotToken: token);
+      await expectLater(repository.resolve(review, {'note': ConflictChoice.local}), throwsStateError);
+      final refreshed = await repository.review(original.opId);
+      expect(refreshed.server['revision'], 3);
+      expect(refreshed.mutation.serverResponse, conflict.serverResponse);
+      await repository.resolve(refreshed, {'note': ConflictChoice.local});
       final replacement = (await store.pendingWorkMutations()).single;
       expect(replacement.opId, isNot(original.opId));
-      expect(replacement.baseRevision, 2);
+      expect(replacement.baseRevision, 3);
       final ack = FakeTransport((request) async {
         expect(request.mutation.opId, replacement.opId);
         return MutationResponse(
           200,
-          jsonEncode({...remote, 'revision': 3, 'note': 'my offline note'}),
+          jsonEncode({...newest, 'revision': 4, 'note': 'my offline note'}),
         );
       });
       expect(

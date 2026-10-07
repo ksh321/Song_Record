@@ -6,8 +6,21 @@ import 'package:drift/drift.dart';
 import '../domain/identifiers.dart';
 import '../sync/conflict_resolution_plan.dart';
 import 'account_database.dart';
+import 'canonical_conflict_store.dart';
 import 'local_models.dart';
 import 'mapping_eligibility.dart';
+
+Future<String> conflictQueueEvidence(
+  AccountDatabase db,
+  LocalEntity entity,
+  String id,
+) async {
+  final rows = await db.customSelect(
+    'SELECT rowid AS local_order,* FROM local_mutations WHERE entity_type=? AND entity_id=? ORDER BY rowid',
+    variables: [Variable(entity.code), Variable(id)],
+  ).get();
+  return canonicalJson({'queue': [for (final row in rows) row.data]});
+}
 
 /// Internal helper. Caller owns serialization, transaction and account fence.
 final class ConflictResolutionStore {
@@ -21,6 +34,9 @@ final class ConflictResolutionStore {
     required String? replacementOpId,
     required Map<String, ConflictChoice> choices,
     required int now,
+    String? expectedServerJson,
+    String? expectedQueueEvidence,
+    bool pendingReview = false,
   }) async {
     requireActive();
     final row = await db
@@ -45,10 +61,29 @@ final class ConflictResolutionStore {
       throw StateError('Conflict source changed');
     }
     final mapping = await readMappingEligibility(db);
-    if (!mapping.allows(expected.opId)) {
+    if (pendingReview) {
+      final unrestricted = await readMappingEligibility(db, holdDrafts: false);
+      final wire = await db.customSelect('SELECT op_id FROM mutation_wire_requests WHERE op_id=?', variables: [Variable(expected.opId)]).get();
+      if (!mapping.blocked.contains(expected.opId) || !unrestricted.allows(expected.opId) ||
+          wire.isNotEmpty || expectedServerJson == null || expectedQueueEvidence == null) {
+        throw StateError('Pending draft is no longer reviewable');
+      }
+    } else if (!mapping.allows(expected.opId)) {
       throw StateError('Conflict is held or already resolved');
     }
-    final plan = prepareConflictResolution(expected, choices: choices);
+    if (expectedQueueEvidence != null &&
+        expectedQueueEvidence !=
+            await conflictQueueEvidence(db, expected.entity, expected.entityId)) {
+      throw StateError('Related conflict queue changed');
+    }
+    final plan = prepareConflictResolution(
+      expected,
+      choices: choices,
+      pendingReview: pendingReview,
+      serverSnapshot: expectedServerJson == null
+          ? null
+          : jsonDecode(expectedServerJson) as Map<String, dynamic>,
+    );
     final server = jsonDecode(plan.serverJson) as Map<String, dynamic>;
     if (server.containsKey('user_id') && server['user_id'] != db.userId) {
       throw StateError('Conflict owner mismatch');
@@ -67,6 +102,7 @@ final class ConflictResolutionStore {
         copy.read<String>('user_id') != db.userId ||
         copy.read<int>('tombstone') != 0 ||
         copy.readNullable<String>('local_payload') != expectedLocalJson ||
+        (expectedServerJson != null && copy.read<int>('server_revision') != revision) ||
         copy.read<int>('server_revision') > revision) {
       throw StateError('Conflict copy changed or target was deleted');
     }
@@ -96,7 +132,7 @@ final class ConflictResolutionStore {
           ],
         )
         .get();
-    final preserveDraft = related.any(
+    final preserveDraft = await canonicalKeepsDraft(db, expected.opId) || related.any(
       (r) =>
           !mapping.superseded.contains(r.read<String>('op_id')) ||
           mapping.blocked.contains(r.read<String>('op_id')),
@@ -155,7 +191,17 @@ final class ConflictResolutionStore {
           variables: [Variable(expected.opId)],
         )
         .getSingleOrNull();
-    await db.customStatement(
+    final followup = await db.customSelect(
+      'SELECT logical_order FROM recording_followups WHERE replacement_op_id=?',
+      variables: [Variable(expected.opId)],
+    ).getSingleOrNull();
+    if (pendingReview) {
+      await db.customStatement('INSERT INTO pending_edit_resolutions VALUES(?,?,?,?,?,?,?,?)', [
+        expected.opId, db.userId, replacementOpId, plan.serverJson,
+        plan.choicesJson, canonicalJson(row.data), expected.localOrder, now,
+      ]);
+    } else {
+      await db.customStatement(
       'INSERT INTO mutation_conflict_resolutions VALUES(?,?,?,?,?,?,?,?,?,?)',
       [
         expected.opId,
@@ -166,10 +212,15 @@ final class ConflictResolutionStore {
         plan.serverJson,
         plan.choicesJson,
         previous?.read<String>('order_root_op_id') ?? expected.opId,
-        previous?.read<int>('logical_order') ?? mapping.orderOf(expected),
+        // The immutable SQL ledger follows its own predecessor contract.
+        // Canonical ordering is a validated dispatch projection, not a rewrite
+        // of this request's physical conflict-chain origin.
+        previous?.read<int>('logical_order') ??
+            followup?.read<int>('logical_order') ?? expected.localOrder,
         now,
       ],
     );
+    }
     await db.customStatement(
       '''UPDATE metadata_copies SET server_revision=?,server_payload=?,
       local_payload=CASE WHEN ? THEN local_payload ELSE ? END,updated_at=? WHERE entity_type=? AND entity_id=?''',
@@ -183,6 +234,7 @@ final class ConflictResolutionStore {
         expected.entityId,
       ],
     );
+    await finishCanonicalChoices(db, await readMappingEligibility(db), now);
     requireActive();
   }
 }

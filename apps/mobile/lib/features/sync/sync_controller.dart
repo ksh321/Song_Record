@@ -4,15 +4,17 @@ import 'package:flutter/foundation.dart';
 
 import '../../core/database/account_store.dart';
 import '../../core/database/local_models.dart';
+import '../../core/sync/canonical_conflict_plan.dart';
 import '../../core/sync/conflict_review.dart';
 import '../../core/sync/local_repository.dart';
 import '../../core/sync/mutation_transport.dart';
 import '../auth/auth_session.dart';
 
 final class SyncItem {
-  const SyncItem(this.mutation, this.retry);
+  const SyncItem(this.mutation, this.retry, {this.pendingReview = false});
   final QueuedMutation mutation;
   final RetryStatus? retry;
+  final bool pendingReview;
 }
 
 abstract interface class SyncBackend {
@@ -44,8 +46,18 @@ final class RepositorySyncBackend implements SyncBackend, SyncStatusSource {
   Future<List<SyncItem>> load() async {
     final result = <SyncItem>[];
     for (final mutation in await repository.pendingWork()) {
+      var pendingReview = false;
+      if (mutation.state == 'PENDING' && mutation.attemptCount == 0) {
+        try {
+          pendingReview = (await repository.review(mutation.opId)).pendingReview;
+        } on StateError {
+          // Ordinary pending work and unrelated holds are not reviewable.
+        } on FormatException {
+          // Unsupported metadata remains retained without an invented choice.
+        }
+      }
       result.add(
-        SyncItem(mutation, await repository.retryStatus(mutation.opId)),
+        SyncItem(mutation, await repository.retryStatus(mutation.opId), pendingReview: pendingReview),
       );
     }
     _unlinkedRecordings = await repository.unlinkedOfflineRecordingCount();
@@ -99,6 +111,7 @@ final class SyncController extends ChangeNotifier {
   }
 
   List<SyncItem> items = const [];
+  List<CanonicalConflictReview> canonicalItems = const [];
   String? message;
   bool loaded = false;
   bool busy = false;
@@ -137,8 +150,13 @@ final class SyncController extends ChangeNotifier {
     final load = ++_loadGeneration;
     try {
       final next = await backend.load();
+      final actions = conflicts;
+      final candidates = actions is CanonicalConflictActions
+          ? await (actions as CanonicalConflictActions).canonicalCandidates()
+          : const <CanonicalConflictReview>[];
       if (_disposed || load != _loadGeneration) return;
       items = List.unmodifiable(next);
+      canonicalItems = List.unmodifiable(candidates);
       loaded = true;
       message = null;
     } catch (_) {

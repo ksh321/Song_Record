@@ -22,14 +22,20 @@ final class ConflictResolutionPlan {
 ConflictResolutionPlan prepareConflictResolution(
   QueuedMutation mutation, {
   Map<String, ConflictChoice> choices = const {},
+  Map<String, dynamic>? serverSnapshot,
+  bool pendingReview = false,
 }) {
-  final comparison = compareMetadataConflict(mutation);
+  final comparison = compareMetadataConflict(
+    mutation,
+    serverSnapshot: serverSnapshot,
+    pendingReview: pendingReview,
+  );
   if (comparison == null) {
     throw StateError('Unsupported metadata conflict');
   }
   final base = jsonDecode(mutation.basePayload!) as Map<String, dynamic>;
-  final response = jsonDecode(mutation.serverResponse!) as Map<String, dynamic>;
-  final server = response['current'] as Map<String, dynamic>;
+  final server = serverSnapshot ??
+      (jsonDecode(mutation.serverResponse!) as Map<String, dynamic>)['current'] as Map<String, dynamic>;
   final local = jsonDecode(mutation.payload) as Map<String, dynamic>;
   if (local['base_revision'] is! int) {
     throw const FormatException('Conflict base revision must be an integer');

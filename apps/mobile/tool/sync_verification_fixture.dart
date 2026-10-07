@@ -2,9 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/native.dart';
 import 'package:song_record/config/app_config.dart';
+import 'package:song_record/core/database/account_database.dart';
+import 'package:song_record/core/database/account_paths.dart';
 import 'package:song_record/core/database/account_store.dart';
 import 'package:song_record/core/database/local_models.dart';
+import 'package:song_record/core/sync/canonical_conflict_plan.dart';
+import 'package:song_record/core/sync/conflict_resolution_plan.dart';
+import 'package:song_record/core/sync/conflict_review.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/sync/mutation_request.dart';
 import 'package:song_record/core/sync/mutation_transport.dart';
@@ -19,6 +25,14 @@ Map<String, Object?> fixtureTag(String id, String name, int revision) => {
   'revision': revision,
   'archived_at': null,
   'updated_at': '2026-10-01T00:00:00Z',
+};
+
+Map<String, Object?> fixtureSong(String id, int revision, {String note = '서버 메모'}) => {
+  'id': id, 'revision': revision, 'updated_at': '2026-10-01T00:00:00Z',
+  'source_type': 'TJ', 'tj_number': '12345', 'title': '합성 곡',
+  'artist': '합성 가수', 'version_code': 'NORMAL', 'tier': null, 'note': note,
+  'lifecycle_state': 'ACTIVE', 'representative_key_mode': null,
+  'representative_key_shift': null, 'representative_recording_id': null,
 };
 
 /// No HTTP implementation or credentials: responses are synthetic and local.
@@ -43,6 +57,15 @@ final class VerificationTransport implements MutationTransport {
       return MutationResponse(status!, '{"error":{"code":"UNAUTHENTICATED"}}');
     }
     final body = jsonDecode(request.body) as Map;
+    if (request.mutation.entity == LocalEntity.song) {
+      await responseDelay();
+      current();
+      return MutationResponse(200, jsonEncode({
+        ...fixtureSong(request.mutation.entityId, request.mutation.baseRevision + 1),
+        ...Map<String, dynamic>.from(body)..remove('base_revision'),
+        'revision': request.mutation.baseRevision + 1,
+      }));
+    }
     return MutationResponse(
       200,
       jsonEncode(
@@ -69,6 +92,8 @@ final class SyncVerificationFixture {
     Directory root, {
     int? authenticationStatus,
     Future<void> Function()? responseDelay,
+    bool canonical = false,
+    bool changeOnReview = false,
   }) async {
     if (authenticationStatus != null &&
         authenticationStatus != 401 &&
@@ -89,7 +114,19 @@ final class SyncVerificationFixture {
         authenticationStatus,
         responseDelay ?? () => Future<void>.delayed(const Duration(seconds: 8)),
       );
-      if (authenticationStatus == null) {
+      if (canonical) {
+        await repository.save(repository.prepareCreate(
+          entity: LocalEntity.song, entityId: fixtureId(20),
+          draft: fixtureSong(fixtureId(20), 0, note: '이 기기 개인 메모'),
+          changes: {'id': fixtureId(20), 'source_type': 'TJ',
+            'source_token': 'synthetic-proof', 'note': '이 기기 개인 메모'},
+        ));
+        final request = (await store.claimMutation())!;
+        await store.applyCanonicalSongReceipt(request, MutationResponse(200, jsonEncode({
+          'created': false, 'canonical_song_id': fixtureId(21),
+          'song': fixtureSong(fixtureId(21), 2),
+        })));
+      } else if (authenticationStatus == null) {
         await repository.save(
           repository.prepareCreate(
             entity: LocalEntity.tag,
@@ -140,7 +177,27 @@ final class SyncVerificationFixture {
       );
       final controller = SyncController(
         RepositorySyncBackend(repository, transport, () async => auth),
-        conflicts: repository,
+        conflicts: changeOnReview
+            ? _ChangingReviewActions(repository, () async {
+                // Only this newly-created synthetic run is touched. This hook
+                // simulates an incoming server change after the screen reads.
+                store.requireActive();
+                final paths = await AccountPaths.create(run, fixtureId(1), AppEnvironment.dev);
+                final db = AccountDatabase(NativeDatabase(await paths.databaseFile()),
+                  userId: fixtureId(1), environment: AppEnvironment.dev);
+                try {
+                  await db.verifyReady();
+                  await db.transaction(() async {
+                    store.requireActive();
+                    await db.customStatement(
+                      "UPDATE metadata_copies SET server_revision=3,server_payload=? WHERE entity_type='SONG' AND entity_id=?",
+                      [canonicalJson(fixtureSong(fixtureId(21), 3, note: '뒤에 도착한 서버 메모')), fixtureId(21)],
+                    );
+                    store.requireActive();
+                  });
+                } finally { await db.close(); }
+              })
+            : repository,
       );
       await controller.refresh();
       return SyncVerificationFixture._(manager, store, controller, transport);
@@ -154,4 +211,25 @@ final class SyncVerificationFixture {
     controller.dispose();
     await manager.logout();
   }
+}
+
+final class _ChangingReviewActions implements ConflictActions, CanonicalConflictActions {
+  _ChangingReviewActions(this.repository, this.advance);
+  final LocalRepository repository;
+  final Future<void> Function() advance;
+  bool changed = false;
+  @override
+  Future<ConflictReview> review(String opId) => repository.review(opId);
+  @override
+  Future<void> resolve(ConflictReview review, Map<String, ConflictChoice> choices) => repository.resolve(review, choices);
+  @override
+  Future<List<CanonicalConflictReview>> canonicalCandidates() => repository.canonicalCandidates();
+  @override
+  Future<CanonicalConflictReview> reviewCanonical(String intentId) async {
+    final result = await repository.reviewCanonical(intentId);
+    if (!changed) { changed = true; await advance(); }
+    return result;
+  }
+  @override
+  Future<void> resolveCanonical(CanonicalConflictReview review, ConflictChoice choice) => repository.resolveCanonical(review, choice);
 }

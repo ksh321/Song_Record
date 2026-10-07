@@ -10,6 +10,7 @@ import 'package:sqlite3/sqlite3.dart' as native;
 
 import '../../config/app_config.dart';
 import '../domain/identifiers.dart';
+import '../sync/canonical_conflict_plan.dart';
 import '../sync/change_feed_response.dart';
 import '../sync/conflict_resolution_plan.dart';
 import '../sync/conflict_review.dart';
@@ -19,6 +20,7 @@ import '../sync/mutation_request.dart';
 import 'account_database.dart' show AccountDatabase;
 import 'account_paths.dart';
 import 'asset_deletion_store.dart';
+import 'canonical_conflict_store.dart';
 import 'canonical_reference_store.dart';
 import 'change_feed_store.dart';
 import 'conflict_resolution_store.dart';
@@ -311,6 +313,7 @@ final class AccountStore {
         'song_aliases': 'source_song_id',
         'mutation_supersessions': 'original_op_id',
         'mutation_conflict_resolutions': 'original_op_id',
+        'pending_edit_resolutions': 'original_op_id',
         'recording_followups': 'original_op_id',
         'canonical_edit_intents': 'intent_id',
         'mutation_mapping_holds': 'op_id,mapping_source_id,reason',
@@ -505,19 +508,10 @@ final class AccountStore {
     () => _database.transaction(() async {
       final pending = await _pendingMutations();
       final mapping = await readMappingEligibility(_database);
-      final resolutions = await _database
-          .customSelect(
-            'SELECT original_op_id FROM mutation_conflict_resolutions UNION SELECT original_op_id FROM recording_followups UNION SELECT original_op_id FROM mutation_supersessions',
-          )
-          .get();
-      final resolved = resolutions
-          .map((r) => r.read<String>('original_op_id'))
-          .toSet();
       requireActive();
       return pending
           .where(
             (m) =>
-                !resolved.contains(m.opId) ||
                 !mapping.superseded.contains(m.opId) ||
                 mapping.blocked.contains(m.opId),
           )
@@ -528,19 +522,34 @@ final class AccountStore {
   Future<ConflictReview> readConflictReview(String opId) => _run(
     () => _database.transaction(() async {
       final mapping = await readMappingEligibility(_database);
-      if (!mapping.allows(opId)) {
-        throw StateError('Conflict is held or resolved');
-      }
       final pending = await _pendingMutations();
       final mutation = pending.firstWhere((m) => m.opId == opId);
+      final pendingReview = mutation.state == 'PENDING' && mutation.attemptCount == 0;
+      if (pendingReview) {
+        final unrestricted = await readMappingEligibility(_database, holdDrafts: false);
+        final wire = await _database.customSelect('SELECT op_id FROM mutation_wire_requests WHERE op_id=?', variables: [Variable(opId)]).get();
+        if (!mapping.blocked.contains(opId) || !unrestricted.allows(opId) || wire.isNotEmpty) {
+          throw StateError('Pending draft is not held for explicit review');
+        }
+      } else if (!mapping.allows(opId)) {
+        throw StateError('Conflict is held or resolved');
+      }
       final copy = await _readMetadata(mutation.entity, mutation.entityId);
       if (copy == null || copy.tombstone) {
         throw StateError('Conflict target unavailable');
       }
-      final review = ConflictReview(mutation, copy.localJson);
-      if (copy.revision > (review.server['revision'] as int)) {
-        throw StateError('Conflict server evidence is stale');
-      }
+      final original = pendingReview ? null : ConflictReview(mutation, copy.localJson);
+      final serverJson = pendingReview || copy.revision > (original!.server['revision'] as int)
+          ? copy.serverJson
+          : null;
+      final queueEvidence = await conflictQueueEvidence(
+        _database, mutation.entity, mutation.entityId,
+      );
+      final review = ConflictReview(
+        mutation, copy.localJson, serverJson: serverJson,
+        queueEvidence: queueEvidence,
+        pendingReview: pendingReview,
+      );
       final names = <String, String>{};
       if (review.comparison.conflicts.any(
         (group) => group.contains('tag_ids'),
@@ -563,8 +572,26 @@ final class AccountStore {
         }
       }
       requireActive();
-      return ConflictReview(mutation, copy.localJson, tagNames: names);
+      return ConflictReview(
+        mutation, copy.localJson, tagNames: names,
+        serverJson: serverJson, queueEvidence: queueEvidence,
+        pendingReview: pendingReview,
+      );
     }),
+  );
+
+  Future<List<CanonicalConflictReview>> canonicalCandidates() => _run(
+    () => _database.transaction(() => CanonicalConflictStore(_database, requireActive).list()),
+  );
+
+  Future<CanonicalConflictReview> readCanonicalConflict(String id) => _run(
+    () => _database.transaction(() => CanonicalConflictStore(_database, requireActive).review(id)),
+  );
+
+  Future<void> resolveCanonicalConflict(CanonicalConflictReview review,
+      ConflictChoice choice, String newOpId) => _run(
+    () => _database.transaction(() => CanonicalConflictStore(_database, requireActive)
+        .resolve(review, choice, newOpId, _retry.nowMs)),
   );
 
   Future<void> resolveMetadataConflict({
@@ -572,6 +599,9 @@ final class AccountStore {
     required String? expectedLocalJson,
     required String? replacementOpId,
     Map<String, ConflictChoice> choices = const {},
+    String? expectedServerJson,
+    String? expectedQueueEvidence,
+    bool pendingReview = false,
   }) {
     final capturedChoices = Map<String, ConflictChoice>.unmodifiable(choices);
     return _run(
@@ -581,6 +611,9 @@ final class AccountStore {
           expectedLocalJson: expectedLocalJson,
           replacementOpId: replacementOpId,
           choices: capturedChoices,
+          expectedServerJson: expectedServerJson,
+          expectedQueueEvidence: expectedQueueEvidence,
+          pendingReview: pendingReview,
           now: _retry.nowMs,
         ),
       ),
@@ -1119,18 +1152,9 @@ final class AccountStore {
           current.read<int>('tombstone') == 1 ||
           current.read<int>('server_revision') > (snapshot['revision'] as int);
       final eligibility = await readMappingEligibility(_database);
-      final resolvedRows = await _database
-          .customSelect(
-            'SELECT original_op_id FROM mutation_conflict_resolutions UNION SELECT original_op_id FROM recording_followups UNION SELECT original_op_id FROM mutation_supersessions',
-          )
-          .get();
       final resolved = {
-        for (final row in resolvedRows)
-          if (eligibility.superseded.contains(
-                row.read<String>('original_op_id'),
-              ) &&
-              !eligibility.blocked.contains(row.read<String>('original_op_id')))
-            row.read<String>('original_op_id'),
+        for (final op in eligibility.superseded)
+          if (!eligibility.blocked.contains(op)) op,
       };
       final later = await _database
           .customSelect(
@@ -1162,7 +1186,8 @@ final class AccountStore {
           [
             snapshot['revision'],
             payload,
-            later.any((row) => !resolved.contains(row.read<String>('op_id')))
+            (later.any((row) => !resolved.contains(row.read<String>('op_id'))) ||
+                await canonicalKeepsDraft(_database, m.opId))
                 ? 1
                 : 0,
             m.opId,
@@ -1183,6 +1208,9 @@ final class AccountStore {
         ],
       );
       await _retry.finish(m.opId);
+      await finishCanonicalChoices(
+        _database, await readMappingEligibility(_database), _retry.nowMs,
+      );
       requireActive();
       return true;
     }),

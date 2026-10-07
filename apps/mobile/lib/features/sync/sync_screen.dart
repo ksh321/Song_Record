@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/database/local_models.dart';
+import '../../core/sync/canonical_conflict_plan.dart';
 import '../../core/theme/app_tokens.dart';
 import 'conflict_screen.dart';
 import 'sync_controller.dart';
@@ -60,6 +61,20 @@ class _SyncScreenState extends State<SyncScreen> {
     }
   }
 
+  Future<void> _canonical(CanonicalConflictReview item) async {
+    final controller = widget.controller;
+    final actions = controller.conflicts;
+    if (actions is! CanonicalConflictActions || controller.busy) return;
+    final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(
+      builder: (_) => CanonicalConflictScreen(actions: actions as CanonicalConflictActions, intentId: item.intentId),
+    ));
+    if (!mounted) return;
+    await controller.refresh();
+    if (saved == true && controller.maySend && controller.backend.automaticFollowupAllowed) {
+      await controller.wake();
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('동기화 상태')),
@@ -90,16 +105,28 @@ class _SyncScreenState extends State<SyncScreen> {
                 const Center(child: CircularProgressIndicator()),
               if (state.loaded &&
                   state.items.isEmpty &&
+                  state.canonicalItems.isEmpty &&
                   state.message == null &&
                   state.statusMessage == null)
                 const Text('대기 중인 정보가 없어요.'),
+              for (final item in state.canonicalItems)
+                Card(child: ListTile(
+                  title: const Text('같은 곡의 개인 편집'),
+                  subtitle: Text(item.state == 'QUEUED'
+                      ? '선택을 저장했어요. 서버 전송·충돌 해결을 기다리고 있어요.'
+                      : item.blockedReason ?? '서버 값과 보존된 입력 중 사용할 값을 선택해 주세요.'),
+                  trailing: item.state == 'OPEN' ? TextButton(
+                    onPressed: state.busy ? null : () => _canonical(item),
+                    child: const Text('개인 편집 검토'),
+                  ) : null,
+                )),
               for (final item in state.items)
                 Card(
                   child: ListTile(
                     title: Text(_name(item.mutation.entity)),
-                    subtitle: Text(_state(item)),
+                    subtitle: Text(item.pendingReview ? '앞선 변경 해결 후 보존한 입력이에요. 최신 서버 값과 다시 비교해 주세요.' : _state(item)),
                     trailing:
-                        item.mutation.state == 'CONFLICT' &&
+                        (item.mutation.state == 'CONFLICT' || item.pendingReview) &&
                             state.conflicts != null
                         ? TextButton(
                             onPressed: state.busy ? null : () => _review(item),

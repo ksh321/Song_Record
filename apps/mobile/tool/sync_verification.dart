@@ -26,7 +26,7 @@ class VerificationHome extends StatefulWidget {
 class _VerificationHomeState extends State<VerificationHome> {
   bool busy = false;
   String? message;
-  Future<void> open(int? status) async {
+  Future<void> open(int? status, {bool canonical = false, bool changeOnReview = false}) async {
     if (busy) return;
     setState(() {
       busy = true;
@@ -38,6 +38,8 @@ class _VerificationHomeState extends State<VerificationHome> {
       fixture = await SyncVerificationFixture.create(
         Directory('${support.path}/isolated-sync-checks'),
         authenticationStatus: status,
+        canonical: canonical,
+        changeOnReview: changeOnReview,
       );
       if (!mounted) return;
       await Navigator.of(context).push(
@@ -61,6 +63,14 @@ class _VerificationHomeState extends State<VerificationHome> {
       children: [
         const Text('합성 자료만 사용하는 별도 앱입니다. 로그인·서버 통신·녹음은 하지 않습니다.'),
         if (message != null) Text(message!),
+        FilledButton(
+          onPressed: busy ? null : () => open(null, canonical: true),
+          child: const Text('같은 곡 개인 편집 검증'),
+        ),
+        FilledButton(
+          onPressed: busy ? null : () => open(null, canonical: true, changeOnReview: true),
+          child: const Text('개인 편집 최신 값 변경 검증'),
+        ),
         for (final status in <int?>[null, 401, 403])
           FilledButton(
             onPressed: busy ? null : () => open(status),

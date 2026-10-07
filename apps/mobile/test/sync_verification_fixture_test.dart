@@ -4,12 +4,56 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/core/database/local_models.dart';
+import 'package:song_record/core/sync/canonical_conflict_plan.dart';
 import 'package:song_record/core/sync/conflict_resolution_plan.dart';
 
 import '../tool/sync_verification_fixture.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('installed-app race fixture rejects the first choice and refreshes latest values', () async {
+    final root = await Directory.systemTemp.createTemp('sr-canonical-race-');
+    final fixture = await SyncVerificationFixture.create(root, canonical: true, changeOnReview: true);
+    try {
+      final actions = fixture.controller.conflicts! as CanonicalConflictActions;
+      final first = await actions.reviewCanonical(fixture.controller.canonicalItems.single.intentId);
+      expect(first.server['revision'], 2);
+      await expectLater(actions.resolveCanonical(first, ConflictChoice.local), throwsStateError);
+      final latest = await actions.reviewCanonical(first.intentId);
+      expect(latest.server['revision'], 3);
+      await actions.resolveCanonical(latest, ConflictChoice.server);
+      expect(await actions.canonicalCandidates(), isEmpty);
+      expect(fixture.transport.calls, 0);
+    } finally {
+      await fixture.close();
+      await root.delete(recursive: true);
+    }
+  });
+  test('canonical candidate appears without a conflict queue and stays queued until ACK', () async {
+    final root = await Directory.systemTemp.createTemp('sr-canonical-fixture-');
+    final gate = Completer<void>();
+    final fixture = await SyncVerificationFixture.create(root, canonical: true, responseDelay: () => gate.future);
+    try {
+      expect(fixture.controller.items, isEmpty);
+      expect(fixture.controller.canonicalItems, hasLength(1));
+      final actions = fixture.controller.conflicts! as CanonicalConflictActions;
+      await actions.resolveCanonical(fixture.controller.canonicalItems.single, ConflictChoice.local);
+      await fixture.controller.refresh();
+      expect(fixture.controller.canonicalItems.single.state, 'QUEUED');
+      final send = fixture.controller.backend.send();
+      await fixture.transport.started.future;
+      expect((await actions.canonicalCandidates()).single.state, 'QUEUED');
+      gate.complete();
+      await send;
+      await fixture.controller.refresh();
+      expect(fixture.controller.canonicalItems, isEmpty);
+      expect(fixture.controller.items, isEmpty);
+    } finally {
+      if (!gate.isCompleted) gate.complete();
+      await fixture.close();
+      await root.delete(recursive: true);
+    }
+  });
   for (final status in [401, 403]) {
     test(
       'isolated fixture $status blocks queued lifecycle followup and preserves unrelated files',

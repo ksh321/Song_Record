@@ -9,8 +9,15 @@ import 'three_way_merge.dart';
 /// Read-only preview for supported revision conflicts. A candidate patch is not
 /// permission to mutate/retry the original op_id or discard its retained input.
 /// null means this conflict needs another explicit resolution path.
-ThreeWayComparison? compareMetadataConflict(QueuedMutation mutation) {
-  if (mutation.state != 'CONFLICT' ||
+ThreeWayComparison? compareMetadataConflict(
+  QueuedMutation mutation, {
+  Map<String, dynamic>? serverSnapshot,
+  bool pendingReview = false,
+}) {
+  if ((pendingReview
+          ? mutation.state != 'PENDING' || mutation.attemptCount != 0 ||
+              mutation.serverResponse != null || serverSnapshot == null
+          : mutation.state != 'CONFLICT') ||
       mutation.operation != LocalOperation.patch ||
       !{
         LocalEntity.song,
@@ -18,17 +25,26 @@ ThreeWayComparison? compareMetadataConflict(QueuedMutation mutation) {
         LocalEntity.recording,
       }.contains(mutation.entity) ||
       mutation.basePayload == null ||
-      mutation.serverResponse == null) {
+      (!pendingReview && mutation.serverResponse == null)) {
     return null;
   }
-  final response = jsonDecode(mutation.serverResponse!);
-  if (response is! Map<String, dynamic> ||
+  final response = pendingReview ? null : jsonDecode(mutation.serverResponse!);
+  if (!pendingReview && (response is! Map<String, dynamic> ||
       response['code'] != 'REVISION_CONFLICT' ||
-      response['status'] != 409) {
+      response['status'] != 409)) {
     return null;
   }
   final base = jsonDecode(mutation.basePayload!);
-  final server = response['current'];
+  final originalServer = pendingReview ? serverSnapshot : (response as Map<String, dynamic>)['current'];
+  if (!pendingReview && serverSnapshot != null &&
+      (originalServer is! Map<String, dynamic> ||
+          originalServer['revision'] is! int ||
+          serverSnapshot['revision'] is! int ||
+          (serverSnapshot['revision'] as int) <
+              (originalServer['revision'] as int))) {
+    throw const FormatException('Cannot rewind conflict evidence');
+  }
+  final server = serverSnapshot ?? originalServer;
   final patch = jsonDecode(mutation.payload);
   if (base is! Map<String, dynamic> ||
       server is! Map<String, dynamic> ||

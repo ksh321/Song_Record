@@ -10435,6 +10435,552 @@ class MutationConflictResolutionsCompanion
   }
 }
 
+class PendingEditResolutions extends Table
+    with TableInfo<PendingEditResolutions, PendingEditResolution> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  PendingEditResolutions(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _originalOpIdMeta = const VerificationMeta(
+    'originalOpId',
+  );
+  late final GeneratedColumn<String> originalOpId = GeneratedColumn<String>(
+    'original_op_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints:
+        'NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_account(user_id)',
+  );
+  static const VerificationMeta _replacementOpIdMeta = const VerificationMeta(
+    'replacementOpId',
+  );
+  late final GeneratedColumn<String> replacementOpId = GeneratedColumn<String>(
+    'replacement_op_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'UNIQUE REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _serverSnapshotMeta = const VerificationMeta(
+    'serverSnapshot',
+  );
+  late final GeneratedColumn<String> serverSnapshot = GeneratedColumn<String>(
+    'server_snapshot',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (json_valid(server_snapshot) AND json_type(server_snapshot) = \'object\')',
+  );
+  static const VerificationMeta _choicesMeta = const VerificationMeta(
+    'choices',
+  );
+  late final GeneratedColumn<String> choices = GeneratedColumn<String>(
+    'choices',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (json_valid(choices) AND json_type(choices) = \'object\')',
+  );
+  static const VerificationMeta _originalEvidenceMeta = const VerificationMeta(
+    'originalEvidence',
+  );
+  late final GeneratedColumn<String> originalEvidence = GeneratedColumn<String>(
+    'original_evidence',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (json_valid(original_evidence) AND json_type(original_evidence) = \'object\')',
+  );
+  static const VerificationMeta _logicalOrderMeta = const VerificationMeta(
+    'logicalOrder',
+  );
+  late final GeneratedColumn<int> logicalOrder = GeneratedColumn<int>(
+    'logical_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (logical_order > 0)',
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    originalOpId,
+    userId,
+    replacementOpId,
+    serverSnapshot,
+    choices,
+    originalEvidence,
+    logicalOrder,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_edit_resolutions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingEditResolution> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('original_op_id')) {
+      context.handle(
+        _originalOpIdMeta,
+        originalOpId.isAcceptableOrUnknown(
+          data['original_op_id']!,
+          _originalOpIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_originalOpIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('replacement_op_id')) {
+      context.handle(
+        _replacementOpIdMeta,
+        replacementOpId.isAcceptableOrUnknown(
+          data['replacement_op_id']!,
+          _replacementOpIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('server_snapshot')) {
+      context.handle(
+        _serverSnapshotMeta,
+        serverSnapshot.isAcceptableOrUnknown(
+          data['server_snapshot']!,
+          _serverSnapshotMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_serverSnapshotMeta);
+    }
+    if (data.containsKey('choices')) {
+      context.handle(
+        _choicesMeta,
+        choices.isAcceptableOrUnknown(data['choices']!, _choicesMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_choicesMeta);
+    }
+    if (data.containsKey('original_evidence')) {
+      context.handle(
+        _originalEvidenceMeta,
+        originalEvidence.isAcceptableOrUnknown(
+          data['original_evidence']!,
+          _originalEvidenceMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_originalEvidenceMeta);
+    }
+    if (data.containsKey('logical_order')) {
+      context.handle(
+        _logicalOrderMeta,
+        logicalOrder.isAcceptableOrUnknown(
+          data['logical_order']!,
+          _logicalOrderMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_logicalOrderMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {originalOpId};
+  @override
+  PendingEditResolution map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingEditResolution(
+      originalOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_op_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      replacementOpId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}replacement_op_id'],
+      ),
+      serverSnapshot: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_snapshot'],
+      )!,
+      choices: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}choices'],
+      )!,
+      originalEvidence: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_evidence'],
+      )!,
+      logicalOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}logical_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  PendingEditResolutions createAlias(String alias) {
+    return PendingEditResolutions(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+  @override
+  List<String> get customConstraints => const [
+    'CHECK(replacement_op_id IS NULL OR replacement_op_id <> original_op_id)',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class PendingEditResolution extends DataClass
+    implements Insertable<PendingEditResolution> {
+  final String originalOpId;
+  final String userId;
+  final String? replacementOpId;
+  final String serverSnapshot;
+  final String choices;
+  final String originalEvidence;
+  final int logicalOrder;
+  final int createdAt;
+  const PendingEditResolution({
+    required this.originalOpId,
+    required this.userId,
+    this.replacementOpId,
+    required this.serverSnapshot,
+    required this.choices,
+    required this.originalEvidence,
+    required this.logicalOrder,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['original_op_id'] = Variable<String>(originalOpId);
+    map['user_id'] = Variable<String>(userId);
+    if (!nullToAbsent || replacementOpId != null) {
+      map['replacement_op_id'] = Variable<String>(replacementOpId);
+    }
+    map['server_snapshot'] = Variable<String>(serverSnapshot);
+    map['choices'] = Variable<String>(choices);
+    map['original_evidence'] = Variable<String>(originalEvidence);
+    map['logical_order'] = Variable<int>(logicalOrder);
+    map['created_at'] = Variable<int>(createdAt);
+    return map;
+  }
+
+  PendingEditResolutionsCompanion toCompanion(bool nullToAbsent) {
+    return PendingEditResolutionsCompanion(
+      originalOpId: Value(originalOpId),
+      userId: Value(userId),
+      replacementOpId: replacementOpId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(replacementOpId),
+      serverSnapshot: Value(serverSnapshot),
+      choices: Value(choices),
+      originalEvidence: Value(originalEvidence),
+      logicalOrder: Value(logicalOrder),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory PendingEditResolution.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingEditResolution(
+      originalOpId: serializer.fromJson<String>(json['original_op_id']),
+      userId: serializer.fromJson<String>(json['user_id']),
+      replacementOpId: serializer.fromJson<String?>(json['replacement_op_id']),
+      serverSnapshot: serializer.fromJson<String>(json['server_snapshot']),
+      choices: serializer.fromJson<String>(json['choices']),
+      originalEvidence: serializer.fromJson<String>(json['original_evidence']),
+      logicalOrder: serializer.fromJson<int>(json['logical_order']),
+      createdAt: serializer.fromJson<int>(json['created_at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'original_op_id': serializer.toJson<String>(originalOpId),
+      'user_id': serializer.toJson<String>(userId),
+      'replacement_op_id': serializer.toJson<String?>(replacementOpId),
+      'server_snapshot': serializer.toJson<String>(serverSnapshot),
+      'choices': serializer.toJson<String>(choices),
+      'original_evidence': serializer.toJson<String>(originalEvidence),
+      'logical_order': serializer.toJson<int>(logicalOrder),
+      'created_at': serializer.toJson<int>(createdAt),
+    };
+  }
+
+  PendingEditResolution copyWith({
+    String? originalOpId,
+    String? userId,
+    Value<String?> replacementOpId = const Value.absent(),
+    String? serverSnapshot,
+    String? choices,
+    String? originalEvidence,
+    int? logicalOrder,
+    int? createdAt,
+  }) => PendingEditResolution(
+    originalOpId: originalOpId ?? this.originalOpId,
+    userId: userId ?? this.userId,
+    replacementOpId: replacementOpId.present
+        ? replacementOpId.value
+        : this.replacementOpId,
+    serverSnapshot: serverSnapshot ?? this.serverSnapshot,
+    choices: choices ?? this.choices,
+    originalEvidence: originalEvidence ?? this.originalEvidence,
+    logicalOrder: logicalOrder ?? this.logicalOrder,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  PendingEditResolution copyWithCompanion(
+    PendingEditResolutionsCompanion data,
+  ) {
+    return PendingEditResolution(
+      originalOpId: data.originalOpId.present
+          ? data.originalOpId.value
+          : this.originalOpId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      replacementOpId: data.replacementOpId.present
+          ? data.replacementOpId.value
+          : this.replacementOpId,
+      serverSnapshot: data.serverSnapshot.present
+          ? data.serverSnapshot.value
+          : this.serverSnapshot,
+      choices: data.choices.present ? data.choices.value : this.choices,
+      originalEvidence: data.originalEvidence.present
+          ? data.originalEvidence.value
+          : this.originalEvidence,
+      logicalOrder: data.logicalOrder.present
+          ? data.logicalOrder.value
+          : this.logicalOrder,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingEditResolution(')
+          ..write('originalOpId: $originalOpId, ')
+          ..write('userId: $userId, ')
+          ..write('replacementOpId: $replacementOpId, ')
+          ..write('serverSnapshot: $serverSnapshot, ')
+          ..write('choices: $choices, ')
+          ..write('originalEvidence: $originalEvidence, ')
+          ..write('logicalOrder: $logicalOrder, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    originalOpId,
+    userId,
+    replacementOpId,
+    serverSnapshot,
+    choices,
+    originalEvidence,
+    logicalOrder,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingEditResolution &&
+          other.originalOpId == this.originalOpId &&
+          other.userId == this.userId &&
+          other.replacementOpId == this.replacementOpId &&
+          other.serverSnapshot == this.serverSnapshot &&
+          other.choices == this.choices &&
+          other.originalEvidence == this.originalEvidence &&
+          other.logicalOrder == this.logicalOrder &&
+          other.createdAt == this.createdAt);
+}
+
+class PendingEditResolutionsCompanion
+    extends UpdateCompanion<PendingEditResolution> {
+  final Value<String> originalOpId;
+  final Value<String> userId;
+  final Value<String?> replacementOpId;
+  final Value<String> serverSnapshot;
+  final Value<String> choices;
+  final Value<String> originalEvidence;
+  final Value<int> logicalOrder;
+  final Value<int> createdAt;
+  const PendingEditResolutionsCompanion({
+    this.originalOpId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.replacementOpId = const Value.absent(),
+    this.serverSnapshot = const Value.absent(),
+    this.choices = const Value.absent(),
+    this.originalEvidence = const Value.absent(),
+    this.logicalOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  PendingEditResolutionsCompanion.insert({
+    required String originalOpId,
+    required String userId,
+    this.replacementOpId = const Value.absent(),
+    required String serverSnapshot,
+    required String choices,
+    required String originalEvidence,
+    required int logicalOrder,
+    required int createdAt,
+  }) : originalOpId = Value(originalOpId),
+       userId = Value(userId),
+       serverSnapshot = Value(serverSnapshot),
+       choices = Value(choices),
+       originalEvidence = Value(originalEvidence),
+       logicalOrder = Value(logicalOrder),
+       createdAt = Value(createdAt);
+  static Insertable<PendingEditResolution> custom({
+    Expression<String>? originalOpId,
+    Expression<String>? userId,
+    Expression<String>? replacementOpId,
+    Expression<String>? serverSnapshot,
+    Expression<String>? choices,
+    Expression<String>? originalEvidence,
+    Expression<int>? logicalOrder,
+    Expression<int>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (originalOpId != null) 'original_op_id': originalOpId,
+      if (userId != null) 'user_id': userId,
+      if (replacementOpId != null) 'replacement_op_id': replacementOpId,
+      if (serverSnapshot != null) 'server_snapshot': serverSnapshot,
+      if (choices != null) 'choices': choices,
+      if (originalEvidence != null) 'original_evidence': originalEvidence,
+      if (logicalOrder != null) 'logical_order': logicalOrder,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  PendingEditResolutionsCompanion copyWith({
+    Value<String>? originalOpId,
+    Value<String>? userId,
+    Value<String?>? replacementOpId,
+    Value<String>? serverSnapshot,
+    Value<String>? choices,
+    Value<String>? originalEvidence,
+    Value<int>? logicalOrder,
+    Value<int>? createdAt,
+  }) {
+    return PendingEditResolutionsCompanion(
+      originalOpId: originalOpId ?? this.originalOpId,
+      userId: userId ?? this.userId,
+      replacementOpId: replacementOpId ?? this.replacementOpId,
+      serverSnapshot: serverSnapshot ?? this.serverSnapshot,
+      choices: choices ?? this.choices,
+      originalEvidence: originalEvidence ?? this.originalEvidence,
+      logicalOrder: logicalOrder ?? this.logicalOrder,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (originalOpId.present) {
+      map['original_op_id'] = Variable<String>(originalOpId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (replacementOpId.present) {
+      map['replacement_op_id'] = Variable<String>(replacementOpId.value);
+    }
+    if (serverSnapshot.present) {
+      map['server_snapshot'] = Variable<String>(serverSnapshot.value);
+    }
+    if (choices.present) {
+      map['choices'] = Variable<String>(choices.value);
+    }
+    if (originalEvidence.present) {
+      map['original_evidence'] = Variable<String>(originalEvidence.value);
+    }
+    if (logicalOrder.present) {
+      map['logical_order'] = Variable<int>(logicalOrder.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingEditResolutionsCompanion(')
+          ..write('originalOpId: $originalOpId, ')
+          ..write('userId: $userId, ')
+          ..write('replacementOpId: $replacementOpId, ')
+          ..write('serverSnapshot: $serverSnapshot, ')
+          ..write('choices: $choices, ')
+          ..write('originalEvidence: $originalEvidence, ')
+          ..write('logicalOrder: $logicalOrder, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AccountDatabase extends GeneratedDatabase {
   _$AccountDatabase(QueryExecutor e) : super(e);
   $AccountDatabaseManager get managers => $AccountDatabaseManager(this);
@@ -10668,6 +11214,28 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     'CREATE TRIGGER resolved_mutation_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Resolved original operation cannot be retried\');END',
     'resolved_mutation_no_claim',
   );
+  late final PendingEditResolutions pendingEditResolutions =
+      PendingEditResolutions(this);
+  late final Trigger pendingEditValidInsert = Trigger(
+    'CREATE TRIGGER pending_edit_valid_insert BEFORE INSERT ON pending_edit_resolutions BEGIN SELECT RAISE (ABORT, \'Pending review requires an unsent original\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.original_op_id AND m.user_id = NEW.user_id AND m.operation = \'PATCH\' AND m.entity_type IN (\'SONG\', \'RECORDING\', \'TAG\') AND m.queue_state = \'PENDING\' AND m.attempt_count = 0 AND m.server_response IS NULL AND m.base_revision > 0 AND NEW.logical_order = m."rowid" AND json_extract(NEW.server_snapshot, \'\$.id\') = m.entity_id AND json_type(NEW.server_snapshot, \'\$.revision\') = \'integer\' AND json_extract(NEW.server_snapshot, \'\$.revision\') > m.base_revision AND(json_type(NEW.server_snapshot, \'\$.user_id\') IS NULL OR json_extract(NEW.server_snapshot, \'\$.user_id\') = NEW.user_id)AND NOT EXISTS (SELECT 1 FROM mutation_wire_requests WHERE op_id = m.op_id) AND NOT EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = m.op_id AND released_at IS NULL));SELECT RAISE (ABORT, \'Invalid pending review choice\') WHERE EXISTS (SELECT 1 FROM json_each(NEW.choices)AS choice WHERE choice.type <> \'text\' OR choice.value NOT IN (\'LOCAL\', \'SERVER\'));SELECT RAISE (ABORT, \'Invalid pending review replacement\') WHERE NEW.replacement_op_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM local_mutations AS o JOIN local_mutations AS n ON n.op_id = NEW.replacement_op_id WHERE o.op_id = NEW.original_op_id AND n.user_id = NEW.user_id AND n.entity_type = o.entity_type AND n.entity_id = o.entity_id AND n.operation = \'PATCH\' AND n.queue_state = \'PENDING\' AND n.attempt_count = 0 AND n."rowid" > o."rowid" AND n.base_revision = json_extract(NEW.server_snapshot, \'\$.revision\') AND n.base_payload = NEW.server_snapshot AND json_extract(n.payload, \'\$.base_revision\') = n.base_revision AND NOT EXISTS (SELECT 1 FROM mutation_wire_requests WHERE op_id = n.op_id));END',
+    'pending_edit_valid_insert',
+  );
+  late final Trigger pendingEditNoReplace = Trigger(
+    'CREATE TRIGGER pending_edit_no_replace BEFORE INSERT ON pending_edit_resolutions WHEN EXISTS (SELECT 1 FROM pending_edit_resolutions WHERE original_op_id = NEW.original_op_id OR(NEW.replacement_op_id IS NOT NULL AND replacement_op_id = NEW.replacement_op_id)) BEGIN SELECT RAISE (ABORT, \'Pending review evidence cannot be replaced\');END',
+    'pending_edit_no_replace',
+  );
+  late final Trigger pendingEditNoUpdate = Trigger(
+    'CREATE TRIGGER pending_edit_no_update BEFORE UPDATE ON pending_edit_resolutions BEGIN SELECT RAISE (ABORT, \'Pending review evidence is immutable\');END',
+    'pending_edit_no_update',
+  );
+  late final Trigger pendingEditNoDelete = Trigger(
+    'CREATE TRIGGER pending_edit_no_delete BEFORE DELETE ON pending_edit_resolutions BEGIN SELECT RAISE (ABORT, \'Pending review evidence must be retained\');END',
+    'pending_edit_no_delete',
+  );
+  late final Trigger pendingEditOriginalNoClaim = Trigger(
+    'CREATE TRIGGER pending_edit_original_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM pending_edit_resolutions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Reviewed pending original cannot be retried\');END',
+    'pending_edit_original_no_claim',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -10742,6 +11310,12 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     conflictResolutionNoUpdate,
     conflictResolutionNoDelete,
     resolvedMutationNoClaim,
+    pendingEditResolutions,
+    pendingEditValidInsert,
+    pendingEditNoReplace,
+    pendingEditNoUpdate,
+    pendingEditNoDelete,
+    pendingEditOriginalNoClaim,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -11069,6 +11643,41 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
       ),
       result: [],
     ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'pending_edit_resolutions',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'pending_edit_resolutions',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'pending_edit_resolutions',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'pending_edit_resolutions',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'local_mutations',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
   ]);
 }
 
@@ -11382,6 +11991,33 @@ final class $LocalAccountReferences
 
     final cache = $_typedResult.readTableOrNull(
       _mutationConflictResolutionsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    PendingEditResolutions,
+    List<PendingEditResolution>
+  >
+  _pendingEditResolutionsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.pendingEditResolutions,
+        aliasName: 'local_account__user_id__pending_edit_resolutions__user_id',
+      );
+
+  $PendingEditResolutionsProcessedTableManager get pendingEditResolutionsRefs {
+    final manager =
+        $PendingEditResolutionsTableManager(
+          $_db,
+          $_db.pendingEditResolutions,
+        ).filter(
+          (f) => f.userId.userId.sqlEquals($_itemColumn<String>('user_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _pendingEditResolutionsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -11766,6 +12402,31 @@ class $LocalAccountFilterComposer
                     $removeJoinBuilderFromRootComposer,
               ),
         );
+    return f(composer);
+  }
+
+  Expression<bool> pendingEditResolutionsRefs(
+    Expression<bool> Function($PendingEditResolutionsFilterComposer f) f,
+  ) {
+    final $PendingEditResolutionsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.pendingEditResolutions,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $PendingEditResolutionsFilterComposer(
+            $db: $db,
+            $table: $db.pendingEditResolutions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
     return f(composer);
   }
 }
@@ -12173,6 +12834,31 @@ class $LocalAccountAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> pendingEditResolutionsRefs<T extends Object>(
+    Expression<T> Function($PendingEditResolutionsAnnotationComposer a) f,
+  ) {
+    final $PendingEditResolutionsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.pendingEditResolutions,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $PendingEditResolutionsAnnotationComposer(
+            $db: $db,
+            $table: $db.pendingEditResolutions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $LocalAccountTableManager
@@ -12203,6 +12889,7 @@ class $LocalAccountTableManager
             bool snapshotDownloadRowsRefs,
             bool snapshotBaselineRefs,
             bool mutationConflictResolutionsRefs,
+            bool pendingEditResolutionsRefs,
           })
         > {
   $LocalAccountTableManager(_$AccountDatabase db, LocalAccount table)
@@ -12264,6 +12951,7 @@ class $LocalAccountTableManager
                 snapshotDownloadRowsRefs = false,
                 snapshotBaselineRefs = false,
                 mutationConflictResolutionsRefs = false,
+                pendingEditResolutionsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -12283,6 +12971,7 @@ class $LocalAccountTableManager
                     if (snapshotBaselineRefs) db.snapshotBaseline,
                     if (mutationConflictResolutionsRefs)
                       db.mutationConflictResolutions,
+                    if (pendingEditResolutionsRefs) db.pendingEditResolutions,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -12581,6 +13270,27 @@ class $LocalAccountTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (pendingEditResolutionsRefs)
+                        await $_getPrefetchedData<
+                          LocalAccountData,
+                          LocalAccount,
+                          PendingEditResolution
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalAccountReferences
+                              ._pendingEditResolutionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalAccountReferences(
+                                db,
+                                table,
+                                p0,
+                              ).pendingEditResolutionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.userId == item.userId,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -12616,6 +13326,7 @@ typedef $LocalAccountProcessedTableManager =
         bool snapshotDownloadRowsRefs,
         bool snapshotBaselineRefs,
         bool mutationConflictResolutionsRefs,
+        bool pendingEditResolutionsRefs,
       })
     >;
 typedef $MetadataCopiesCreateCompanionBuilder =
@@ -22298,6 +23009,576 @@ typedef $MutationConflictResolutionsProcessedTableManager =
         bool orderRootOpId,
       })
     >;
+typedef $PendingEditResolutionsCreateCompanionBuilder =
+    PendingEditResolutionsCompanion Function({
+      required String originalOpId,
+      required String userId,
+      Value<String?> replacementOpId,
+      required String serverSnapshot,
+      required String choices,
+      required String originalEvidence,
+      required int logicalOrder,
+      required int createdAt,
+    });
+typedef $PendingEditResolutionsUpdateCompanionBuilder =
+    PendingEditResolutionsCompanion Function({
+      Value<String> originalOpId,
+      Value<String> userId,
+      Value<String?> replacementOpId,
+      Value<String> serverSnapshot,
+      Value<String> choices,
+      Value<String> originalEvidence,
+      Value<int> logicalOrder,
+      Value<int> createdAt,
+    });
+
+final class $PendingEditResolutionsReferences
+    extends
+        BaseReferences<
+          _$AccountDatabase,
+          PendingEditResolutions,
+          PendingEditResolution
+        > {
+  $PendingEditResolutionsReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static LocalMutations _originalOpIdTable(_$AccountDatabase db) =>
+      db.localMutations.createAlias(
+        'pending_edit_resolutions__original_op_id__local_mutations__op_id',
+      );
+
+  $LocalMutationsProcessedTableManager get originalOpId {
+    final $_column = $_itemColumn<String>('original_op_id')!;
+
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_originalOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalAccount _userIdTable(_$AccountDatabase db) => db.localAccount
+      .createAlias('pending_edit_resolutions__user_id__local_account__user_id');
+
+  $LocalAccountProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $LocalAccountTableManager(
+      $_db,
+      $_db.localAccount,
+    ).filter((f) => f.userId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalMutations _replacementOpIdTable(_$AccountDatabase db) =>
+      db.localMutations.createAlias(
+        'pending_edit_resolutions__replacement_op_id__local_mutations__op_id',
+      );
+
+  $LocalMutationsProcessedTableManager? get replacementOpId {
+    final $_column = $_itemColumn<String>('replacement_op_id');
+    if ($_column == null) return null;
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_replacementOpIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $PendingEditResolutionsFilterComposer
+    extends Composer<_$AccountDatabase, PendingEditResolutions> {
+  $PendingEditResolutionsFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get serverSnapshot => $composableBuilder(
+    column: $table.serverSnapshot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get choices => $composableBuilder(
+    column: $table.choices,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originalEvidence => $composableBuilder(
+    column: $table.originalEvidence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get logicalOrder => $composableBuilder(
+    column: $table.logicalOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalMutationsFilterComposer get originalOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originalOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountFilterComposer get userId {
+    final $LocalAccountFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountFilterComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsFilterComposer get replacementOpId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.replacementOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $PendingEditResolutionsOrderingComposer
+    extends Composer<_$AccountDatabase, PendingEditResolutions> {
+  $PendingEditResolutionsOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get serverSnapshot => $composableBuilder(
+    column: $table.serverSnapshot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get choices => $composableBuilder(
+    column: $table.choices,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originalEvidence => $composableBuilder(
+    column: $table.originalEvidence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get logicalOrder => $composableBuilder(
+    column: $table.logicalOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalMutationsOrderingComposer get originalOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originalOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountOrderingComposer get userId {
+    final $LocalAccountOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountOrderingComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsOrderingComposer get replacementOpId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.replacementOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $PendingEditResolutionsAnnotationComposer
+    extends Composer<_$AccountDatabase, PendingEditResolutions> {
+  $PendingEditResolutionsAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get serverSnapshot => $composableBuilder(
+    column: $table.serverSnapshot,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get choices =>
+      $composableBuilder(column: $table.choices, builder: (column) => column);
+
+  GeneratedColumn<String> get originalEvidence => $composableBuilder(
+    column: $table.originalEvidence,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get logicalOrder => $composableBuilder(
+    column: $table.logicalOrder,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $LocalMutationsAnnotationComposer get originalOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.originalOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountAnnotationComposer get userId {
+    final $LocalAccountAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountAnnotationComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalMutationsAnnotationComposer get replacementOpId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.replacementOpId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $PendingEditResolutionsTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          PendingEditResolutions,
+          PendingEditResolution,
+          $PendingEditResolutionsFilterComposer,
+          $PendingEditResolutionsOrderingComposer,
+          $PendingEditResolutionsAnnotationComposer,
+          $PendingEditResolutionsCreateCompanionBuilder,
+          $PendingEditResolutionsUpdateCompanionBuilder,
+          (PendingEditResolution, $PendingEditResolutionsReferences),
+          PendingEditResolution,
+          PrefetchHooks Function({
+            bool originalOpId,
+            bool userId,
+            bool replacementOpId,
+          })
+        > {
+  $PendingEditResolutionsTableManager(
+    _$AccountDatabase db,
+    PendingEditResolutions table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $PendingEditResolutionsFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $PendingEditResolutionsOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $PendingEditResolutionsAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> originalOpId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String?> replacementOpId = const Value.absent(),
+                Value<String> serverSnapshot = const Value.absent(),
+                Value<String> choices = const Value.absent(),
+                Value<String> originalEvidence = const Value.absent(),
+                Value<int> logicalOrder = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+              }) => PendingEditResolutionsCompanion(
+                originalOpId: originalOpId,
+                userId: userId,
+                replacementOpId: replacementOpId,
+                serverSnapshot: serverSnapshot,
+                choices: choices,
+                originalEvidence: originalEvidence,
+                logicalOrder: logicalOrder,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String originalOpId,
+                required String userId,
+                Value<String?> replacementOpId = const Value.absent(),
+                required String serverSnapshot,
+                required String choices,
+                required String originalEvidence,
+                required int logicalOrder,
+                required int createdAt,
+              }) => PendingEditResolutionsCompanion.insert(
+                originalOpId: originalOpId,
+                userId: userId,
+                replacementOpId: replacementOpId,
+                serverSnapshot: serverSnapshot,
+                choices: choices,
+                originalEvidence: originalEvidence,
+                logicalOrder: logicalOrder,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<PendingEditResolutions, PendingEditResolution>(
+                    table,
+                  ),
+                  $PendingEditResolutionsReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                originalOpId = false,
+                userId = false,
+                replacementOpId = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (originalOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.originalOpId,
+                            referencedTable: $PendingEditResolutionsReferences
+                                ._originalOpIdTable(db),
+                            referencedColumn: $PendingEditResolutionsReferences
+                                ._originalOpIdTable(db)
+                                .opId,
+                          ) as T;
+                        }
+                        if (userId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.userId,
+                            referencedTable: $PendingEditResolutionsReferences
+                                ._userIdTable(db),
+                            referencedColumn: $PendingEditResolutionsReferences
+                                ._userIdTable(db)
+                                .userId,
+                          ) as T;
+                        }
+                        if (replacementOpId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.replacementOpId,
+                            referencedTable: $PendingEditResolutionsReferences
+                                ._replacementOpIdTable(db),
+                            referencedColumn: $PendingEditResolutionsReferences
+                                ._replacementOpIdTable(db)
+                                .opId,
+                          ) as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $PendingEditResolutionsProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      PendingEditResolutions,
+      PendingEditResolution,
+      $PendingEditResolutionsFilterComposer,
+      $PendingEditResolutionsOrderingComposer,
+      $PendingEditResolutionsAnnotationComposer,
+      $PendingEditResolutionsCreateCompanionBuilder,
+      $PendingEditResolutionsUpdateCompanionBuilder,
+      (PendingEditResolution, $PendingEditResolutionsReferences),
+      PendingEditResolution,
+      PrefetchHooks Function({
+        bool originalOpId,
+        bool userId,
+        bool replacementOpId,
+      })
+    >;
 
 class $AccountDatabaseManager {
   final _$AccountDatabase _db;
@@ -22345,4 +23626,6 @@ class $AccountDatabaseManager {
         _db,
         _db.mutationConflictResolutions,
       );
+  $PendingEditResolutionsTableManager get pendingEditResolutions =>
+      $PendingEditResolutionsTableManager(_db, _db.pendingEditResolutions);
 }

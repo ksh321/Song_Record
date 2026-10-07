@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import 'account_database.dart';
+import 'canonical_conflict_store.dart';
 import 'canonical_reference_store.dart';
 import 'conflict_eligibility.dart';
 import 'local_models.dart';
@@ -21,6 +22,7 @@ import 'metadata_followup_store.dart';
 /// below reserves ordering only; it does not resolve or flatten alias routes.
 Future<MappingEligibility> readMappingEligibility(
   AccountDatabase database,
+  {bool holdDrafts = true}
 ) async {
   final aliases = await database.customSelect('''
     SELECT source_song_id,canonical_song_id FROM song_aliases
@@ -40,6 +42,7 @@ Future<MappingEligibility> readMappingEligibility(
         database,
         const MappingEligibility.empty(),
       ),
+      holdDrafts: holdDrafts,
     );
   }
   final mutations = await database.customSelect('''
@@ -240,14 +243,15 @@ Future<MappingEligibility> readMappingEligibility(
     database,
     await metadataFollowupEligibility(
       database,
-      MappingEligibility(
+      await canonicalChoiceEligibility(database, MappingEligibility(
         blocked: blocked,
         superseded: superseded,
         logicalOrders: logicalOrders,
         groups: {
           for (final target in parent.keys.toList()) target: root(target),
         },
-      ),
+      ), quarantinedGroups),
     ),
+    holdDrafts: holdDrafts,
   );
 }

@@ -58,6 +58,18 @@ void main() {
       expect(source.state, 'CONFLICT');
     },
   );
+  test('latest validated server comparison preserves original 409 and common base', () {
+    final source = mutation();
+    final oldResponse = source.serverResponse;
+    final plan = prepareConflictResolution(source,
+      serverSnapshot: {...songChange(payloadId, 3), 'note': 'latest'},
+      choices: {'note': ConflictChoice.local});
+    expect(jsonDecode(plan.patchJson!), {'base_revision': 3, 'note': 'local'});
+    expect(source.serverResponse, oldResponse);
+    expect(source.baseRevision, 1);
+    expect(() => prepareConflictResolution(source,
+      serverSnapshot: songChange(payloadId, 1)), throwsFormatException);
+  });
   test('same field requires exact explicit choices', () {
     final source = mutation();
     expect(() => prepareConflictResolution(source), throwsStateError);

@@ -18,7 +18,7 @@ class AccountDatabase extends _$AccountDatabase {
   final AppEnvironment environment;
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -37,7 +37,7 @@ class AccountDatabase extends _$AccountDatabase {
     // No destructive fallback. Every future version needs an explicit,
     // data-preserving migration and a checked-in schema snapshot.
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 7 || to != 8) {
+      if (from < 1 || from > 8 || to != 9) {
         throw StateError('Unsupported local schema migration: $from -> $to');
       }
       if (from < 2) {
@@ -132,7 +132,7 @@ class AccountDatabase extends _$AccountDatabase {
         await migrator.createTrigger(recordingFollowupNoDelete);
         await migrator.createTrigger(recordingFollowupNoReplace);
         await migrator.createTrigger(recordingFollowupOriginalNoClaim);
-      } else {
+      } else if (from < 8) {
         // Only widen validated entity types. Existing v7 rows/wires stay intact.
         await customStatement('DROP TRIGGER recording_followup_valid_insert');
         await migrator.createTrigger(recordingFollowupValidInsert);
@@ -141,6 +141,14 @@ class AccountDatabase extends _$AccountDatabase {
         // Replace only the trigger definition; every history row stays intact.
         await customStatement('DROP TRIGGER conflict_resolution_valid_insert');
         await migrator.createTrigger(conflictResolutionValidInsert);
+      }
+      if (from < 9) {
+        await migrator.createTable(pendingEditResolutions);
+        await migrator.createTrigger(pendingEditValidInsert);
+        await migrator.createTrigger(pendingEditNoReplace);
+        await migrator.createTrigger(pendingEditNoUpdate);
+        await migrator.createTrigger(pendingEditNoDelete);
+        await migrator.createTrigger(pendingEditOriginalNoClaim);
       }
     },
     beforeOpen: (details) async {
