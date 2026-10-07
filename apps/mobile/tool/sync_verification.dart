@@ -26,7 +26,27 @@ class VerificationHome extends StatefulWidget {
 class _VerificationHomeState extends State<VerificationHome> {
   bool busy = false;
   String? message;
-  Future<void> open(int? status, {bool canonical = false, bool changeOnReview = false}) async {
+  List<String> savedRuns = [];
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(loadRuns());
+  }
+
+  Future<void> loadRuns() async {
+    try {
+      final support = await getApplicationSupportDirectory();
+      final runs = await SyncVerificationFixture.savedRuns(
+        Directory('${support.path}/isolated-sync-checks'));
+      if (mounted) setState(() => savedRuns = runs);
+    } catch (_) {
+      if (mounted) setState(() => message = '저장된 검증 실행을 읽지 못했어요.');
+    }
+  }
+
+  Future<void> open(int? status, {bool canonical = false, bool changeOnReview = false,
+      bool resync = false, bool expirePage = false, String? resumeRun}) async {
     if (busy) return;
     setState(() {
       busy = true;
@@ -40,6 +60,8 @@ class _VerificationHomeState extends State<VerificationHome> {
         authenticationStatus: status,
         canonical: canonical,
         changeOnReview: changeOnReview,
+        resync: resync, expirePage: expirePage,
+        resumeRun: resumeRun,
       );
       if (!mounted) return;
       await Navigator.of(context).push(
@@ -51,6 +73,7 @@ class _VerificationHomeState extends State<VerificationHome> {
       if (mounted) setState(() => message = '검증 준비에 실패했어요. AI에게 알려 주세요.');
     } finally {
       await fixture?.close();
+      await loadRuns();
       if (mounted) setState(() => busy = false);
     }
   }
@@ -63,6 +86,19 @@ class _VerificationHomeState extends State<VerificationHome> {
       children: [
         const Text('합성 자료만 사용하는 별도 앱입니다. 로그인·서버 통신·녹음은 하지 않습니다.'),
         if (message != null) Text(message!),
+        for (final run in savedRuns)
+          OutlinedButton(
+            onPressed: busy ? null : () => open(null, resumeRun: run),
+            child: Text('이전 재수신 이어 열기 · $run'),
+          ),
+        FilledButton(
+          onPressed: busy ? null : () => open(null, resync: true),
+          child: const Text('만료 커서 재수신·편집 검토'),
+        ),
+        FilledButton(
+          onPressed: busy ? null : () => open(null, resync: true, expirePage: true),
+          child: const Text('페이지 만료 재시작·편집 검토'),
+        ),
         FilledButton(
           onPressed: busy ? null : () => open(null, canonical: true),
           child: const Text('같은 곡 개인 편집 검증'),
@@ -122,6 +158,7 @@ class _VerificationRunState extends State<VerificationRun>
             padding: const EdgeInsets.all(12),
             child: Column(
               children: [
+                Text('현재 실행 · ${widget.fixture.runName}'),
                 Text(
                   widget.status == null ? '변경 검토에서 사용할 이름을 선택하세요.' : '시작 후 8초 안에 홈으로 나갔다가 복귀하세요. 응답 후 전송 1회·시도 [1, 0]이 정상입니다.',
                 ),
@@ -141,7 +178,7 @@ class _VerificationRunState extends State<VerificationRun>
                         .map((i) => i.mutation.attemptCount)
                         .toList();
                     final text =
-                        '전송 ${widget.fixture.transport.calls}회 · 남은 항목 시도 $attempts';
+                        '이번 열기 전송 ${widget.fixture.transport.calls}회 · 남은 항목 시도 $attempts';
                     return Text(
                       text,
                       key: const ValueKey('verification-summary'),

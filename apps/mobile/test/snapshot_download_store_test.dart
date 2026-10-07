@@ -56,6 +56,68 @@ void main() {
     }
   }
 
+  Future<Map<String, dynamic>> recoveryState() async {
+    final recovery =
+        jsonDecode(await store.recoveryData()) as Map<String, dynamic>;
+    expect(recovery, contains('created_at'));
+    final createdAt = recovery['created_at'];
+    expect(createdAt, isA<String>());
+    expect(DateTime.parse(createdAt as String).isUtc, isTrue);
+    // Only the export timestamp varies; retain every persisted table field.
+    return Map<String, dynamic>.from(recovery)..remove('created_at');
+  }
+
+  test('restart rolls back late staging failure and survives reopening without a dangling resume', () async {
+    final resume = <String, Object?>{'version': 1,
+      'op_id': '33333333-3333-4333-8333-333333333333',
+      'phase': 'RECEIVING', 'token': token,
+      'expires_at': fixture['manifest']['expires_at']};
+    await store.compareAndSetSnapshotResume(expected: null, replacement: resume);
+    final observed = (await store.readSnapshotResume())!;
+    final before = await recoveryState();
+    final paths = await AccountPaths.create(directory, owner, AppEnvironment.dev);
+    final native = sqlite.sqlite3.open((await paths.databaseFile()).path);
+    try {
+      native.execute("CREATE TRIGGER fail_restart BEFORE DELETE ON snapshot_downloads BEGIN SELECT RAISE(ABORT,'synthetic restart failure'); END");
+      await expectLater(store.restartSnapshotDownload(observed), throwsA(isA<Exception>()));
+      expect(await recoveryState(), before);
+      native.execute('DROP TRIGGER fail_restart');
+    } finally { native.close(); }
+    await manager.logout();
+    store = await manager.openAccount(owner);
+    expect(await store.readSnapshotResume(), observed);
+    expect(await store.restartSnapshotDownload(observed), isTrue);
+    await manager.logout();
+    store = await manager.openAccount(owner);
+    expect(await store.readSnapshotResume(), isNull);
+    expect(await store.hasCompleteBaseline(), isFalse);
+    await expectLater(store.snapshotDownloadState(token), throwsStateError);
+    expect(await store.restartSnapshotDownload(observed), isFalse);
+  });
+
+  test('stale restart cannot delete a newer receive attempt or an applied baseline', () async {
+    final resume = <String, Object?>{'version': 1,
+      'op_id': '33333333-3333-4333-8333-333333333333',
+      'phase': 'RECEIVING', 'token': token,
+      'expires_at': fixture['manifest']['expires_at']};
+    await store.compareAndSetSnapshotResume(expected: null, replacement: resume);
+    final stale = (await store.readSnapshotResume())!;
+    await store.compareAndSetSnapshotResume(expected: stale, replacement: {
+      ...resume, 'op_id': '44444444-4444-4444-8444-444444444444'});
+    final before = await recoveryState();
+    expect(await store.restartSnapshotDownload(stale), isFalse);
+    expect(await recoveryState(), before);
+    await pages();
+    await store.verifySnapshotDownload(token);
+    await store.applySnapshotDownload(token);
+    final applied = await recoveryState();
+    expect(await store.restartSnapshotDownload(stale), isFalse);
+    expect(await recoveryState(), applied);
+    final oldStore = store;
+    await manager.openAccount('55555555-5555-4555-8555-555555555555');
+    await expectLater(oldStore.restartSnapshotDownload(stale), throwsStateError);
+  });
+
   test('delta commit survives reopen and preserves queue, frozen evidence and audio', () async {
     const id = '33333333-3333-4333-8333-333333333333';
     await store.saveEdit(

@@ -76,12 +76,9 @@ final class SnapshotReceiver implements SnapshotStepper {
     final token = state['token'] as String?;
     final expiry = state['expires_at'] as String?;
     Future<SnapshotStep> restart() async {
-      if (token != null) await store.discardSnapshotDownload(token);
-      await store.compareAndSetSnapshotResume(
-        expected: observed,
-        replacement: null,
-      );
-      return SnapshotStep.progressed;
+      return await store.restartSnapshotDownload(observed!)
+          ? SnapshotStep.progressed
+          : SnapshotStep.waiting;
     }
 
     if (expiry != null && !clock().isBefore(DateTime.parse(expiry))) {
@@ -135,7 +132,13 @@ final class SnapshotReceiver implements SnapshotStepper {
     if (await store.readSnapshotResume() != observed) {
       return SnapshotStep.waiting;
     }
-    if (response.status == 410 && token != null) return restart();
+    if (response.status == 410 && token != null) {
+      final error = jsonDecode(response.body);
+      if (error is Map && error['error'] is Map &&
+          error['error']['code'] == 'SNAPSHOT_EXPIRED') {
+        return restart();
+      }
+    }
     if (response.status == 400 && entity != null) {
       final error = jsonDecode(response.body);
       if (error is Map &&

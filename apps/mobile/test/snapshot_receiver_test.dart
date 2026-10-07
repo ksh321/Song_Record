@@ -166,7 +166,8 @@ void main() {
     transport.respond = (_) async => receipt;
     final runner = receiver();
     await runner.step(session);
-    transport.respond = (_) async => const SnapshotHttpResponse(410, '{}');
+    transport.respond = (_) async => const SnapshotHttpResponse(
+      410, '{"error":{"code":"SNAPSHOT_EXPIRED"}}');
     expect(await runner.step(session), SnapshotStep.progressed);
     expect(await store.readSnapshotResume(), isNull);
     expect(transport.requests, hasLength(2));
@@ -187,6 +188,46 @@ void main() {
     expect(await store.readSnapshotResume(), isNull);
     expect(await store.hasCompleteBaseline(), isFalse);
     await expectLater(store.snapshotDownloadState(token), throwsStateError);
+  });
+
+  test('unrelated 410 and transient failures retain the observed request', () async {
+    transport.respond = (_) async => receipt;
+    final runner = receiver();
+    await runner.step(session);
+    final observed = await store.readSnapshotResume();
+    transport.respond = (_) async => const SnapshotHttpResponse(
+      410, '{"error":{"code":"OTHER_ERROR"}}');
+    await expectLater(runner.step(session), throwsFormatException);
+    for (final status in [429, 500, 503]) {
+      transport.respond = (_) async => SnapshotHttpResponse(status, '{}');
+      expect(await runner.step(session), SnapshotStep.retryLater);
+      expect(await store.readSnapshotResume(), observed);
+    }
+    expect(await store.readSnapshotResume(), observed);
+  });
+
+  test('local expiry retires staging before reopening with a fresh operation', () async {
+    transport.respond = (request) async => request.method == 'POST'
+        ? receipt : SnapshotHttpResponse(200, jsonEncode(fixture['manifest']));
+    final runner = receiver();
+    await runner.step(session);
+    await runner.step(session);
+    now = DateTime.parse(fixture['manifest']['expires_at'] as String);
+    expect(await runner.step(session), SnapshotStep.progressed);
+    expect(transport.requests, hasLength(2));
+    await manager.logout();
+    store = await manager.openAccount(owner);
+    const next = '44444444-4444-4444-8444-444444444444';
+    final restarted = SnapshotReceiver(store: store, transport: transport,
+      newOperationId: () => next, clock: () => now);
+    transport.respond = (request) async {
+      expect(request.operationId, next);
+      expect(jsonDecode((await store.readSnapshotResume())!)['op_id'], next);
+      throw const SnapshotTransportFailure(null);
+    };
+    expect(await restarted.step(session), SnapshotStep.retryLater);
+    expect(await restarted.step(session), SnapshotStep.retryLater);
+    expect(transport.requests.skip(2).map((r) => r.operationId), [next, next]);
   });
 
   test(

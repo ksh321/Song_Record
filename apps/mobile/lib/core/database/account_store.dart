@@ -205,6 +205,34 @@ final class AccountStore {
       _run(() => _snapshots.verify(token));
   Future<void> discardSnapshotDownload(String token) =>
       _run(() => _snapshots.discard(token));
+
+  /// Retire only the observed receive attempt. Staging and its resume pointer
+  /// must disappear together, including when a page cursor fails before TTL.
+  Future<bool> restartSnapshotDownload(String expected) => _run(
+    () => _database.transaction(() async {
+      requireActive();
+      final state = jsonDecode(expected) as Map<String, dynamic>;
+      final token = state['token'] as String;
+      if (!{'BUILDING', 'RECEIVING'}.contains(state['phase']) ||
+          UuidValue(token).value != token) {
+        throw const FormatException('Invalid snapshot restart');
+      }
+      final changed = await _database.customUpdate(
+        '''UPDATE sync_cursors SET snapshot_resume=NULL,updated_at=?
+        WHERE singleton=1 AND user_id=? AND baseline_complete=0
+          AND snapshot_resume=? AND NOT EXISTS(
+            SELECT 1 FROM snapshot_downloads WHERE snapshot_token=? AND state='APPLIED')''',
+        variables: [
+          Variable(_manager._clock().toUtc().millisecondsSinceEpoch),
+          Variable(userId), Variable(expected), Variable(token),
+        ],
+      );
+      if (changed == 0) return false;
+      await _snapshots.discard(token);
+      requireActive();
+      return true;
+    }),
+  );
   Future<void> applySnapshotDownload(String token) =>
       _run(() => _applySnapshotDownload(token));
 
