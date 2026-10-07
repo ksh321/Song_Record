@@ -16,7 +16,7 @@ from pathlib import Path
 
 from codex_transport import AppServer, ProviderError
 from select_work import select
-from workflow_policy import (bind_diagnosis, compact_context, stage_model, work_summary,
+from workflow_policy import (bind_diagnosis, compact_context, stage_model,
                              simple_diagnostic_hint, simple_diagnosis_route, simple_repair)
 from workflow_runtime import (Blocked, RunLock, atomic_json, execute,
                               fingerprint, git, observation_matches, quota_available,
@@ -172,7 +172,6 @@ class Runner:
     def save(self):
         self.data['updated'] = utc()
         atomic_json(self.path, self.data)
-        atomic_json(self.directory / 'task-summary.json', work_summary(self.data))
 
     def event(self, kind, data):
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -375,7 +374,8 @@ class Runner:
                   '사람 조치가 정말 필요하면 wait payload에 preparation,steps,expected,reply를 구체적인 한국어 문자열로 모두 제공한다. '
                   'steps는 어느 기기/앱/화면에서 무엇을 누를지 순서대로, expected는 성공 모습, reply는 전달할 결과를 적는다.\n'
                   '같은 스레드에서 이미 확인한 문서를 무조건 다시 읽지 않는다. 현재 변경·오류·필요한 원문 절만 읽는다. '
-                  '먼저 task-summary.json과 전달된 현재 단계 근거를 사용한다. 문서는 rg -n으로 해당 P번호·요구사항을 찾고 '
+                  '전달된 현재 단계 근거를 우선 사용한다. 재개 위치는 checkpoint.json, 계획은 task-context.json에서 필요한 항목만 확인한다. '
+                  '문서는 rg -n으로 해당 P번호·요구사항을 찾고 '
                   '관련 절·함수와 연결된 계약만 읽는다. 전체 파일 출력 대신 한 번에 120줄 이내를 읽고 근거가 부족할 때 확대한다. '
                   '성공 로그는 상태·개수·경로로 확인하고 실패 로그는 오류 주변부터 읽는다. 중요한 지적·완료 조건을 생략하지 않는다. '
                   '원문 완료 기준과 검토 근거는 task-context.json 및 연결된 원문에서 확인한다. '

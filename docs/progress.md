@@ -914,3 +914,8 @@ P10-02 다음: mutation_supersessions.mapping_source_id는 song_aliases 필수 �
 ### 2026-10-07 WORKFLOW-09 작업 성격별 모델 배정
 
 자료 정리와 사전 근거가 확인된 단순 분류/수정은 Sol Medium, 핵심·불명확한 판단/검토는 Astra High로 적용. Python 92/PowerShell 103·색인·차이 검사 PASS. 근거: docs/verification/WORKFLOW-01-bootstrap.md. 설계 Page sequence 15 반영. 제품 재개·실측 사용량 절감 판정은 하지 않음.
+
+
+### 2026-10-07 WORKFLOW-09 중복 요약표 제거
+
+후속 사용자 요청으로 ② 현재 작업 요약표 생성·전달·읽기를 제거했다. 체크포인트·계획에서 필요한 필드를 직접 전달하며 B안은 ①④⑤⑦을 유지한다. Python 92/PowerShell 103 및 검증 근거는 docs/verification/WORKFLOW-01-bootstrap.md 참조. 설계 Page sequence 16 반영. 제품 실행은 재개하지 않음.

@@ -284,7 +284,7 @@ class BIntegrationTests(unittest.TestCase):
         self.assertNotIn('results', context)
         self.assertIn('final-facts.json', context['record'])
 
-    def test_normal_completion_needs_no_ai_and_summary_tracks_completion(self):
+    def test_normal_completion_needs_no_ai_and_checkpoint_tracks_completion(self):
         self.runner.ai = self.fake_ai
         while self.runner.data['stage'] != 'CI': self.runner.step()
         self.runner.data.update(stage='FINALIZE', ci={'overall': 'NOT_REQUIRED',
@@ -293,9 +293,11 @@ class BIntegrationTests(unittest.TestCase):
             self.runner.step()
             ai.assert_not_called()
         self.assertEqual(self.runner.data['stage'], 'COMPLETE')
-        summary = read_json(self.runner.directory / 'task-summary.json')
-        self.assertEqual(summary['stage'], 'COMPLETE')
-        self.assertEqual(summary['target_commit'], self.runner.data['target_commit'])
+        checkpoint = read_json(self.runner.path)
+        self.assertEqual(checkpoint['stage'], 'COMPLETE')
+        self.assertEqual(checkpoint['target_commit'], self.runner.data['target_commit'])
+        self.assertFalse((self.runner.directory / 'task-summary.json').exists())
+        self.assertNotIn('summary_evidence', compact_context(self.runner.data))
         self.assertIn('P10-02', self.runner.state()['units'][0]['task_evidence'])
 
     def test_automatic_completion_rejects_missing_or_conflicting_evidence(self):

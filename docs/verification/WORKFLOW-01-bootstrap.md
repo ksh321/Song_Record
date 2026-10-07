@@ -235,3 +235,10 @@ GitHub 계정 선택 보정: 사용자 스크린샷과 ksh321 선택 회신에 �
 - 현재 모델 직접 검토: 판정용 사전 힌트는 수정 허가가 아니며 실제 코드·계약 근거를 다시 확인함, 오래된 단순 근거를 재사용하지 않음, 일반 작업의 core 수정도 Astra 사용, 핵심 REVIEW 및 같은 문제 3+3/최대3·기존 이력 보존. 정상 완료의 추가 AI 호출 제거 유지.
 - 검증: pwsh -NoProfile -File tools/workflow.ps1 -Mode Quick 종료 0. Python 92개, PowerShell 103개, 원본 색인·차이 검사 PASS. 로그 .local/workflow/runs/20261007-105555-431-e0184583/. 모의 모델로 배정과 전환을 확인했으며 새 유료 API·제품 AI 실행은 사용하지 않았다. 실제 모델 지원·관측은 기존 구독 호출 경로가 계속 확인한다.
 - 설계 Page v1.2 sequence 15에 모델 표·단순 분류 기준·완료 정리 규칙을 반영했다. 제품 작업은 재개하지 않았으며 실제 사용량 절감률은 미측정. 이번 도구·문서 변경의 원격 CI는 정책상 NOT_REQUIRED다.
+### WORKFLOW-09 중복 현재 작업 요약표 제거 — 2026-10-07
+
+- 사용자 요청으로 task-summary.json 생성 함수·상태 저장 시 생성·프롬프트 참조·읽기 지시를 제거했다. checkpoint.json의 현재 단계·재개 위치와 기존 plan/task-context.json의 목표·완료 기준·검사를 사용하고 compact_context가 필요한 필드만 직접 전달한다.
+- B안의 현재 적용 항목은 ①④⑤⑦이다. ② 도입 당시의 검증·커밋 이력은 보존하되 현재 기능으로 안내하지 않는다. 단계별 입력·Sol/Astra 배정·코드 검토·완료 관문·정상 완료 추가 AI 호출 제거는 유지한다.
+- 현재 모델 직접 diff 검토와 pwsh -NoProfile -File tools/workflow.ps1 -Mode Quick 종료 0 확인. Python 92개·PowerShell 103개·원본 색인·차이 검사 PASS. 완료 후 체크포인트의 단계/SHA 보존과 별도 요약표·전달 필드 미생성을 회귀 검증했다.
+- 활성 sequential 경로에 기존 task-summary.json 및 백업은 없었다. 체크포인트·계획·제품 파일·이력을 삭제하지 않았다. 설계 Page v1.2 sequence 16에 현재 정책을 반영했다. 이번 도구·문서 변경의 원격 CI는 NOT_REQUIRED이며 제품 실행은 재개하지 않았다.
+- 최종 검사 로그: .local/workflow/runs/20261007-130932-569-e4def26a/.
