@@ -227,7 +227,7 @@ class RunnerFixture(unittest.TestCase):
 
     def plan(self):
         task = self.runner.data['task_id']
-        return {'task_id': task, 'title': '검증용 작업', 'objective': 'test workflow only', 'risk': 'sensitive',
+        return {'task_id': task, 'title': '검증용 작업', 'objective': 'test workflow only', 'risk': 'sensitive', 'source_only': True,
                 'acceptance': [{'id': 'A1', 'criterion': 'fixture changed', 'basis': 'original', 'checks': ['diff', 'review']}],
                 'sources': ['docs/reference/search/plan.txt'], 'scope': [task + '.txt'],
                 'checks': [{'id': 'diff', 'kind': 'diff', 'targets': [], 'timeout': 10}],

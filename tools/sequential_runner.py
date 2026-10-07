@@ -16,7 +16,8 @@ from pathlib import Path
 
 from codex_transport import AppServer, ProviderError
 from select_work import select
-from workflow_policy import bind_diagnosis, compact_context, stage_model, work_summary
+from workflow_policy import (bind_diagnosis, compact_context, stage_model, work_summary,
+                             simple_diagnostic_hint, simple_diagnosis_route, simple_repair)
 from workflow_runtime import (Blocked, RunLock, atomic_json, execute,
                               fingerprint, git, observation_matches, quota_available,
                               read_json, recover_json, relative_path,
@@ -420,7 +421,12 @@ class Runner:
         if response['action'] == 'continue':
             self.data['call']['phase'] = 'consumed'
             if payload.get('reclassify'):
-                self.data.setdefault('diagnosis', {})['kind'] = 'core'
+                if self.data['stage'] == 'PLAN':
+                    self.data['plan_requires_core'] = True
+                elif self.data['stage'] == 'DIAGNOSE':
+                    self.data['requires_core_diagnosis'] = True
+                else:
+                    self.data.setdefault('diagnosis', {})['kind'] = 'core'
             signature = hashlib.sha256((self.source() + response['payload']).encode()).hexdigest()
             if signature == self.data.get('last_continue'):
                 # Exact duplicate handoff is invalid, not an invented numeric retry budget.
@@ -450,7 +456,7 @@ class Runner:
         failure = {'id': event_id, 'details': details, 'excerpt': redact(excerpt)[-6000:]}
         atomic_json(self.directory / 'failure.json', failure)
         self.data.update(stage='DIAGNOSE', status='READY',
-                         pending_failure=failure)
+                         pending_failure=failure, requires_core_diagnosis=False, diagnosis_route=None)
         self.save()
 
     def review_valid(self):
@@ -689,16 +695,23 @@ class Runner:
                 'AGENTS.md의 필수 규칙과 최신 감사 절을 준수한다. progress/development-workflow/verification/requirements/decisions 및 '
                 'reference/search/plan.txt와 design.txt에서 현재 P번호·요구사항을 검색하여 관련 절과 연결된 계약·코드만 읽는다. '
                 '문서 전체를 일괄 출력하지 않는다. 기존 성과를 보존하여 남은 전체 범위를 확정한다. '
+                'Sol 단계에서는 기존 승인 문서의 사실·남은 일·검사를 정리하며 새 동작 정책을 판단하지 않는다. '
+                '계약 충돌·새 동작 판단·불명확함이 있으면 편집 없이 continue payload에 reclassify=true와 이유를 남긴다. '
+                'plan_requires_core=true이면 Astra로 해당 판단을 수행한다. '
                 '설명과 payload는 한국어. 제품 파일 편집은 아직 하지 않는다. '
                 'payload keys: task_id,title,objective,risk(general/complex/sensitive),'
                 'acceptance(array of {id,criterion,basis,checks:[check_id or review or manual]}),'
-                'sources(repo paths),scope(repo paths),verification_file(existing file),'
+                'sources(repo paths),scope(repo paths),verification_file(existing file),source_only(boolean:기존 근거의 사실 정리만 했는지),'
                 'checks(array {id,kind,targets,timeout}),manual({required:boolean,reason:string,preparation,steps,expected,reply}). '
                 'check kinds: flutter-test,flutter-analyze,flutter-build-dev,api-test,workflow-quick,sources,diff. '
                 'checks에 같은 P번호의 연결된 구현 완료 후 필요한 로컬 검사를 빠짐없이 한 번씩 선언한다. '
                 'scope는 필요한 제품·테스트로 한정한다. 동기화·인증·DB 핵심은 sensitive로 지정한다.')
             result = self.ai(instruction, 'plan', read_only=True)
             if result:
+                if not self.data.get('plan_requires_core') and result.get('source_only') is not True:
+                    self.data.update(plan_requires_core=True, next_action={'reason': 'Plan requires core judgment or explicit source-only evidence.'})
+                    self.save()
+                    return
                 validate_plan(self.root, result, self.data['task_id'])
                 if self.data['task_id'].startswith(('P06-', 'P10-')) or any(
                         re.search(r'auth|sync|database|migration', path, re.I) for path in result['scope']):
@@ -708,6 +721,9 @@ class Runner:
                                             for name in result['sources'] if relative_path(self.root, name).is_file()}
                 self.save()
         elif stage == 'DIAGNOSE':
+            source = self.source()
+            self.data['diagnosis_route'] = simple_diagnostic_hint(self.root, self.data, source)
+            light = simple_diagnosis_route(self.data, source)
             result = self.ai(
                 '읽기 전용 원인 분류. failure의 실제 로그/코드를 읽고 전달된 incidents의 모든 원인 ID와 비교한다. '
                 'comparisons에는 현재 P번호의 전달된 ID만 정확히 포함한다. 전체 근거는 incident_evidence에서 확인한다. '
@@ -716,10 +732,18 @@ class Runner:
                 'comparisons:[{id,relation:same/different,evidence}],kind:syntax_import/format/fixture_contract/core/environment,'
                 'cause_clear:boolean,behavior_unchanged:boolean,checkable:boolean,contract_basis,files:[repo path]}. '
                 '단순 수정은 원인·방법 명확/행동 계약 불변/검증 가능 세 조건과 기존 계약 출처가 모두 있어야 한다. '
+                'verified_import_cleanup으로 Sol에 배정됐어도 실제 코드에서 세 조건을 확인한다. '
+                '테스트 기대값·동작 변경·불명확함이 있으면 편집 없이 continue payload에 reclassify=true와 이유를 반환해 Astra로 전환한다. '
                 '테스트 기대값을 통과 목적으로 바꾸지 않는다. 인증·동기화·DB 의미 변경 또는 불명확하면 core. '
                 '실제 사람이 해야 하는 환경 조치는 wait와 구체적 절차; AI가 해결 가능한 환경은 environment.',
                 'diagnosed', read_only=True)
             if result:
+                if light and (not simple_repair(result) or result.get('kind') != 'syntax_import'
+                              or not set(result.get('files', [])) <= set(self.data['diagnosis_route']['files'])
+                              or self.source() != source):
+                    self.data.update(requires_core_diagnosis=True, rejected_light_diagnosis=result)
+                    self.save()
+                    return
                 for name in result.get('files', []):
                     relative_path(self.root, name)
                     if name not in self.data['plan']['scope']:

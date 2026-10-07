@@ -1,6 +1,7 @@
 """B policy: cause-based repair accounting and bounded stage context."""
 import copy
-from workflow_runtime import Blocked, failure_action, record_failure, select_model
+import re
+from workflow_runtime import Blocked, failure_action, record_failure, select_model, relative_path
 
 
 def bind_diagnosis(data, diagnosis, source):
@@ -52,11 +53,60 @@ def simple_repair(diagnosis):
             and bool(diagnosis.get('files')))
 
 
+def simple_diagnostic_hint(root, data, source):
+    """Conservative routing evidence, never permission to change behavior."""
+    failure = data.get('pending_failure') or {}
+    details = failure.get('details', {})
+    check, result = details.get('check', {}), details.get('result', {})
+    if (check.get('kind') != 'flutter-analyze' or result.get('status') != 'FAIL'
+            or result.get('fingerprint') != source or not result.get('log_directory')):
+        return None
+    directory = relative_path(root, result['log_directory'])
+    report = ''
+    for name in ('stdout.log', 'stderr.log'):
+        path = directory / name
+        if path.is_file():
+            if path.stat().st_size > 2_000_000:
+                return None
+            report += path.read_text(encoding='utf-8', errors='replace') + '\n'
+    total = re.findall(r'(?m)^\s*(\d+) issues? found\.', report)
+    rows = re.findall(r'(?m)^\s*(?:info|warning|error)\s+•\s+.+?\s+•\s+(.+?):(\d+):(\d+)\s+•\s+(\w+)\s*$', report)
+    if len(total) != 1 or int(total[0]) != len(rows) or not rows:
+        return None
+    files = []
+    for name, line, column, code in rows:
+        if code not in ('unused_import', 'duplicate_import', 'unnecessary_import'):
+            return None
+        name = 'apps/mobile/' + name.replace('\\', '/')
+        if name not in data.get('plan', {}).get('scope', []):
+            return None
+        path = relative_path(root, name)
+        if not path.is_file():
+            return None
+        lines = path.read_text(encoding='utf-8').splitlines()
+        index = int(line) - 1
+        if index < 0 or index >= len(lines) or not re.fullmatch(r"\s*import\s+['\"].+['\"].*;\s*", lines[index]):
+            return None
+        files.append(name)
+    return {'kind': 'verified_import_cleanup', 'event_id': failure['id'],
+            'fingerprint': source, 'files': sorted(set(files)),
+            'evidence': 'Complete analyzer report contains only unused/duplicate/unnecessary imports; source import lines verified.'}
+
+
+def simple_diagnosis_route(data, source):
+    hint = data.get('diagnosis_route') or {}
+    return (not data.get('requires_core_diagnosis') and hint.get('kind') == 'verified_import_cleanup'
+            and hint.get('fingerprint') == source
+            and hint.get('event_id') == (data.get('pending_failure') or {}).get('id'))
+
+
 def stage_model(data, models, source):
     stage = data['stage']
     risk = data.get('plan', {}).get('risk', 'sensitive' if data['task_id'].startswith(('P06-', 'P10-')) else 'general')
+    if stage == 'PLAN':
+        return select_model(models, 'sensitive' if data.get('plan_requires_core') else 'general')
     if stage == 'DIAGNOSE':
-        return select_model(models, 'sensitive')
+        return select_model(models, 'general' if simple_diagnosis_route(data, source) else 'sensitive')
     if stage == 'FINALIZE':
         return select_model(models, 'general')
     issue = data.get('incidents', {}).get(data.get('active_incident'), {})
@@ -69,6 +119,8 @@ def stage_model(data, models, source):
         diagnosis = data.get('diagnosis', {})
         if diagnosis.get('fingerprint') == source and simple_repair(diagnosis):
             return select_model(models, 'general')
+        # An unclear/core repair must not inherit a low-risk task's model.
+        return select_model(models, 'sensitive')
     # No sticky maximum across unrelated problems, review, or reporting.
     return select_model(models, risk)
 
@@ -103,6 +155,8 @@ def compact_context(data):
     result['acceptance'] = [{k: a[k] for k in ('id', 'criterion', 'basis', 'checks')} for a in plan.get('acceptance', [])]
     result['plan_evidence'] = '.local/workflow/runs/sequential/task-context.json'
     result['summary_evidence'] = '.local/workflow/runs/sequential/task-summary.json'
+    if data['stage'] == 'PLAN':
+        result['plan_requires_core'] = data.get('plan_requires_core', False)
     if data['stage'] in ('IMPLEMENT', 'REVIEW'):
         result['checks'] = [{k: c[k] for k in ('id', 'kind', 'targets') if k in c} for c in plan.get('checks', [])]
     if data['stage'] == 'REVIEW':
@@ -118,6 +172,7 @@ def compact_context(data):
                              'excerpt': failure.get('excerpt'),
                              'evidence': '.local/workflow/runs/sequential/failure.json' if failure else None}
         result['diagnosis'] = data.get('diagnosis')
+        result['diagnosis_route'] = data.get('diagnosis_route')
     if data['stage'] == 'DIAGNOSE':
         result['incidents'] = [{k: i.get(k) for k in ('id', 'cause', 'status', 'total', 'maximum')}
                                for i in data.get('incidents', {}).values()]

@@ -5,7 +5,8 @@ import unittest
 from unittest.mock import patch
 
 import test_sequential_runner as fixtures
-from workflow_policy import bind_diagnosis, compact_context, simple_repair, stage_model
+from workflow_policy import (bind_diagnosis, compact_context, simple_repair, stage_model,
+                             simple_diagnostic_hint, simple_diagnosis_route)
 from workflow_runtime import Blocked, read_json
 
 
@@ -26,6 +27,22 @@ class CauseTests(unittest.TestCase):
     def bind(self, key='new', event='first'):
         self.data['pending_failure']['id'] = event
         return bind_diagnosis(self.data, diagnosis(self.data, key), 'source')
+
+    def test_source_collection_sol_core_decision_and_review_astra(self):
+        self.data['stage'] = 'PLAN'
+        self.assertEqual(stage_model(self.data, fixtures.models(), 'source')['model'], 'gpt-6.1-sol')
+        self.data['plan_requires_core'] = True
+        self.assertEqual(stage_model(self.data, fixtures.models(), 'source')['model'], 'gpt-6-astra')
+        self.data['stage'] = 'REVIEW'
+        self.assertEqual(stage_model(self.data, fixtures.models(), 'source')['model'], 'gpt-6-astra')
+
+    def test_unclear_repair_does_not_inherit_general_task_model(self):
+        self.bind()
+        self.data['plan']['risk'] = 'general'
+        self.data['diagnosis']['kind'] = 'core'
+        self.assertEqual(stage_model(self.data, fixtures.models(), 'source')['model'], 'gpt-6-astra')
+        self.data['diagnosis']['kind'] = 'syntax_import'
+        self.assertEqual(stage_model(self.data, fixtures.models(), 'changed')['model'], 'gpt-6-astra')
 
     def test_unrelated_failures_never_add_together(self):
         for n in range(6):
@@ -117,6 +134,69 @@ class BIntegrationTests(unittest.TestCase):
     tearDown = fixtures.RunnerFixture.tearDown
     plan = fixtures.RunnerFixture.plan
     fake_ai = fixtures.RunnerFixture.fake_ai
+
+    def test_only_complete_verified_import_diagnostics_route_to_sol(self):
+        target = self.root / 'apps/mobile/test/sample.dart'
+        target.parent.mkdir(parents=True)
+        target.write_text("import 'unused.dart';\nvoid main() {}\n", encoding='utf-8')
+        self.runner.data.update(stage='DIAGNOSE', plan=dict(self.plan(), scope=['apps/mobile/test/sample.dart']))
+        directory = self.runner.directory / 'commands' / 'analyzer'
+        directory.mkdir(parents=True, exist_ok=True)
+        report = directory / 'stdout.log'
+        row = "warning • Unused import: 'unused.dart' • test/sample.dart:1:8 • unused_import\n"
+        report.write_text(row + '1 issue found.\n', encoding='utf-8')
+        source = self.runner.source()
+        details = {'check': {'kind': 'flutter-analyze'}, 'result': {'status': 'FAIL',
+                   'fingerprint': source, 'log_directory': str(directory.relative_to(self.root))}}
+        self.runner.queue_failure('first', details)
+        hint = simple_diagnostic_hint(self.root, self.runner.data, source)
+        self.assertEqual(hint['files'], ['apps/mobile/test/sample.dart'])
+        self.runner.data['diagnosis_route'] = hint
+        self.assertEqual(stage_model(self.runner.data, fixtures.models(), source)['model'], 'gpt-6.1-sol')
+        self.assertFalse(simple_diagnosis_route(self.runner.data, 'changed'))
+        self.runner.data['pending_failure']['id'] = 'different-event'
+        self.assertFalse(simple_diagnosis_route(self.runner.data, source))
+        for text in (row, row + '2 issues found.\n', row.replace('unused_import', 'undefined_identifier') + '1 issue found.\n',
+                     row + 'error • Invalid type • test/sample.dart:2:1 • invalid_assignment\n2 issues found.\n'):
+            with self.subTest(report=text):
+                report.write_text(text, encoding='utf-8')
+                self.assertIsNone(simple_diagnostic_hint(self.root, self.runner.data, source))
+        details['check']['kind'] = 'flutter-test'
+        report.write_text(row + '1 issue found.\n', encoding='utf-8')
+        self.assertIsNone(simple_diagnostic_hint(self.root, self.runner.data, source))
+
+    def test_uncertain_light_diagnosis_returns_to_astra_before_repair_or_budget_change(self):
+        self.runner.data.update(stage='DIAGNOSE', plan=self.plan(), pending_failure={'id': 'first'},
+                                incidents={'old': {'id': 'old', 'total': 2, 'maximum': 0}})
+        source = self.runner.source()
+        hint = {'kind': 'verified_import_cleanup', 'event_id': 'first', 'fingerprint': source, 'files': ['P10-02.txt']}
+        result = diagnosis(self.runner.data)
+        result.update(kind='core', cause_clear=False, files=['P10-02.txt'])
+        selected = []
+        def diagnose(*args, **kwargs):
+            selected.append(stage_model(self.runner.data, fixtures.models(), source)['model'])
+            return result
+        self.runner.ai = diagnose
+        with patch('sequential_runner.simple_diagnostic_hint', return_value=hint):
+            self.runner.step()
+            self.assertEqual(self.runner.data['stage'], 'DIAGNOSE')
+            self.assertEqual(self.runner.data['incidents']['old']['total'], 2)
+            self.assertNotIn('active_incident', self.runner.data)
+            self.runner.step()
+        self.assertEqual(selected, ['gpt-6.1-sol', 'gpt-6-astra'])
+        self.assertEqual(self.runner.data['stage'], 'IMPLEMENT')
+        self.assertEqual(stage_model(self.runner.data, fixtures.models(), source)['model'], 'gpt-6-astra')
+
+    def test_plan_without_source_only_confirmation_requires_core_planning(self):
+        plan = self.plan()
+        plan['source_only'] = False
+        self.runner.ai = lambda *a, **k: plan
+        self.runner.step()
+        self.assertEqual(self.runner.data['stage'], 'PLAN')
+        self.assertTrue(self.runner.data['plan_requires_core'])
+        self.assertEqual(stage_model(self.runner.data, fixtures.models(), self.runner.source())['model'], 'gpt-6-astra')
+        self.runner.step()
+        self.assertEqual(self.runner.data['stage'], 'IMPLEMENT')
 
     def test_incomplete_implementation_continues_without_early_checks(self):
         self.runner.ai = self.fake_ai
