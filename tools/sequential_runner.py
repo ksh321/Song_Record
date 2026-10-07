@@ -1076,13 +1076,24 @@ class Runner:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=('plan', 'status', 'run', 'resume', 'recover', 'stop', 'event', 'doctor', 'checks', 'usage'))
+    parser.add_argument('mode', choices=('plan', 'status', 'run', 'resume', 'recover', 'stop', 'event', 'doctor', 'checks', 'usage', 'request-start'))
+    parser.add_argument('--task-id')
     parser.add_argument('--end-task')
     parser.add_argument('--event-file', type=Path)
     args = parser.parse_args()
     runner = Runner()
     try:
-        if args.mode == 'usage':
+        if args.mode == 'request-start':
+            if not args.task_id or args.task_id not in [t['id'] for t in runner.tasks]:
+                raise Blocked('VALID_ORIGINAL_TASK_ID_REQUIRED')
+            with RunLock(runner.directory / 'runner.lock'):
+                with AppServer(str(runner.root)) as client:
+                    caps = client.capabilities()
+                    saved = record_subscription(runner.directory, caps['rate_limits'], args.task_id, 'request')
+                write_usage_report(runner.directory)
+                print(json.dumps({'task_id': args.task_id, 'start': saved['tasks'][args.task_id]['start']}, ensure_ascii=True))
+            return 0
+        elif args.mode == 'usage':
             report = write_usage_report(runner.directory)
             print(json.dumps({'calls': len(report['calls']), 'log_issues': report['log_issues'],
                               'report': str(runner.directory / 'usage-report.md')}, ensure_ascii=True))

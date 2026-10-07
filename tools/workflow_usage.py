@@ -234,10 +234,15 @@ def record_subscription(directory, raw, task_id=None, phase='observation'):
                 continue
             windows.append({'bucket': str(bucket.get('limitId') or key), 'slot': slot,
                             **{k: w.get(k) for k in ('usedPercent', 'windowDurationMins', 'resetsAt')}})
+    if phase == 'request' and not windows:
+        raise ValueError('REQUEST_USAGE_UNAVAILABLE_NO_BASELINE_SAVED')
     snapshot = {'utc': utc(), 'windows': windows}
     saved['current'] = snapshot
-    if task_id and phase in ('start', 'end'):
-        saved.setdefault('tasks', {}).setdefault(task_id, {}).setdefault(phase, snapshot)
+    if task_id and phase in ('request', 'start', 'end'):
+        snapshot = dict(snapshot, basis={'request': 'user_request_first_observation',
+                                        'start': 'plan_start_fallback', 'end': 'completion'}[phase])
+        saved.setdefault('tasks', {}).setdefault(task_id, {}).setdefault(
+            'start' if phase == 'request' else phase, snapshot)
     atomic_json(path, saved)
     return saved
 

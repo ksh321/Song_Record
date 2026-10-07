@@ -445,6 +445,25 @@ class RunnerFixture(unittest.TestCase):
         repair.assert_called_once()
         self.assertEqual(calls, [self.runner.data['task_id']] * 2)
 
+    def test_request_start_records_usage_without_starting_product(self):
+        from sequential_runner import main
+        self.runner.save()
+        before = self.runner.path.read_bytes()
+        with patch('sequential_runner.Runner', return_value=self.runner), \
+             patch('sequential_runner.AppServer') as provider, \
+             patch('sequential_runner.write_usage_report'), \
+             patch.object(self.runner, 'run') as run, \
+             patch('sys.argv', ['runner', 'request-start', '--task-id', 'P10-02']):
+            client = provider.return_value.__enter__.return_value
+            client.capabilities.return_value = {'rate_limits': {'rateLimits': {
+                'primary': {'usedPercent': 7, 'windowDurationMins': 10080, 'resetsAt': 9000}}}}
+            self.assertEqual(main(), 0)
+            client.turn.assert_not_called()
+            run.assert_not_called()
+        self.assertEqual(self.runner.path.read_bytes(), before)
+        saved = read_json(self.runner.directory / 'subscription-usage.json')
+        self.assertEqual(saved['tasks']['P10-02']['start']['basis'], 'user_request_first_observation')
+
     def test_git_never_waits_for_account_picker(self):
         with patch('workflow_runtime.subprocess.run') as command:
             command.return_value.returncode = 0

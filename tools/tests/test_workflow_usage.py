@@ -79,6 +79,23 @@ class UsageTests(unittest.TestCase):
         result['tasks']['P10-07']['end']['windows'][0]['resetsAt'] = 9999
         self.assertEqual(subscription_delta(result, 'P10-07'), '초기화·기간 변경')
 
+    def test_request_baseline_survives_plan_and_resume(self):
+        def raw(value):
+            return {'rateLimits': {'primary': {'usedPercent': value,
+                    'windowDurationMins': 10080, 'resetsAt': 9000}}}
+        initial = record_subscription(self.root, raw(10), 'P10-08', 'request')['tasks']['P10-08']['start']
+        record_subscription(self.root, raw(12), 'P10-08', 'start')
+        record_subscription(self.root, raw(14), 'P10-08', 'request')
+        saved = record_subscription(self.root, raw(20), 'P10-08', 'end')
+        self.assertEqual(saved['tasks']['P10-08']['start'], initial)
+        self.assertEqual(initial['basis'], 'user_request_first_observation')
+        self.assertEqual(subscription_delta(saved, 'P10-08'), 'default: 10%p')
+
+    def test_missing_request_measurement_does_not_create_baseline(self):
+        with self.assertRaisesRegex(ValueError, 'REQUEST_USAGE_UNAVAILABLE'):
+            record_subscription(self.root, {}, 'P10-08', 'request')
+        self.assertFalse((self.root / 'subscription-usage.json').exists())
+
     def tearDown(self):
         self.temp.cleanup()
 
