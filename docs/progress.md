@@ -919,3 +919,7 @@ P10-02 다음: mutation_supersessions.mapping_source_id는 song_aliases 필수 �
 ### 2026-10-07 WORKFLOW-09 중복 요약표 제거
 
 후속 사용자 요청으로 ② 현재 작업 요약표 생성·전달·읽기를 제거했다. 체크포인트·계획에서 필요한 필드를 직접 전달하며 B안은 ①④⑤⑦을 유지한다. Python 92/PowerShell 103 및 검증 근거는 docs/verification/WORKFLOW-01-bootstrap.md 참조. 설계 Page sequence 16 반영. 제품 실행은 재개하지 않음.
+
+### 2026-10-07 WORKFLOW-09 AGENTS 필수 규칙 정리
+
+사용자 검토 후 수정 요청으로 AGENTS.md를 핵심 규칙과 상황별 필수 읽기 표로 정리했다. 기존 승인·금지·검증·실패 제한·폰 알림·완료 근거를 유지하고 상세 절차는 기존 문서로 연결했다. LF 기준 13,737 → 6,775자(50.7% 감소), 링크/앵커 18개·CI 범위 테스트 34개·차이 검사 통과. 규칙 대조표는 docs/verification/WORKFLOW-01-bootstrap.md의 해당 절에 보존한다. 제품 실행·새 요약표·원격 CI·Spaces Page 수정은 포함하지 않음.
