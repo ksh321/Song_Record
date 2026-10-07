@@ -28,11 +28,12 @@ class CauseTests(unittest.TestCase):
         self.data['pending_failure']['id'] = event
         return bind_diagnosis(self.data, diagnosis(self.data, key), 'source')
 
-    def test_source_collection_sol_core_decision_and_review_astra(self):
+    def test_plan_starts_astra_medium_and_explicit_escalation_high(self):
         self.data['stage'] = 'PLAN'
-        self.assertEqual(stage_model(self.data, fixtures.models(), 'source')['model'], 'gpt-6.1-sol')
+        self.assertEqual(stage_model(self.data, fixtures.models(), 'source'), {'model': 'gpt-6-astra', 'effort': 'medium'})
         self.data['plan_requires_core'] = True
         self.assertEqual(stage_model(self.data, fixtures.models(), 'source')['model'], 'gpt-6-astra')
+        self.assertEqual(stage_model(self.data, fixtures.models(), 'source')['effort'], 'high')
         self.data['stage'] = 'REVIEW'
         self.assertEqual(stage_model(self.data, fixtures.models(), 'source')['model'], 'gpt-6-astra')
 
@@ -187,14 +188,10 @@ class BIntegrationTests(unittest.TestCase):
         self.assertEqual(self.runner.data['stage'], 'IMPLEMENT')
         self.assertEqual(stage_model(self.runner.data, fixtures.models(), source)['model'], 'gpt-6-astra')
 
-    def test_plan_without_source_only_confirmation_requires_core_planning(self):
+    def test_implementation_plan_does_not_force_a_second_plan_call(self):
         plan = self.plan()
         plan['source_only'] = False
         self.runner.ai = lambda *a, **k: plan
-        self.runner.step()
-        self.assertEqual(self.runner.data['stage'], 'PLAN')
-        self.assertTrue(self.runner.data['plan_requires_core'])
-        self.assertEqual(stage_model(self.runner.data, fixtures.models(), self.runner.source())['model'], 'gpt-6-astra')
         self.runner.step()
         self.assertEqual(self.runner.data['stage'], 'IMPLEMENT')
 

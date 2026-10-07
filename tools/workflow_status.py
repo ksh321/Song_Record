@@ -1,4 +1,4 @@
-"""AI-free, six-line todo status and independent runner liveness observer."""
+"""AI-free todo status, elapsed task time and independent liveness observer."""
 import argparse
 import ctypes
 import json
@@ -9,6 +9,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
+from datetime import datetime, timezone
 
 from workflow_runtime import Blocked, RunLock, atomic_json, read_json, utc
 
@@ -67,18 +68,34 @@ def process_identity(pid):
         return None
 
 
+def elapsed_label(data, now=None):
+    try:
+        started = datetime.fromisoformat(data['created'].replace('Z', '+00:00'))
+        if started.tzinfo is None:
+            return '미확인'
+        seconds = max(0, int(((now or datetime.now(timezone.utc)) - started).total_seconds()))
+    except (KeyError, TypeError, ValueError):
+        return '미확인'
+    return f'{seconds // 60}분 {seconds % 60}초 · 중단·사용자 대기 포함'
+
+
 def render(data, alive, title, todo):
     # Normal completion and an explicit user stop are not abnormal exits.
     if data.get('status') in ('RUN_FINISHED', 'PAUSED_USER'):
         return ''
-    running = alive and data.get('status') in ACTIVE
+    running = alive and (data.get('status') in ACTIVE or data.get('recovery_active'))
     stage = data.get('stage', '')
     call = data.get('call', {})
+    if data.get('recovery_active'):
+        recovery = data.get('recoveries', {}).get(data.get('recovery_inflight'), {})
+        call = dict(recovery.get('call', {}), stage=stage)
     ai_wait = running and call.get('stage') == stage and call.get('phase') in ('intent', 'accepted')
     if not running:
         action = 'AI 확인 필요' if data.get('status') == 'WAITING_AI' else '중단 원인 확인 필요'
     elif ai_wait:
         action = 'AI 응답 대기'
+    elif data.get('recovery_active'):
+        action = '자동 복구 확인·등록 명령 실행'
     elif stage == 'CI':
         action = 'CI 결과 대기'
     elif stage == 'VALIDATE':
@@ -93,6 +110,7 @@ def render(data, alive, title, todo):
     return '\n'.join([
         '자동 개발: ' + ('🟢 실행 중' if running else '🔴 비정상 종료'),
         f"현재 작업: {data.get('task_id', '확인 필요')} {title}".rstrip(),
+        f'실행시간: {elapsed_label(data)}',
         f"현재 단계: {STAGES.get(stage, stage or '확인 필요')}",
         f'현재 동작: {action}', f'AI: {ai}', f'사용자 직접 할 일: {human}'])
 
@@ -144,9 +162,35 @@ def observe(root, token):
         publish(root, data, alive)
         record.update(checked=utc(), alive=alive)
         atomic_json(directory / 'status-observation.json', record)
-        if not alive or data.get('status') in ('RUN_FINISHED', 'PAUSED_USER'):
+        if not alive:
+            dispatch_recovery(root, token, data)
+            return
+        if data.get('status') in ('RUN_FINISHED', 'PAUSED_USER'):
             return
         time.sleep(30)
+
+
+def dispatch_recovery(root, token, data):
+    """One durable dispatch per observed runner; no AI polling or shell commands."""
+    from workflow_recovery import eligible
+    directory = Path(root) / '.local/workflow/runs/sequential'
+    if not eligible(data, (directory / 'stop.json').exists()):
+        return False
+    with RunLock(directory / 'recovery-dispatch.lock'):
+        current = read_json(directory / 'status-monitor.json')
+        if current.get('token') != token:
+            return False
+        path = directory / 'recovery-dispatch.json'
+        previous = read_json(path) if path.exists() else {}
+        if previous.get('token') == token:
+            return False
+        atomic_json(path, {'token': token, 'status': 'INTENT', 'created': utc()})
+        with (directory / 'recovery-dispatch.log').open('ab') as log:
+            process = subprocess.Popen([sys.executable, str(Path(root) / 'tools/sequential_runner.py'), 'recover'],
+                cwd=root, stdin=subprocess.DEVNULL, stdout=log, stderr=log,
+                creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0), close_fds=True)
+        atomic_json(path, {'token': token, 'status': 'STARTED', 'pid': process.pid, 'created': utc()})
+    return True
 
 
 if __name__ == '__main__':

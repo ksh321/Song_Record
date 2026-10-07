@@ -4,10 +4,11 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from workflow_status import BEGIN, TODO, observe, process_identity, publish, render, close_task
+from workflow_status import BEGIN, TODO, observe, process_identity, publish, render, close_task, elapsed_label
 
 
 class StatusTests(unittest.TestCase):
@@ -16,11 +17,22 @@ class StatusTests(unittest.TestCase):
                     call=dict(stage='IMPLEMENT', phase='accepted',
                               requested_model='gpt-6-astra', requested_effort='high'))
 
-    def test_six_lines_and_requested_model(self):
+    def test_seven_lines_and_requested_model(self):
         text = render(self.data(), True, '증분 변경 수신', '')
-        self.assertEqual(len(text.splitlines()), 6)
+        self.assertEqual(len(text.splitlines()), 7)
         self.assertIn('🟢 실행 중', text)
         self.assertIn('Astra / High — 요청 설정', text)
+
+    def test_elapsed_uses_original_start_through_wait_and_resume(self):
+        data = self.data()
+        data.update(created='2026-10-07T00:00:00Z', updated='2026-10-07T01:00:00Z')
+        now = datetime(2026, 10, 7, 1, 2, 3, tzinfo=timezone.utc)
+        for state in ['READY', 'WAITING_AI', 'WAITING_USER', 'WAITING_EXTERNAL']:
+            data['status'] = state
+            self.assertEqual(elapsed_label(data, now), '62분 3초 · 중단·사용자 대기 포함')
+        self.assertEqual(elapsed_label({}, now), '미확인')
+        data['created'] = '2026-10-08T00:00:00Z'
+        self.assertEqual(elapsed_label(data, now), '0분 0초 · 중단·사용자 대기 포함')
 
     def test_dead_process_and_ai_handoff_are_red(self):
         data = self.data()

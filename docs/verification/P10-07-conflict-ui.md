@@ -31,3 +31,25 @@ D06 표시명 재대조 보완: BAD의 승인된 화면 이름은 ‘안 좋음�
 ### USER-036 판본2 결과 및 커밋 소유 목록 보정
 
 사용자가 1~5 모두 성공했다고 확인했다. 앞선 대기는 서버 값 사용 버튼을 잘못 선택한 경우로 정정됐다. 설치 소스 지문 일치·로컬 검사12항목 PASS·현재 모델 검토 승인·실기 통과를 대조했다. COMMIT에서 발견한 v9 DB/생성 파일/회귀 fixture의 계획 소유 목록 누락9개를 실제 검증·검토된 파일로 보정했다. 제품 코드나 검증 기준을 바꾸지 않았고 사용자 요청 USER-037은 AI 해결로 종료했다.
+
+<!-- runner-facts:P10-07:b44f3f19bb96f4587e669c684f5091d21f670087 -->
+### P10-07 실행기 검증 사실
+
+- 대상 커밋: b44f3f19bb96f4587e669c684f5091d21f670087
+- 푸시 기준: e2e3b5dbb65b46499d2ad3d142c538810bd53276
+- 필수 CI 판정: PASS
+- comparison-tests: PASS / 테스트 40개
+- resolution-store-tests: PASS / 테스트 36개
+- canonical-store-tests: PASS / 테스트 60개
+- screen-tests: PASS / 테스트 15개
+- resolution-integration: PASS / 테스트 8개
+- dispatch-preservation: PASS / 테스트 142개
+- receive-preservation: PASS / 테스트 143개
+- api-contract-regression: PASS
+- analyze: PASS
+- build-dev: PASS
+- sources-check: PASS
+- diff-check: PASS
+- 검토 완료 기준: P10-07-A1, P10-07-A2, P10-07-A3, P10-07-A4, P10-07-A5, P10-07-A6, P10-07-A7, P10-07-A8, P10-07-A9
+- 현재 모델 검토: 원문·변경 코드·회귀 로그를 대조해 승인합니다. 기존 재선택 경로 지적과 분석 오류가 해소됐으며, 원본 요청·순서·데이터 보존과 v9 마이그레이션을 확인했습니다. 지정 검사 12항목은 통과했습니다. 변경 화면 설치본 실기와 정상 완료 정리는 제어기에 남기며, P10-08 이후 범위에는 착수하지 않습니다.
+- 원시 근거: .local/workflow/runs/sequential/final-facts.json

@@ -937,3 +937,10 @@ P10-05 일관된 초기 스냅샷은 사용자 검사 통과·직접 코드 검�
 
 <!-- runner-facts:P10-06:e2e3b5dbb65b46499d2ad3d142c538810bd53276 -->
 P10-06 검증·검토·필수 CI 확인: e2e3b5dbb65b46499d2ad3d142c538810bd53276. 근거: docs/verification/P10-06e-change-store.md. 최종 판정은 제어기 관문에서 확인한다.
+
+<!-- runner-facts:P10-07:b44f3f19bb96f4587e669c684f5091d21f670087 -->
+P10-07 검증·검토·필수 CI 확인: b44f3f19bb96f4587e669c684f5091d21f670087. 근거: docs/verification/P10-07-conflict-ui.md. 최종 판정은 제어기 관문에서 확인한다.
+
+### 2026-10-07 WORKFLOW-09 자동 복구 연결
+
+등록된 Flutter 검사·Dart 코드 생성은 추가 AI 없이 직접 실행하고, 미등록 중단은 같은 스레드의 AI 확인을 한 번 수행하도록 연결했다. 실행 예외·30초 독립 감시·원래 호출 결과 재사용·중지 요청 보존·실패 이력·폰 알림을 통합했다. Quick Python 133개/PowerShell 103개 PASS 이후 변경 영향 검사도 통과했고 실제 Flutter 검사·코드 생성 모두 exit 0이었다. 상세·시험 범위·한계는 [자동 복구 검증 기록](verification/WORKFLOW-09-auto-recovery.md). 기존 P10-07 완료 상태를 보존하며 P10-08은 시작하지 않았다.

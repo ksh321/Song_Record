@@ -15,6 +15,7 @@ import uuid
 from pathlib import Path
 
 from codex_transport import AppServer, ProviderError
+from workflow_recovery import eligible as recovery_eligible, recover as recover_work, notify_unresolved
 from workflow_usage import write_report as write_usage_report, record_subscription
 from workflow_status import publish as publish_status, start as start_status_monitor, without_panel, close_task
 from select_work import select
@@ -36,7 +37,7 @@ PROTECTED = ('tools', 'AGENTS.md', 'docs/workflow-state.json', '.github')
 
 def controller_hash(root):
     digest = hashlib.sha256()
-    for name in ('tools/sequential_runner.py', 'tools/codex_transport.py', 'tools/workflow_runtime.py', 'tools/select_work.py', 'tools/workflow_policy.py', 'tools/workflow_usage.py', 'tools/workflow_status.py'):
+    for name in ('tools/sequential_runner.py', 'tools/codex_transport.py', 'tools/workflow_runtime.py', 'tools/select_work.py', 'tools/workflow_policy.py', 'tools/workflow_usage.py', 'tools/workflow_status.py', 'tools/workflow_recovery.py'):
         path = Path(root) / name
         digest.update(name.encode() + path.read_bytes())
     return digest.hexdigest()
@@ -264,12 +265,12 @@ class Runner:
 
     def record_request(self, reason):
         """Use the existing USER record and sender, never send arbitrary provider output."""
-        if reason == 'PROVIDER_APPROVAL_REQUIRED':
+        if reason == 'PROVIDER_APPROVAL_REQUIRED' or (reason in ('PROVIDER_TURN_FAILED', 'EXECUTION_BLOCKED') and recovery_eligible(self.data, self.stopped())):
             # A provider sandbox approval is an AI handoff, not evidence that
             # a human must act. The supervising Codex turn inspects the saved
             # command and uses its normal authorization tools; never auto-accept
             # arbitrary provider commands or ask the user to diagnose them.
-            self.pause('WAITING_AI', 'PROVIDER_APPROVAL_TRIAGE_REQUIRED')
+            self.pause('WAITING_AI', 'PROVIDER_APPROVAL_TRIAGE_REQUIRED' if reason == 'PROVIDER_APPROVAL_REQUIRED' else self.data.get('reason', reason))
             self.data['ai_handoff'] = {'reason': reason, 'owner': 'AI',
                                        'status': 'NEEDS_HOST_TRIAGE', 'created': utc()}
             self.save()
@@ -727,9 +728,9 @@ class Runner:
                 'AGENTS.md의 필수 규칙과 최신 감사 절을 준수한다. progress/development-workflow/verification/requirements/decisions 및 '
                 'reference/search/plan.txt와 design.txt에서 현재 P번호·요구사항을 검색하여 관련 절과 연결된 계약·코드만 읽는다. '
                 '문서 전체를 일괄 출력하지 않는다. 기존 성과를 보존하여 남은 전체 범위를 확정한다. '
-                'Sol 단계에서는 기존 승인 문서의 사실·남은 일·검사를 정리하며 새 동작 정책을 판단하지 않는다. '
-                '계약 충돌·새 동작 판단·불명확함이 있으면 편집 없이 continue payload에 reclassify=true와 이유를 남긴다. '
-                'plan_requires_core=true이면 Astra로 해당 판단을 수행한다. '
+                '계획은 처음부터 Astra/medium으로 작성한다. 제품 구현 계획이라는 이유만으로 계획을 반복하지 않는다. '
+                '현재 추론 수준으로 판단하기 어려운 계약 충돌·핵심 불확실성이 있으면 편집 없이 continue payload에 reclassify=true와 구체적 이유를 남긴다. '
+                'plan_requires_core=true이면 Astra/high로 해당 판단을 수행한다. '
                 '설명과 payload는 한국어. 제품 파일 편집은 아직 하지 않는다. '
                 'payload keys: task_id,title,objective,risk(general/complex/sensitive),'
                 'acceptance(array of {id,criterion,basis,checks:[check_id or review or manual]}),'
@@ -740,10 +741,6 @@ class Runner:
                 'scope는 필요한 제품·테스트로 한정한다. 동기화·인증·DB 핵심은 sensitive로 지정한다.')
             result = self.ai(instruction, 'plan', read_only=True)
             if result:
-                if not self.data.get('plan_requires_core') and result.get('source_only') is not True:
-                    self.data.update(plan_requires_core=True, next_action={'reason': 'Plan requires core judgment or explicit source-only evidence.'})
-                    self.save()
-                    return
                 validate_plan(self.root, result, self.data['task_id'])
                 if self.data['task_id'].startswith(('P06-', 'P10-')) or any(
                         re.search(r'auth|sync|database|migration', path, re.I) for path in result['scope']):
@@ -875,9 +872,12 @@ class Runner:
         self.data['order_hash'] = hashlib.sha256(json.dumps([state['sequence_start'], state['priority_order']]).encode()).hexdigest()
         self.save()
 
-    def run(self, end_task=None, resume=False):
+    def run(self, end_task=None, resume=False, automatic=False):
         with RunLock(self.directory / 'runner.lock'):
             self.load()
+            if automatic and self.stopped():
+                self.pause('PAUSED_USER', 'USER_STOP')
+                return
             state = self.guards()
             if self.data.get('status') == 'RUN_FINISHED':
                 self.notify_completion()
@@ -961,6 +961,8 @@ class Runner:
                         self.initialize_task(item, self.data['end_task'])
                     previous_stage = self.data['stage']
                     self.step()
+                    if self.data['status'] == 'WAITING_AI' and recovery_eligible(self.data, self.stopped()):
+                        recover_work(self, client)
                     if previous_stage == 'CI' and self.data['status'] == 'WAITING_EXTERNAL':
                         # No AI invocation while waiting. Stop remains responsive.
                         for _ in range(120):
@@ -969,6 +971,35 @@ class Runner:
                             time.sleep(1)
                 if self.stopped():
                     self.pause('PAUSED_USER', 'USER_STOP')
+
+    def automatic_recovery(self):
+        # Never bypass installation validation or replay an active runner.
+        with RunLock(self.directory / 'runner.lock'):
+            self.load()
+            if not recovery_eligible(self.data, self.stopped()):
+                return
+            self.guards()
+            activation = read_json(self.root / '.local/workflow/runner-verification.json')
+            if activation.get('status') != 'PASS' or activation.get('controller_hash') != controller_hash(self.root):
+                raise Blocked('THIS_INSTALLATION_VALIDATION_REQUIRED')
+            if not self.state().get('runner', {}).get('enabled'):
+                raise Blocked('RUNNER_NOT_ACTIVATED')
+            start_status_monitor(self.root)
+            self.status_display = True
+            with AppServer(str(self.root)) as client:
+                self.client = client
+                call = self.data.get('call', {})
+                if call.get('phase') in ('intent', 'accepted'):
+                    self.reconcile_call()
+                if self.data.get('recovered_turn_result'):
+                    self.data.update(status='READY', reason=None)
+                    self.data.setdefault('ai_handoff', {}).update(status='RESOLVED_AUTOMATICALLY')
+                    self.save()
+                    ready = True
+                else:
+                    ready = recover_work(self, client)
+        if ready:
+            self.run(resume=True, automatic=True)
 
     def accept_event(self, path):
         with RunLock(self.directory / 'runner.lock'):
@@ -1045,7 +1076,7 @@ class Runner:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=('plan', 'status', 'run', 'resume', 'stop', 'event', 'doctor', 'checks', 'usage'))
+    parser.add_argument('mode', choices=('plan', 'status', 'run', 'resume', 'recover', 'stop', 'event', 'doctor', 'checks', 'usage'))
     parser.add_argument('--end-task')
     parser.add_argument('--event-file', type=Path)
     args = parser.parse_args()
@@ -1079,11 +1110,23 @@ def main():
                                   'sensitive': select_model(caps['models'], 'sensitive'),
                                   'maximum': select_model(caps['models'], escalate=True),
                                   'usage_allowed': quota_available(caps)}, indent=2))
+        elif args.mode == 'recover':
+            runner.automatic_recovery()
         else:
             runner.run(args.end_task, resume=args.mode == 'resume')
             if runner.data.get('status') == 'WAITING_AI':
                 print('WAITING_AI: supervising Codex must inspect call.requests and resolve or prepare a genuine user action; no phone alert sent.')
     except Exception as error:
+        if runner.data and runner.stopped() and runner.data.get('status') != 'RUN_FINISHED':
+            runner.pause('PAUSED_USER', 'USER_STOP')
+            return 2
+        if args.mode == 'recover' and runner.data and recovery_eligible(runner.data, runner.stopped()):
+            notify_unresolved(runner, runner.data.setdefault('recovery_start_failure', {}), redact(str(error))[:800])
+            print('Recovery stopped; evidence and notification recorded.', file=sys.stderr)
+            return 2
+        if args.mode == 'recover' and runner.data and runner.data.get('status') not in ('RUN_FINISHED', 'PAUSED_USER', 'PAUSED_QUOTA', 'WAITING_USER'):
+            notify_unresolved(runner, runner.data.setdefault('recovery_start_failure', {}), redact(str(error))[:800])
+            return 2
         if args.mode in ('run', 'resume') and not runner.data:
             runner.directory = runner.directory / 'startup-alert'
             runner.path = runner.directory / 'checkpoint.json'
@@ -1095,6 +1138,16 @@ def main():
             runner.pause('BLOCKED', str(error))
             if args.mode in ('run', 'resume'):
                 runner.record_request('EXECUTION_BLOCKED')
+                if runner.data.get('status') == 'WAITING_AI' and recovery_eligible(runner.data, runner.stopped()):
+                    try:
+                        runner.automatic_recovery()
+                    except Exception as recovery_error:
+                        if runner.stopped():
+                            runner.pause('PAUSED_USER', 'USER_STOP')
+                        else:
+                            notify_unresolved(runner, runner.data.setdefault('recovery_start_failure', {}),
+                                              redact(str(recovery_error))[:800])
+                    return 0 if runner.data.get('status') == 'RUN_FINISHED' else 2
         print('BLOCKED: ' + str(error), file=sys.stderr)
         return 2
     return 0

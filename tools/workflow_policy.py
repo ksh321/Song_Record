@@ -104,7 +104,13 @@ def stage_model(data, models, source):
     stage = data['stage']
     risk = data.get('plan', {}).get('risk', 'sensitive' if data['task_id'].startswith(('P06-', 'P10-')) else 'general')
     if stage == 'PLAN':
-        return select_model(models, 'sensitive' if data.get('plan_requires_core') else 'general')
+        selected = select_model(models, 'sensitive')
+        if not data.get('plan_requires_core'):
+            model = next(m for m in models if m['model'] == selected['model'])
+            if 'medium' not in {e['reasoningEffort'] for e in model['supportedReasoningEfforts']}:
+                raise Blocked('EFFORT_UNSUPPORTED:medium')
+            selected['effort'] = 'medium'
+        return selected
     if stage == 'DIAGNOSE':
         return select_model(models, 'general' if simple_diagnosis_route(data, source) else 'sensitive')
     if stage == 'FINALIZE':

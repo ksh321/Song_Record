@@ -1645,9 +1645,17 @@
       "writes": [
         "apps/mobile/lib/core/sync"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
-      "resume": "기존 비교/저장/UI 이력과 USER-028 확인 유지. 자동 전송을 막아 보존한 더 최신 초안 및 canonical 개인편집을 명시 선택으로 연결할 실제 경로를 검사한다. 미커밋 보류 초안 연결: 관련 Flutter71 PASS, 정적 분석 이전11파일 정상 후 예산 검사 추가. 자동 보류 기존 검사 유지. 변경 파일은 Git diff에 보존. P10-02부터 우선하며 진행 중 프로세스 없음."
+      "resume": "기존 비교/저장/UI 이력과 USER-028 확인 유지. 자동 전송을 막아 보존한 더 최신 초안 및 canonical 개인편집을 명시 선택으로 연결할 실제 경로를 검사한다. 미커밋 보류 초안 연결: 관련 Flutter71 PASS, 정적 분석 이전11파일 정상 후 예산 검사 추가. 자동 보류 기존 검사 유지. 변경 파일은 Git diff에 보존. P10-02부터 우선하며 진행 중 프로세스 없음.",
+      "task_evidence": {
+        "P10-07": {
+          "commit": "b44f3f19bb96f4587e669c684f5091d21f670087",
+          "path": "docs/verification/P10-07-conflict-ui.md",
+          "utc": "2026-10-07T10:25:03.926170+00:00"
+        }
+      },
+      "evidence": "docs/verification/P10-07-conflict-ui.md"
     },
     {
       "id": "P10-08-NEXT",

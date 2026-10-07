@@ -11,7 +11,7 @@ from workflow_runtime import atomic_json, utc
 
 FIELDS = ('input_tokens', 'cached_input_tokens', 'output_tokens',
           'reasoning_output_tokens', 'total_tokens')
-STAGES = ('PLAN', 'IMPLEMENT', 'DIAGNOSE', 'REVIEW', 'FINALIZE')
+STAGES = ('PLAN', 'IMPLEMENT', 'DIAGNOSE', 'REVIEW', 'FINALIZE', 'RECOVERY')
 
 
 def rows(path, issues):
@@ -173,7 +173,7 @@ def summarize(events_path, rollout_paths):
 
 def markdown(report):
     stages = {'PLAN': '계획', 'IMPLEMENT': '구현', 'DIAGNOSE': '오류 분석',
-              'REVIEW': '코드 검토', 'FINALIZE': '완료 정리'}
+              'REVIEW': '코드 검토', 'FINALIZE': '완료 정리', 'RECOVERY': '자동 복구 확인'}
     efforts = {'low': '낮음', 'medium': '중간', 'high': '높음',
                'xhigh': '매우 높음', 'max': '최대', 'unknown': '미확인'}
     models = {'gpt-6-astra': '아스트라', 'gpt-6.1-sol': '솔 6.1', 'gpt-6-sol': '솔 6'}
@@ -281,7 +281,7 @@ def task_totals(groups):
 def html_report(report):
     """Local spreadsheet-like view; no external assets or network requests."""
     stages = {'PLAN': '계획', 'IMPLEMENT': '구현', 'DIAGNOSE': '오류 분석',
-              'REVIEW': '코드 검토', 'FINALIZE': '완료 정리', 'TOTAL': '합계'}
+              'REVIEW': '코드 검토', 'FINALIZE': '완료 정리', 'RECOVERY': '자동 복구 확인', 'TOTAL': '합계'}
     efforts = {'medium': '중간', 'high': '높음', 'xhigh': '매우 높음',
                'max': '최대', 'low': '낮음'}
     models = {'gpt-6-astra': '아스트라', 'gpt-6.1-sol': '솔 6.1', 'gpt-6-sol': '솔 6'}

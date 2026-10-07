@@ -316,16 +316,33 @@ class RunnerFixture(unittest.TestCase):
             send.assert_not_called()
         self.assertEqual(self.runner.data['status'], 'WAITING_AI')
 
-    def test_blocked_without_steps_still_notifies_with_honest_fallback(self):
+    def test_unexpected_block_routes_to_recovery_before_human_notification(self):
+        with patch('sequential_runner.execute') as send:
+            self.runner.record_request('EXECUTION_BLOCKED')
+            send.assert_not_called()
+        self.assertEqual(self.runner.data['status'], 'WAITING_AI')
+        self.assertNotIn('request', self.runner.data)
+
+    def test_unresolved_recovery_still_notifies_with_honest_fallback(self):
         with patch('sequential_runner.execute', return_value={'exit_code': 0}) as send:
-            self.runner.record_request('EXECUTION_BLOCKED')
-            self.runner.record_request('EXECUTION_BLOCKED')
+            self.runner.record_request('AUTO_RECOVERY_UNRESOLVED')
+            self.runner.record_request('AUTO_RECOVERY_UNRESOLVED')
             self.assertEqual(send.call_count, 1)
         self.assertEqual(self.runner.data['notification_pending']['owner'], 'AI')
         self.assertIn('request', self.runner.data)
         todo = (self.root / '내가할일.md').read_text(encoding='utf-8')
         self.assertIn('아직 특정 조작 방법은 확인되지 않았으므로', todo)
         self.assertIn('중단 원인과 해결 절차 알려줘', todo)
+
+    def test_unexpected_run_exception_connects_recovery_without_waiting_for_monitor(self):
+        from sequential_runner import main
+        with patch('sequential_runner.Runner', return_value=self.runner), \
+             patch.object(self.runner, 'run', side_effect=Blocked('UNEXPECTED_TEST_FAILURE')), \
+             patch.object(self.runner, 'automatic_recovery') as repair, \
+             patch('sequential_runner.execute') as send, patch('sys.argv', ['runner', 'run']):
+            self.assertEqual(main(), 2)
+            repair.assert_called_once()
+            send.assert_not_called()
 
     def test_startup_block_sends_alert_without_overwriting_work_checkpoint(self):
         from sequential_runner import main
@@ -404,6 +421,30 @@ class RunnerFixture(unittest.TestCase):
         self.assertEqual(self.runner.data['task_id'], 'P10-02')
         self.assertFalse((self.root / 'P10-10.txt').exists())
 
+    def test_run_loop_recovers_handoff_and_continues_same_task(self):
+        atomic_json(self.root / '.local/workflow/runner-verification.json', {'controller_hash': 'fixture', 'status': 'PASS'})
+        atomic_json(self.root / '.local/workflow/phone/confirmed.json', {'status': 'HUMAN_CONFIRMED'})
+        self.runner.data['end_task'] = self.runner.data['task_id']
+        self.runner.save()
+        calls = []
+        def step():
+            calls.append(self.runner.data['task_id'])
+            if len(calls) == 1:
+                self.runner.record_request('PROVIDER_APPROVAL_REQUIRED')
+            else:
+                self.runner.pause('PAUSED_USER', 'USER_STOP')
+        def recovery(runner, client):
+            runner.data.update(status='READY', reason=None)
+            runner.data['ai_handoff']['status'] = 'RESOLVED_AUTOMATICALLY'
+            return True
+        with patch('sequential_runner.controller_hash', return_value='fixture'), \
+             patch('sequential_runner.AppServer'), patch('sequential_runner.start_status_monitor'), \
+             patch.object(self.runner, 'step', side_effect=step), \
+             patch('sequential_runner.recover_work', side_effect=recovery) as repair:
+            self.runner.run()
+        repair.assert_called_once()
+        self.assertEqual(calls, [self.runner.data['task_id']] * 2)
+
     def test_git_never_waits_for_account_picker(self):
         with patch('workflow_runtime.subprocess.run') as command:
             command.return_value.returncode = 0
@@ -452,6 +493,15 @@ class RunnerFixture(unittest.TestCase):
             with self.assertRaisesRegex(Blocked, 'EXPLICIT_RESUME_REQUIRED'):
                 self.runner.run()
             provider.assert_not_called()
+
+    def test_stop_arriving_between_recovery_and_resume_is_preserved(self):
+        self.runner.save()
+        atomic_json(self.runner.stop_path, {'requested': True})
+        with patch('sequential_runner.AppServer') as provider:
+            self.runner.run(resume=True, automatic=True)
+            provider.assert_not_called()
+        self.assertTrue(self.runner.stop_path.exists())
+        self.assertEqual(self.runner.data['status'], 'PAUSED_USER')
 
 
 if __name__ == '__main__':
