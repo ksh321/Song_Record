@@ -1,7 +1,7 @@
 #requires -Version 7.0
 [CmdletBinding()]
 param(
-    [ValidateSet('Doctor','Quick','Mobile','Api','Phone','Plan','Run','Resume','Stop','Status','RunnerDoctor','Checks')][string]$Mode = 'Doctor',
+    [ValidateSet('Doctor','Quick','Mobile','Api','Phone','Plan','Run','Resume','Stop','Status','RunnerDoctor','Checks','Usage')][string]$Mode = 'Doctor',
     [string]$SourcePath,
     [string]$Python,
     [string]$DeviceId,
@@ -46,7 +46,7 @@ if (-not $Python) {
         $Python = Resolve-Tool '__bundled_python__' @("$env:USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe")
     }
 }
-if ($Mode -in @('Plan','Run','Resume','Stop','Status','RunnerDoctor','Checks')) {
+if ($Mode -in @('Plan','Run','Resume','Stop','Status','RunnerDoctor','Checks','Usage')) {
     if (-not $Python) { throw 'Python is required for the local sequential controller.' }
     $runnerMode = if ($Mode -eq 'RunnerDoctor') { 'doctor' } else { $Mode.ToLowerInvariant() }
     $runnerArgs = @('tools/sequential_runner.py', $runnerMode)

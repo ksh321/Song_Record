@@ -19,6 +19,7 @@
 | 한도 도달 | [리셋 금지·재개](docs/development-workflow.md#리셋권--현재-유효한-지침), [재개 기록](docs/development-workflow.md#재개와-학습-기록) |
 | 과거 결정·해결 맥락 불명확 | 저장된 결정·검증 근거부터 확인 후 [상담 절차](docs/development-workflow.md#상담과-코드-작업의-분리) |
 | 단계별 입력·완료 기록 처리 변경 | [입력 축소 B안](docs/development-workflow.md#입력-축소-b안--2026-10-07-workflow-09) |
+| 사용량 분석 | [기존 로그의 단계별 집계](docs/development-workflow.md#단계별-사용량-집계--2026-10-07-workflow-09) |
 
 ## 권한·비용·데이터 보호
 

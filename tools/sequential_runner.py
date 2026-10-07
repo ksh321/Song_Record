@@ -15,6 +15,7 @@ import uuid
 from pathlib import Path
 
 from codex_transport import AppServer, ProviderError
+from workflow_usage import write_report as write_usage_report
 from select_work import select
 from workflow_policy import (bind_diagnosis, compact_context, stage_model,
                              simple_diagnostic_hint, simple_diagnosis_route, simple_repair)
@@ -34,7 +35,7 @@ PROTECTED = ('tools', 'AGENTS.md', 'docs/workflow-state.json', '.github')
 
 def controller_hash(root):
     digest = hashlib.sha256()
-    for name in ('tools/sequential_runner.py', 'tools/codex_transport.py', 'tools/workflow_runtime.py', 'tools/select_work.py', 'tools/workflow_policy.py'):
+    for name in ('tools/sequential_runner.py', 'tools/codex_transport.py', 'tools/workflow_runtime.py', 'tools/select_work.py', 'tools/workflow_policy.py', 'tools/workflow_usage.py'):
         path = Path(root) / name
         digest.update(name.encode() + path.read_bytes())
     return digest.hexdigest()
@@ -344,7 +345,15 @@ class Runner:
         call.update(data)
         call['phase'] = phase
         self.save()
-        self.event('model_' + phase, data)
+        self.event('model_' + phase, dict(data, task_id=self.data.get('task_id'),
+                   stage=call.get('stage', self.data.get('stage')), thread_id=self.data.get('thread_id'),
+                   rollout_path=getattr(self.client, 'thread_path', None)))
+        if phase == 'completed':
+            try:
+                write_usage_report(self.directory)
+            except Exception:
+                # Optional accounting must not turn an already executed call into a retry.
+                self.event('usage_report_unavailable', {'reason': 'LOCAL_REPORT_WRITE_OR_READ_FAILED'})
 
     def ai(self, instruction, expected, read_only=False):
         caps = self.client.capabilities()
@@ -1010,13 +1019,18 @@ class Runner:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('mode', choices=('plan', 'status', 'run', 'resume', 'stop', 'event', 'doctor', 'checks'))
+    parser.add_argument('mode', choices=('plan', 'status', 'run', 'resume', 'stop', 'event', 'doctor', 'checks', 'usage'))
     parser.add_argument('--end-task')
     parser.add_argument('--event-file', type=Path)
     args = parser.parse_args()
     runner = Runner()
     try:
-        if args.mode == 'checks':
+        if args.mode == 'usage':
+            report = write_usage_report(runner.directory)
+            print(json.dumps({'calls': len(report['calls']), 'log_issues': report['log_issues'],
+                              'report': str(runner.directory / 'usage-report.md')}, ensure_ascii=True))
+            return 0
+        elif args.mode == 'checks':
             result = runner.local_checks()
             print(json.dumps(result, ensure_ascii=True, indent=2))
             return 0 if result['status'] == 'PASS' else 1
