@@ -56,7 +56,7 @@ final class SnapshotReceiver implements SnapshotStepper {
     if (_authenticationBlocked) return SnapshotStep.authenticationRequired;
     var observed = await store.readSnapshotResume();
     if (observed == null) {
-      if (await store.hasCompleteBaseline()) return SnapshotStep.complete;
+      if (await store.prepareCompletedSnapshot()) return SnapshotStep.complete;
       final initial = {
         'version': 1,
         'op_id': UuidValue(newOperationId()).value,

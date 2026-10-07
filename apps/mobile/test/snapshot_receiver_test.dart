@@ -9,6 +9,8 @@ import 'package:song_record/core/sync/snapshot_receiver.dart';
 import 'package:song_record/core/sync/snapshot_transport.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 
+import 'support/business_snapshot_fixture.dart';
+
 const owner = '11111111-1111-4111-8111-111111111111';
 const token = '22222222-2222-4222-8222-222222222222';
 const op = '33333333-3333-4333-8333-333333333333';
@@ -70,9 +72,7 @@ void main() {
     );
     store = await manager.openAccount(owner);
     transport = FakeTransport();
-    fixture = jsonDecode(
-      File('../../fixtures/contracts/snapshot-wire.json').readAsStringSync(),
-    ) as Map<String, dynamic>;
+    fixture = businessSnapshotFixture();
   });
   tearDown(() async {
     await manager.logout();

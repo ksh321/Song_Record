@@ -60,15 +60,24 @@ void main() {
           }
           await store.verifySnapshotDownload(oldToken);
           await store.applySnapshotDownload(oldToken);
+          final baseline =
+          (await store.readMetadata(LocalEntity.song, id))!;
+          final draft = Map<String, dynamic>.from(
+            jsonDecode(baseline.serverJson!) as Map,
+          )..['note'] = 'offline draft';
+
           await store.saveEdit(
             LocalEdit(
               opId: operation,
               entity: LocalEntity.song,
               entityId: id,
-              operation: LocalOperation.create,
-              baseRevision: 0,
-              draft: {'title': 'offline draft'},
-              changes: {'title': 'offline draft'},
+              operation: LocalOperation.patch,
+              baseRevision: baseline.revision,
+              draft: draft,
+              changes: {
+                'base_revision': baseline.revision,
+                'note': 'offline draft',
+              },
             ),
           );
           final paths = await AccountPaths.create(
@@ -232,7 +241,7 @@ void main() {
           }
           expect(copy.revision, permanentlyDeleted ? 5 : 1);
           expect(copy.tombstone, permanentlyDeleted);
-          expect(jsonDecode(copy.localJson!)['title'], 'offline draft');
+          expect(jsonDecode(copy.localJson!)['note'], 'offline draft');
           if (permanentlyDeleted) {
             expect(jsonDecode(copy.serverJson!), {
               'id': id,
@@ -285,7 +294,7 @@ void main() {
               id,
             ))!;
             expect(preserved.tombstone, isTrue);
-            expect(jsonDecode(preserved.localJson!)['title'], 'offline draft');
+            expect(jsonDecode(preserved.localJson!)['note'], 'offline draft');
             expect(await audio.readAsBytes(), [1, 2, 3, 4]);
           }
         } finally {

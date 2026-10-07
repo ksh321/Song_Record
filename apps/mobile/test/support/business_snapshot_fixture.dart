@@ -31,6 +31,29 @@ Map<String, dynamic> businessSnapshotFixture() {
   return fixture;
 }
 
+/// Replace synthetic entity rows while retaining the real manifest framing.
+/// Relation rows use their recording UUID rather than an invented row UUID.
+void replaceBusinessSnapshotRows(
+  Map<String, dynamic> fixture,
+  String entity,
+  List<Map<String, dynamic>> values,
+) {
+  final page = (fixture['pages'] as List).singleWhere(
+    (dynamic page) => page['entity'] == entity,
+  ) as Map;
+  page['entries'] = [
+    for (var index = 0; index < values.length; index++)
+      {
+        'ordinal': index + 1,
+        'resource_id': values[index]['recording_id'] ?? values[index]['id'],
+        'payload': values[index],
+        'canonical_payload': canonicalJson(values[index]),
+      },
+  ];
+  (fixture['manifest']['entity_counts'] as Map)[entity] = values.length;
+  refreshSnapshotHash(fixture);
+}
+
 /// Recompute the real framed manifest hash after changing synthetic rows/cursor.
 void refreshSnapshotHash(Map<String, dynamic> fixture) {
   final manifest = fixture['manifest'] as Map<String, dynamic>;

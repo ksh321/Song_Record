@@ -18,6 +18,7 @@ import '../sync/metadata_response.dart';
 import '../sync/mutation_request.dart';
 import 'account_database.dart' show AccountDatabase;
 import 'account_paths.dart';
+import 'asset_deletion_store.dart';
 import 'canonical_reference_store.dart';
 import 'change_feed_store.dart';
 import 'conflict_resolution_store.dart';
@@ -25,6 +26,7 @@ import 'local_models.dart';
 import 'mapping_eligibility.dart';
 import 'metadata_followup_store.dart';
 import 'retry_controls.dart';
+import 'snapshot_business_store.dart';
 import 'snapshot_download_store.dart';
 
 export 'change_feed_store.dart' show ChangeFeedPosition;
@@ -202,7 +204,47 @@ final class AccountStore {
   Future<void> discardSnapshotDownload(String token) =>
       _run(() => _snapshots.discard(token));
   Future<void> applySnapshotDownload(String token) =>
-      _run(() => _snapshots.apply(token));
+      _run(() => _applySnapshotDownload(token));
+
+  Future<void> _applySnapshotDownload(String token) => _snapshots.apply(
+      token,
+      projectBusiness: () async {
+        await SnapshotBusinessStore(
+          _database,
+          requireActive: requireActive,
+          clock: _manager._clock,
+        ).apply(
+          token,
+          AssetDeletionStore(_database, requireActive, _manager._clock),
+        );
+      },
+  );
+
+  /// Mutating completion gate for the receiver, separate from read-only status.
+  /// Repairs a legacy baseline in the same transaction that pins its token.
+  Future<bool> prepareCompletedSnapshot() => _run(
+    () => _database.transaction(() async {
+      final state = await _database.customSelect(
+        '''
+        SELECT c.baseline_complete,c.snapshot_resume,b.snapshot_token
+        FROM sync_cursors c
+        LEFT JOIN snapshot_baseline b ON b.singleton=c.singleton AND b.user_id=c.user_id
+        WHERE c.singleton=1 AND c.user_id=?
+        ''',
+        variables: [Variable(userId)],
+      ).getSingle();
+      if (state.read<int>('baseline_complete') != 1 ||
+          state.readNullable<String>('snapshot_resume') != null) {
+        requireActive();
+        return false;
+      }
+      final token = state.readNullable<String>('snapshot_token');
+      if (token == null) throw StateError('Completed snapshot baseline is missing');
+      await _applySnapshotDownload(token);
+      requireActive();
+      return true;
+    }),
+  );
   Future<SnapshotRecordingBaseline?> snapshotRecordingBaseline(
     String recordingId, {
     String? expectedToken,

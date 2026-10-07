@@ -302,9 +302,15 @@ void main() {
     );
     expect(view.baseline!.entry!.payload['note'], '한글 🎵');
     expect(view.cached!.localJson, contains('retained synthetic draft'));
-    expect(view.cached!.revision, 0);
-    expect(view.cached!.serverJson, isNull);
+    expect(view.cached!.revision, 1);
+    expect(jsonDecode(view.cached!.serverJson!)['note'], '한글 🎵');
+    expect(jsonDecode(view.cached!.serverJson!)['id'], id);
+    expect(view.cached!.tombstone, isFalse);
     final after = (await store.pendingMutations()).single;
+    expect(after.opId, queued.opId);
+    expect(after.localOrder, queued.localOrder);
+    expect(after.baseRevision, queued.baseRevision);
+    expect(after.serverResponse, queued.serverResponse);
     expect(after.payload, queued.payload);
     expect(after.basePayload, queued.basePayload);
     expect(after.attemptCount, queued.attemptCount);

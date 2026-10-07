@@ -274,7 +274,12 @@ final class SnapshotDownloadStore {
 
   /// Swap all 19 entity baselines and the acknowledged cursor together.
   /// Local command/history/file tables remain overlays and are never replaced.
-  Future<void> apply(String token) => db.transaction(() async {
+  /// The account boundary supplies business projection inside this transaction,
+  /// before the final lease/expiry fence. Raw wire consumers need no projection.
+  Future<void> apply(
+    String token, {
+    Future<void> Function()? projectBusiness,
+  }) => db.transaction(() async {
     requireActive();
     _token(token);
     final pointer = await db
@@ -284,6 +289,9 @@ final class SnapshotDownloadStore {
         )
         .getSingleOrNull();
     if (pointer?.read<String>('snapshot_token') == token) {
+      // Repair older applied baselines without rewinding a progressed cursor
+      // or imposing the download TTL on an already accepted local snapshot.
+      await projectBusiness?.call();
       requireActive();
       return;
     }
@@ -309,6 +317,7 @@ final class SnapshotDownloadStore {
       'UPDATE sync_cursors SET last_change_seq=?,baseline_complete=1,snapshot_resume=NULL,updated_at=? WHERE singleton=1',
       [state.manifest.cursor, clock().toUtc().millisecondsSinceEpoch],
     );
+    await projectBusiness?.call();
     _fence(state.manifest);
   });
 
