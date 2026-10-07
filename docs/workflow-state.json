@@ -1621,9 +1621,17 @@
         "apps/mobile/test",
         "docs/verification"
       ],
-      "state": "pending",
+      "state": "done",
       "owner": "AI",
-      "resume": "j/k22365d0 CI4 PASS/c7df3fd USER-025 완료. l42 PASS 및 b72f977 CI4 PASS. 미구현 관계와 초기 업무 사본 갱신을 계속한다."
+      "resume": "j/k22365d0 CI4 PASS/c7df3fd USER-025 완료. l42 PASS 및 b72f977 CI4 PASS. 미구현 관계와 초기 업무 사본 갱신을 계속한다.",
+      "task_evidence": {
+        "P10-06": {
+          "commit": "e2e3b5dbb65b46499d2ad3d142c538810bd53276",
+          "path": "docs/verification/P10-06e-change-store.md",
+          "utc": "2026-10-07T06:43:24.305887+00:00"
+        }
+      },
+      "evidence": "docs/verification/P10-06e-change-store.md"
     },
     {
       "id": "P10-07-NEXT",

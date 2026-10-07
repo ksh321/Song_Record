@@ -15,8 +15,8 @@ import uuid
 from pathlib import Path
 
 from codex_transport import AppServer, ProviderError
-from workflow_usage import write_report as write_usage_report
-from workflow_status import publish as publish_status, start as start_status_monitor, without_panel
+from workflow_usage import write_report as write_usage_report, record_subscription
+from workflow_status import publish as publish_status, start as start_status_monitor, without_panel, close_task
 from select_work import select
 from workflow_policy import (bind_diagnosis, compact_context, stage_model,
                              simple_diagnostic_hint, simple_diagnosis_route, simple_repair)
@@ -364,6 +364,11 @@ class Runner:
 
     def ai(self, instruction, expected, read_only=False):
         caps = self.client.capabilities()
+        try:
+            record_subscription(self.directory, caps['rate_limits'], self.data['task_id'],
+                                'start' if self.data['stage'] == 'PLAN' else 'observation')
+        except Exception:
+            self.event('subscription_snapshot_unavailable', {'phase': 'before_ai'})
         if not quota_available(caps):
             self.pause('PAUSED_QUOTA', 'SUBSCRIPTION_QUOTA')
             self.record_request('SUBSCRIPTION_QUOTA')
@@ -704,6 +709,14 @@ class Runner:
             unit.update(state='done', evidence=self.data['plan']['verification_file'])
         atomic_json(self.state_path, state, backup_path=self.directory / 'workflow-state.previous.json')
         self.data.update(stage='COMPLETE', status='COMPLETE')
+        close_task(self.root, self.data['task_id'])
+        try:
+            if self.client is not None:
+                record_subscription(self.directory, self.client.call('account/rateLimits/read', {}),
+                                    self.data['task_id'], 'end')
+                write_usage_report(self.directory)
+        except Exception:
+            self.event('subscription_snapshot_unavailable', {'phase': 'completion'})
         self.data.setdefault('pending_records', {})[self.data['plan']['verification_file']] = hashlib.sha256(evidence.read_bytes()).hexdigest()
         self.save()
 

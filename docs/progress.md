@@ -934,3 +934,6 @@ P10-02 다음: mutation_supersessions.mapping_source_id는 song_aliases 필수 �
 ## P10-05 완료 대조와 P10-06 재개 — 2026-10-07
 
 P10-05 일관된 초기 스냅샷은 사용자 검사 통과·직접 코드 검토·9f499baa75a262f11f4c7c3d9c727df1ba7466be 필수 CI 37552635532 PASS로 완료 확인했다. 상세는 [기존 검증 기록](verification/P10-05o-recording-baseline.md) 최신 절. USER-035는 AI 해결로 종료했다. 현재 main fab47aa2bbb3d353056338f2e541e15124e1b44e와 실제 원격 HEAD 일치, 재개 전 미커밋 변경 없음. 사용자 요청으로 P10-06 증분 변경 수신까지 같은 단일 실행기를 재개하며 P10-07 이후는 제외한다. 기존 설치본 검증 해시 및 HUMAN_CONFIRMED 알림 수신 근거가 일치한다.
+
+<!-- runner-facts:P10-06:e2e3b5dbb65b46499d2ad3d142c538810bd53276 -->
+P10-06 검증·검토·필수 CI 확인: e2e3b5dbb65b46499d2ad3d142c538810bd53276. 근거: docs/verification/P10-06e-change-store.md. 최종 판정은 제어기 관문에서 확인한다.

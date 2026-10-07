@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from workflow_status import BEGIN, TODO, observe, process_identity, publish, render
+from workflow_status import BEGIN, TODO, observe, process_identity, publish, render, close_task
 
 
 class StatusTests(unittest.TestCase):
@@ -87,6 +87,18 @@ class StatusTests(unittest.TestCase):
         identity = process_identity(os.getpid())
         self.assertIsNotNone(identity)
         self.assertEqual(identity, process_identity(os.getpid()))
+
+    def test_completion_removes_only_matching_task_and_keeps_user_requests(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); original = self.setup_root(root)
+            path = root / TODO
+            path.write_text(original + 'AI 현재 작업: [P10-06] 구현 중\n- P10-06 증분 수신\n- P10-07 충돌 처리\n', encoding='utf-8')
+            close_task(root, 'P10-06')
+            text = path.read_text(encoding='utf-8')
+            self.assertNotIn('P10-06', text)
+            self.assertIn('P10-07', text)
+            self.assertIn('USER-001', text)
+            self.assertIn('AI 현재 작업: 없음', text)
 
     def test_no_trailing_whitespace_when_title_missing(self):
         for line in render(self.data(), True, '', '').splitlines():

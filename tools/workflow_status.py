@@ -26,6 +26,18 @@ def without_panel(text):
     return re.sub(re.escape(BEGIN) + r'.*?' + re.escape(END) + r'\s*', '', text, flags=re.S)
 
 
+def close_task(root, task_id):
+    """Remove a verified completed task from the live todo, preserving USER items."""
+    root = Path(root)
+    with RunLock(root / '.local/workflow/runs/sequential/status-display.lock'):
+        path = root / TODO
+        text = without_panel(path.read_text(encoding='utf-8'))
+        text = re.sub(r'^- ' + re.escape(task_id) + r'(?=\s|:)[^\n]*\n?', '', text, flags=re.M)
+        text = re.sub(r'^AI 현재 작업: \[' + re.escape(task_id) + r'\][^\n]*',
+                      'AI 현재 작업: 없음 — 승인 범위 실행 종료. 다음 작업 시작 대기.', text, flags=re.M)
+        path.write_text(text, encoding='utf-8')
+
+
 def process_identity(pid):
     """Creation time prevents a recycled PID from looking like our runner."""
     if os.name == 'nt':

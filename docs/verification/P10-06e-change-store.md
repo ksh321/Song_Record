@@ -81,3 +81,22 @@
 후속 통합 검증(같은 P10-06 작업): `flutter test --no-pub test/change_feed_receiver_test.dart --reporter expanded` **13 PASS**, 해당 파일 `flutter analyze --no-pub` **No issues found**. 수신 실행기→응답 해석→AccountStore→SQLite 목록 적용 후 계정 DB를 닫고 다시 열어 부모/항목 revision8·커서8을 확인했다. 중복 항목이 포함된 잘못된 응답은 부모/항목 없이 커서7을 유지함을 재개방 후 확인했다. transport는 합성 응답이며 실제 서버 목록 writer 발행/휴대폰 실기 검증으로 확대하지 않는다. 로그 `.local/workflow/p10-playlist-receiver.log`. 제품 구현7dda416 및 운영 문서7ccb4e8 로컬 커밋 완료. c8f0f72의 CI는 APK 빌드 단계 진행 중이며 통합 푸시 전 완료를 확인한다.
 
 수신 통합 8d40ecc268e45fb1d1b60064931f513243104dd7의 필수 CI4 PASS 확인: CI36829102663/API36829102674/Idempotency36829102704/Workflow36829102668. 목록 수신 구현·Goal 운영 문서·수신기 통합 테스트가 포함된다. 이후 P10-09 새 변경 검증으로 확대하지 않는다.
+
+<!-- runner-facts:P10-06:e2e3b5dbb65b46499d2ad3d142c538810bd53276 -->
+### P10-06 실행기 검증 사실
+
+- 대상 커밋: e2e3b5dbb65b46499d2ad3d142c538810bd53276
+- 푸시 기준: fab47aa2bbb3d353056338f2e541e15124e1b44e
+- 필수 CI 판정: PASS
+- wire-tests: PASS / 테스트 61개
+- store-tests: PASS / 테스트 64개
+- receive-integration: PASS / 테스트 64개
+- preservation-regression: PASS / 테스트 165개
+- api-contract-regression: PASS
+- analyze: PASS
+- build-dev: PASS
+- sources-check: PASS
+- diff-check: PASS
+- 검토 완료 기준: P10-06-A1, P10-06-A2, P10-06-A3, P10-06-A4, P10-06-A5, P10-06-A6, P10-06-A7, P10-06-A8, P10-06-A9
+- 현재 모델 검토: 기존 두 지적의 수정과 회귀 검사 성공을 확인했습니다. 승인 계약·현재 diff·전체 지정 검사·중단 재개·데이터 보존을 대조했으며 남은 지적은 없습니다. 목록 writer·클라우드 전송·두 기기 종합 실기는 기존 후속 범위로 유지하고, 정상 완료 정리는 제어기에 인계합니다.
+- 원시 근거: .local/workflow/runs/sequential/final-facts.json

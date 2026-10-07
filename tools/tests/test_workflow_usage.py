@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from sequential_runner import Runner
-from workflow_usage import markdown, summarize, write_report
+from workflow_usage import html_report, markdown, summarize, task_totals, write_report, record_subscription, subscription_delta
 
 
 def usage(n=100):
@@ -28,12 +28,56 @@ def record(turn, response, value, total=None):
 
 
 class UsageTests(unittest.TestCase):
+    def test_html_table_preserves_group_values_and_fixed_headers(self):
+        self.write(self.rollout, [record('a', 'one', usage())])
+        report = summarize(self.events, [self.rollout])
+        page = html_report(report)
+        self.assertIn('position:sticky;top:0', page)
+        self.assertIn('left:90px', page)
+        self.assertEqual(page.count('<th scope="col"'), 14)
+        self.assertIn('총 토큰량', page)
+        self.assertIn('<td>110</td>', page)
+        self.assertEqual(page.count('<tr data-task='), len(report['groups']) + len(task_totals(report['groups'])))
+        self.assertIn('입력 합계', page)
+        self.assertIn('<td>50</td>', page)
+        self.assertNotIn('https://', page)
+        self.assertNotIn('PRIVATE_SENTINEL', page)
+
+    def test_task_totals_merge_models_and_preserve_missing_usage(self):
+        self.write(self.events, self.call('a') + self.call('b', stage='REVIEW'))
+        self.write(self.rollout, [record('a', 'one', usage())])
+        report = summarize(self.events, [self.rollout])
+        original = json.dumps(report)
+        total = task_totals(report['groups'])[0]
+        self.assertEqual(total['calls'], 2)
+        self.assertEqual(total['responses'], 1)
+        self.assertEqual(total['known_tokens']['input_tokens'], 100)
+        self.assertEqual(total['unknown_calls'], 1)
+        self.assertEqual(json.dumps(report), original)
+        for group in report['groups']:
+            group['known_tokens'] = None
+        self.assertIsNone(task_totals(report['groups'])[0]['known_tokens'])
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.events = self.root / 'events.jsonl'
         self.rollout = self.root / 'rollout.jsonl'
         self.write(self.events, self.call('a'))
+
+    def test_subscription_delta_and_reset_are_not_inferred_from_tokens(self):
+        def raw(value, reset=9000):
+            return {'accountId': 'PRIVATE_SENTINEL', 'rateLimitsByLimitId': {'codex': {
+                'limitId': 'codex', 'primary': {'usedPercent': value,
+                'windowDurationMins': 10080, 'resetsAt': reset}}}}
+        record_subscription(self.root, raw(15), 'P10-07', 'start')
+        record_subscription(self.root, raw(18), 'P10-07', 'start')
+        result = record_subscription(self.root, raw(22), 'P10-07', 'end')
+        self.assertEqual(subscription_delta(result, 'P10-07'), 'codex: 7%p')
+        self.assertEqual(subscription_delta(result, 'P10-06'), '미확인')
+        self.assertNotIn('PRIVATE_SENTINEL', json.dumps(result))
+        result['tasks']['P10-07']['end']['windows'][0]['resetsAt'] = 9999
+        self.assertEqual(subscription_delta(result, 'P10-07'), '초기화·기간 변경')
 
     def tearDown(self):
         self.temp.cleanup()
