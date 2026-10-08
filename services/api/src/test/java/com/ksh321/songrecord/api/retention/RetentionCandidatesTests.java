@@ -42,6 +42,12 @@ class RetentionCandidatesTests {
         db.execute("ALTER TABLE song ADD song_tier VARCHAR(1)");
         verifyLowestTier(db);
     }
+    @Test void selectionUnionPersistsAtomicallyAndVersionsAreIdempotent() {
+        db.execute("ALTER TABLE song ADD representative_recording_id BINARY(16)");
+        db.execute("CREATE TABLE user_sync_state(user_id BINARY(16) PRIMARY KEY)");
+        db.execute("CREATE TABLE song_cloud_selection(song_id BINARY(16) PRIMARY KEY,user_id BINARY(16),representative_id BINARY(16),latest_id BINARY(16),lowest_tier_id BINARY(16),selection_revision BIGINT NOT NULL,updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP)");
+        verifySelectionStore(db);
+    }
     @AfterEach void close() { db.execute("SHUTDOWN"); }
     @Test void ownerSongLifecycleAndCrossDeviceEligibility() { verify(db); }
     @Test void rejectsIncompleteDamagedAndCrossOwnerFileSpecs() {

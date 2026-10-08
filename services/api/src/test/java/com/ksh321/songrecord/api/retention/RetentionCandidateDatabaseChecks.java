@@ -27,6 +27,74 @@ public final class RetentionCandidateDatabaseChecks {
         if (saved) db.update("UPDATE recording SET metadata_state='SAVED' WHERE id=?",bytes(id));
         return id;
     }
+    public static void verifySelectionStore(JdbcTemplate db) {
+        var store=new RetentionSelectionStore(db,new org.springframework.jdbc.datasource.DataSourceTransactionManager(db.getDataSource()));
+        UUID owner=account(db), dev=device(db,owner), song=song(db,owner);
+        db.update("INSERT INTO user_sync_state(user_id) VALUES(?)",bytes(owner));
+        UUID a=recording(db,owner,dev,song,true,true,"VALIDATED");
+        db.update("UPDATE recording SET tier='D' WHERE id=?",bytes(a));
+        db.update("UPDATE song SET representative_recording_id=? WHERE id=?",bytes(a),bytes(song));
+        // Concurrent first creation/retry: one account lock, one stored row, one stable revision.
+        try(var pool=java.util.concurrent.Executors.newFixedThreadPool(2)) {
+            var first=pool.submit(()->store.recalculate(owner,song).orElseThrow());
+            var second=pool.submit(()->store.recalculate(owner,song).orElseThrow());
+            var one=first.get(15,java.util.concurrent.TimeUnit.SECONDS);
+            assertThat(second.get(15,java.util.concurrent.TimeUnit.SECONDS)).isEqualTo(one);
+            assertThat(one.revision()).isEqualTo(1);
+            assertThat(one.recordingIds()).containsExactly(a);
+            assertThat(one.ids()).isEqualTo(new RetentionRoles.Ids(a,a,a));
+            assertThatThrownBy(()->one.recordingIds().clear()).isInstanceOf(UnsupportedOperationException.class);
+        } catch(Exception e) {throw new AssertionError(e);}
+        UUID b=recording(db,owner,dev,song,true,true,"VALIDATED");
+        UUID c=recording(db,owner,dev,song,true,true,"RECOVERED");
+        db.update("UPDATE recording SET tier='A' WHERE id=?",bytes(a));
+        db.update("UPDATE recording SET tier='S',recorded_at='2026-10-09 00:00:00',key_mode='MALE',key_shift=2,version_code='LIVE' WHERE id=?",bytes(b));
+        db.update("UPDATE recording SET tier='D',recorded_at='2026-10-07 00:00:00',key_mode='FEMALE',key_shift=-2 WHERE id=?",bytes(c));
+        var split=store.recalculate(owner,song).orElseThrow();
+        assertThat(split.ids()).isEqualTo(new RetentionRoles.Ids(a,b,c));
+        assertThat(split.revision()).isEqualTo(2);
+        assertThat(split.recordingIds()).containsExactlyInAnyOrder(a,b,c);
+        assertThat(store.recalculate(owner,song).orElseThrow()).isEqualTo(split);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM song_cloud_selection WHERE user_id=?",Integer.class,bytes(owner))).isEqualTo(1);
+        // Persisted three role columns represent their ID union, not three copies or per-key slots.
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM recording r JOIN song_cloud_selection s ON s.user_id=r.user_id AND s.song_id=r.song_id WHERE r.user_id=? AND (r.id=s.representative_id OR r.id=s.latest_id OR r.id=s.lowest_tier_id)",Integer.class,bytes(owner))).isEqualTo(3);
+        db.update("UPDATE song SET representative_recording_id=? WHERE id=?",bytes(c),bytes(song));
+        var merged=store.recalculate(owner,song).orElseThrow();assertThat(merged.recordingIds()).containsExactlyInAnyOrder(b,c);
+        db.update("UPDATE song SET representative_recording_id=? WHERE id=?",bytes(b),bytes(song));
+        var remapped=store.recalculate(owner,song).orElseThrow();
+        assertThat(remapped.recordingIds()).isEqualTo(merged.recordingIds());
+        assertThat(remapped.revision()).isEqualTo(merged.revision()+1); // Mapping changed despite equal union.
+        assertThat(store.recalculate(UUID.randomUUID(),song)).isEmpty();
+        UUID foreignOwner=account(db);
+        db.update("INSERT INTO user_sync_state(user_id) VALUES(?)",bytes(foreignOwner));
+        assertThat(store.recalculate(foreignOwner,song)).isEmpty();
+        assertThat(store.recalculate(owner,UUID.randomUUID())).isEmpty();
+        db.update("UPDATE song SET representative_recording_id=NULL WHERE id=?",bytes(song));
+        db.update("UPDATE recording SET lifecycle_state='TRASHED',deleted_at=CURRENT_TIMESTAMP WHERE user_id=?",bytes(owner));
+        var empty=store.recalculate(owner,song).orElseThrow();assertThat(empty.recordingIds()).isEmpty();
+        long revision=empty.revision();
+        // Force the SQL update itself to fail: no partial role/version update may survive.
+        db.execute("ALTER TABLE song_cloud_selection ADD CONSTRAINT ck_test_selection_revision CHECK(selection_revision<="+revision+")");
+        try {
+            db.update("UPDATE recording SET lifecycle_state='ACTIVE',deleted_at=NULL WHERE id=?",bytes(a));
+            assertThatThrownBy(()->store.recalculate(owner,song)).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            assertThat(db.queryForObject("SELECT selection_revision FROM song_cloud_selection WHERE song_id=?",Long.class,bytes(song))).isEqualTo(revision);
+            assertThat(db.queryForObject("SELECT latest_id FROM song_cloud_selection WHERE song_id=?",byte[].class,bytes(song))).isNull();
+        } finally {
+            String engine=db.execute((org.springframework.jdbc.core.ConnectionCallback<String>)connection -> connection.getMetaData().getDatabaseProductName());
+            db.execute("ALTER TABLE song_cloud_selection DROP "+("MySQL".equals(engine)?"CHECK":"CONSTRAINT")+" ck_test_selection_revision");
+        }
+        var restored=store.recalculate(owner,song).orElseThrow();assertThat(restored.revision()).isEqualTo(revision+1);
+        db.update("UPDATE song_cloud_selection SET selection_revision=? WHERE song_id=?",Long.MAX_VALUE,bytes(song));
+        db.update("UPDATE song SET representative_recording_id=? WHERE id=?",bytes(a),bytes(song));
+        assertThatThrownBy(()->store.recalculate(owner,song)).isInstanceOf(IllegalStateException.class).hasMessage("Selection revision exhausted");
+        assertThat(db.queryForObject("SELECT representative_id FROM song_cloud_selection WHERE song_id=?",byte[].class,bytes(song))).isNull();
+        var tx=new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(db.getDataSource()));
+        assertThatThrownBy(()->tx.execute(status->store.recalculate(owner,song))).isInstanceOf(IllegalStateException.class);
+        db.update("UPDATE app_user SET status='DELETING' WHERE id=?",bytes(owner));
+        assertThat(store.recalculate(owner,song)).isEmpty();
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM recording_file_spec WHERE user_id=?",Integer.class,bytes(owner))).isEqualTo(3);
+    }
     public static void verifyLowestTier(JdbcTemplate db) {
         var roles=new RetentionRoles(new RetentionCandidates(db));
         UUID owner=account(db), dev=device(db,owner), song=song(db,owner);
