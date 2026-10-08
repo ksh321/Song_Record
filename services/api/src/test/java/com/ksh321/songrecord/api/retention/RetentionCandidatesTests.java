@@ -37,6 +37,7 @@ class RetentionCandidatesTests {
         db.update("UPDATE recording_file_spec SET capture_integrity='DAMAGED' WHERE recording_id=?",bytes(id));
         assertThat(roles.representative(owner,song)).isEmpty();
     }
+    @Test void latestUsesRecordedTimeThenUnsignedIdWithoutStorageOrArrivalOrder() { verifyLatest(db); }
     @AfterEach void close() { db.execute("SHUTDOWN"); }
     @Test void ownerSongLifecycleAndCrossDeviceEligibility() { verify(db); }
     @Test void rejectsIncompleteDamagedAndCrossOwnerFileSpecs() {

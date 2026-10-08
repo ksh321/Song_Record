@@ -19,11 +19,42 @@ public final class RetentionCandidateDatabaseChecks {
         UUID id = UUID.randomUUID(); db.update("INSERT INTO song(id,user_id,source_type,title,artist,note) VALUES(?,?,'MANUAL','song','artist','')", bytes(id), bytes(owner)); return id;
     }
     public static UUID recording(JdbcTemplate db, UUID owner, UUID device, UUID song, boolean saved, boolean spec, String integrity) {
-        UUID id = UUID.randomUUID();
+        return recordingWithId(db, owner, device, song, saved, spec, integrity, UUID.randomUUID());
+    }
+    public static UUID recordingWithId(JdbcTemplate db, UUID owner, UUID device, UUID song, boolean saved, boolean spec, String integrity, UUID id) {
         db.update("INSERT INTO recording(id,user_id,origin_device_id,song_id,title_snapshot,artist_snapshot,key_mode,key_shift,note,recorded_at,timezone_id,timezone_offset_minutes) VALUES(?,?,?,?,'title','artist','ORIGINAL',0,'','2026-10-08 00:00:00.123','UTC',0)", bytes(id),bytes(owner),bytes(device),song==null?null:bytes(song));
         if (spec) db.update("INSERT INTO recording_file_spec(recording_id,user_id,sha256,size_bytes,duration_ms,codec,sample_rate,channels,capture_integrity) VALUES(?,?,?,6291456,361000,'AAC_LC',48000,1,?)", bytes(id),bytes(owner),"a".repeat(64),integrity);
         if (saved) db.update("UPDATE recording SET metadata_state='SAVED' WHERE id=?",bytes(id));
         return id;
+    }
+    public static void verifyLatest(JdbcTemplate db) {
+        var roles=new RetentionRoles(new RetentionCandidates(db));
+        UUID owner=account(db), a=device(db,owner), b=device(db,owner), song=song(db,owner);
+        assertThat(roles.latest(owner,song)).isEmpty();
+        UUID low=UUID.fromString("7fffffff-ffff-ffff-ffff-ffffffffffff");
+        UUID high=UUID.fromString("80000000-0000-0000-0000-000000000000");
+        // Insert high first, low second, on different devices; tie order must be unsigned ID order.
+        recordingWithId(db,owner,a,song,true,true,"VALIDATED",high);
+        recordingWithId(db,owner,b,song,true,true,"RECOVERED",low);
+        db.update("UPDATE recording SET tier='S',revision=99 WHERE id=?",bytes(high));
+        var selected=roles.latest(owner,song).orElseThrow();
+        assertThat(selected.role()).isEqualTo(RetentionRoles.Role.LATEST);
+        assertThat(selected.candidate().recordingId()).isEqualTo(low);
+        db.update("UPDATE recording SET recorded_at='2026-10-08 00:00:00.124' WHERE id=?",bytes(high));
+        assertThat(roles.latest(owner,song).orElseThrow().candidate().recordingId()).isEqualTo(high);
+        db.update("UPDATE recording SET recorded_at='2026-10-07 23:59:59.999' WHERE id=?",bytes(high));
+        assertThat(roles.latest(owner,song).orElseThrow().candidate().recordingId()).isEqualTo(low);
+        UUID draft=recording(db,owner,a,song,false,true,"VALIDATED");
+        db.update("UPDATE recording SET recorded_at='2030-01-01 00:00:00' WHERE id=?",bytes(draft));
+        assertThat(roles.latest(owner,song).orElseThrow().candidate().recordingId()).isEqualTo(low);
+        assertThat(roles.latest(UUID.randomUUID(),song)).isEmpty();
+        assertThat(roles.latest(owner,UUID.randomUUID())).isEmpty();
+        var before=db.queryForList("SELECT id,revision,recorded_at FROM recording WHERE user_id=? ORDER BY id",bytes(owner));
+        assertThat(roles.latest(owner,song)).isEqualTo(roles.latest(owner,song));
+        assertThat(db.queryForList("SELECT id,revision,recorded_at FROM recording WHERE user_id=? ORDER BY id",bytes(owner)))
+            .usingRecursiveComparison().isEqualTo(before);
+        db.update("UPDATE recording SET lifecycle_state='TRASHED',deleted_at=CURRENT_TIMESTAMP WHERE user_id=?",bytes(owner));
+        assertThat(roles.latest(owner,song)).isEmpty();
     }
     public static void verifyRepresentative(JdbcTemplate db) {
         var roles = new RetentionRoles(new RetentionCandidates(db));
