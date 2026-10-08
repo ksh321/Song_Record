@@ -27,6 +27,37 @@ public final class RetentionCandidateDatabaseChecks {
         if (saved) db.update("UPDATE recording SET metadata_state='SAVED' WHERE id=?",bytes(id));
         return id;
     }
+    public static void verifyLowestTier(JdbcTemplate db) {
+        var roles=new RetentionRoles(new RetentionCandidates(db));
+        UUID owner=account(db), dev=device(db,owner), song=song(db,owner);
+        db.update("UPDATE song SET song_tier='D' WHERE id=?",bytes(song));
+        recording(db,owner,dev,song,true,true,"VALIDATED");
+        assertThat(roles.lowestTier(owner,song)).isEmpty(); // Unrated is not the song's tier.
+        var ids=new ArrayList<UUID>();
+        for (String tier:List.of("D","C","B","A","S")) {
+            UUID id=recording(db,owner,dev,song,true,true,"VALIDATED");ids.add(id);
+            db.update("UPDATE recording SET tier=? WHERE id=?",tier,bytes(id));
+        }
+        for (UUID id:ids) {
+            var selected=roles.lowestTier(owner,song).orElseThrow();
+            assertThat(selected.role()).isEqualTo(RetentionRoles.Role.LOWEST_TIER);
+            assertThat(selected.candidate().recordingId()).isEqualTo(id);
+            db.update("UPDATE recording SET tier=NULL WHERE id=?",bytes(id));
+        }
+        assertThat(roles.lowestTier(owner,song)).isEmpty();
+        UUID low=UUID.fromString("7fffffff-ffff-ffff-ffff-ffffffffff01");
+        UUID high=UUID.fromString("80000000-0000-0000-0000-000000000001");
+        recordingWithId(db,owner,dev,song,true,true,"VALIDATED",high);
+        recordingWithId(db,owner,dev,song,true,true,"RECOVERED",low);
+        db.update("UPDATE recording SET tier='D' WHERE id IN (?,?)",bytes(low),bytes(high));
+        assertThat(roles.lowestTier(owner,song).orElseThrow().candidate().recordingId()).isEqualTo(low);
+        db.update("UPDATE recording SET recorded_at='2026-10-08 00:00:00.124' WHERE id=?",bytes(high));
+        assertThat(roles.lowestTier(owner,song).orElseThrow().candidate().recordingId()).isEqualTo(high);
+        db.update("UPDATE recording SET lifecycle_state='TRASHED',deleted_at=CURRENT_TIMESTAMP WHERE id=?",bytes(high));
+        assertThat(roles.lowestTier(owner,song).orElseThrow().candidate().recordingId()).isEqualTo(low);
+        assertThat(roles.lowestTier(UUID.randomUUID(),song)).isEmpty();
+        assertThat(roles.lowestTier(owner,UUID.randomUUID())).isEmpty();
+    }
     public static void verifyLatest(JdbcTemplate db) {
         var roles=new RetentionRoles(new RetentionCandidates(db));
         UUID owner=account(db), a=device(db,owner), b=device(db,owner), song=song(db,owner);

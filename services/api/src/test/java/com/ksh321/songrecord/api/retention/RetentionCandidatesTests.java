@@ -38,6 +38,10 @@ class RetentionCandidatesTests {
         assertThat(roles.representative(owner,song)).isEmpty();
     }
     @Test void latestUsesRecordedTimeThenUnsignedIdWithoutStorageOrArrivalOrder() { verifyLatest(db); }
+    @Test void lowestTierIgnoresUnratedAndSongTierThenUsesTimeAndUnsignedId() {
+        db.execute("ALTER TABLE song ADD song_tier VARCHAR(1)");
+        verifyLowestTier(db);
+    }
     @AfterEach void close() { db.execute("SHUTDOWN"); }
     @Test void ownerSongLifecycleAndCrossDeviceEligibility() { verify(db); }
     @Test void rejectsIncompleteDamagedAndCrossOwnerFileSpecs() {

@@ -27,6 +27,21 @@ public final class RetentionRoles {
             .map(candidate -> new Selection(Role.LATEST, candidate));
     }
 
-    public enum Role { REPRESENTATIVE, LATEST }
+    public Optional<Selection> lowestTier(UUID owner, UUID song) {
+        var timeAndId = Comparator.comparing(RetentionCandidates.Candidate::recordedAt).reversed()
+            .thenComparing(candidate -> candidate.recordingId().toString());
+        var order = Comparator.comparingInt((RetentionCandidates.Candidate c) -> tierRank(c.tier()))
+            .thenComparing(timeAndId);
+        return candidates.forSong(owner, song).stream().filter(c -> tierRank(c.tier()) >= 0).min(order)
+            .map(candidate -> new Selection(Role.LOWEST_TIER, candidate));
+    }
+
+    private static int tierRank(String tier) {
+        if (tier == null) return -1;
+        return switch (tier) { case "D" -> 0; case "C" -> 1; case "B" -> 2;
+            case "A" -> 3; case "S" -> 4; default -> -1; };
+    }
+
+    public enum Role { REPRESENTATIVE, LATEST, LOWEST_TIER }
     public record Selection(Role role, RetentionCandidates.Candidate candidate) {}
 }
