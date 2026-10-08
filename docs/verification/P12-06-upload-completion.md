@@ -34,3 +34,6 @@ P12-06까지 원수 승인. P12-05 설치본 7항목·8ecc594 CI 통과 후 최�
 첫 SHA a4c7037의 서버 CI 통과, MySQL 멱등성 CI 37764986813에서 새 complete의 DATETIME 값을 Timestamp로 직접 cast하여 ClassCastException 발생. MySQL JDBC의 LocalDateTime 반환과 H2 Timestamp 반환 차이가 원인이다. getTimestamp 명시적 RowMapper로 통일하고 같은 위험이 확인된 UploadUrls 조회도 보완했다. 기존 완료 판정을 되돌린 것이 아니라 연결된 현재 코드 오류를 수정했다.
 
 동일 H2/MySQL 시나리오가 실제 URL 재발급→complete 접수를 거치도록 보강했다. `test --tests '*UploadCompletionTests' --tests '*UploadUrlsTests' bootJar --offline --console=plain`: 3 PASS 및 패키징 PASS. 새로운 근본 원인 1회 수정, 다음 SHA 실제 MySQL 재검증 필요. 첫 SHA 실패를 숨기지 않으며 최종 CI 기준은 전체 P12-06 변경 시작 8ecc594를 유지한다.
+
+### MySQL 회귀 fixture 순서 수정
+- 8aa9f5e / MySQL CI 37765818656은 fixture가 user_entitlement 전에 pin_slot을 삽입하여 기존 보호 트리거에 거절됨. 제품 제약을 변경하지 않고 권한 생성 후 슬롯 생성 순서로 수정. 날짜 변환과 다른 원인, 1회 수정. 관련 UploadCompletionTests 2 PASS. 로컬 Docker 엔진이 꺼져 있어 실제 MySQL은 CI에서 재확인.
