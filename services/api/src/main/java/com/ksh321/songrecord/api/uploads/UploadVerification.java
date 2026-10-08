@@ -38,7 +38,7 @@ public final class UploadVerification {
             var readers=Executors.newVirtualThreadPerTaskExecutor();
             var download=new CompletableFuture<byte[]>();var releaseReader=budget.holdUntilReaderStops();
             readers.execute(()->{try{
-                var opened=source.open(key);inputRef.set(opened);
+                var opened=source.open(key);inputRef.set(opened);byte[] captured;
                 try(var input=opened;var output=new ByteArrayOutputStream()){
                     if(cancelled.get())throw new IOException("FILE_VALIDATION_TIMEOUT");
                     var buffer=new byte[32768];int total=0;
@@ -51,8 +51,9 @@ public final class UploadVerification {
                         total+=n;if(total>MAX_BYTES)throw new IOException("UPLOAD_TOO_LARGE");
                         output.write(buffer,0,n);
                     }
-                    download.complete(output.toByteArray());
+                    captured=output.toByteArray();
                 }
+                download.complete(captured);
             }catch(Throwable e){download.completeExceptionally(e);}finally{releaseReader.run();}});
             byte[] bytes;
             try{bytes=download.get(budget.remaining(),TimeUnit.NANOSECONDS);}

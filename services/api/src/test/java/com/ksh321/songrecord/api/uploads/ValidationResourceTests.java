@@ -99,5 +99,16 @@ class ValidationResourceTests {
         var next=new UploadVerification(db,unused->new ByteArrayInputStream(new byte[]{1,2,3}),Clock.systemUTC());
         assertThat(next.prepare(lease,(l,bytes)->()->{})).isNotNull();
     }
+    @Test void downloadCloseFailureCannotReachSuccessfulConsumer()throws Exception{
+        var db=mock(JdbcTemplate.class);UUID user=UUID.randomUUID(),recording=UUID.randomUUID(),attempt=UUID.randomUUID();
+        var key=new StorageObjectKeys.Temporary(user,recording,attempt);
+        when(db.queryForList(anyString(),any(Object[].class))).thenReturn(List.of(Map.of("recording_id",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(recording),"temp_key",key.value(),"expected_size",3,"expected_sha256","a".repeat(64))));
+        var consumed=new AtomicBoolean();
+        var source=new ByteArrayInputStream(new byte[]{1,2,3}){public void close()throws IOException{throw new IOException("private fixture close failure");}};
+        var verification=new UploadVerification(db,unused->source,Clock.systemUTC());
+        var lease=new JobQueue.Lease(UUID.randomUUID(),UUID.randomUUID(),user,JobQueue.Type.UPLOAD_VERIFY,attempt,"{}",1);
+        assertThatThrownBy(()->verification.prepare(lease,(l,bytes)->{consumed.set(true);return ()->{};})).isInstanceOf(IOException.class).hasMessage("UPLOAD_BYTES_UNAVAILABLE");
+        assertThat(consumed).isFalse();
+    }
     static String quote(String text){return "'"+text.replace("\\","\\\\").replace("'","\\'")+"'";}
 }
