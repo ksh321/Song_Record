@@ -18,6 +18,11 @@ repositories {
 }
 
 dependencies {
+	implementation('software.amazon.awssdk:s3:2.55.12') {
+		exclude group: 'software.amazon.awssdk', module: 'apache-client'
+		exclude group: 'software.amazon.awssdk', module: 'netty-nio-client'
+	}
+	implementation 'software.amazon.awssdk:url-connection-client:2.55.12'
 	implementation 'com.nimbusds:nimbus-jose-jwt:10.9'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -44,4 +49,14 @@ dependencyLocking {
 tasks.named('test') {
 	useJUnitPlatform()
 	testLogging { exceptionFormat = 'full' }
+}
+
+// Local credential GUI passes secrets through stdin; this file contains paths only.
+tasks.register('r2CheckerClasspath') {
+    dependsOn tasks.named('classes')
+    doLast {
+        def target = rootProject.file('../../.local/workflow/cloudflare/checker-classpath.txt')
+        target.parentFile.mkdirs()
+        target.text = sourceSets.main.runtimeClasspath.asPath
+    }
 }
