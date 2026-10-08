@@ -88,4 +88,20 @@ class R2StorageTests {
         }
     }
 
+    @Test void verificationUsesStreamingGetInWorkerRoleOnly()throws Exception{
+        var client=mock(S3Client.class);var key=new StorageObjectKeys.Temporary(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID());
+        try(var api=new R2Storage(R2Settings.from(environment("dev","api")),client)){
+            assertThatThrownBy(()->api.openTemporary(key)).isInstanceOf(IllegalStateException.class);
+            verify(client,never()).getObject(any(GetObjectRequest.class));
+        }
+        var input=new software.amazon.awssdk.core.ResponseInputStream<GetObjectResponse>(GetObjectResponse.builder().build(),new java.io.ByteArrayInputStream(new byte[]{4,5}));
+        when(client.getObject(any(GetObjectRequest.class))).thenReturn(input);
+        try(var worker=new R2Storage(R2Settings.from(environment("dev","worker")),client);var stream=worker.openTemporary(key)){
+            assertThat(stream.readAllBytes()).containsExactly(4,5);
+            var capture=org.mockito.ArgumentCaptor.forClass(GetObjectRequest.class);verify(client).getObject(capture.capture());
+            assertThat(capture.getValue().bucket()).isEqualTo("song-record-dev-temporary");assertThat(capture.getValue().key()).isEqualTo(key.value());
+            verify(client,never()).headObject(any(HeadObjectRequest.class));
+        }
+    }
+
 }

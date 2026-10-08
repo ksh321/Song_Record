@@ -11,6 +11,9 @@ public class UploadConfiguration {
     UploadUrls uploadUrls(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,IdempotentMutations mutations,UploadApproval approval,UploadPutSigner signer){
         return new UploadUrls(db,access,manager,mutations,approval,signer,Clock.systemUTC());
     }
+    @Bean UploadCompletion uploadCompletion(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,IdempotentMutations mutations,com.ksh321.songrecord.api.jobs.JobQueue jobs){
+        return new UploadCompletion(db,access,manager,mutations,jobs,Clock.systemUTC());
+    }
     @Bean UploadApproval uploadApproval(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,IdempotentMutations mutations){
         return new UploadApproval(db,access,manager,Clock.systemUTC(),mutations);
     }

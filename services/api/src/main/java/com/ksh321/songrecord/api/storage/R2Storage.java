@@ -30,6 +30,17 @@ public final class R2Storage implements AutoCloseable {
         if(!settings.environment.equals("dev") || !settings.role.equals("api"))throw new IllegalArgumentException("Development API probe only");
         return DevelopmentSignedPutProbe.run(client,signer);
     }
+    /** Streaming GET only in worker role; SDK connection/read/call timeouts remain bounded. */
+    public java.io.InputStream openTemporary(StorageObjectKeys.Temporary key){
+        com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();
+        if(!settings.role.equals("worker"))throw new IllegalStateException("Upload reads require worker role");
+        try{
+            var response=client.getObject(software.amazon.awssdk.services.s3.model.GetObjectRequest.builder().bucket(settings.temporaryBucket).key(key.value()).build());
+            // Abort instead of draining an oversized/untrusted response when the bounded reader stops.
+            return new java.io.FilterInputStream(response){@Override public void close(){response.abort();}};
+        }
+        catch(RuntimeException e){throw new IllegalStateException("UPLOAD_BYTES_UNAVAILABLE");}
+    }
     public String temporaryBucket(){return settings.temporaryBucket;}
     // API-role processes cannot request the final writer's bucket through this boundary.
     public String finalWriterBucket(){if(!settings.role.equals("worker"))throw new IllegalStateException("Final storage requires worker role");return settings.finalBucket;}
