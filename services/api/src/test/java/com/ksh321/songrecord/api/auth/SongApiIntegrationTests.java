@@ -16,7 +16,7 @@ class SongApiIntegrationTests {
     record Client(String token,UUID device){}
     Client a,aSecond,b;
     @BeforeEach void open()throws Exception{
-        setup.setup();a=new Client(setup.f.tokens.accessToken(),setup.f.registration.deviceId());
+        setup.setup();new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(new org.springframework.core.io.ClassPathResource("job-schema.sql")).populate(setup.f.keeper);a=new Client(setup.f.tokens.accessToken(),setup.f.registration.deviceId());
         var registrations=new AccountRegistrationService(setup.f.jdbc,setup.f.manager,setup.f.clock);
         var second=registrations.register(new VerifiedProviderIdentity("GOOGLE","a"),null,"second phone");
         assertThat(second.userId()).isEqualTo(setup.f.registration.userId());assertThat(second.deviceId()).isNotEqualTo(a.device);

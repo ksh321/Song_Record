@@ -10,3 +10,8 @@
 - 검토: 현재 모델 별도 diff 검토. 계정 격리, lock 순서, 이벤트 rollback, lease fence, 과거 작업, lifecycle 복원, 파일 보존 확인. MySQL 부분 fixture에 필요한 job 테이블 추가. 실제 MySQL 통합은 필수 CI에서 확인한다.
 - 서버 내부 연결 변경이므로 별도 폰 실기 불필요. 필수 원격 CI 통과 전 완료 아님.
 - 학습: 작업 큐에는 과거의 계산 결과보다 재계산할 대상만 담고, 실행 시 현재 상태를 읽으면 늦은 작업의 역전 적용을 막을 수 있다.
+
+## CI 회귀 보완
+- 62614431ec1298585823c21738dc267d8476b314: 실제 MySQL 통과, 일반 CI의 SongApiIntegrationTests 1개 실패. 대표 변경 이벤트를 추가하면서 해당 임시 fixture의 job 테이블이 누락된 원인 확인.
+- 해당 fixture 보완 후 로컬 서버 전체 Gradle test: {'tests': 533, 'failures': 0, 'errors': 0, 'skipped': 67}; skip은 MySQL 전용 환경 조건이며 통과로 계산하지 않음. 로그 `.local/workflow/p11-06/local-full.log`.
+- 현재 모델 재검토: 제품 로직 변경 없이 테스트 환경만 보완. 최종 SHA CI 재확인 필요.
