@@ -37,3 +37,6 @@ P12-06까지 원수 승인. P12-05 설치본 7항목·8ecc594 CI 통과 후 최�
 
 ### MySQL 회귀 fixture 순서 수정
 - 8aa9f5e / MySQL CI 37765818656은 fixture가 user_entitlement 전에 pin_slot을 삽입하여 기존 보호 트리거에 거절됨. 제품 제약을 변경하지 않고 권한 생성 후 슬롯 생성 순서로 수정. 날짜 변환과 다른 원인, 1회 수정. 관련 UploadCompletionTests 2 PASS. 로컬 Docker 엔진이 꺼져 있어 실제 MySQL은 CI에서 재확인.
+
+### MySQL fixture 필수 요청 정보 보강
+- 42f96e4 / CI 37766543126: 권한 생성 순서는 해결됐으나 pin_slot의 operation_id·requested_at 누락으로 ck_pin_request 거절. fixture 불완전 문제의 추가 수정으로 두 값 보강 및 H2에도 같은 요청 CHECK·권한 FK를 적용. 제품 제약/기대값 완화 없음. UploadCompletionTests 2 PASS. 날짜 변환 오류와 구분하며 fixture 문제 수정 이력은 초기화하지 않음.

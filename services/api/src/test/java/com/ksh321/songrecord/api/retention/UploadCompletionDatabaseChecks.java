@@ -21,7 +21,7 @@ public final class UploadCompletionDatabaseChecks {
         db.update("INSERT INTO recording_file_spec(recording_id,user_id,sha256,size_bytes,duration_ms,codec,sample_rate,channels,capture_integrity) VALUES(?,?,?,3,1000,'AAC_LC',48000,1,'VALIDATED')",bytes(recording),bytes(owner),"a".repeat(64));
         db.update("UPDATE recording SET metadata_state='SAVED' WHERE id=?",bytes(recording));
         for(String table:List.of("user_sync_state","user_entitlement","storage_usage"))db.update("INSERT INTO "+table+"(user_id) VALUES(?)",bytes(owner));
-        db.update("INSERT INTO pin_slot(user_id,slot_no,pending_recording_id) VALUES(?,1,?)",bytes(owner),bytes(recording));
+        db.update("INSERT INTO pin_slot(user_id,slot_no,pending_recording_id,operation_id,requested_at) VALUES(?,1,?,?,CURRENT_TIMESTAMP)",bytes(owner),bytes(recording),bytes(UUID.randomUUID()));
         var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);
         when(access.authenticate("fixture",dev.toString())).thenReturn(account);
         when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,dev,UUID.randomUUID()));

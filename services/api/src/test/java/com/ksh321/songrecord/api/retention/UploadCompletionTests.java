@@ -7,6 +7,8 @@ class UploadCompletionTests {
         var db=UploadApprovalTests.database();
         try(var keeper=db.getDataSource().getConnection()){
             new ResourceDatabasePopulator(new ClassPathResource("job-schema.sql")).populate(keeper);
+            keeper.createStatement().execute("ALTER TABLE pin_slot ADD CONSTRAINT ck_completion_pin_request CHECK (((operation_id IS NULL AND requested_at IS NULL) OR (operation_id IS NOT NULL AND requested_at IS NOT NULL)) AND ((current_recording_id IS NULL AND pending_recording_id IS NULL) OR (operation_id IS NOT NULL AND requested_at IS NOT NULL)))");
+            keeper.createStatement().execute("ALTER TABLE pin_slot ADD CONSTRAINT fk_completion_pin_owner FOREIGN KEY(user_id) REFERENCES user_entitlement(user_id)");
             UploadCompletionDatabaseChecks.verify(db);
         }
     }
