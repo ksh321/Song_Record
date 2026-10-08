@@ -27,7 +27,8 @@ public final class RecordingEditingDatabaseChecks {
         db.execute("ALTER TABLE change_log ADD CONSTRAINT reject_recording_edit CHECK(revision<3)");
         assertThatThrownBy(()->editing.patch(auth,device,op,recording.toString(),body)).isInstanceOf(org.springframework.dao.DataAccessException.class);
         assertThat(db.queryForObject("SELECT revision FROM recording WHERE id=?",Long.class,bytes(recording))).isEqualTo(2);
-        for(String table:List.of("recording_tag","recording_time_correction","job"))assertThat(db.queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isZero();
+        for(String table:List.of("recording_tag","recording_time_correction"))assertThat(db.queryForObject("SELECT COUNT(*) FROM "+table,Integer.class)).isZero();
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(1); // only the committed SAVED event
         assertThat(db.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(2);
         assertThat(db.queryForObject("SELECT last_change_seq FROM user_sync_state WHERE user_id=?",Long.class,bytes(owner))).isEqualTo(2);
         db.execute(db.getDataSource()!=null && product(db).equals("MySQL")?"ALTER TABLE change_log DROP CHECK reject_recording_edit":"ALTER TABLE change_log DROP CONSTRAINT reject_recording_edit");
@@ -40,8 +41,8 @@ public final class RecordingEditingDatabaseChecks {
         assertThat(db.queryForObject("SELECT revision FROM recording_time_correction",Long.class)).isEqualTo(3);
         assertThat(db.queryForObject("SELECT actor_device_id FROM recording_time_correction",byte[].class)).isEqualTo(bytes(UUID.fromString(device)));
         assertThat(db.queryForObject("SELECT old_recorded_at FROM recording_time_correction",java.sql.Timestamp.class).toLocalDateTime().toString()).isEqualTo("2026-09-28T07:00");
-        assertThat(db.queryForObject("SELECT COUNT(*) FROM job WHERE type='POLICY_RECALCULATE' AND state='QUEUED'",Integer.class)).isEqualTo(1);
-        assertThat(db.queryForObject("SELECT aggregate_id FROM job",byte[].class)).isEqualTo(bytes(song));
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM job WHERE type='POLICY_RECALCULATE' AND state='QUEUED'",Integer.class)).isEqualTo(2);
+        assertThat(db.queryForList("SELECT aggregate_id FROM job",byte[].class)).usingRecursiveFieldByFieldElementComparator().containsExactlyInAnyOrder(bytes(song),bytes(song));
         assertThat(db.queryForMap("SELECT * FROM recording_file_spec WHERE recording_id=?",bytes(recording))).usingRecursiveComparison().isEqualTo(fileBefore);
         assertThat(db.queryForMap("SELECT * FROM song WHERE id=?",bytes(song))).usingRecursiveComparison().isEqualTo(songBefore);
         db.update("UPDATE tag SET name='new tag',archived_at=CURRENT_TIMESTAMP WHERE id=?",bytes(tag));
@@ -68,7 +69,7 @@ public final class RecordingEditingDatabaseChecks {
         }catch(Exception e){throw new AssertionError(e);}
         assertThat(db.queryForObject("SELECT revision FROM recording WHERE id=?",Long.class,bytes(recording))).isEqualTo(6);
         assertThat(db.queryForObject("SELECT COUNT(*) FROM recording_time_correction",Integer.class)).isEqualTo(1);
-        assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(1);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(2);
 
     }
     private static String product(JdbcTemplate db){return db.execute((java.sql.Connection c)->c.getMetaData().getDatabaseProductName());}

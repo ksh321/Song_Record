@@ -35,10 +35,7 @@ public final class RecordingRating {
                     if(!"ACTIVE".equals(current.get("lifecycle_state")))throw error(HttpStatus.CONFLICT,"RECORDING_NOT_ACTIVE","활성 녹음만 평가할 수 있습니다.");
                     if(!"SAVED".equals(current.get("metadata_state")))throw error(HttpStatus.CONFLICT,"RECORDING_NOT_SAVED","저장 완료 후 평가해 주세요.");
                     jdbc.update("UPDATE recording SET tier=? WHERE user_id=? AND id=?",tier,bytes(owner),bytes(recording));
-                    if(!Objects.equals(current.get("tier"),tier) && current.get("song_id")!=null){
-                        UUID song=UUID.fromString((String)current.get("song_id"));
-                        jobs.enqueue(account,JobQueue.Type.POLICY_RECALCULATE,song,UUID.fromString(op),JSON.writeValueAsString(Map.of("song_id",song.toString(),"recording_id",id,"recording_revision",base.asLong()+1,"reason","RECORDING_TIER_CHANGED")));
-                    }
+
                 });
                 String payload=JSON.writeValueAsString(editing.snapshot(owner,recording));
                 return new AccountChanges.Batch<>(new IdempotentMutations.Reply(200,payload),List.of(new AccountChanges.Change(AccountChanges.Entity.RECORDING,recording,((Number)updated.get("revision")).longValue(),AccountChanges.Operation.UPSERT,payload)));

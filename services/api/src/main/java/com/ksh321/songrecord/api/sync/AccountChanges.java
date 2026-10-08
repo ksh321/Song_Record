@@ -37,8 +37,10 @@ public final class AccountChanges {
     private final AccountAccess access;
     private final TransactionTemplate joined;
     private final Clock clock;
+    private final com.ksh321.songrecord.api.jobs.JobQueue retentionJobs;
     public AccountChanges(JdbcTemplate jdbc,AccountAccess access,PlatformTransactionManager manager,Clock clock) {
         this.jdbc=jdbc;this.access=access;this.clock=clock;
+        retentionJobs=new com.ksh321.songrecord.api.jobs.JobQueue(jdbc,access,manager,clock,java.time.Duration.ofMinutes(2),5);
         joined=new TransactionTemplate(manager);joined.setPropagationBehavior(TransactionDefinition.PROPAGATION_MANDATORY);
     }
     /** Call after any required global lock, but BEFORE all account/domain row locks and edits. */
@@ -54,7 +56,12 @@ public final class AccountChanges {
             if(rows.size()!=1)throw new IllegalStateException("Account sync state is missing");
             long sequence=rows.getFirst();
             if(sequence<0)throw new IllegalStateException("Invalid account sequence");
-            Batch<T> batch=Objects.requireNonNull(edit.get());
+            com.ksh321.songrecord.api.retention.RetentionEvents.begin(owner.userId());
+            Batch<T> batch;
+            try {
+                batch=Objects.requireNonNull(edit.get());
+                com.ksh321.songrecord.api.retention.RetentionEvents.flush(retentionJobs,account);
+            } finally {com.ksh321.songrecord.api.retention.RetentionEvents.end();}
             if(sequence>Long.MAX_VALUE-batch.changes().size())throw new IllegalStateException("Account sequence exhausted");
             var now=LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
             for(var change:batch.changes()) {

@@ -11,7 +11,7 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 import static com.ksh321.songrecord.api.songs.SongQueryKeys.uuid;
 
 /** Trusted server worker entry. Not an HTTP authorization boundary. Owns one short transaction.
- * P11-06 will connect events/jobs; no asset/pin/hold/file changes or external work here. */
+ * Job completion joins a fresh transaction; no asset/pin/hold/file changes or external work here. */
 @Component
 @Profile("!bootstrap")
 public final class RetentionSelectionStore {
@@ -27,18 +27,28 @@ public final class RetentionSelectionStore {
         Objects.requireNonNull(owner);Objects.requireNonNull(song);
         // Never join an older snapshot or invert locks of an enclosing mutation.
         LockOrder.requireOutsideTransaction();
-        return transaction.execute(status -> {
+        return transaction.execute(status -> locked(owner,song));
+    }
+    /** Called only inside JobQueue.complete; lease loss rolls this write back with job completion. */
+    public Optional<Snapshot> recalculateInJob(UUID owner,UUID song) {
+        if(!org.springframework.transaction.support.TransactionSynchronizationManager.hasResource(jdbc.getDataSource())
+            || !Integer.valueOf(TransactionDefinition.ISOLATION_READ_COMMITTED).equals(
+                org.springframework.transaction.support.TransactionSynchronizationManager.getCurrentTransactionIsolationLevel()))
+            throw new IllegalStateException("Job database transaction required");
+        return locked(Objects.requireNonNull(owner),Objects.requireNonNull(song));
+    }
+    private Optional<Snapshot> locked(UUID owner,UUID song) {
             if (!active(owner)) return Optional.empty();
             LockOrder.before(LockOrder.Rank.USER_SYNC,owner.toString());
             if(jdbc.queryForList("SELECT user_id FROM user_sync_state WHERE user_id=? FOR UPDATE",bytes(owner)).size()!=1)
                 throw new IllegalStateException("Account sync state is missing");
             if (!active(owner)) return Optional.empty();
             LockOrder.before(LockOrder.Rank.AGGREGATE,owner+"/0/"+song);
-            var songs=jdbc.query("SELECT representative_recording_id FROM song WHERE user_id=? AND id=? AND lifecycle_state='ACTIVE' FOR UPDATE",
-                (rs,n)->new RetentionRoles.Ids(id(rs.getBytes(1)),null,null),bytes(owner),bytes(song));
+            var songs=jdbc.query("SELECT representative_recording_id,lifecycle_state FROM song WHERE user_id=? AND id=? FOR UPDATE",
+                (rs,n)->new Song(id(rs.getBytes(1)),"ACTIVE".equals(rs.getString(2))),bytes(owner),bytes(song));
             if(songs.isEmpty()) return Optional.empty();
             // All participating account metadata writers hold USER_SYNC. One fresh candidate read.
-            var selected=RetentionRoles.calculate(candidates.forSong(owner,song),songs.getFirst().representative());
+            var selected=songs.getFirst().active()?RetentionRoles.calculate(candidates.forSong(owner,song),songs.getFirst().representative()):new RetentionRoles.Ids(null,null,null);
             LockOrder.before(LockOrder.Rank.SONG_SELECTION,owner+"/"+song);
             var stored=jdbc.query("SELECT representative_id,latest_id,lowest_tier_id,selection_revision FROM song_cloud_selection WHERE user_id=? AND song_id=? FOR UPDATE",
                 (rs,n)->new Snapshot(new RetentionRoles.Ids(id(rs.getBytes(1)),id(rs.getBytes(2)),id(rs.getBytes(3))),rs.getLong(4)),bytes(owner),bytes(song));
@@ -55,8 +65,8 @@ public final class RetentionSelectionStore {
                 value(selected.representative()),value(selected.latest()),value(selected.lowestTier()),next,bytes(owner),bytes(song),previous.revision());
             if(changed!=1)throw new IllegalStateException("Selection revision changed");
             return Optional.of(new Snapshot(selected,next));
-        });
     }
+    private record Song(UUID representative,boolean active) {}
     private boolean active(UUID owner) {
         return !jdbc.queryForList("SELECT id FROM app_user WHERE id=? AND status='ACTIVE'",bytes(owner)).isEmpty();
     }

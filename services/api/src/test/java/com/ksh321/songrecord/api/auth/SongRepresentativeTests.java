@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 class SongRepresentativeTests {
     final SongCreationTests setup=new SongCreationTests();final JsonMapper json=new JsonMapper();UUID song,recording;String path;
     @BeforeEach void open()throws Exception{
-        setup.setup();song=setup.id;path="/v1/songs/"+song+"/representative";
+        setup.setup();new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(new org.springframework.core.io.ClassPathResource("job-schema.sql")).populate(setup.f.keeper);song=setup.id;path="/v1/songs/"+song+"/representative";
         assertThat(setup.postBody(UUID.randomUUID().toString(),setup.body("")).getStatus()).isEqualTo(201);
         recording=seed(setup.f.registration.userId(),song,"SAVED","ACTIVE");
     }

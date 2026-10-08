@@ -52,12 +52,15 @@ public final class RevisionChanges {
                     "최신 값을 확인해 주세요.",false,Map.of("current_revision",revision,"current",current));
             if(revision==Long.MAX_VALUE)throw new ApiException(HttpStatus.CONFLICT,"REVISION_LIMIT_REACHED",
                     "더 이상 버전을 증가시킬 수 없습니다.",false,Map.of());
+            var retentionBefore=new LinkedHashMap<>(current);
             edit.accept(current);
             var now=LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
             int updated=jdbc.update("UPDATE "+resource.table+" SET revision=revision+1,updated_at=? WHERE user_id=? AND id=? AND revision=?",
                     now,bytes(owner.userId()),bytes(resourceId),revision);
             if(updated!=1)throw new IllegalStateException("Edit changed the aggregate revision, identity or owner");
-            return read(resource,owner.userId(),resourceId);
+            var result=read(resource,owner.userId(),resourceId);
+            com.ksh321.songrecord.api.retention.RetentionEvents.capture(owner.userId(),resource.name(),retentionBefore,result);
+            return result;
         });
     }
     /** Pre-lock related aggregates in sorted order before locking the recording being moved. */

@@ -57,11 +57,6 @@ public final class RecordingLinking {
                     // All composite FKs pointing at (owner, old song, recording) have been detached first.
                     jdbc.update("UPDATE recording SET song_id=?,link_revision=link_revision+1 WHERE user_id=? AND id=?",target==null?null:bytes(target),bytes(owner),bytes(recording));
                 });
-                if(moved){
-                    var pending=new ArrayList<JobQueue.Submission>();
-                    for(UUID song:related)pending.add(new JobQueue.Submission(JobQueue.Type.POLICY_RECALCULATE,song,UUID.fromString(op),JSON.writeValueAsString(Map.of("song_id",song.toString(),"recording_id",id,"recording_revision",((Number)updated.get("revision")).longValue(),"reason","RECORDING_SONG_CHANGED"))));
-                    jobs.enqueueAll(account,pending);
-                }
                 String payload=JSON.writeValueAsString(editing.snapshot(owner,recording));
                 log.add(new AccountChanges.Change(AccountChanges.Entity.RECORDING,recording,((Number)updated.get("revision")).longValue(),AccountChanges.Operation.UPSERT,payload));
                 return new AccountChanges.Batch<>(new IdempotentMutations.Reply(200,payload),log);

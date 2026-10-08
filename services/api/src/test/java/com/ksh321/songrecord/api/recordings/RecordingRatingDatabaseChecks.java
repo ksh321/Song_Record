@@ -24,7 +24,7 @@ public final class RecordingRatingDatabaseChecks {
         assertThatThrownBy(()->rating.patch(auth,device,op,id.toString(),body)).isInstanceOf(org.springframework.dao.DataAccessException.class);
         assertThat(db.queryForObject("SELECT revision FROM recording WHERE id=?",Long.class,bytes(id))).isEqualTo(2);
         assertThat(db.queryForObject("SELECT tier FROM recording WHERE id=?",String.class,bytes(id))).isNull();
-        assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isZero();
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(1); // SAVED event remains after rollback.
         assertThat(db.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isEqualTo(2);
         assertThat(db.queryForObject("SELECT last_change_seq FROM user_sync_state WHERE user_id=?",Long.class,bytes(owner))).isEqualTo(2);
         String product=db.execute((java.sql.Connection c)->c.getMetaData().getDatabaseProductName());
@@ -32,24 +32,24 @@ public final class RecordingRatingDatabaseChecks {
         var response=rating.patch(auth,device,op,id.toString(),body);assertThat(response.status()).isEqualTo(200);
         assertThat(JSON.readTree(response.body()).get("tier").asText()).isEqualTo("D");
         assertThat(JSON.readTree(rating.patch(auth,device,op,id.toString(),body).body())).isEqualTo(JSON.readTree(response.body()));
-        assertThat(db.queryForObject("SELECT COUNT(*) FROM job WHERE type='POLICY_RECALCULATE' AND state='QUEUED'",Integer.class)).isEqualTo(1);
-        assertThat(db.queryForObject("SELECT aggregate_id FROM job",byte[].class)).isEqualTo(bytes(song));
-        assertThat(JSON.readTree(db.queryForObject("SELECT payload FROM job",String.class)).get("reason").asText()).isEqualTo("RECORDING_TIER_CHANGED");
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM job WHERE type='POLICY_RECALCULATE' AND state='QUEUED'",Integer.class)).isEqualTo(2);
+        assertThat(db.queryForList("SELECT aggregate_id FROM job",byte[].class)).usingRecursiveFieldByFieldElementComparator().containsExactlyInAnyOrder(bytes(song),bytes(song));
+        assertThat(db.queryForList("SELECT payload FROM job",String.class)).allSatisfy(p->assertThat(JSON.readTree(p).get("reason").asText()).isEqualTo("METADATA_CHANGED"));
         assertThatThrownBy(()->rating.patch(auth,device,op,id.toString(),"{\"base_revision\":2,\"tier\":\"A\"}")).isInstanceOfSatisfying(com.ksh321.songrecord.api.web.ApiException.class,e->assertThat(e.code()).isEqualTo("IDEMPOTENCY_CONFLICT"));
         // New op with the same rating advances revision, but cannot change policy selection.
         rating.patch(auth,device,UUID.randomUUID().toString(),id.toString(),"{\"base_revision\":3,\"tier\":\"D\"}");
-        assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(1);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(2);
         // Explicit null clears the rating and must enqueue a recalculation too.
         rating.patch(auth,device,UUID.randomUUID().toString(),id.toString(),"{\"base_revision\":4,\"tier\":null}");
         assertThat(db.queryForObject("SELECT tier FROM recording WHERE id=?",String.class,bytes(id))).isNull();
-        assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(2);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(3);
         try(var pool=java.util.concurrent.Executors.newFixedThreadPool(2)){
             var start=new java.util.concurrent.CountDownLatch(1);
             java.util.concurrent.Callable<String> task=()->{start.await();try{return Integer.toString(rating.patch(auth,device,UUID.randomUUID().toString(),id.toString(),"{\"base_revision\":5,\"tier\":\"B\"}").status());}catch(com.ksh321.songrecord.api.web.ApiException e){return e.code();}};
             var a=pool.submit(task);var b=pool.submit(task);start.countDown();
             assertThat(List.of(a.get(20,java.util.concurrent.TimeUnit.SECONDS),b.get(20,java.util.concurrent.TimeUnit.SECONDS))).containsExactlyInAnyOrder("200","REVISION_CONFLICT");
         }catch(Exception e){throw new AssertionError(e);}
-        assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(3);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(4);
         assertThat(db.queryForObject("SELECT revision FROM recording WHERE id=?",Long.class,bytes(id))).isEqualTo(6);
         assertThat(db.queryForMap("SELECT * FROM song WHERE id=?",bytes(song))).usingRecursiveComparison().isEqualTo(songBefore);
         assertThat(db.queryForMap("SELECT * FROM recording_file_spec WHERE recording_id=?",bytes(id))).usingRecursiveComparison().isEqualTo(fileBefore);

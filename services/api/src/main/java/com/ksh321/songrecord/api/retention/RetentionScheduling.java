@@ -1,0 +1,25 @@
+package com.ksh321.songrecord.api.retention;
+
+import com.ksh321.songrecord.api.auth.AccountAccess;
+import com.ksh321.songrecord.api.jobs.JobQueue;
+import java.time.*;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.scheduling.annotation.*;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+
+@Configuration(proxyBeanMethods=false)
+@Profile("!bootstrap")
+@EnableScheduling
+@ConditionalOnProperty(name="songrecord.retention.scheduling-enabled",havingValue="true",matchIfMissing=true)
+public class RetentionScheduling {
+    private final RetentionWorker worker;
+    public RetentionScheduling(JdbcTemplate jdbc,AccountAccess access,PlatformTransactionManager manager,RetentionSelectionStore store){
+        worker=new RetentionWorker(new JobQueue(jdbc,access,manager,Clock.systemUTC(),Duration.ofMinutes(2),5),store);
+    }
+    @Bean ThreadPoolTaskScheduler retentionScheduler(){var scheduler=new ThreadPoolTaskScheduler();scheduler.setPoolSize(1);scheduler.setThreadNamePrefix("retention-");return scheduler;}
+    @Scheduled(fixedDelay=1000,initialDelay=1000,scheduler="retentionScheduler")
+    public void tick(){try{worker.runOnce();}catch(RuntimeException e){org.slf4j.LoggerFactory.getLogger(RetentionScheduling.class).warn("retention_worker_tick_failed type={}",e.getClass().getSimpleName());}}
+}

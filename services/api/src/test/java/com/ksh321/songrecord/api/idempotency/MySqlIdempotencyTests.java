@@ -505,6 +505,7 @@ class MySqlIdempotencyTests {
     }
 
     @Test void mysqlRepresentativeRaceCompositeFkAndAtomicRollback() throws Exception {
+        jobQueue(Clock.systemUTC()); // representative changes now schedule policy recalculation
         var changes=syncService();String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
         for(String table:java.util.List.of("device","song","recording")){
             int start=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(start,core.indexOf(';',start)));
@@ -882,6 +883,7 @@ class MySqlIdempotencyTests {
             com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.verifyLatest(new JdbcTemplate(ds));
             com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.verifyLowestTier(new JdbcTemplate(ds));
             com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.verifySelectionStore(new JdbcTemplate(ds));
+            com.ksh321.songrecord.api.retention.RetentionJobDatabaseChecks.verify(new JdbcTemplate(ds));
             assertThat(flyway.migrate().migrationsExecuted).isZero();
         } finally {admin.execute("DROP DATABASE "+name);}
     }
