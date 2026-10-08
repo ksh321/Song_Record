@@ -1,4 +1,4 @@
-"""One-time masked entry. No credential persistence or vault reads; status-only reports."""
+"""Masked one-time entry or explicitly registered development DPAPI credentials; status-only reports."""
 import json
 import os
 from pathlib import Path
@@ -44,7 +44,7 @@ def parse_report(output, label, full=False, signed=False, audio=False):
         wanted.update({'write.temporary':'VERIFIED','write.final':'VERIFIED' if role=='worker' else 'DENIED'})
     return {'status': 'PASS' if result==wanted else 'FAIL', 'checks': result} if full else {'status': 'PASS' if result==wanted else 'FAIL', 'bucket_read_scope': result}
 
-def check(label, java, access, secret, directory=DIRECTORY, full=False, signed=False, audio=False):
+def check(label, java, access=None, secret=None, directory=DIRECTORY, full=False, signed=False, audio=False):
     if label not in LABELS or (full and not label.startswith('dev.')): raise SecretError('Invalid role')
     if sum((bool(full),bool(signed),bool(audio)))>1: raise SecretError('Select one diagnostic')
     if audio and label!='dev.worker': raise SecretError('Development worker only')
@@ -53,6 +53,9 @@ def check(label, java, access, secret, directory=DIRECTORY, full=False, signed=F
     try:
         # Invalidate prior PASS before trying new input, including failed validation.
         (directory/report_name/(label+'.json')).unlink(missing_ok=True)
+        if access is None and secret is None:
+            from r2_vault import load
+            access,secret=load(label)
         validate(access, secret)
         environment, role = label.split('.')
         prefix = 'songrecord.storage.'+environment+'.'
@@ -86,19 +89,22 @@ def gui(java, full=False, signed=False, audio=False):
     import tkinter as tk
     from tkinter import ttk, messagebox
     import queue
-    window=tk.Tk();window.title('Song_Record — P12-07 실제 오디오 검사' if audio else 'Song_Record — P12-04 서명 URL 검사' if signed else 'Song_Record — R2 개발 쓰기 검사' if full else 'Song_Record — R2 일회용 검사');window.geometry('690x430')
+    window=tk.Tk();window.title('Song_Record — P12-07 실제 오디오 검사' if audio else 'Song_Record — P12-04 서명 URL 검사' if signed else 'Song_Record — R2 개발 쓰기 검사' if full else 'Song_Record — R2 연결 검사');window.geometry('690x430')
     window.report_callback_exception=lambda *args: messagebox.showerror('오류','처리하지 못했습니다. 키 내용은 기록하지 않았습니다.')
-    ttk.Label(window,text='P12-07 실제 오디오 검증 — 키 저장 없음' if audio else 'P12-04 개발 PUT URL·재발급 검사 — 키 저장 없음' if signed else 'R2 개발 쓰기·읽기·삭제 검사 — 키 저장 없음' if full else 'R2 일회용 연결 검사 — 키 저장 없음',font=('',16)).pack(pady=12)
-    ttk.Label(window,text='개발 버킷에 작은 시험 파일을 쓰고 읽은 뒤 삭제합니다. 운영 버킷 쓰기 없음.' if full or audio else '키는 이번 검사에만 사용합니다. 저장 파일을 만들거나 기존 키 파일을 읽지 않습니다.').pack(pady=6)
+    ttk.Label(window,text='P12-07 실제 오디오 검증 — 키 저장 없음' if audio else 'P12-04 개발 PUT URL·재발급 검사 — 키 저장 없음' if signed else 'R2 개발 쓰기·읽기·삭제 검사 — 키 저장 없음' if full else 'R2 연결 검사 — 등록한 개발 키 자동 사용 가능',font=('',16)).pack(pady=12)
+    ttk.Label(window,text='개발 버킷에 작은 시험 파일을 쓰고 읽은 뒤 삭제합니다. 운영 버킷 쓰기 없음.' if full or audio else '직접 입력한 키는 이번 검사에만 사용합니다. 등록한 개발 키는 두 칸을 비워 자동 사용합니다.').pack(pady=6)
     role=tk.StringVar(value='dev.worker' if audio else LABELS[0]);selector=ttk.Combobox(window,textvariable=role,values=('dev.worker',) if audio else LABELS[:1] if signed else LABELS[:2] if full else LABELS,state='readonly',width=24);selector.pack(pady=8)
     form=ttk.Frame(window);form.pack(fill='x',padx=30)
     ttk.Label(form,text='Access Key ID').pack(anchor='w');access=ttk.Entry(form,show='*',width=76);access.pack(fill='x',pady=4)
     ttk.Label(form,text='Secret Access Key').pack(anchor='w');secret=ttk.Entry(form,show='*',width=76);secret.pack(fill='x',pady=4)
-    status=tk.StringVar(value='롤 완료한 최신 키를 넣으세요. Token value가 아닙니다.');ttk.Label(window,textvariable=status,wraplength=640).pack(pady=12)
+    status=tk.StringVar(value='등록한 개발 키는 두 칸을 비워 두고 검사하면 자동 사용합니다. 미등록 키는 이번 검사에만 입력하세요.');ttk.Label(window,textvariable=status,wraplength=640).pack(pady=12)
     messages=queue.Queue();busy=False
     def run_check():
         nonlocal busy
         chosen=role.get();values=(access.get().strip(),secret.get().strip())
+        if values==('', '') and chosen.startswith('dev.'):
+            from r2_vault import exists
+            if exists(chosen): values=(None,None)
         access.delete(0,'end');secret.delete(0,'end')
         busy=True;verify.config(state='disabled');selector.config(state='disabled');status.set(chosen+' 검사 중… 입력란을 비웠습니다.')
         def run(pair):
@@ -118,15 +124,67 @@ def gui(java, full=False, signed=False, audio=False):
         if busy:
             status.set('진행 중인 검사가 끝나면 닫아 주세요. 키는 저장하지 않습니다.');return
         access.delete(0,'end');secret.delete(0,'end');window.destroy()
-    verify=ttk.Button(window,text='이번 입력으로 검사 — 저장 안 함',command=run_check);verify.pack(pady=8)
+    verify=ttk.Button(window,text='검사 시작 — 새 키 저장 안 함',command=run_check);verify.pack(pady=8)
     ttk.Label(window,text='검사 결과만 저장합니다. 실행 중 메모리·클립보드까지 완전 삭제하거나 접근을 차단하는 보장은 아닙니다.',wraplength=640).pack(pady=14)
     window.protocol('WM_DELETE_WINDOW',close)
     DIRECTORY.mkdir(parents=True,exist_ok=True)
     (DIRECTORY/'ui-status.json').write_text(json.dumps({'pid':os.getpid(),'status':'READY','mode':'ONE_TIME'}),encoding='utf-8')
     window.after(200,poll);window.mainloop()
 
+
+def register_gui(java,role):
+    import tkinter as tk
+    from tkinter import ttk
+    import queue
+    from r2_vault import save
+    window=tk.Tk();window.title('Song_Record — 개발 키 암호화 등록');window.geometry('710x470')
+    messages=queue.Queue();busy=False
+    ttk.Label(window,text='개발 키 한 번 등록 → 다음 검사부터 자동 사용',font=('',16)).pack(pady=15)
+    ttk.Label(window,text='등록 대상: '+role+'  /  현재 Windows 사용자 계정으로 암호화').pack(pady=8)
+    ttk.Label(window,text='권한 검사가 통과해야 저장합니다. 운영 키·Token value는 넣지 마세요.').pack(pady=8)
+    form=ttk.Frame(window);form.pack(fill='x',padx=30)
+    ttk.Label(form,text='Access Key ID').pack(anchor='w');access=ttk.Entry(form,show='*');access.pack(fill='x',pady=6)
+    ttk.Label(form,text='Secret Access Key').pack(anchor='w');secret=ttk.Entry(form,show='*');secret.pack(fill='x',pady=6)
+    status=tk.StringVar(value='롤로 재발급한 최신 키 2개를 입력하세요.');ttk.Label(window,textvariable=status,wraplength=660).pack(pady=16)
+    def submit():
+        nonlocal busy
+        pair=(access.get().strip(),secret.get().strip());access.delete(0,'end');secret.delete(0,'end')
+        busy=True;button.config(state='disabled');status.set('연결·권한 확인 중… 입력란을 비웠습니다.')
+        def run(values):
+            try:
+                if check(role,java,values[0],values[1])!='PASS': raise SecretError('Scope check failed')
+                save(role,values[0],values[1])
+                if check(role,java)!='PASS': raise SecretError('Saved credential check failed')
+                message=role+' 암호화 등록·자동 사용 확인 완료'
+            except Exception: message='등록 또는 자동 사용 확인 실패. 키는 채팅에 보내지 말고 이 문구만 알려 주세요.'
+            finally: values=None
+            messages.put(message)
+        threading.Thread(target=run,args=(pair,),daemon=True).start()
+    def poll():
+        nonlocal busy
+        try: status.set(messages.get_nowait());busy=False;button.config(state='normal')
+        except queue.Empty: pass
+        window.after(200,poll)
+    def close():
+        if busy: status.set('등록 확인이 끝나면 닫아 주세요.');return
+        access.delete(0,'end');secret.delete(0,'end');window.destroy()
+    window.report_callback_exception=lambda *args: status.set('처리 실패. 키 내용은 기록하지 않았습니다.')
+    button=ttk.Button(window,text='연결 확인 후 암호화 등록',command=submit);button.pack(pady=8)
+    ttk.Label(window,text='Git·채팅·로그에 키를 넣지 않습니다. 같은 Windows 계정의 프로그램 접근까지 차단하는 기능은 아닙니다.',wraplength=660).pack(pady=12)
+    DIRECTORY.mkdir(parents=True,exist_ok=True)
+    (DIRECTORY/'registration-ui-status.json').write_text(json.dumps({'pid':os.getpid(),'status':'READY','mode':'DPAPI_REGISTER','role':role}),encoding='utf-8')
+    window.protocol('WM_DELETE_WINDOW',close);window.after(200,poll);window.mainloop()
+
 if __name__=='__main__':
     import argparse
-    parser=argparse.ArgumentParser();parser.add_argument('--java',type=Path,required=True);parser.add_argument('--development-write',action='store_true');parser.add_argument('--signed-put',action='store_true');parser.add_argument('--audio-check',action='store_true');args=parser.parse_args()
-    try:gui(args.java,args.development_write,args.signed_put,args.audio_check)
+    parser=argparse.ArgumentParser();parser.add_argument('--java',type=Path,required=True);parser.add_argument('--development-write',action='store_true');parser.add_argument('--signed-put',action='store_true');parser.add_argument('--audio-check',action='store_true');parser.add_argument('--register-role',choices=('dev.api','dev.worker'));parser.add_argument('--use-stored-role',choices=('dev.api','dev.worker'));args=parser.parse_args()
+    try:
+        if args.register_role:
+            if args.use_stored_role or args.development_write or args.signed_put or args.audio_check: parser.error('Select registration only')
+            register_gui(args.java,args.register_role)
+        elif args.use_stored_role:
+            result=check(args.use_stored_role,args.java,full=args.development_write,signed=args.signed_put,audio=args.audio_check)
+            print('Stored development credential check: '+result)
+            if result!='PASS': raise SystemExit(1)
+        else:gui(args.java,args.development_write,args.signed_put,args.audio_check)
     except Exception:raise SystemExit(1)
