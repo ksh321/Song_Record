@@ -30,6 +30,7 @@ import 'metadata_followup_store.dart';
 import 'retry_controls.dart';
 import 'snapshot_business_store.dart';
 import 'snapshot_download_store.dart';
+import 'upload_queue_store.dart';
 
 export 'change_feed_store.dart' show ChangeFeedPosition;
 export 'retry_controls.dart' show RetryClock, RetryStatus;
@@ -40,6 +41,8 @@ export 'snapshot_download_store.dart'
         SnapshotBaselinePage,
         SnapshotBaselineRecord,
         SnapshotRecordingBaseline;
+
+export 'upload_queue_store.dart' show UploadWork;
 
 typedef SupportDirectory = Future<Directory> Function();
 
@@ -133,6 +136,7 @@ final class AccountStoreManager {
         await database.verifyReady();
         requireOpening();
         await store._retry.recoverOpening(requireOpening);
+        await store._uploads.recover();
         requireOpening();
       } catch (_) {
         await database.close();
@@ -182,6 +186,26 @@ final class AccountStore {
     _database,
     clock: _manager._clock,
   );
+  late final UploadQueueStore _uploads = UploadQueueStore(
+    _database,
+    _manager._clock,
+  );
+  Future<void> discoverUploads() => _run(_uploads.discover);
+  Future<UploadWork?> claimUpload() => _run(_uploads.claim);
+  Future<bool> uploadCurrent(UploadWork work) =>
+      _run(() => _uploads.current(work));
+  Future<bool> saveUploadTicket(UploadWork work, String attempt) =>
+      _run(() => _uploads.ticket(work, attempt));
+  Future<void> settleUpload(
+    UploadWork work,
+    String phase,
+    String? reason, {
+    bool retry = false,
+  }) => _run(() => _uploads.settle(work, phase, reason, retry: retry));
+  Future<void> cancelUpload(String id) => _run(() => _uploads.cancel(id));
+  Future<void> retryUpload(String id) => _run(() => _uploads.retry(id));
+  Future<DateTime?> nextUploadAt() => _run(_uploads.next);
+  Future<List<Map<String, Object?>>> uploadStatus() => _run(_uploads.status);
   String get userId => _paths.userId;
 
   Future<T> _run<T>(Future<T> Function() action) => _manager._run(this, action);
@@ -224,7 +248,9 @@ final class AccountStore {
             SELECT 1 FROM snapshot_downloads WHERE snapshot_token=? AND state='APPLIED')''',
         variables: [
           Variable(_manager._clock().toUtc().millisecondsSinceEpoch),
-          Variable(userId), Variable(expected), Variable(token),
+          Variable(userId),
+          Variable(expected),
+          Variable(token),
         ],
       );
       if (changed == 0) return false;
@@ -237,39 +263,43 @@ final class AccountStore {
       _run(() => _applySnapshotDownload(token));
 
   Future<void> _applySnapshotDownload(String token) => _snapshots.apply(
-      token,
-      projectBusiness: () async {
-        await SnapshotBusinessStore(
-          _database,
-          requireActive: requireActive,
-          clock: _manager._clock,
-        ).apply(
-          token,
-          AssetDeletionStore(_database, requireActive, _manager._clock),
-        );
-      },
+    token,
+    projectBusiness: () async {
+      await SnapshotBusinessStore(
+        _database,
+        requireActive: requireActive,
+        clock: _manager._clock,
+      ).apply(
+        token,
+        AssetDeletionStore(_database, requireActive, _manager._clock),
+      );
+    },
   );
 
   /// Mutating completion gate for the receiver, separate from read-only status.
   /// Repairs a legacy baseline in the same transaction that pins its token.
   Future<bool> prepareCompletedSnapshot() => _run(
     () => _database.transaction(() async {
-      final state = await _database.customSelect(
-        '''
+      final state = await _database
+          .customSelect(
+            '''
         SELECT c.baseline_complete,c.snapshot_resume,b.snapshot_token
         FROM sync_cursors c
         LEFT JOIN snapshot_baseline b ON b.singleton=c.singleton AND b.user_id=c.user_id
         WHERE c.singleton=1 AND c.user_id=?
         ''',
-        variables: [Variable(userId)],
-      ).getSingle();
+            variables: [Variable(userId)],
+          )
+          .getSingle();
       if (state.read<int>('baseline_complete') != 1 ||
           state.readNullable<String>('snapshot_resume') != null) {
         requireActive();
         return false;
       }
       final token = state.readNullable<String>('snapshot_token');
-      if (token == null) throw StateError('Completed snapshot baseline is missing');
+      if (token == null) {
+        throw StateError('Completed snapshot baseline is missing');
+      }
       await _applySnapshotDownload(token);
       requireActive();
       return true;
@@ -346,6 +376,7 @@ final class AccountStore {
         'canonical_edit_intents': 'intent_id',
         'mutation_mapping_holds': 'op_id,mapping_source_id,reason',
         'local_recording_files': 'recording_id',
+        'local_upload_queue': 'recording_id',
         'recording_journals': 'recording_id',
         'import_jobs': 'import_job_id',
         'import_items': 'import_job_id,ordinal',
@@ -552,11 +583,22 @@ final class AccountStore {
       final mapping = await readMappingEligibility(_database);
       final pending = await _pendingMutations();
       final mutation = pending.firstWhere((m) => m.opId == opId);
-      final pendingReview = mutation.state == 'PENDING' && mutation.attemptCount == 0;
+      final pendingReview =
+          mutation.state == 'PENDING' && mutation.attemptCount == 0;
       if (pendingReview) {
-        final unrestricted = await readMappingEligibility(_database, holdDrafts: false);
-        final wire = await _database.customSelect('SELECT op_id FROM mutation_wire_requests WHERE op_id=?', variables: [Variable(opId)]).get();
-        if (!mapping.blocked.contains(opId) || !unrestricted.allows(opId) || wire.isNotEmpty) {
+        final unrestricted = await readMappingEligibility(
+          _database,
+          holdDrafts: false,
+        );
+        final wire = await _database
+            .customSelect(
+              'SELECT op_id FROM mutation_wire_requests WHERE op_id=?',
+              variables: [Variable(opId)],
+            )
+            .get();
+        if (!mapping.blocked.contains(opId) ||
+            !unrestricted.allows(opId) ||
+            wire.isNotEmpty) {
           throw StateError('Pending draft is not held for explicit review');
         }
       } else if (!mapping.allows(opId)) {
@@ -566,15 +608,22 @@ final class AccountStore {
       if (copy == null || copy.tombstone) {
         throw StateError('Conflict target unavailable');
       }
-      final original = pendingReview ? null : ConflictReview(mutation, copy.localJson);
-      final serverJson = pendingReview || copy.revision > (original!.server['revision'] as int)
+      final original = pendingReview
+          ? null
+          : ConflictReview(mutation, copy.localJson);
+      final serverJson =
+          pendingReview || copy.revision > (original!.server['revision'] as int)
           ? copy.serverJson
           : null;
       final queueEvidence = await conflictQueueEvidence(
-        _database, mutation.entity, mutation.entityId,
+        _database,
+        mutation.entity,
+        mutation.entityId,
       );
       final review = ConflictReview(
-        mutation, copy.localJson, serverJson: serverJson,
+        mutation,
+        copy.localJson,
+        serverJson: serverJson,
         queueEvidence: queueEvidence,
         pendingReview: pendingReview,
       );
@@ -601,25 +650,39 @@ final class AccountStore {
       }
       requireActive();
       return ConflictReview(
-        mutation, copy.localJson, tagNames: names,
-        serverJson: serverJson, queueEvidence: queueEvidence,
+        mutation,
+        copy.localJson,
+        tagNames: names,
+        serverJson: serverJson,
+        queueEvidence: queueEvidence,
         pendingReview: pendingReview,
       );
     }),
   );
 
   Future<List<CanonicalConflictReview>> canonicalCandidates() => _run(
-    () => _database.transaction(() => CanonicalConflictStore(_database, requireActive).list()),
+    () => _database.transaction(
+      () => CanonicalConflictStore(_database, requireActive).list(),
+    ),
   );
 
   Future<CanonicalConflictReview> readCanonicalConflict(String id) => _run(
-    () => _database.transaction(() => CanonicalConflictStore(_database, requireActive).review(id)),
+    () => _database.transaction(
+      () => CanonicalConflictStore(_database, requireActive).review(id),
+    ),
   );
 
-  Future<void> resolveCanonicalConflict(CanonicalConflictReview review,
-      ConflictChoice choice, String newOpId) => _run(
-    () => _database.transaction(() => CanonicalConflictStore(_database, requireActive)
-        .resolve(review, choice, newOpId, _retry.nowMs)),
+  Future<void> resolveCanonicalConflict(
+    CanonicalConflictReview review,
+    ConflictChoice choice,
+    String newOpId,
+  ) => _run(
+    () => _database.transaction(
+      () => CanonicalConflictStore(
+        _database,
+        requireActive,
+      ).resolve(review, choice, newOpId, _retry.nowMs),
+    ),
   );
 
   Future<void> resolveMetadataConflict({
@@ -1214,8 +1277,10 @@ final class AccountStore {
           [
             snapshot['revision'],
             payload,
-            (later.any((row) => !resolved.contains(row.read<String>('op_id'))) ||
-                await canonicalKeepsDraft(_database, m.opId))
+            (later.any(
+                      (row) => !resolved.contains(row.read<String>('op_id')),
+                    ) ||
+                    await canonicalKeepsDraft(_database, m.opId))
                 ? 1
                 : 0,
             m.opId,
@@ -1237,7 +1302,9 @@ final class AccountStore {
       );
       await _retry.finish(m.opId);
       await finishCanonicalChoices(
-        _database, await readMappingEligibility(_database), _retry.nowMs,
+        _database,
+        await readMappingEligibility(_database),
+        _retry.nowMs,
       );
       requireActive();
       return true;

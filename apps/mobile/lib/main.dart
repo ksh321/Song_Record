@@ -10,6 +10,8 @@ import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/sync/mutation_transport.dart';
 import 'package:song_record/core/sync/snapshot_receiver.dart';
 import 'package:song_record/core/sync/snapshot_transport.dart';
+import 'package:song_record/core/uploads/upload_dispatcher.dart';
+import 'package:song_record/core/uploads/upload_transport.dart';
 import 'package:song_record/features/auth/auth_adapters.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/auth/login_gate.dart';
@@ -112,6 +114,15 @@ Future<void> main() async {
                       kDebugMode && config.environment == AppEnvironment.dev,
                 ),
                 currentSession,
+                uploads: UploadDispatcher(
+                  store,
+                  HttpUploadTransport(
+                    config.apiBaseUrl,
+                    allowLocalHttp:
+                        kDebugMode && config.environment == AppEnvironment.dev,
+                  ),
+                  currentSession,
+                ),
               ),
             ),
           ),

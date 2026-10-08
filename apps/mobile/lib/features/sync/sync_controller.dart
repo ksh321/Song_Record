@@ -8,6 +8,7 @@ import '../../core/sync/canonical_conflict_plan.dart';
 import '../../core/sync/conflict_review.dart';
 import '../../core/sync/local_repository.dart';
 import '../../core/sync/mutation_transport.dart';
+import '../../core/uploads/upload_dispatcher.dart';
 import '../auth/auth_session.dart';
 
 final class SyncItem {
@@ -30,7 +31,13 @@ abstract interface class SyncStatusSource {
 }
 
 final class RepositorySyncBackend implements SyncBackend, SyncStatusSource {
-  RepositorySyncBackend(this.repository, this.transport, this.session);
+  RepositorySyncBackend(
+    this.repository,
+    this.transport,
+    this.session, {
+    this.uploads,
+  });
+  final UploadDispatcher? uploads;
   final LocalRepository repository;
   final MutationTransport transport;
   final Future<AuthSession> Function() session;
@@ -49,7 +56,8 @@ final class RepositorySyncBackend implements SyncBackend, SyncStatusSource {
       var pendingReview = false;
       if (mutation.state == 'PENDING' && mutation.attemptCount == 0) {
         try {
-          pendingReview = (await repository.review(mutation.opId)).pendingReview;
+          pendingReview = (await repository.review(mutation.opId))
+              .pendingReview;
         } on StateError {
           // Ordinary pending work and unrelated holds are not reviewable.
         } on FormatException {
@@ -57,7 +65,11 @@ final class RepositorySyncBackend implements SyncBackend, SyncStatusSource {
         }
       }
       result.add(
-        SyncItem(mutation, await repository.retryStatus(mutation.opId), pendingReview: pendingReview),
+        SyncItem(
+          mutation,
+          await repository.retryStatus(mutation.opId),
+          pendingReview: pendingReview,
+        ),
       );
     }
     _unlinkedRecordings = await repository.unlinkedOfflineRecordingCount();
@@ -73,14 +85,29 @@ final class RepositorySyncBackend implements SyncBackend, SyncStatusSource {
       limit: 50,
       onAuthenticationBlocked: () => _authenticationBlocked = true,
     );
+    if (!_authenticationBlocked) {
+      await uploads?.dispatch(
+        onAuthenticationBlocked: () => _authenticationBlocked = true,
+      );
+    }
   }
 
   @override
   Future<bool> retry(String opId, int expectedAttempt) =>
       repository.retryMutation(opId, expectedAttempt: expectedAttempt);
   @override
-  Future<DateTime?> nextAttempt() async =>
-      _authenticationBlocked ? null : repository.nextDispatchAt();
+  Future<DateTime?> nextAttempt() async {
+    if (_authenticationBlocked) return null;
+    final metadata = await repository.nextDispatchAt(),
+        upload = await uploads?.nextAttempt();
+    return metadata == null
+        ? upload
+        : upload == null
+        ? metadata
+        : metadata.isBefore(upload)
+        ? metadata
+        : upload;
+  }
 }
 
 typedef SyncSchedule = VoidCallback Function(

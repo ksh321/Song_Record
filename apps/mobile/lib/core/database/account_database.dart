@@ -18,7 +18,7 @@ class AccountDatabase extends _$AccountDatabase {
   final AppEnvironment environment;
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -37,7 +37,7 @@ class AccountDatabase extends _$AccountDatabase {
     // No destructive fallback. Every future version needs an explicit,
     // data-preserving migration and a checked-in schema snapshot.
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 8 || to != 9) {
+      if (from < 1 || from > 9 || to != 10) {
         throw StateError('Unsupported local schema migration: $from -> $to');
       }
       if (from < 2) {
@@ -141,6 +141,11 @@ class AccountDatabase extends _$AccountDatabase {
         // Replace only the trigger definition; every history row stays intact.
         await customStatement('DROP TRIGGER conflict_resolution_valid_insert');
         await migrator.createTrigger(conflictResolutionValidInsert);
+      }
+      if (from < 10) {
+        await migrator.createTable(localUploadQueue);
+        await migrator.createIndex(localUploadReady);
+        await migrator.createTrigger(localUploadIdentity);
       }
       if (from < 9) {
         await migrator.createTable(pendingEditResolutions);

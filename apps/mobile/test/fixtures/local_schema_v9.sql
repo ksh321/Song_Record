@@ -732,29 +732,3 @@ CREATE TRIGGER pending_edit_original_no_claim BEFORE UPDATE OF attempt_count ON 
 WHEN NEW.attempt_count>OLD.attempt_count AND EXISTS(
  SELECT 1 FROM pending_edit_resolutions WHERE original_op_id=OLD.op_id)
 BEGIN SELECT RAISE(ABORT,'Reviewed pending original cannot be retried'); END;
-
--- P12-05: durable transfer intent, separate from metadata and audio ownership.
-CREATE TABLE local_upload_queue (
-  recording_id TEXT NOT NULL PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  operation_id TEXT NOT NULL UNIQUE CHECK(length(operation_id)=36),
-  renew_operation_id TEXT CHECK(renew_operation_id IS NULL OR length(renew_operation_id)=36),
-  attempt_id TEXT CHECK(attempt_id IS NULL OR length(attempt_id)=36),
-  phase TEXT NOT NULL CHECK(phase IN ('PENDING','SENDING','RETRY','BLOCKED','CANCELLED','UPLOADED','STORED')),
-  claim_id TEXT,
-  expected_size INTEGER NOT NULL CHECK(expected_size BETWEEN 1 AND 6291456),
-  sha256 TEXT NOT NULL CHECK(length(sha256)=64 AND sha256 NOT GLOB '*[^0-9a-f]*'),
-  automatic_retries INTEGER NOT NULL DEFAULT 0 CHECK(automatic_retries BETWEEN 0 AND 3),
-  attempt_count INTEGER NOT NULL DEFAULT 0 CHECK(attempt_count>=0),
-  next_attempt_at INTEGER,
-  reason TEXT,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  FOREIGN KEY(user_id,recording_id) REFERENCES local_recording_files(user_id,recording_id)
-);
-CREATE INDEX local_upload_ready ON local_upload_queue(phase,next_attempt_at,created_at);
-CREATE TRIGGER local_upload_identity BEFORE UPDATE ON local_upload_queue
-WHEN NEW.recording_id<>OLD.recording_id OR NEW.user_id<>OLD.user_id OR NEW.operation_id<>OLD.operation_id
- OR NEW.expected_size<>OLD.expected_size OR NEW.sha256<>OLD.sha256 OR NEW.created_at<>OLD.created_at
- OR NEW.automatic_retries<OLD.automatic_retries OR NEW.attempt_count<OLD.attempt_count
-BEGIN SELECT RAISE(ABORT,'Upload identity and retry budget are immutable'); END;

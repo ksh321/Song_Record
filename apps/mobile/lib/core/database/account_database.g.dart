@@ -10981,6 +10981,903 @@ class PendingEditResolutionsCompanion
   }
 }
 
+class LocalUploadQueue extends Table
+    with TableInfo<LocalUploadQueue, LocalUploadQueueData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  LocalUploadQueue(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _recordingIdMeta = const VerificationMeta(
+    'recordingId',
+  );
+  late final GeneratedColumn<String> recordingId = GeneratedColumn<String>(
+    'recording_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL PRIMARY KEY',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _operationIdMeta = const VerificationMeta(
+    'operationId',
+  );
+  late final GeneratedColumn<String> operationId = GeneratedColumn<String>(
+    'operation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL UNIQUE CHECK (length(operation_id) = 36)',
+  );
+  static const VerificationMeta _renewOperationIdMeta = const VerificationMeta(
+    'renewOperationId',
+  );
+  late final GeneratedColumn<String> renewOperationId = GeneratedColumn<String>(
+    'renew_operation_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints:
+        'CHECK (renew_operation_id IS NULL OR length(renew_operation_id) = 36)',
+  );
+  static const VerificationMeta _attemptIdMeta = const VerificationMeta(
+    'attemptId',
+  );
+  late final GeneratedColumn<String> attemptId = GeneratedColumn<String>(
+    'attempt_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'CHECK (attempt_id IS NULL OR length(attempt_id) = 36)',
+  );
+  static const VerificationMeta _phaseMeta = const VerificationMeta('phase');
+  late final GeneratedColumn<String> phase = GeneratedColumn<String>(
+    'phase',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (phase IN (\'PENDING\', \'SENDING\', \'RETRY\', \'BLOCKED\', \'CANCELLED\', \'UPLOADED\', \'STORED\'))',
+  );
+  static const VerificationMeta _claimIdMeta = const VerificationMeta(
+    'claimId',
+  );
+  late final GeneratedColumn<String> claimId = GeneratedColumn<String>(
+    'claim_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: '',
+  );
+  static const VerificationMeta _expectedSizeMeta = const VerificationMeta(
+    'expectedSize',
+  );
+  late final GeneratedColumn<int> expectedSize = GeneratedColumn<int>(
+    'expected_size',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (expected_size BETWEEN 1 AND 6291456)',
+  );
+  static const VerificationMeta _sha256Meta = const VerificationMeta('sha256');
+  late final GeneratedColumn<String> sha256 = GeneratedColumn<String>(
+    'sha256',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (length(sha256) = 64 AND sha256 NOT GLOB \'*[^0-9a-f]*\')',
+  );
+  static const VerificationMeta _automaticRetriesMeta = const VerificationMeta(
+    'automaticRetries',
+  );
+  late final GeneratedColumn<int> automaticRetries = GeneratedColumn<int>(
+    'automatic_retries',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints:
+        'NOT NULL DEFAULT 0 CHECK (automatic_retries BETWEEN 0 AND 3)',
+    defaultValue: const CustomExpression('0'),
+  );
+  static const VerificationMeta _attemptCountMeta = const VerificationMeta(
+    'attemptCount',
+  );
+  late final GeneratedColumn<int> attemptCount = GeneratedColumn<int>(
+    'attempt_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NOT NULL DEFAULT 0 CHECK (attempt_count >= 0)',
+    defaultValue: const CustomExpression('0'),
+  );
+  static const VerificationMeta _nextAttemptAtMeta = const VerificationMeta(
+    'nextAttemptAt',
+  );
+  late final GeneratedColumn<int> nextAttemptAt = GeneratedColumn<int>(
+    'next_attempt_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: '',
+  );
+  static const VerificationMeta _reasonMeta = const VerificationMeta('reason');
+  late final GeneratedColumn<String> reason = GeneratedColumn<String>(
+    'reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: '',
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    recordingId,
+    userId,
+    operationId,
+    renewOperationId,
+    attemptId,
+    phase,
+    claimId,
+    expectedSize,
+    sha256,
+    automaticRetries,
+    attemptCount,
+    nextAttemptAt,
+    reason,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_upload_queue';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalUploadQueueData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('recording_id')) {
+      context.handle(
+        _recordingIdMeta,
+        recordingId.isAcceptableOrUnknown(
+          data['recording_id']!,
+          _recordingIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_recordingIdMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('operation_id')) {
+      context.handle(
+        _operationIdMeta,
+        operationId.isAcceptableOrUnknown(
+          data['operation_id']!,
+          _operationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_operationIdMeta);
+    }
+    if (data.containsKey('renew_operation_id')) {
+      context.handle(
+        _renewOperationIdMeta,
+        renewOperationId.isAcceptableOrUnknown(
+          data['renew_operation_id']!,
+          _renewOperationIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('attempt_id')) {
+      context.handle(
+        _attemptIdMeta,
+        attemptId.isAcceptableOrUnknown(data['attempt_id']!, _attemptIdMeta),
+      );
+    }
+    if (data.containsKey('phase')) {
+      context.handle(
+        _phaseMeta,
+        phase.isAcceptableOrUnknown(data['phase']!, _phaseMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_phaseMeta);
+    }
+    if (data.containsKey('claim_id')) {
+      context.handle(
+        _claimIdMeta,
+        claimId.isAcceptableOrUnknown(data['claim_id']!, _claimIdMeta),
+      );
+    }
+    if (data.containsKey('expected_size')) {
+      context.handle(
+        _expectedSizeMeta,
+        expectedSize.isAcceptableOrUnknown(
+          data['expected_size']!,
+          _expectedSizeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_expectedSizeMeta);
+    }
+    if (data.containsKey('sha256')) {
+      context.handle(
+        _sha256Meta,
+        sha256.isAcceptableOrUnknown(data['sha256']!, _sha256Meta),
+      );
+    } else if (isInserting) {
+      context.missing(_sha256Meta);
+    }
+    if (data.containsKey('automatic_retries')) {
+      context.handle(
+        _automaticRetriesMeta,
+        automaticRetries.isAcceptableOrUnknown(
+          data['automatic_retries']!,
+          _automaticRetriesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('attempt_count')) {
+      context.handle(
+        _attemptCountMeta,
+        attemptCount.isAcceptableOrUnknown(
+          data['attempt_count']!,
+          _attemptCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('next_attempt_at')) {
+      context.handle(
+        _nextAttemptAtMeta,
+        nextAttemptAt.isAcceptableOrUnknown(
+          data['next_attempt_at']!,
+          _nextAttemptAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reason')) {
+      context.handle(
+        _reasonMeta,
+        reason.isAcceptableOrUnknown(data['reason']!, _reasonMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {recordingId};
+  @override
+  LocalUploadQueueData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalUploadQueueData(
+      recordingId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recording_id'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      operationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}operation_id'],
+      )!,
+      renewOperationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}renew_operation_id'],
+      ),
+      attemptId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}attempt_id'],
+      ),
+      phase: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}phase'],
+      )!,
+      claimId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}claim_id'],
+      ),
+      expectedSize: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_size'],
+      )!,
+      sha256: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sha256'],
+      )!,
+      automaticRetries: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}automatic_retries'],
+      )!,
+      attemptCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}attempt_count'],
+      )!,
+      nextAttemptAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}next_attempt_at'],
+      ),
+      reason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reason'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  LocalUploadQueue createAlias(String alias) {
+    return LocalUploadQueue(attachedDatabase, alias);
+  }
+
+  @override
+  List<String> get customConstraints => const [
+    'FOREIGN KEY(user_id, recording_id)REFERENCES local_recording_files(user_id, recording_id)',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class LocalUploadQueueData extends DataClass
+    implements Insertable<LocalUploadQueueData> {
+  final String recordingId;
+  final String userId;
+  final String operationId;
+  final String? renewOperationId;
+  final String? attemptId;
+  final String phase;
+  final String? claimId;
+  final int expectedSize;
+  final String sha256;
+  final int automaticRetries;
+  final int attemptCount;
+  final int? nextAttemptAt;
+  final String? reason;
+  final int createdAt;
+  final int updatedAt;
+  const LocalUploadQueueData({
+    required this.recordingId,
+    required this.userId,
+    required this.operationId,
+    this.renewOperationId,
+    this.attemptId,
+    required this.phase,
+    this.claimId,
+    required this.expectedSize,
+    required this.sha256,
+    required this.automaticRetries,
+    required this.attemptCount,
+    this.nextAttemptAt,
+    this.reason,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['recording_id'] = Variable<String>(recordingId);
+    map['user_id'] = Variable<String>(userId);
+    map['operation_id'] = Variable<String>(operationId);
+    if (!nullToAbsent || renewOperationId != null) {
+      map['renew_operation_id'] = Variable<String>(renewOperationId);
+    }
+    if (!nullToAbsent || attemptId != null) {
+      map['attempt_id'] = Variable<String>(attemptId);
+    }
+    map['phase'] = Variable<String>(phase);
+    if (!nullToAbsent || claimId != null) {
+      map['claim_id'] = Variable<String>(claimId);
+    }
+    map['expected_size'] = Variable<int>(expectedSize);
+    map['sha256'] = Variable<String>(sha256);
+    map['automatic_retries'] = Variable<int>(automaticRetries);
+    map['attempt_count'] = Variable<int>(attemptCount);
+    if (!nullToAbsent || nextAttemptAt != null) {
+      map['next_attempt_at'] = Variable<int>(nextAttemptAt);
+    }
+    if (!nullToAbsent || reason != null) {
+      map['reason'] = Variable<String>(reason);
+    }
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  LocalUploadQueueCompanion toCompanion(bool nullToAbsent) {
+    return LocalUploadQueueCompanion(
+      recordingId: Value(recordingId),
+      userId: Value(userId),
+      operationId: Value(operationId),
+      renewOperationId: renewOperationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(renewOperationId),
+      attemptId: attemptId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(attemptId),
+      phase: Value(phase),
+      claimId: claimId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(claimId),
+      expectedSize: Value(expectedSize),
+      sha256: Value(sha256),
+      automaticRetries: Value(automaticRetries),
+      attemptCount: Value(attemptCount),
+      nextAttemptAt: nextAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nextAttemptAt),
+      reason: reason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reason),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LocalUploadQueueData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalUploadQueueData(
+      recordingId: serializer.fromJson<String>(json['recording_id']),
+      userId: serializer.fromJson<String>(json['user_id']),
+      operationId: serializer.fromJson<String>(json['operation_id']),
+      renewOperationId: serializer.fromJson<String?>(
+        json['renew_operation_id'],
+      ),
+      attemptId: serializer.fromJson<String?>(json['attempt_id']),
+      phase: serializer.fromJson<String>(json['phase']),
+      claimId: serializer.fromJson<String?>(json['claim_id']),
+      expectedSize: serializer.fromJson<int>(json['expected_size']),
+      sha256: serializer.fromJson<String>(json['sha256']),
+      automaticRetries: serializer.fromJson<int>(json['automatic_retries']),
+      attemptCount: serializer.fromJson<int>(json['attempt_count']),
+      nextAttemptAt: serializer.fromJson<int?>(json['next_attempt_at']),
+      reason: serializer.fromJson<String?>(json['reason']),
+      createdAt: serializer.fromJson<int>(json['created_at']),
+      updatedAt: serializer.fromJson<int>(json['updated_at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'recording_id': serializer.toJson<String>(recordingId),
+      'user_id': serializer.toJson<String>(userId),
+      'operation_id': serializer.toJson<String>(operationId),
+      'renew_operation_id': serializer.toJson<String?>(renewOperationId),
+      'attempt_id': serializer.toJson<String?>(attemptId),
+      'phase': serializer.toJson<String>(phase),
+      'claim_id': serializer.toJson<String?>(claimId),
+      'expected_size': serializer.toJson<int>(expectedSize),
+      'sha256': serializer.toJson<String>(sha256),
+      'automatic_retries': serializer.toJson<int>(automaticRetries),
+      'attempt_count': serializer.toJson<int>(attemptCount),
+      'next_attempt_at': serializer.toJson<int?>(nextAttemptAt),
+      'reason': serializer.toJson<String?>(reason),
+      'created_at': serializer.toJson<int>(createdAt),
+      'updated_at': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  LocalUploadQueueData copyWith({
+    String? recordingId,
+    String? userId,
+    String? operationId,
+    Value<String?> renewOperationId = const Value.absent(),
+    Value<String?> attemptId = const Value.absent(),
+    String? phase,
+    Value<String?> claimId = const Value.absent(),
+    int? expectedSize,
+    String? sha256,
+    int? automaticRetries,
+    int? attemptCount,
+    Value<int?> nextAttemptAt = const Value.absent(),
+    Value<String?> reason = const Value.absent(),
+    int? createdAt,
+    int? updatedAt,
+  }) => LocalUploadQueueData(
+    recordingId: recordingId ?? this.recordingId,
+    userId: userId ?? this.userId,
+    operationId: operationId ?? this.operationId,
+    renewOperationId: renewOperationId.present
+        ? renewOperationId.value
+        : this.renewOperationId,
+    attemptId: attemptId.present ? attemptId.value : this.attemptId,
+    phase: phase ?? this.phase,
+    claimId: claimId.present ? claimId.value : this.claimId,
+    expectedSize: expectedSize ?? this.expectedSize,
+    sha256: sha256 ?? this.sha256,
+    automaticRetries: automaticRetries ?? this.automaticRetries,
+    attemptCount: attemptCount ?? this.attemptCount,
+    nextAttemptAt: nextAttemptAt.present
+        ? nextAttemptAt.value
+        : this.nextAttemptAt,
+    reason: reason.present ? reason.value : this.reason,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  LocalUploadQueueData copyWithCompanion(LocalUploadQueueCompanion data) {
+    return LocalUploadQueueData(
+      recordingId: data.recordingId.present
+          ? data.recordingId.value
+          : this.recordingId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      operationId: data.operationId.present
+          ? data.operationId.value
+          : this.operationId,
+      renewOperationId: data.renewOperationId.present
+          ? data.renewOperationId.value
+          : this.renewOperationId,
+      attemptId: data.attemptId.present ? data.attemptId.value : this.attemptId,
+      phase: data.phase.present ? data.phase.value : this.phase,
+      claimId: data.claimId.present ? data.claimId.value : this.claimId,
+      expectedSize: data.expectedSize.present
+          ? data.expectedSize.value
+          : this.expectedSize,
+      sha256: data.sha256.present ? data.sha256.value : this.sha256,
+      automaticRetries: data.automaticRetries.present
+          ? data.automaticRetries.value
+          : this.automaticRetries,
+      attemptCount: data.attemptCount.present
+          ? data.attemptCount.value
+          : this.attemptCount,
+      nextAttemptAt: data.nextAttemptAt.present
+          ? data.nextAttemptAt.value
+          : this.nextAttemptAt,
+      reason: data.reason.present ? data.reason.value : this.reason,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalUploadQueueData(')
+          ..write('recordingId: $recordingId, ')
+          ..write('userId: $userId, ')
+          ..write('operationId: $operationId, ')
+          ..write('renewOperationId: $renewOperationId, ')
+          ..write('attemptId: $attemptId, ')
+          ..write('phase: $phase, ')
+          ..write('claimId: $claimId, ')
+          ..write('expectedSize: $expectedSize, ')
+          ..write('sha256: $sha256, ')
+          ..write('automaticRetries: $automaticRetries, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('nextAttemptAt: $nextAttemptAt, ')
+          ..write('reason: $reason, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    recordingId,
+    userId,
+    operationId,
+    renewOperationId,
+    attemptId,
+    phase,
+    claimId,
+    expectedSize,
+    sha256,
+    automaticRetries,
+    attemptCount,
+    nextAttemptAt,
+    reason,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalUploadQueueData &&
+          other.recordingId == this.recordingId &&
+          other.userId == this.userId &&
+          other.operationId == this.operationId &&
+          other.renewOperationId == this.renewOperationId &&
+          other.attemptId == this.attemptId &&
+          other.phase == this.phase &&
+          other.claimId == this.claimId &&
+          other.expectedSize == this.expectedSize &&
+          other.sha256 == this.sha256 &&
+          other.automaticRetries == this.automaticRetries &&
+          other.attemptCount == this.attemptCount &&
+          other.nextAttemptAt == this.nextAttemptAt &&
+          other.reason == this.reason &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LocalUploadQueueCompanion extends UpdateCompanion<LocalUploadQueueData> {
+  final Value<String> recordingId;
+  final Value<String> userId;
+  final Value<String> operationId;
+  final Value<String?> renewOperationId;
+  final Value<String?> attemptId;
+  final Value<String> phase;
+  final Value<String?> claimId;
+  final Value<int> expectedSize;
+  final Value<String> sha256;
+  final Value<int> automaticRetries;
+  final Value<int> attemptCount;
+  final Value<int?> nextAttemptAt;
+  final Value<String?> reason;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const LocalUploadQueueCompanion({
+    this.recordingId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.operationId = const Value.absent(),
+    this.renewOperationId = const Value.absent(),
+    this.attemptId = const Value.absent(),
+    this.phase = const Value.absent(),
+    this.claimId = const Value.absent(),
+    this.expectedSize = const Value.absent(),
+    this.sha256 = const Value.absent(),
+    this.automaticRetries = const Value.absent(),
+    this.attemptCount = const Value.absent(),
+    this.nextAttemptAt = const Value.absent(),
+    this.reason = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalUploadQueueCompanion.insert({
+    required String recordingId,
+    required String userId,
+    required String operationId,
+    this.renewOperationId = const Value.absent(),
+    this.attemptId = const Value.absent(),
+    required String phase,
+    this.claimId = const Value.absent(),
+    required int expectedSize,
+    required String sha256,
+    this.automaticRetries = const Value.absent(),
+    this.attemptCount = const Value.absent(),
+    this.nextAttemptAt = const Value.absent(),
+    this.reason = const Value.absent(),
+    required int createdAt,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : recordingId = Value(recordingId),
+       userId = Value(userId),
+       operationId = Value(operationId),
+       phase = Value(phase),
+       expectedSize = Value(expectedSize),
+       sha256 = Value(sha256),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<LocalUploadQueueData> custom({
+    Expression<String>? recordingId,
+    Expression<String>? userId,
+    Expression<String>? operationId,
+    Expression<String>? renewOperationId,
+    Expression<String>? attemptId,
+    Expression<String>? phase,
+    Expression<String>? claimId,
+    Expression<int>? expectedSize,
+    Expression<String>? sha256,
+    Expression<int>? automaticRetries,
+    Expression<int>? attemptCount,
+    Expression<int>? nextAttemptAt,
+    Expression<String>? reason,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (recordingId != null) 'recording_id': recordingId,
+      if (userId != null) 'user_id': userId,
+      if (operationId != null) 'operation_id': operationId,
+      if (renewOperationId != null) 'renew_operation_id': renewOperationId,
+      if (attemptId != null) 'attempt_id': attemptId,
+      if (phase != null) 'phase': phase,
+      if (claimId != null) 'claim_id': claimId,
+      if (expectedSize != null) 'expected_size': expectedSize,
+      if (sha256 != null) 'sha256': sha256,
+      if (automaticRetries != null) 'automatic_retries': automaticRetries,
+      if (attemptCount != null) 'attempt_count': attemptCount,
+      if (nextAttemptAt != null) 'next_attempt_at': nextAttemptAt,
+      if (reason != null) 'reason': reason,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalUploadQueueCompanion copyWith({
+    Value<String>? recordingId,
+    Value<String>? userId,
+    Value<String>? operationId,
+    Value<String?>? renewOperationId,
+    Value<String?>? attemptId,
+    Value<String>? phase,
+    Value<String?>? claimId,
+    Value<int>? expectedSize,
+    Value<String>? sha256,
+    Value<int>? automaticRetries,
+    Value<int>? attemptCount,
+    Value<int?>? nextAttemptAt,
+    Value<String?>? reason,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return LocalUploadQueueCompanion(
+      recordingId: recordingId ?? this.recordingId,
+      userId: userId ?? this.userId,
+      operationId: operationId ?? this.operationId,
+      renewOperationId: renewOperationId ?? this.renewOperationId,
+      attemptId: attemptId ?? this.attemptId,
+      phase: phase ?? this.phase,
+      claimId: claimId ?? this.claimId,
+      expectedSize: expectedSize ?? this.expectedSize,
+      sha256: sha256 ?? this.sha256,
+      automaticRetries: automaticRetries ?? this.automaticRetries,
+      attemptCount: attemptCount ?? this.attemptCount,
+      nextAttemptAt: nextAttemptAt ?? this.nextAttemptAt,
+      reason: reason ?? this.reason,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (recordingId.present) {
+      map['recording_id'] = Variable<String>(recordingId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (operationId.present) {
+      map['operation_id'] = Variable<String>(operationId.value);
+    }
+    if (renewOperationId.present) {
+      map['renew_operation_id'] = Variable<String>(renewOperationId.value);
+    }
+    if (attemptId.present) {
+      map['attempt_id'] = Variable<String>(attemptId.value);
+    }
+    if (phase.present) {
+      map['phase'] = Variable<String>(phase.value);
+    }
+    if (claimId.present) {
+      map['claim_id'] = Variable<String>(claimId.value);
+    }
+    if (expectedSize.present) {
+      map['expected_size'] = Variable<int>(expectedSize.value);
+    }
+    if (sha256.present) {
+      map['sha256'] = Variable<String>(sha256.value);
+    }
+    if (automaticRetries.present) {
+      map['automatic_retries'] = Variable<int>(automaticRetries.value);
+    }
+    if (attemptCount.present) {
+      map['attempt_count'] = Variable<int>(attemptCount.value);
+    }
+    if (nextAttemptAt.present) {
+      map['next_attempt_at'] = Variable<int>(nextAttemptAt.value);
+    }
+    if (reason.present) {
+      map['reason'] = Variable<String>(reason.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalUploadQueueCompanion(')
+          ..write('recordingId: $recordingId, ')
+          ..write('userId: $userId, ')
+          ..write('operationId: $operationId, ')
+          ..write('renewOperationId: $renewOperationId, ')
+          ..write('attemptId: $attemptId, ')
+          ..write('phase: $phase, ')
+          ..write('claimId: $claimId, ')
+          ..write('expectedSize: $expectedSize, ')
+          ..write('sha256: $sha256, ')
+          ..write('automaticRetries: $automaticRetries, ')
+          ..write('attemptCount: $attemptCount, ')
+          ..write('nextAttemptAt: $nextAttemptAt, ')
+          ..write('reason: $reason, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AccountDatabase extends GeneratedDatabase {
   _$AccountDatabase(QueryExecutor e) : super(e);
   $AccountDatabaseManager get managers => $AccountDatabaseManager(this);
@@ -11236,6 +12133,15 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     'CREATE TRIGGER pending_edit_original_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM pending_edit_resolutions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Reviewed pending original cannot be retried\');END',
     'pending_edit_original_no_claim',
   );
+  late final LocalUploadQueue localUploadQueue = LocalUploadQueue(this);
+  late final Index localUploadReady = Index(
+    'local_upload_ready',
+    'CREATE INDEX local_upload_ready ON local_upload_queue (phase, next_attempt_at, created_at)',
+  );
+  late final Trigger localUploadIdentity = Trigger(
+    'CREATE TRIGGER local_upload_identity BEFORE UPDATE ON local_upload_queue WHEN NEW.recording_id <> OLD.recording_id OR NEW.user_id <> OLD.user_id OR NEW.operation_id <> OLD.operation_id OR NEW.expected_size <> OLD.expected_size OR NEW.sha256 <> OLD.sha256 OR NEW.created_at <> OLD.created_at OR NEW.automatic_retries < OLD.automatic_retries OR NEW.attempt_count < OLD.attempt_count BEGIN SELECT RAISE (ABORT, \'Upload identity and retry budget are immutable\');END',
+    'local_upload_identity',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -11316,6 +12222,9 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     pendingEditNoUpdate,
     pendingEditNoDelete,
     pendingEditOriginalNoClaim,
+    localUploadQueue,
+    localUploadReady,
+    localUploadIdentity,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -11674,6 +12583,13 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     WritePropagation(
       on: TableUpdateQuery.onTableName(
         'local_mutations',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'local_upload_queue',
         limitUpdateKind: UpdateKind.update,
       ),
       result: [],
@@ -23579,6 +24495,427 @@ typedef $PendingEditResolutionsProcessedTableManager =
         bool replacementOpId,
       })
     >;
+typedef $LocalUploadQueueCreateCompanionBuilder =
+    LocalUploadQueueCompanion Function({
+      required String recordingId,
+      required String userId,
+      required String operationId,
+      Value<String?> renewOperationId,
+      Value<String?> attemptId,
+      required String phase,
+      Value<String?> claimId,
+      required int expectedSize,
+      required String sha256,
+      Value<int> automaticRetries,
+      Value<int> attemptCount,
+      Value<int?> nextAttemptAt,
+      Value<String?> reason,
+      required int createdAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $LocalUploadQueueUpdateCompanionBuilder =
+    LocalUploadQueueCompanion Function({
+      Value<String> recordingId,
+      Value<String> userId,
+      Value<String> operationId,
+      Value<String?> renewOperationId,
+      Value<String?> attemptId,
+      Value<String> phase,
+      Value<String?> claimId,
+      Value<int> expectedSize,
+      Value<String> sha256,
+      Value<int> automaticRetries,
+      Value<int> attemptCount,
+      Value<int?> nextAttemptAt,
+      Value<String?> reason,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $LocalUploadQueueFilterComposer
+    extends Composer<_$AccountDatabase, LocalUploadQueue> {
+  $LocalUploadQueueFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get recordingId => $composableBuilder(
+    column: $table.recordingId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get operationId => $composableBuilder(
+    column: $table.operationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get renewOperationId => $composableBuilder(
+    column: $table.renewOperationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get attemptId => $composableBuilder(
+    column: $table.attemptId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get phase => $composableBuilder(
+    column: $table.phase,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get claimId => $composableBuilder(
+    column: $table.claimId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedSize => $composableBuilder(
+    column: $table.expectedSize,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sha256 => $composableBuilder(
+    column: $table.sha256,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get automaticRetries => $composableBuilder(
+    column: $table.automaticRetries,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $LocalUploadQueueOrderingComposer
+    extends Composer<_$AccountDatabase, LocalUploadQueue> {
+  $LocalUploadQueueOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get recordingId => $composableBuilder(
+    column: $table.recordingId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get operationId => $composableBuilder(
+    column: $table.operationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get renewOperationId => $composableBuilder(
+    column: $table.renewOperationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get attemptId => $composableBuilder(
+    column: $table.attemptId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get phase => $composableBuilder(
+    column: $table.phase,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get claimId => $composableBuilder(
+    column: $table.claimId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedSize => $composableBuilder(
+    column: $table.expectedSize,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sha256 => $composableBuilder(
+    column: $table.sha256,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get automaticRetries => $composableBuilder(
+    column: $table.automaticRetries,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get reason => $composableBuilder(
+    column: $table.reason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $LocalUploadQueueAnnotationComposer
+    extends Composer<_$AccountDatabase, LocalUploadQueue> {
+  $LocalUploadQueueAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get recordingId => $composableBuilder(
+    column: $table.recordingId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get operationId => $composableBuilder(
+    column: $table.operationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get renewOperationId => $composableBuilder(
+    column: $table.renewOperationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get attemptId =>
+      $composableBuilder(column: $table.attemptId, builder: (column) => column);
+
+  GeneratedColumn<String> get phase =>
+      $composableBuilder(column: $table.phase, builder: (column) => column);
+
+  GeneratedColumn<String> get claimId =>
+      $composableBuilder(column: $table.claimId, builder: (column) => column);
+
+  GeneratedColumn<int> get expectedSize => $composableBuilder(
+    column: $table.expectedSize,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sha256 =>
+      $composableBuilder(column: $table.sha256, builder: (column) => column);
+
+  GeneratedColumn<int> get automaticRetries => $composableBuilder(
+    column: $table.automaticRetries,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get attemptCount => $composableBuilder(
+    column: $table.attemptCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get nextAttemptAt => $composableBuilder(
+    column: $table.nextAttemptAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get reason =>
+      $composableBuilder(column: $table.reason, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $LocalUploadQueueTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          LocalUploadQueue,
+          LocalUploadQueueData,
+          $LocalUploadQueueFilterComposer,
+          $LocalUploadQueueOrderingComposer,
+          $LocalUploadQueueAnnotationComposer,
+          $LocalUploadQueueCreateCompanionBuilder,
+          $LocalUploadQueueUpdateCompanionBuilder,
+          (
+            LocalUploadQueueData,
+            BaseReferences<
+              _$AccountDatabase,
+              LocalUploadQueue,
+              LocalUploadQueueData
+            >,
+          ),
+          LocalUploadQueueData,
+          PrefetchHooks Function()
+        > {
+  $LocalUploadQueueTableManager(_$AccountDatabase db, LocalUploadQueue table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $LocalUploadQueueFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $LocalUploadQueueOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $LocalUploadQueueAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> recordingId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> operationId = const Value.absent(),
+                Value<String?> renewOperationId = const Value.absent(),
+                Value<String?> attemptId = const Value.absent(),
+                Value<String> phase = const Value.absent(),
+                Value<String?> claimId = const Value.absent(),
+                Value<int> expectedSize = const Value.absent(),
+                Value<String> sha256 = const Value.absent(),
+                Value<int> automaticRetries = const Value.absent(),
+                Value<int> attemptCount = const Value.absent(),
+                Value<int?> nextAttemptAt = const Value.absent(),
+                Value<String?> reason = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalUploadQueueCompanion(
+                recordingId: recordingId,
+                userId: userId,
+                operationId: operationId,
+                renewOperationId: renewOperationId,
+                attemptId: attemptId,
+                phase: phase,
+                claimId: claimId,
+                expectedSize: expectedSize,
+                sha256: sha256,
+                automaticRetries: automaticRetries,
+                attemptCount: attemptCount,
+                nextAttemptAt: nextAttemptAt,
+                reason: reason,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String recordingId,
+                required String userId,
+                required String operationId,
+                Value<String?> renewOperationId = const Value.absent(),
+                Value<String?> attemptId = const Value.absent(),
+                required String phase,
+                Value<String?> claimId = const Value.absent(),
+                required int expectedSize,
+                required String sha256,
+                Value<int> automaticRetries = const Value.absent(),
+                Value<int> attemptCount = const Value.absent(),
+                Value<int?> nextAttemptAt = const Value.absent(),
+                Value<String?> reason = const Value.absent(),
+                required int createdAt,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => LocalUploadQueueCompanion.insert(
+                recordingId: recordingId,
+                userId: userId,
+                operationId: operationId,
+                renewOperationId: renewOperationId,
+                attemptId: attemptId,
+                phase: phase,
+                claimId: claimId,
+                expectedSize: expectedSize,
+                sha256: sha256,
+                automaticRetries: automaticRetries,
+                attemptCount: attemptCount,
+                nextAttemptAt: nextAttemptAt,
+                reason: reason,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<LocalUploadQueue, LocalUploadQueueData>(table),
+                  BaseReferences<
+                    _$AccountDatabase,
+                    LocalUploadQueue,
+                    LocalUploadQueueData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $LocalUploadQueueProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      LocalUploadQueue,
+      LocalUploadQueueData,
+      $LocalUploadQueueFilterComposer,
+      $LocalUploadQueueOrderingComposer,
+      $LocalUploadQueueAnnotationComposer,
+      $LocalUploadQueueCreateCompanionBuilder,
+      $LocalUploadQueueUpdateCompanionBuilder,
+      (
+        LocalUploadQueueData,
+        BaseReferences<
+          _$AccountDatabase,
+          LocalUploadQueue,
+          LocalUploadQueueData
+        >,
+      ),
+      LocalUploadQueueData,
+      PrefetchHooks Function()
+    >;
 
 class $AccountDatabaseManager {
   final _$AccountDatabase _db;
@@ -23628,4 +24965,6 @@ class $AccountDatabaseManager {
       );
   $PendingEditResolutionsTableManager get pendingEditResolutions =>
       $PendingEditResolutionsTableManager(_db, _db.pendingEditResolutions);
+  $LocalUploadQueueTableManager get localUploadQueue =>
+      $LocalUploadQueueTableManager(_db, _db.localUploadQueue);
 }
