@@ -57,6 +57,7 @@ public final class RecordingLinking {
                     // All composite FKs pointing at (owner, old song, recording) have been detached first.
                     jdbc.update("UPDATE recording SET song_id=?,link_revision=link_revision+1 WHERE user_id=? AND id=?",target==null?null:bytes(target),bytes(owner),bytes(recording));
                 });
+                if(moved)com.ksh321.songrecord.api.retention.RetentionAssetVersions.bump(jdbc,owner,List.of(recording));
                 String payload=JSON.writeValueAsString(editing.snapshot(owner,recording));
                 log.add(new AccountChanges.Change(AccountChanges.Entity.RECORDING,recording,((Number)updated.get("revision")).longValue(),AccountChanges.Operation.UPSERT,payload));
                 return new AccountChanges.Batch<>(new IdempotentMutations.Reply(200,payload),log);

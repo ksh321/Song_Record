@@ -45,7 +45,10 @@ public final class RecordingLinkingDatabaseChecks {
         assertThat(db.queryForList("SELECT aggregate_id FROM job",byte[].class)).usingRecursiveFieldByFieldElementComparator().containsExactlyInAnyOrder(bytes(old),bytes(old),bytes(next));
         assertThat(db.queryForObject("SELECT COUNT(*) FROM change_log WHERE entity_type='SONG'",Integer.class)).isEqualTo(1);
         var after=db.queryForMap("SELECT * FROM recording WHERE id=?",bytes(id));for(String changed:List.of("song_id","link_revision","revision","updated_at")){before.remove(changed);after.remove(changed);}assertThat(after).usingRecursiveComparison().isEqualTo(before);
-        assertThat(db.queryForMap("SELECT * FROM recording_asset WHERE recording_id=?",bytes(id))).usingRecursiveComparison().isEqualTo(assetBefore);
+        var assetAfter=db.queryForMap("SELECT * FROM recording_asset WHERE recording_id=?",bytes(id));
+        assertThat(((Number)assetAfter.get("cloud_revision")).longValue()).isEqualTo(((Number)assetBefore.get("cloud_revision")).longValue()+1);
+        for(String field:List.of("cloud_revision","updated_at")){assetBefore.remove(field);assetAfter.remove(field);}
+        assertThat(assetAfter).usingRecursiveComparison().isEqualTo(assetBefore);
         assertThat(db.queryForMap("SELECT * FROM recording_file_spec WHERE recording_id=?",bytes(id))).usingRecursiveComparison().isEqualTo(fileBefore);
         assertThat(db.queryForMap("SELECT * FROM song WHERE id=?",bytes(next))).usingRecursiveComparison().isEqualTo(nextBefore);
         linking.patch(auth,device,UUID.randomUUID().toString(),id.toString(),JSON.writeValueAsString(Map.of("base_revision",3,"song_id",next.toString())));

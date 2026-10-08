@@ -79,4 +79,15 @@ class RetentionEventTests {
         saved();mutate(RevisionChanges.Resource.RECORDING,recording,"UPDATE recording SET note='only note' WHERE id=?");
         assertThat(count()).isEqualTo(1);
     }
+    @Test void changedRolesFenceExistingAssetWhileNoOpKeepsVersion()throws Exception {
+        saved();f.jdbc.update("INSERT INTO recording_asset(recording_id,user_id,cloud_state,cloud_revision) VALUES(?,?,'QUEUED',1)",bytes(recording),bytes(f.registration.userId()));
+        var worker=new RetentionWorker(jobs,store);worker.runOnce();
+        assertThat(f.jdbc.queryForObject("SELECT cloud_revision FROM recording_asset",Long.class)).isEqualTo(2);
+        store.recalculate(f.registration.userId(),song);
+        assertThat(f.jdbc.queryForObject("SELECT cloud_revision FROM recording_asset",Long.class)).isEqualTo(2);
+        mutate(RevisionChanges.Resource.RECORDING,recording,"UPDATE recording SET lifecycle_state='TRASHED' WHERE id=?");worker.runOnce();
+        assertThat(f.jdbc.queryForObject("SELECT cloud_revision FROM recording_asset",Long.class)).isEqualTo(3);
+        assertThat(f.jdbc.queryForObject("SELECT cloud_state FROM recording_asset",String.class)).isEqualTo("QUEUED");
+    }
+
 }

@@ -1,0 +1,78 @@
+package com.ksh321.songrecord.api.retention;
+
+import com.ksh321.songrecord.api.auth.AccountAccess;
+import com.ksh321.songrecord.api.idempotency.*;
+import com.ksh321.songrecord.api.locking.LockOrder;
+import com.ksh321.songrecord.api.web.ApiException;
+import java.time.*;
+import java.util.*;
+import org.springframework.context.annotation.Profile;
+import org.springframework.stereotype.Component;
+import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
+import tools.jackson.databind.json.JsonMapper;
+import static com.ksh321.songrecord.api.songs.SongQueryKeys.*;
+
+/** Authenticated, receipt-backed pin mutations. File transfer is a separate operation. */
+@Component @Profile("!bootstrap")
+public final class PinSlots {
+    private static final JsonMapper JSON=new JsonMapper();
+    private final JdbcTemplate db;private final AccountAccess access;private final IdempotentMutations mutations;
+    public PinSlots(JdbcTemplate db,AccountAccess access,IdempotentMutations mutations){this.db=db;this.access=access;this.mutations=mutations;}
+    public IdempotentMutations.Reply reserve(String auth,String device,String operation,String body) {
+        var account=access.authenticate(auth,device);CanonicalRequest.canonical(body);var root=JSON.readTree(body);
+        if(!root.isObject() || root.size()!=2 || !root.has("recording_id") || !root.has("entitlement_revision") || !root.get("recording_id").isTextual())throw invalid();
+        UUID recording=parse(root.get("recording_id").asText());var revision=root.get("entitlement_revision");
+        if(!revision.isIntegralNumber() || !revision.canConvertToLong() || revision.asLong()<1)throw invalid();
+        UUID owner=account.principal().userId();
+        return mutations.execute(account,operation,"POST","/v1/pins",body,()->{
+            lockAccount(account);var entitlement=entitlement(owner);
+            if(((Number)entitlement.get("revision")).longValue()!=revision.asLong())throw error(HttpStatus.CONFLICT,"ENTITLEMENT_REVISION_CONFLICT","최신 고정 한도를 다시 확인해 주세요.");
+            LockOrder.before(LockOrder.Rank.AGGREGATE,owner+"/1/"+recording);
+            var recordings=db.queryForList("SELECT lifecycle_state,metadata_state FROM recording WHERE user_id=? AND id=? FOR UPDATE",bytes(owner),bytes(recording));
+            if(recordings.isEmpty())throw missing();var metadata=recordings.getFirst();
+            if(!"ACTIVE".equals(metadata.get("lifecycle_state")) || !"SAVED".equals(metadata.get("metadata_state")))throw error(HttpStatus.CONFLICT,"PIN_NOT_ELIGIBLE","활성 상태의 저장 완료 녹음만 고정할 수 있습니다.");
+            // USER_SYNC and entitlement serialize discovery, including the not-yet-created slot.
+            var slots=slots(owner);
+            for(var slot:slots)if(recording.equals(slot.current()) || recording.equals(slot.pending()))return reply(slot,200);
+            int limit=((Number)entitlement.get("pinned_limit")).intValue();
+            long occupied=slots.stream().filter(Slot::occupied).count();
+            if(occupied>=limit)throw error(HttpStatus.CONFLICT,"PIN_LIMIT_REACHED","고정 한도에 도달했습니다. 대기 고정을 취소하거나 기존 고정을 해제해 주세요.");
+            int number=1;var byNumber=new HashMap<Integer,Slot>();for(var s:slots)byNumber.put(s.number(),s);
+            while(number<=limit && byNumber.containsKey(number) && byNumber.get(number).occupied())number++;
+            if(number>limit)throw error(HttpStatus.CONFLICT,"PIN_LIMIT_REACHED","사용 가능한 고정 슬롯이 없습니다.");
+            LockOrder.before(LockOrder.Rank.PIN_SLOT,owner+"/"+String.format(Locale.ROOT,"%010d",number));
+            var prior=byNumber.get(number);
+            if(prior!=null)db.queryForList("SELECT slot_no FROM pin_slot WHERE user_id=? AND slot_no=? FOR UPDATE",bytes(owner),number);
+            LockOrder.before(LockOrder.Rank.RECORDING_ASSET,owner+"/"+recording);
+            var assets=db.queryForList("SELECT cloud_state,cloud_revision FROM recording_asset WHERE user_id=? AND recording_id=? FOR UPDATE",bytes(owner),bytes(recording));
+            String state=assets.isEmpty()?"NONE":(String)assets.getFirst().get("cloud_state");
+            if("DELETING".equals(state))throw error(HttpStatus.CONFLICT,"FILE_CLEANUP_IN_PROGRESS","서버 파일 정리가 끝난 뒤 다시 고정해 주세요.");
+            long next=prior==null?1:increment(prior.revision());boolean stored="STORED".equals(state);
+            Object current=stored?bytes(recording):null,pending=stored?null:bytes(recording);
+            if(prior==null)db.update("INSERT INTO pin_slot(user_id,slot_no,current_recording_id,pending_recording_id,revision,operation_id,requested_at) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP(3))",bytes(owner),number,current,pending,next,bytes(parse(operation)));
+            else db.update("UPDATE pin_slot SET current_recording_id=?,pending_recording_id=?,revision=?,operation_id=?,requested_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE user_id=? AND slot_no=?",current,pending,next,bytes(parse(operation)),bytes(owner),number);
+            RetentionAssetVersions.bumpLocked(db,owner,recording,assets);
+            return reply(new Slot(number,stored?recording:null,stored?null:recording,next),201);
+        });
+    }
+    void lockAccount(AccountAccess.Account account){
+        UUID owner=access.revalidate(account).userId();LockOrder.before(LockOrder.Rank.USER_SYNC,owner.toString());
+        if(db.queryForList("SELECT user_id FROM user_sync_state WHERE user_id=? FOR UPDATE",bytes(owner)).size()!=1)throw new IllegalStateException("Account sync state missing");
+        access.revalidate(account);
+    }
+    Map<String,Object> entitlement(UUID owner){
+        LockOrder.before(LockOrder.Rank.ENTITLEMENT,owner+"/");
+        var rows=db.queryForList("SELECT pinned_limit,quota_bytes,revision FROM user_entitlement WHERE user_id=? FOR UPDATE",bytes(owner));
+        if(rows.size()!=1)throw new IllegalStateException("Entitlement missing");return rows.getFirst();
+    }
+    List<Slot> slots(UUID owner){return db.query("SELECT slot_no,current_recording_id,pending_recording_id,revision FROM pin_slot WHERE user_id=? ORDER BY slot_no",(r,n)->new Slot(r.getInt(1),id(r.getBytes(2)),id(r.getBytes(3)),r.getLong(4)),bytes(owner));}
+    record Slot(int number,UUID current,UUID pending,long revision){boolean occupied(){return current!=null||pending!=null;}Map<String,Object> wire(){var m=new LinkedHashMap<String,Object>();m.put("slot_no",number);m.put("current_recording_id",current==null?null:current.toString());m.put("pending_recording_id",pending==null?null:pending.toString());m.put("revision",revision);return m;}}
+    static IdempotentMutations.Reply reply(Slot slot,int status){return new IdempotentMutations.Reply(status,JSON.writeValueAsString(slot.wire()));}
+    static UUID id(byte[] raw){return raw==null?null:uuid(raw);}
+    static UUID parse(String text){try{UUID id=UUID.fromString(text);if(!id.toString().equals(text))throw new IllegalArgumentException();return id;}catch(IllegalArgumentException|NullPointerException e){throw invalid();}}
+    static long increment(long n){if(n==Long.MAX_VALUE)throw error(HttpStatus.CONFLICT,"REVISION_LIMIT_REACHED","버전 한도에 도달했습니다.");return n+1;}
+    static ApiException invalid(){return error(HttpStatus.BAD_REQUEST,"VALIDATION_FAILED","요청 항목과 버전을 확인해 주세요.");}
+    static ApiException missing(){return error(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","요청한 자료를 찾을 수 없습니다.");}
+    static ApiException error(HttpStatus status,String code,String message){return new ApiException(status,code,message,false,Map.of());}
+}

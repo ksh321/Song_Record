@@ -10,6 +10,47 @@ servers:
 security:
 - BearerAuth: []
 paths:
+  /pins:
+    post:
+      operationId: reservePin
+      summary: 계정 고정 슬롯 예약
+      description: ACTIVE·SAVED 녹음만 허용. 대기도 한도에 포함하고 STORED는 current, 나머지는 pending이다. 동일 녹음의 새 요청은 기존 슬롯을 반환한다. 파일 업로드나 용량 예약은 수행하지 않는다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [recording_id, entitlement_revision]
+              properties:
+                recording_id: {type: string, format: uuid}
+                entitlement_revision: {type: integer, format: int64, minimum: 1}
+      responses:
+        '201':
+          description: 신규 슬롯 예약. Cache-Control no-store.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PinSlot'}
+        '200':
+          description: 이미 고정된 녹음의 기존 슬롯. 변경과 슬롯 추가 없음.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PinSlot'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
+        '404': {$ref: '#/components/responses/Error404'}
+        '409':
+          description: PIN_LIMIT_REACHED, PIN_NOT_ELIGIBLE, ENTITLEMENT_REVISION_CONFLICT, FILE_CLEANUP_IN_PROGRESS 또는 멱등성 충돌
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ApiErrorResponse'}
   /sync/changes:
     get:
       operationId: getSyncChanges
@@ -1406,6 +1447,15 @@ components:
         $ref: '#/components/schemas/RequestId'
       description: 생략하거나 유효하지 않으면 서버가 새 추적 ID를 발급한다.
   schemas:
+    PinSlot:
+      type: object
+      additionalProperties: false
+      required: [slot_no, current_recording_id, pending_recording_id, revision]
+      properties:
+        slot_no: {type: integer, minimum: 1}
+        current_recording_id: {type: [string, 'null'], format: uuid}
+        pending_recording_id: {type: [string, 'null'], format: uuid}
+        revision: {type: integer, format: int64, minimum: 1}
     ChangeFeedPage:
       type: object
       additionalProperties: false

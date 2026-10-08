@@ -884,6 +884,7 @@ class MySqlIdempotencyTests {
             com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.verifyLowestTier(new JdbcTemplate(ds));
             com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.verifySelectionStore(new JdbcTemplate(ds));
             com.ksh321.songrecord.api.retention.RetentionJobDatabaseChecks.verify(new JdbcTemplate(ds));
+            com.ksh321.songrecord.api.retention.RetentionJobDatabaseChecks.verifyPins(new JdbcTemplate(ds));
             assertThat(flyway.migrate().migrationsExecuted).isZero();
         } finally {admin.execute("DROP DATABASE "+name);}
     }

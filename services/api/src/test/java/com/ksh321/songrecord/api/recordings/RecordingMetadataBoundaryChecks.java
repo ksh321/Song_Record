@@ -73,7 +73,10 @@ public final class RecordingMetadataBoundaryChecks {
         assertThat(cloud.get("state")).isEqualTo("QUEUED");
         assertThat(cloud.get("blocked_reason")).isEqualTo(reason);
         assertThat(cloud.get("stored")).isEqualTo(false);
-        assertThat(db.queryForMap("SELECT * FROM recording_asset WHERE recording_id=?", bytes(id))).usingRecursiveComparison().isEqualTo(asset);
+        var afterAsset=db.queryForMap("SELECT * FROM recording_asset WHERE recording_id=?",bytes(id));
+        assertThat(((Number)afterAsset.get("cloud_revision")).longValue()).isEqualTo(((Number)asset.get("cloud_revision")).longValue()+1);
+        for(String field:List.of("cloud_revision","updated_at")){asset.remove(field);afterAsset.remove(field);}
+        assertThat(afterAsset).usingRecursiveComparison().isEqualTo(asset);
         assertThat(db.queryForMap("SELECT * FROM recording_file_spec WHERE recording_id=?", bytes(id))).usingRecursiveComparison().isEqualTo(spec);
         assertThat(db.queryForMap("SELECT * FROM song WHERE id=?", bytes(song))).usingRecursiveComparison().isEqualTo(songBefore);
         assertThat(db.queryForMap("SELECT * FROM user_entitlement WHERE user_id=?", user)).usingRecursiveComparison().isEqualTo(entitlement);

@@ -55,6 +55,7 @@ public final class RetentionSelectionStore {
             if(stored.isEmpty()) {
                 jdbc.update("INSERT INTO song_cloud_selection(song_id,user_id,representative_id,latest_id,lowest_tier_id,selection_revision) VALUES(?,?,?,?,?,1)",
                     bytes(song),bytes(owner),value(selected.representative()),value(selected.latest()),value(selected.lowestTier()));
+                RetentionAssetVersions.bump(jdbc,owner,selected.recordingIds());
                 return Optional.of(new Snapshot(selected,1));
             }
             var previous=stored.getFirst();
@@ -64,6 +65,8 @@ public final class RetentionSelectionStore {
             int changed=jdbc.update("UPDATE song_cloud_selection SET representative_id=?,latest_id=?,lowest_tier_id=?,selection_revision=?,updated_at=CURRENT_TIMESTAMP(3) WHERE user_id=? AND song_id=? AND selection_revision=?",
                 value(selected.representative()),value(selected.latest()),value(selected.lowestTier()),next,bytes(owner),bytes(song),previous.revision());
             if(changed!=1)throw new IllegalStateException("Selection revision changed");
+            var affected=new HashSet<UUID>(previous.recordingIds());affected.addAll(selected.recordingIds());
+            RetentionAssetVersions.bump(jdbc,owner,affected);
             return Optional.of(new Snapshot(selected,next));
     }
     private record Song(UUID representative,boolean active) {}

@@ -22,7 +22,7 @@ public final class RetentionCandidateDatabaseChecks {
         return recordingWithId(db, owner, device, song, saved, spec, integrity, UUID.randomUUID());
     }
     public static UUID recordingWithId(JdbcTemplate db, UUID owner, UUID device, UUID song, boolean saved, boolean spec, String integrity, UUID id) {
-        db.update("INSERT INTO recording(id,user_id,origin_device_id,song_id,title_snapshot,artist_snapshot,key_mode,key_shift,note,recorded_at,timezone_id,timezone_offset_minutes) VALUES(?,?,?,?,'title','artist','ORIGINAL',0,'','2026-10-08 00:00:00.123','UTC',0)", bytes(id),bytes(owner),bytes(device),song==null?null:bytes(song));
+        db.update("INSERT INTO recording(id,user_id,origin_device_id,song_id,title_snapshot,artist_snapshot,key_mode,key_shift,note,recorded_at,timezone_id,timezone_offset_minutes,lifecycle_state) VALUES(?,?,?,?,'title','artist','ORIGINAL',0,'','2026-10-08 00:00:00.123','UTC',0,'ACTIVE')", bytes(id),bytes(owner),bytes(device),song==null?null:bytes(song));
         if (spec) db.update("INSERT INTO recording_file_spec(recording_id,user_id,sha256,size_bytes,duration_ms,codec,sample_rate,channels,capture_integrity) VALUES(?,?,?,6291456,361000,'AAC_LC',48000,1,?)", bytes(id),bytes(owner),"a".repeat(64),integrity);
         if (saved) db.update("UPDATE recording SET metadata_state='SAVED' WHERE id=?",bytes(id));
         return id;

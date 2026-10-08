@@ -15,7 +15,7 @@ class RecordingListingTests {
         setup.open();var db=setup.setup.f.jdbc;
         db.execute("ALTER TABLE tag ADD normalized_name_key VARBINARY(800)");
         db.execute("CREATE TABLE recording_file_spec(recording_id BINARY(16) PRIMARY KEY,user_id BINARY(16),sha256 CHAR(64),size_bytes BIGINT,duration_ms INT,codec VARCHAR(32),sample_rate INT,channels SMALLINT,capture_integrity VARCHAR(32))");
-        db.execute("CREATE TABLE recording_asset(recording_id BINARY(16) PRIMARY KEY,user_id BINARY(16),cloud_state VARCHAR(16),blocked_reason VARCHAR(32),object_key VARCHAR(512),generation BINARY(16),verified_size BIGINT,sha256 CHAR(64),stored_at TIMESTAMP(3))");
+        db.execute("CREATE TABLE recording_asset(recording_id BINARY(16) PRIMARY KEY,user_id BINARY(16),cloud_state VARCHAR(16),blocked_reason VARCHAR(32),object_key VARCHAR(512),generation BINARY(16),verified_size BIGINT,sha256 CHAR(64),stored_at TIMESTAMP(3),cloud_revision BIGINT DEFAULT 1,updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP)");
         db.execute("CREATE TABLE recording_tag(user_id BINARY(16),recording_id BINARY(16),tag_id BINARY(16),name_snapshot VARCHAR(50),PRIMARY KEY(recording_id,tag_id))");
         db.execute("CREATE TABLE song_cloud_selection(song_id BINARY(16) PRIMARY KEY,user_id BINARY(16),representative_id BINARY(16),latest_id BINARY(16),lowest_tier_id BINARY(16))");
         db.execute("CREATE TABLE pin_slot(user_id BINARY(16),slot_no INT,current_recording_id BINARY(16),pending_recording_id BINARY(16))");
