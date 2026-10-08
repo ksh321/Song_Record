@@ -878,6 +878,7 @@ class MySqlIdempotencyTests {
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();
             flyway.migrate();flyway.validate();
             com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.verify(new JdbcTemplate(ds));
+            com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.verifyRepresentative(new JdbcTemplate(ds));
             assertThat(flyway.migrate().migrationsExecuted).isZero();
         } finally {admin.execute("DROP DATABASE "+name);}
     }

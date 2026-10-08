@@ -21,6 +21,14 @@ public final class RetentionCandidates {
     public RetentionCandidates(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     public List<Candidate> forSong(UUID owner, UUID song) {
+        return query(owner, song, false);
+    }
+
+    List<Candidate> forRepresentative(UUID owner, UUID song) {
+        return query(owner, song, true);
+    }
+
+    private List<Candidate> query(UUID owner, UUID song, boolean representativeOnly) {
         Objects.requireNonNull(owner, "owner");
         Objects.requireNonNull(song, "song");
         return jdbc.query("""
@@ -33,8 +41,7 @@ public final class RetentionCandidates {
             WHERE r.user_id = ? AND r.song_id = ?
               AND u.status = 'ACTIVE' AND s.lifecycle_state = 'ACTIVE'
               AND r.lifecycle_state = 'ACTIVE' AND r.metadata_state = 'SAVED'
-            ORDER BY r.id
-            """, (rs, row) -> new Candidate(uuid(rs.getBytes("id")), uuid(rs.getBytes("origin_device_id")),
+            """ + (representativeOnly ? " AND s.representative_recording_id = r.id" : "") + " ORDER BY r.id", (rs, row) -> new Candidate(uuid(rs.getBytes("id")), uuid(rs.getBytes("origin_device_id")),
                 rs.getTimestamp("recorded_at").toLocalDateTime().toInstant(ZoneOffset.UTC),
                 rs.getString("tier"), rs.getLong("revision"), rs.getLong("link_revision"),
                 new FileSpec(rs.getString("sha256"), rs.getLong("size_bytes"), rs.getInt("duration_ms"),

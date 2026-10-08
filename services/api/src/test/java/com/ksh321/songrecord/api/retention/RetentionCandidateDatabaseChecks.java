@@ -25,6 +25,26 @@ public final class RetentionCandidateDatabaseChecks {
         if (saved) db.update("UPDATE recording SET metadata_state='SAVED' WHERE id=?",bytes(id));
         return id;
     }
+    public static void verifyRepresentative(JdbcTemplate db) {
+        var roles = new RetentionRoles(new RetentionCandidates(db));
+        UUID owner=account(db), other=account(db), a=device(db,owner), b=device(db,owner);
+        UUID song=song(db,owner);
+        UUID chosen=recording(db,owner,b,song,true,true,"RECOVERED");
+        UUID latest=recording(db,owner,a,song,true,true,"VALIDATED");
+        db.update("UPDATE recording SET tier='S',recorded_at='2026-10-09 00:00:00' WHERE id=?",bytes(latest));
+        assertThat(roles.representative(owner,song)).isEmpty(); // No highest-tier/latest fallback.
+        db.update("UPDATE song SET representative_recording_id=? WHERE id=?",bytes(chosen),bytes(song));
+        var selected=roles.representative(owner,song).orElseThrow();
+        assertThat(selected.role()).isEqualTo(RetentionRoles.Role.REPRESENTATIVE);
+        assertThat(selected.candidate().recordingId()).isEqualTo(chosen);
+        assertThat(selected.candidate().originDeviceId()).isEqualTo(b);
+        assertThat(roles.representative(other,song)).isEmpty();
+        db.update("UPDATE recording SET lifecycle_state='TRASHED',deleted_at=CURRENT_TIMESTAMP WHERE id=?",bytes(chosen));
+        assertThat(roles.representative(owner,song)).isEmpty(); // No replacement, pointer is not mutated.
+        assertThat(db.queryForObject("SELECT representative_recording_id FROM song WHERE id=?",byte[].class,bytes(song))).isEqualTo(bytes(chosen));
+        db.update("UPDATE song SET representative_recording_id=NULL WHERE id=?",bytes(song));
+        assertThat(roles.representative(owner,song)).isEmpty();
+    }
     public static void verify(JdbcTemplate db) {
         var query = new RetentionCandidates(db);
         UUID owner=account(db), other=account(db), a=device(db,owner), b=device(db,owner), foreign=device(db,other);

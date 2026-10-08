@@ -20,6 +20,23 @@ class RetentionCandidatesTests {
         db.execute("CREATE TABLE recording_file_spec(recording_id BINARY(16) PRIMARY KEY,user_id BINARY(16),sha256 VARCHAR(70),size_bytes BIGINT,duration_ms INT,codec VARCHAR(32),sample_rate INT,channels INT,capture_integrity VARCHAR(32))");
         // Deliberately no recording_asset or device-local file tables: candidates must not depend on them.
     }
+    @Test void representativeUsesOnlyExplicitEligiblePointer() {
+        db.execute("ALTER TABLE song ADD representative_recording_id BINARY(16)");
+        verifyRepresentative(db);
+    }
+    @Test void representativeRejectsWrongSongDraftAndDamagedWithoutChangingPointer() {
+        db.execute("ALTER TABLE song ADD representative_recording_id BINARY(16)");
+        UUID owner=account(db), dev=device(db,owner), song=song(db,owner), other=song(db,owner);
+        var roles=new RetentionRoles(new RetentionCandidates(db));
+        UUID id=recording(db,owner,dev,other,true,true,"VALIDATED");
+        db.update("UPDATE song SET representative_recording_id=? WHERE id=?",bytes(id),bytes(song));
+        assertThat(roles.representative(owner,song)).isEmpty();
+        db.update("UPDATE recording SET song_id=?,metadata_state='DRAFT' WHERE id=?",bytes(song),bytes(id));
+        assertThat(roles.representative(owner,song)).isEmpty();
+        db.update("UPDATE recording SET metadata_state='SAVED' WHERE id=?",bytes(id));
+        db.update("UPDATE recording_file_spec SET capture_integrity='DAMAGED' WHERE recording_id=?",bytes(id));
+        assertThat(roles.representative(owner,song)).isEmpty();
+    }
     @AfterEach void close() { db.execute("SHUTDOWN"); }
     @Test void ownerSongLifecycleAndCrossDeviceEligibility() { verify(db); }
     @Test void rejectsIncompleteDamagedAndCrossOwnerFileSpecs() {
