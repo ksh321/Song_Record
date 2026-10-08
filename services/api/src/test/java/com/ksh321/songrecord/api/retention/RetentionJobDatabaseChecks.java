@@ -49,7 +49,12 @@ public final class RetentionJobDatabaseChecks {
         when(access.authenticate("Bearer fixture",dev.toString())).thenReturn(account);
         var manager=new DataSourceTransactionManager(db.getDataSource());
         var mutations=new com.ksh321.songrecord.api.idempotency.IdempotentMutations(db,access,manager,Clock.systemUTC());
-        PinReservationDatabaseChecks.verify(db,new PinSlots(db,access,mutations),"Bearer fixture",dev.toString(),owner);
+        UUID second=device(db,owner);
+        var secondAccount=mock(AccountAccess.Account.class);
+        var secondPrincipal=new SessionService.Principal(owner,second,UUID.randomUUID());
+        when(secondAccount.principal()).thenReturn(secondPrincipal);when(access.revalidate(secondAccount)).thenReturn(secondPrincipal);
+        when(access.authenticate("Bearer second-fixture",second.toString())).thenReturn(secondAccount);
+        PinReservationDatabaseChecks.verify(db,new PinSlots(db,access,mutations),"Bearer fixture",dev.toString(),owner,"Bearer second-fixture",second.toString());
     }
 
     public static void verifyRelease(JdbcTemplate db) {

@@ -766,7 +766,7 @@ class MySqlIdempotencyTests {
             var jobs=new com.ksh321.songrecord.api.jobs.JobQueue(db,access,manager,clock,java.time.Duration.ofMinutes(2),5);
             var editing=new com.ksh321.songrecord.api.recordings.RecordingEditing(db,access,mutations,revisions,changes,drafts,saving,jobs);
             var linking=new com.ksh321.songrecord.api.recordings.RecordingLinking(db,access,mutations,revisions,changes,editing,jobs);
-            com.ksh321.songrecord.api.recordings.RecordingLinkingDatabaseChecks.verify(db,drafts,editing,linking,"Bearer test",principal.deviceId().toString(),principal.userId());
+            com.ksh321.songrecord.api.recordings.RecordingLinkingDatabaseChecks.verify(db,drafts,editing,linking,"Bearer test",principal.deviceId().toString(),principal.userId(),jobs);
             assertThat(flyway.migrate().migrationsExecuted).isZero();
         } finally {admin.execute("DROP DATABASE "+name);}
     }
@@ -883,6 +883,7 @@ class MySqlIdempotencyTests {
             com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.verifyLatest(new JdbcTemplate(ds));
             com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.verifyLowestTier(new JdbcTemplate(ds));
             com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.verifySelectionStore(new JdbcTemplate(ds));
+            com.ksh321.songrecord.api.retention.RetentionExampleDatabaseChecks.verify(new JdbcTemplate(ds));
             com.ksh321.songrecord.api.retention.RetentionJobDatabaseChecks.verify(new JdbcTemplate(ds));
             com.ksh321.songrecord.api.retention.RetentionJobDatabaseChecks.verifyPins(new JdbcTemplate(ds));
             com.ksh321.songrecord.api.retention.RetentionJobDatabaseChecks.verifyRelease(new JdbcTemplate(ds));

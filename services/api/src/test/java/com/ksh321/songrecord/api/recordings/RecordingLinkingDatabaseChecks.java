@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.*;
 public final class RecordingLinkingDatabaseChecks {
     private static final JsonMapper JSON=new JsonMapper();
     private RecordingLinkingDatabaseChecks(){}
-    public static void verify(JdbcTemplate db,RecordingDrafts drafts,RecordingEditing editing,RecordingLinking linking,String auth,String device,UUID owner){
+    public static void verify(JdbcTemplate db,RecordingDrafts drafts,RecordingEditing editing,RecordingLinking linking,String auth,String device,UUID owner,com.ksh321.songrecord.api.jobs.JobQueue jobs){
         // Old ID deliberately sorts after the destination. Locks must not follow navigation order.
         UUID old=UUID.fromString("eeeeeeee-0000-4000-8000-000000000001"),next=UUID.fromString("11111111-0000-4000-8000-000000000002"),id=UUID.randomUUID();
         for(UUID song:List.of(old,next))db.update("INSERT INTO song(id,user_id,source_type,title,artist,version_code,note,song_tier,lifecycle_state) VALUES(?,?,'MANUAL','song','artist','NORMAL','','S','ACTIVE')",bytes(song),bytes(owner));
@@ -51,11 +51,14 @@ public final class RecordingLinkingDatabaseChecks {
         assertThat(assetAfter).usingRecursiveComparison().isEqualTo(assetBefore);
         assertThat(db.queryForMap("SELECT * FROM recording_file_spec WHERE recording_id=?",bytes(id))).usingRecursiveComparison().isEqualTo(fileBefore);
         assertThat(db.queryForMap("SELECT * FROM song WHERE id=?",bytes(next))).usingRecursiveComparison().isEqualTo(nextBefore);
+        // P11-09: the worker must update BOTH songs; assertions must not recalculate them.
+        drainAndCheck(db,jobs,owner,old,next,id,3);
         linking.patch(auth,device,UUID.randomUUID().toString(),id.toString(),JSON.writeValueAsString(Map.of("base_revision",3,"song_id",next.toString())));
         assertThat(db.queryForObject("SELECT link_revision FROM recording WHERE id=?",Long.class,bytes(id))).isEqualTo(2);assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(3);
         linking.patch(auth,device,UUID.randomUUID().toString(),id.toString(),"{\"base_revision\":4,\"song_id\":null}");
         assertThat(db.queryForObject("SELECT link_revision FROM recording WHERE id=?",Long.class,bytes(id))).isEqualTo(3);assertThat(db.queryForObject("SELECT song_id FROM recording WHERE id=?",byte[].class,bytes(id))).isNull();
         assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(4);
+        drainAndCheck(db,jobs,owner,old,next,null,1);
         try(var pool=java.util.concurrent.Executors.newFixedThreadPool(2)){
             var start=new java.util.concurrent.CountDownLatch(1);
             java.util.concurrent.Callable<String> task=()->{start.await();try{return Integer.toString(linking.patch(auth,device,UUID.randomUUID().toString(),id.toString(),JSON.writeValueAsString(Map.of("base_revision",5,"song_id",old.toString()))).status());}catch(com.ksh321.songrecord.api.web.ApiException e){return e.code();}};
@@ -63,5 +66,24 @@ public final class RecordingLinkingDatabaseChecks {
         }catch(Exception e){throw new AssertionError(e);}
         assertThat(db.queryForObject("SELECT link_revision FROM recording WHERE id=?",Long.class,bytes(id))).isEqualTo(4);
         assertThat(db.queryForObject("SELECT COUNT(*) FROM job",Integer.class)).isEqualTo(5);
+        drainAndCheck(db,jobs,owner,next,old,id,1);
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM recording_asset WHERE user_id=? AND cloud_state='STORED' AND verified_size=100",Integer.class,bytes(owner))).isEqualTo(1);
+        assertThat(db.queryForMap("SELECT * FROM recording_file_spec WHERE recording_id=?",bytes(id))).usingRecursiveComparison().isEqualTo(fileBefore);
     }
+    private static void drainAndCheck(JdbcTemplate db,com.ksh321.songrecord.api.jobs.JobQueue jobs,
+            UUID owner,UUID emptySong,UUID selectedSong,UUID expected,int count) {
+        var manager=new org.springframework.jdbc.datasource.DataSourceTransactionManager(db.getDataSource());
+        var worker=new com.ksh321.songrecord.api.retention.RetentionWorker(jobs,
+                new com.ksh321.songrecord.api.retention.RetentionSelectionStore(db,manager));
+        for(int i=0;i<count;i++)assertThat(worker.runOnce()).as("queued policy job %s",i).isTrue();
+        assertThat(worker.runOnce()).isFalse();
+        assertThat(db.queryForObject("SELECT COUNT(*) FROM job WHERE user_id=? AND state<>'SUCCEEDED'",Integer.class,bytes(owner))).isZero();
+        for(UUID song:List.of(emptySong,selectedSong)) {
+            var row=db.queryForMap("SELECT representative_id,latest_id,lowest_tier_id FROM song_cloud_selection WHERE user_id=? AND song_id=?",bytes(owner),bytes(song));
+            assertThat(row.get("representative_id")).isNull();
+            assertThat(row.get("lowest_tier_id")).isNull(); // The fixture is unrated.
+            assertThat((byte[])row.get("latest_id")).isEqualTo(song.equals(selectedSong)&&expected!=null?bytes(expected):null);
+        }
+    }
+
 }

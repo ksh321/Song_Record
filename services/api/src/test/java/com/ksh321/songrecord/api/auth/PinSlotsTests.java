@@ -23,7 +23,11 @@ class PinSlotsTests {
     @AfterEach void close()throws Exception{setup.close();}
     UUID saved(){return recording(f.jdbc,owner,f.registration.deviceId(),null,true,true,"VALIDATED");}
     void asset(UUID id,String state){f.jdbc.update("INSERT INTO recording_asset(recording_id,user_id,cloud_state,cloud_revision,verified_size,sha256,generation,object_key,stored_at) VALUES(?,?,?,1,6291456,?,?,'fixture/object',CURRENT_TIMESTAMP)",bytes(id),bytes(owner),state,"a".repeat(64),bytes(UUID.randomUUID()));}
-    @Test void pendingCountsAndTwoDevicesCannotBothTakeTenthSlot(){PinReservationDatabaseChecks.verify(f.jdbc,pins,auth,device,owner);}
+    @Test void pendingCountsAndTwoDevicesCannotBothTakeTenthSlot(){
+        UUID second=com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.device(f.jdbc,owner);
+        var tokens=f.sessions.issue(new AccountRegistrationService.Registration(owner,second,false));
+        PinReservationDatabaseChecks.verify(f.jdbc,pins,auth,device,owner,"Bearer "+tokens.accessToken(),second.toString());
+    }
     @Test void storedConfirmsImmediatelyAndOnlyBumpsPolicyVersion(){
         UUID id=saved();asset(id,"STORED");var before=f.jdbc.queryForMap("SELECT * FROM recording");String key=UUID.randomUUID().toString();
         var result=pins.reserve(auth,device,key,body(id,1));assertThat(result.status()).isEqualTo(201);assertThat(result.body()).contains("\"current_recording_id\":\""+id,"\"pending_recording_id\":null");

@@ -10,7 +10,8 @@ import static org.assertj.core.api.Assertions.*;
 
 /** Same pending-limit race and receipt assertions on H2 and fully migrated MySQL. */
 public final class PinReservationDatabaseChecks {
-    public static void verify(JdbcTemplate db,PinSlots pins,String auth,String device,UUID owner){
+    public static void verify(JdbcTemplate db,PinSlots pins,String auth,String device,UUID owner,String secondAuth,String secondDevice){
+        assertThat(secondDevice).isNotEqualTo(device);
         UUID dev=UUID.fromString(device);var ids=new ArrayList<UUID>();
         for(int i=0;i<11;i++)ids.add(recording(db,owner,dev,null,true,true,"VALIDATED"));
         db.update("INSERT INTO recording_asset(recording_id,user_id,cloud_state,object_key,generation,verified_size,sha256,stored_at) VALUES(?,?,'STORED','fixture/pin',?,6291456,?,CURRENT_TIMESTAMP)",bytes(ids.get(0)),bytes(owner),bytes(UUID.randomUUID()),"a".repeat(64));
@@ -20,7 +21,7 @@ public final class PinReservationDatabaseChecks {
         assertThat(pins.reserve(auth,device,op,body(ids.get(0),1))).isEqualTo(response);
         try(var pool=Executors.newFixedThreadPool(2)){
             var go=new CountDownLatch(1);var results=new ArrayList<Future<String>>();
-            for(int i=9;i<11;i++){UUID id=ids.get(i);results.add(pool.submit(()->{go.await();try{return Integer.toString(pins.reserve(auth,device,UUID.randomUUID().toString(),body(id,1)).status());}catch(ApiException e){return e.code();}}));}
+            for(int i=9;i<11;i++){UUID id=ids.get(i);String requestAuth=i==9?auth:secondAuth,requestDevice=i==9?device:secondDevice;results.add(pool.submit(()->{go.await();try{return Integer.toString(pins.reserve(requestAuth,requestDevice,UUID.randomUUID().toString(),body(id,1)).status());}catch(ApiException e){return e.code();}}));}
             go.countDown();assertThat(List.of(results.get(0).get(15,TimeUnit.SECONDS),results.get(1).get(15,TimeUnit.SECONDS))).containsExactlyInAnyOrder("201","PIN_LIMIT_REACHED");
         }catch(Exception e){throw new AssertionError(e);}
         assertThat(db.queryForObject("SELECT COUNT(*) FROM pin_slot WHERE user_id=? AND (current_recording_id IS NOT NULL OR pending_recording_id IS NOT NULL)",Long.class,bytes(owner))).isEqualTo(10);
