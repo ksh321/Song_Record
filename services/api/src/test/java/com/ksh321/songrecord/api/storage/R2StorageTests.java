@@ -104,4 +104,29 @@ class R2StorageTests {
         }
     }
 
+    @Test void audioProbeRejectsApiAndProductionBeforeWriting(){
+        var validator=mock(com.ksh321.songrecord.api.uploads.AudioValidator.class);
+        for(var pair:List.of(new String[]{"dev","api"},new String[]{"prod","worker"})){
+            var client=mock(S3Client.class);
+            try(var storage=new R2Storage(R2Settings.from(environment(pair[0],pair[1])),client)){
+                assertThatThrownBy(()->storage.checkDevelopmentAudio(validator,new byte[]{1})).isInstanceOf(IllegalArgumentException.class);
+                verifyNoInteractions(client);
+            }
+        }
+    }
+    @Test void audioProbeCleansOnlyObjectsItCreatedAndReportsCleanupFailure(){
+        var client=mock(S3Client.class);var validator=mock(com.ksh321.songrecord.api.uploads.AudioValidator.class);
+        try(var storage=new R2Storage(R2Settings.from(environment("dev","worker")),client)){
+            when(client.putObject(any(java.util.function.Consumer.class),any(software.amazon.awssdk.core.sync.RequestBody.class))).thenThrow(new IllegalStateException("private"));
+            assertThat(storage.checkDevelopmentAudio(validator,new byte[]{1})).isEqualTo("ERROR");
+            verify(client,never()).deleteObject(any(java.util.function.Consumer.class));
+            reset(client);
+            when(client.getObject(any(GetObjectRequest.class))).thenThrow(new IllegalStateException("private"));
+            assertThat(storage.checkDevelopmentAudio(validator,new byte[]{1})).isEqualTo("ERROR");
+            verify(client).deleteObject(any(java.util.function.Consumer.class));
+            doThrow(new IllegalStateException("private")).when(client).deleteObject(any(java.util.function.Consumer.class));
+            assertThat(storage.checkDevelopmentAudio(validator,new byte[]{1})).isEqualTo("CLEANUP_FAILED");
+        }
+    }
+
 }

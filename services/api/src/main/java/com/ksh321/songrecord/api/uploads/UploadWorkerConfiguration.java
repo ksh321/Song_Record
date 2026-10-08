@@ -9,4 +9,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public class UploadWorkerConfiguration {
     @Bean @ConditionalOnProperty(name="songrecord.storage.role",havingValue="worker")
     UploadVerification uploadVerification(JdbcTemplate db,R2Storage storage){return new UploadVerification(db,storage::openTemporary,Clock.systemUTC());}
+    @Bean @ConditionalOnProperty(name="songrecord.storage.role",havingValue="worker")
+    AudioValidator audioValidator(org.springframework.core.env.Environment environment){return new AudioValidator(environment.getProperty("songrecord.upload.ffmpeg","ffmpeg"),environment.getProperty("songrecord.upload.ffprobe","ffprobe"));}
 }

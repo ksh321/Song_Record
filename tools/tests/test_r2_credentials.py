@@ -5,6 +5,22 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import r2_credentials as r2
 GOOD='dev.temporary=ALLOWED\ndev.final=DENIED\nprod.temporary=DENIED\nprod.final=DENIED\n'
 class R2CredentialsTests(unittest.TestCase):
+ def test_audio_report_is_closed_and_requires_development_worker(self):
+  self.assertEqual(r2.parse_report('audio.temporary=VERIFIED','dev.worker',audio=True)['status'],'PASS')
+  for value in ('ERROR','BYTES_MISMATCH','VALIDATION_FAILED','CLEANUP_FAILED'):
+   self.assertEqual(r2.parse_report('audio.temporary='+value,'dev.worker',audio=True)['status'],'FAIL')
+  for output,label in [('audio.temporary=VERIFIED\nsecret=value','dev.worker'),('audio.temporary=secret','dev.worker'),('audio.temporary=VERIFIED','prod.worker')]:
+   with self.assertRaises(r2.SecretError):r2.parse_report(output,label,audio=True)
+ def test_audio_uses_stdin_and_persists_only_closed_status(self):
+  with tempfile.TemporaryDirectory() as f:
+   d=Path(f);(d/'checker-classpath.txt').write_text('fixture')
+   with patch.object(r2.shutil,'which',return_value='C:/tools/audio.exe'),patch.object(r2.subprocess,'run',return_value=subprocess.CompletedProcess([],0,'audio.temporary=VERIFIED','sensitive-output')) as run:
+    self.assertEqual(r2.check('dev.worker','java','a'*32,'b'*64,d,audio=True),'PASS')
+   self.assertNotIn('b'*64,str(run.call_args.args));self.assertIn('diagnostic.mode=audio-validation',run.call_args.kwargs['input'])
+   report=(d/'audio-reports/dev.worker.json').read_text()
+   self.assertNotIn('b'*64,report);self.assertNotIn('sensitive',report)
+   for label in ('dev.api','prod.worker','prod.api'):
+    with self.assertRaises(r2.SecretError):r2.check(label,'java','a'*32,'b'*64,d,audio=True)
  def test_strict_scope(self):
   self.assertEqual(r2.parse_report(GOOD,'dev.api')['status'],'PASS')
   self.assertEqual(r2.parse_report(GOOD.replace('ALLOWED','DENIED'),'dev.api')['status'],'FAIL')
