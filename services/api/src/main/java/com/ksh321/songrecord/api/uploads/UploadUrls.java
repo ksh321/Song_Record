@@ -33,9 +33,9 @@ public final class UploadUrls {
     }
     private Map<String,Object> issue(AccountAccess.Account account,UUID attempt,boolean renew){
         UUID owner=access.revalidate(account).userId();
-        var rows=db.queryForList("SELECT recording_id,state,expires_at,expected_size,expected_sha256 FROM recording_upload WHERE user_id=? AND id=? FOR UPDATE",bytes(owner),bytes(attempt));
+        var rows=db.query("SELECT recording_id,state,expires_at,expected_size,expected_sha256 FROM recording_upload WHERE user_id=? AND id=? FOR UPDATE",(rs,n)->Map.<String,Object>of("recording_id",rs.getBytes("recording_id"),"state",rs.getString("state"),"expires_at",rs.getTimestamp("expires_at").toInstant(),"expected_size",rs.getLong("expected_size"),"expected_sha256",rs.getString("expected_sha256")),bytes(owner),bytes(attempt));
         if(rows.isEmpty())throw error("RESOURCE_NOT_FOUND",HttpStatus.NOT_FOUND);
-        var row=rows.getFirst();String state=(String)row.get("state");Instant expiry=((java.sql.Timestamp)row.get("expires_at")).toInstant();
+        var row=rows.getFirst();String state=(String)row.get("state");Instant expiry=(Instant)row.get("expires_at");
         if(!expiry.isAfter(clock.instant().plusSeconds(1)))throw error("UPLOAD_EXPIRED",HttpStatus.GONE);
         if(!Set.of("RESERVED","UPLOADING").contains(state))throw error("UPLOAD_STATE_CONFLICT",HttpStatus.CONFLICT);
         if(renew){

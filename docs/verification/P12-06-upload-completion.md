@@ -28,3 +28,9 @@ P12-06까지 원수 승인. P12-05 설치본 7항목·8ecc594 CI 통과 후 최�
 검증한 파일 커밋·푸시 후 필요한 서버·DB CI. MySQL SKIP을 통과로 계산하지 않는다. P12-07 이후 미착수.
 
 학습 개념: 202는 검증 접수이며 파일 보관 완료가 아니다. 같은 시도는 작업 하나로 수렴하고, 임시 객체가 바뀔 수 있으므로 확보한 동일 바이트만 이후 검증·확정에 사용한다.
+
+## 실제 MySQL CI 발견 오류 수정
+
+첫 SHA a4c7037의 서버 CI 통과, MySQL 멱등성 CI 37764986813에서 새 complete의 DATETIME 값을 Timestamp로 직접 cast하여 ClassCastException 발생. MySQL JDBC의 LocalDateTime 반환과 H2 Timestamp 반환 차이가 원인이다. getTimestamp 명시적 RowMapper로 통일하고 같은 위험이 확인된 UploadUrls 조회도 보완했다. 기존 완료 판정을 되돌린 것이 아니라 연결된 현재 코드 오류를 수정했다.
+
+동일 H2/MySQL 시나리오가 실제 URL 재발급→complete 접수를 거치도록 보강했다. `test --tests '*UploadCompletionTests' --tests '*UploadUrlsTests' bootJar --offline --console=plain`: 3 PASS 및 패키징 PASS. 새로운 근본 원인 1회 수정, 다음 SHA 실제 MySQL 재검증 필요. 첫 SHA 실패를 숨기지 않으며 최종 CI 기준은 전체 P12-06 변경 시작 8ecc594를 유지한다.

@@ -29,12 +29,12 @@ public final class UploadCompletion {
     }
     private IdempotentMutations.Reply accept(AccountAccess.Account account,UUID attempt){
         UUID owner=access.revalidate(account).userId();
-        var rows=db.queryForList("SELECT state,expires_at FROM recording_upload WHERE user_id=? AND id=? FOR UPDATE",bytes(owner),bytes(attempt));
+        var rows=db.query("SELECT state,expires_at FROM recording_upload WHERE user_id=? AND id=? FOR UPDATE",(rs,n)->Map.entry(rs.getString("state"),rs.getTimestamp("expires_at").toInstant()),bytes(owner),bytes(attempt));
         if(rows.isEmpty())throw error("RESOURCE_NOT_FOUND",HttpStatus.NOT_FOUND);
-        var row=rows.getFirst();String state=(String)row.get("state");
+        var row=rows.getFirst();String state=row.getKey();
         if(state.equals("COMMITTED"))return reply(200,Map.of("attempt_id",attempt.toString(),"state","COMMITTED"));
         if(!Set.of("UPLOADING","VERIFYING").contains(state))throw error("UPLOAD_STATE_CONFLICT",HttpStatus.CONFLICT);
-        if(!((java.sql.Timestamp)row.get("expires_at")).toInstant().isAfter(clock.instant()))throw error("UPLOAD_EXPIRED",HttpStatus.GONE);
+        if(!row.getValue().isAfter(clock.instant()))throw error("UPLOAD_EXPIRED",HttpStatus.GONE);
         // Attempt identity, not the HTTP operation, deduplicates separate completion requests too.
         UUID job=jobs.enqueue(account,JobQueue.Type.UPLOAD_VERIFY,attempt,attempt,"{}");
         db.update("UPDATE recording_upload SET state='VERIFYING',updated_at=? WHERE user_id=? AND id=?",java.sql.Timestamp.from(clock.instant()),bytes(owner),bytes(attempt));

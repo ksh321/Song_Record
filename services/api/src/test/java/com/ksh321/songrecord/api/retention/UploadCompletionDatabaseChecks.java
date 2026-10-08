@@ -17,7 +17,10 @@ import static org.mockito.Mockito.*;
 public final class UploadCompletionDatabaseChecks {
     public static void verify(JdbcTemplate db)throws Exception {
         var manager=new DataSourceTransactionManager(db.getDataSource());
-        UUID owner=account(db),dev=device(db,owner),recording=recording(db,owner,dev,null,true,true,"VALIDATED");
+        UUID owner=account(db),dev=device(db,owner),recording=recording(db,owner,dev,null,false,false,"VALIDATED");
+        db.update("INSERT INTO recording_file_spec(recording_id,user_id,sha256,size_bytes,duration_ms,codec,sample_rate,channels,capture_integrity) VALUES(?,?,?,3,1000,'AAC_LC',48000,1,'VALIDATED')",bytes(recording),bytes(owner),"a".repeat(64));
+        db.update("UPDATE recording SET metadata_state='SAVED' WHERE id=?",bytes(recording));
+        db.update("INSERT INTO pin_slot(user_id,slot_no,pending_recording_id) VALUES(?,1,?)",bytes(owner),bytes(recording));
         for(String table:List.of("user_sync_state","user_entitlement","storage_usage"))db.update("INSERT INTO "+table+"(user_id) VALUES(?)",bytes(owner));
         var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);
         when(access.authenticate("fixture",dev.toString())).thenReturn(account);
@@ -29,7 +32,9 @@ public final class UploadCompletionDatabaseChecks {
         var reservation=reservations.reserve(account,new UploadReservations.Request(recording,3,"a".repeat(64),1));UUID attempt=reservation.attempt();
         var completion=new UploadCompletion(db,access,manager,mutations,jobs,clock);
         assertCode(()->completion.complete("fixture",dev.toString(),UUID.randomUUID().toString(),attempt),"UPLOAD_STATE_CONFLICT");
-        db.update("UPDATE recording_upload SET state='UPLOADING' WHERE id=?",bytes(attempt));
+        var approval=new UploadApproval(db,access,manager,clock,mutations);
+        var urls=new UploadUrls(db,access,manager,mutations,approval,(key,expiry)->new UploadPutSigner.SignedPut("https://fixture.invalid/put",clock.instant().plusSeconds(600),Map.of()),clock);
+        assertThat(urls.renew("fixture",dev.toString(),UUID.randomUUID().toString(),attempt).status()).isEqualTo(200);
         var brokenJobs=mock(JobQueue.class);when(brokenJobs.enqueue(any(),any(),any(),any(),anyString())).thenAnswer(call->{jobs.enqueue(account,JobQueue.Type.UPLOAD_VERIFY,attempt,attempt,"{}");throw new IllegalStateException("fixture");});
         var broken=new UploadCompletion(db,access,manager,mutations,brokenJobs,clock);
         int before=db.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class);
