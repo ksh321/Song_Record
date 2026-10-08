@@ -9,6 +9,7 @@ import 'package:song_record/features/sync/sync_screen.dart';
 
 import 'deleted_song_verification.dart';
 import 'sync_verification_fixture.dart';
+import 'two_device_verification.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,15 +40,22 @@ class _VerificationHomeState extends State<VerificationHome> {
     try {
       final support = await getApplicationSupportDirectory();
       final runs = await SyncVerificationFixture.savedRuns(
-        Directory('${support.path}/isolated-sync-checks'));
+        Directory('${support.path}/isolated-sync-checks'),
+      );
       if (mounted) setState(() => savedRuns = runs);
     } catch (_) {
       if (mounted) setState(() => message = '저장된 검증 실행을 읽지 못했어요.');
     }
   }
 
-  Future<void> open(int? status, {bool canonical = false, bool changeOnReview = false,
-      bool resync = false, bool expirePage = false, String? resumeRun}) async {
+  Future<void> open(
+    int? status, {
+    bool canonical = false,
+    bool changeOnReview = false,
+    bool resync = false,
+    bool expirePage = false,
+    String? resumeRun,
+  }) async {
     if (busy) return;
     setState(() {
       busy = true;
@@ -61,7 +69,8 @@ class _VerificationHomeState extends State<VerificationHome> {
         authenticationStatus: status,
         canonical: canonical,
         changeOnReview: changeOnReview,
-        resync: resync, expirePage: expirePage,
+        resync: resync,
+        expirePage: expirePage,
         resumeRun: resumeRun,
       );
       if (!mounted) return;
@@ -85,11 +94,28 @@ class _VerificationHomeState extends State<VerificationHome> {
     body: ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const Text('합성 자료만 사용하는 별도 앱입니다. 로그인·서버 통신·녹음은 하지 않습니다.'),
+        const Text(
+          '합성 자료만 사용하는 별도 앱입니다. 두 기기 검증은 노트북 검증 서버와 통신합니다. 실제 계정 로그인·녹음은 하지 않습니다.',
+        ),
         if (message != null) Text(message!),
         FilledButton(
-          onPressed: busy ? null : () => Navigator.of(context).push(
-            MaterialPageRoute<void>(builder: (_) => const DeletedSongVerificationScreen())),
+          onPressed: busy
+              ? null
+              : () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const TwoDeviceVerificationScreen(),
+                  ),
+                ),
+          child: const Text('두 기기 실제 통신 검증'),
+        ),
+        FilledButton(
+          onPressed: busy
+              ? null
+              : () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const DeletedSongVerificationScreen(),
+                  ),
+                ),
           child: const Text('삭제된 곡·새 녹음 보존'),
         ),
         for (final run in savedRuns)
@@ -102,7 +128,9 @@ class _VerificationHomeState extends State<VerificationHome> {
           child: const Text('만료 커서 재수신·편집 검토'),
         ),
         FilledButton(
-          onPressed: busy ? null : () => open(null, resync: true, expirePage: true),
+          onPressed: busy
+              ? null
+              : () => open(null, resync: true, expirePage: true),
           child: const Text('페이지 만료 재시작·편집 검토'),
         ),
         FilledButton(
@@ -110,7 +138,9 @@ class _VerificationHomeState extends State<VerificationHome> {
           child: const Text('같은 곡 개인 편집 검증'),
         ),
         FilledButton(
-          onPressed: busy ? null : () => open(null, canonical: true, changeOnReview: true),
+          onPressed: busy
+              ? null
+              : () => open(null, canonical: true, changeOnReview: true),
           child: const Text('개인 편집 최신 값 변경 검증'),
         ),
         for (final status in <int?>[null, 401, 403])

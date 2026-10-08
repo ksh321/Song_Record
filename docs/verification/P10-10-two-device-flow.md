@@ -65,3 +65,32 @@
 - V28 이메일 자동 병합 금지/공급자 ID 경쟁은 기존 P06 사용자 확인 범위다. IdentityLinkTests.sameEmailDoesNotMergeAccounts, concurrentConsumptionHasExactlyOneWinner, twoUsersCannotClaimSameNewIdentity 실제 구현도 확인했다. 새 인증 기능 변경이 없어 문서 부족으로 재검증 대기시키지 않는다.
 - P10-02 목록/파일 송신 어댑터와 녹음 작성 UI는 원본 P19/P12/P18 경계이며 P10에 역선행으로 붙이지 않는다. 기존 planner/보존 검증은 유지한다.
 - 새로 확인해야 할 구체적인 잔여 사항: 사용자 해결 뒤의 더 최신 보류 초안 검토 경로, canonical 매핑의 개인 편집 보류를 사용자 선택으로 이어주는 경로, V25/V33의 전체 클라이언트 연결. 기존 a~h 완료 이력을 지우거나 같은 기능을 다시 구현하지 않고 실제 미연결 지점만 처리한다.
+
+
+## 2026-10-08 P10-10-NEXT 원수 방식 — 진행 중
+
+- 승인: P10-09와 같은 현재 대화 직접 수행, 종료 범위 P10-10. 별도 실행기 AI·하위 에이전트·사용량 조회 없음. 사용자 장비는 노트북과 폰 1대이므로 Android 에뮬레이터를 두 번째 실행 환경으로 사용한다.
+- 시작 HEAD와 새 원격 조회 main: c1a36f600ec3b08881856827fbe0e7d9cd694e75. 기존 미커밋 사용량/워크플로우 및 P10-08/09 기록은 보존한다.
+- 기존 최신 보류 초안/개인 편집 선택 경로는 P10-07 완료 근거로 해소됐다. 기존 V28/P06 사용자 확인을 되돌리지 않는다. 이번 잔여는 두 Android 실행 환경의 실제 HTTP 정보 교환 및 V25/V33 선택 연결이다.
+- `two_device_information_flow_test.dart`: 미전송 입력을 가진 계정 전환에서 다른 계정의 메타데이터/큐/커서/파일 부재, 이전 lease 및 다른 계정 인증 송신 거절, 원계정 복귀 후 요청·파일·복구 테이블 보존을 추가했다.
+- `DeviceFlowHarnessTests.java`: opt-in loopback HTTP 서버를 기존 실제 세션/쓰기 컨트롤러/변경 수신/H2 fixture에 연결한다. 운영 서버·실계정·사용자 DB에 접근하지 않는다. 일반 테스트에서는 서버 세션 경계 검사를 수행하며 장시간 실기 서버는 환경 변수로 명시 실행할 때만 시작한다.
+- `tool/two_device_verification.dart`와 검증 홈: 폰 A/에뮬레이터 B가 실제 HttpMutationTransport/HttpChangeFeedTransport, 계정별 SQLite, 충돌 화면을 사용한다. 합성 4바이트 파일 보존 확인이며 유효 음성 재생·실제 오프라인 녹음의 신규 통과 근거로 확대하지 않는다. 과거 해당 기능 실기는 보존한다.
+- 자동 검사: Flutter 관련 11파일 **93 PASS**; Java TwoDeviceInformationFlow/IdentityLink/RecordingDraft/DeviceFlowHarness **40 PASS, 실기 서버 opt-in 1 skip**. skip은 통과에 포함하지 않는다. Flutter lib/관련 테스트/tool 분석 PASS, verification debug APK 빌드 PASS, 원본 색인·diff 검사 PASS. OpenAPI/로컬 참조/security/7 wire examples/141 schema boundary cases PASS.
+- 계약 검사에 기본 Python 3.10이 고정 rpds-py 의존성을 설치할 수 없어 별도 로컬 Python 3.12 가상환경으로 실행했다. 핀·검사·제품 코드를 약화하지 않았다. Dart 형식 경고는 중괄호로 수정했고 분석을 재통과했다.
+- 실제 기기 자동 조작 관측: 폰 A DRAFT→SAVED가 에뮬레이터 B revision2로 수신됨. B의 티어 A가 폰 A revision3으로 수신됨. 양쪽 대기0, A 파일 SHA 보존=true, B 파일 없음. 이후 동시 기준 메모의 B 송신 후 A 송신은 실제 충돌로 이어져 화면에 서버 B 새 메모 / 기기 A 새 메모 표시. 이는 AI 관측이며 사용자 선택 통과는 아직 아니다.
+- 재개 보완: 같은 서버 계정/기기/녹음 식별값의 격리 실행을 다시 연결하면 기존 SQLite를 열어 충돌·입력을 보존한다. 초기 테스트 실행의 공개 식별값만 기존 검증 디렉터리에 보충했다. 인증 토큰은 메모리에만 유지한다.
+- 현재 모델 직접 검토: test/debug 전용 진입점, localhost 바인딩, 기존 인증 검사, 원본 큐/파일 보존, 타 계정 송신 차단을 대조했다. 별도 모델·독립 에이전트 검수로 주장하지 않는다. 사용자 충돌·동일 곡 선택, 선택 후 양쪽 최종 수신, 커밋·정확 SHA CI가 남았다.
+- 원시 로그/결과는 Git 제외 `.local/workflow/p10-10-manual/`에 저장. 실기 서버 PID26984, 에뮬레이터 emulator-5556. 서버는 45분 제한이며 수신 대기 AI 호출은 없다. 제품 실행기 checkpoint는 과거 P10-08 완료 상태로 유지한다.
+
+- USER-040 판본1: 최종 설치 APK 7dcb00c24db3e4b433e7ec7a6ef9b768d6e750df3f643bc78cca0903a258b11a에서 개인 메모 B/A 및 녹음 메모 B/A를 실제 확인해 2개 선택을 요청. 재설치 후 기존 충돌 재개 성공. 실기 서버의 곡 ID 후속 경로 허용을 검토 중 추가했으며 현재 서버는 추가 전 클래스로 실행 중이다. 이번 서버 값 선택에는 새 경로가 사용되지 않는다. 서버 종료 후 최종 소스 회귀 검사는 남은 AI 단계로 명시한다.
+
+
+### USER-040 완료 및 최종 로컬 검토
+
+- 사용자 “2번까지 정상” 회신: 설치본 판본1의 ① 동일 TJ 개인 편집 서버 값 선택, ② 녹음 메모 이 기기 입력 선택 모두 정상. 후속 실제 HTTP 송신과 두 기기 증분 수신에서 RECORDING revision5 / A 새 메모 / tier A / 대기0을 확인했다.
+- 양쪽 격리 SQLite의 서버 녹음 payload와 canonical SONG payload가 동일함을 직접 비교했다. TJ990001은 동일 canonical UUID와 B 개인 메모로 수렴했고 A의 원래 개인 메모는 RESOLVED intent의 후보/원본에 보존됐다. A 파일 SHA 보존=true, B 파일 없음. 파일 업로드 없이 메타데이터만 교환했다.
+- 검증 화면을 벗어난 뒤 같은 데이터 재개·앱 데이터 보존 업데이트도 확인했다. 실기 서버 정상 종료(BUILD SUCCESSFUL), 이번 작업에서 만든 에뮬레이터 종료 및 폰의 검증 포트 연결 제거 완료. 실제 앱 데이터 삭제 없음.
+- 후속 곡 PATCH 라우팅은 `bridgeRoutesSongCreationAndPersonalEditThroughRealControllers`로 실제 HTTP 생성→개인 메모 PATCH200과 결과를 검증했다. 최종 서버 회귀 **41 PASS / opt-in 서버 1 skip / 실패0**. 앞서40 PASS에 단순 합산하지 않는다. 로그 server-final.log.
+- 최종 현재 모델 검토: 원본 V06/V22/V25/V28/V33와 기존 완료 근거를 대조했다. 이번 변경은 계정 전환 회귀와 debug/test 연결이며 제품 정책·실데이터를 변경하지 않는다. 기존 인증·삭제·재동기화·최신 초안/개인 편집 선택 완료 근거를 유지한다. 새 실기와 기존 자동/사용자 근거를 합쳐 P10-10 잔여를 충족하며 최종 정확 SHA CI 통과 전 완료로 선언하지 않는다.
+- 검토 지적 해결: 검증 홈의 서버 미통신 안내를 실제 동작에 맞게 수정, 검증 화면 재진입 데이터 보존 추가, 곡 ID 후속 경로 누락 보완 및 실제 HTTP 회귀 통과. 현재 요청·관측 모델 설정을 바꾸지 않았으며 별도 AI 호출 없음.
+- 다음: 이 변경 커밋·푸시 후 ci-policy가 요구하는 Flutter/서버/MySQL 및 idempotency CI 대조. 승인 범위 종료 P10-10.

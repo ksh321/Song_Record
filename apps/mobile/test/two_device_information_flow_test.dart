@@ -245,6 +245,74 @@ void main() {
         await (await pathsB.checkedFile(pathsB.audioPath(id))).exists(),
         isFalse,
       );
+      // A switches accounts with an unsent edit. Neither the old lease nor
+      // credentials from the other account may send it; returning preserves it.
+      await repoA.save(
+        repoA.preparePatch(
+          entity: LocalEntity.recording,
+          entityId: id,
+          baseRevision: 3,
+          draft: {
+            ...jsonDecode(received.serverJson!) as Map<String, dynamic>,
+            'note': 'unsent after tier',
+          },
+          changes: {'note': 'unsent after tier'},
+        ),
+      );
+      final pendingBefore = (await repoA.pendingWork()).single;
+      final beforeSwitch = jsonDecode(await a.recoveryData()) as Map;
+      const otherOwner = '99999999-9999-4999-8999-999999999999';
+      final other = await managerA.openAccount(otherOwner);
+      expect(await other.readMetadata(LocalEntity.recording, id), isNull);
+      expect(await other.pendingWorkMutations(), isEmpty);
+      expect(await other.readChangeFeedPosition(), isNull);
+      final otherPaths = await AccountPaths.create(
+        dirA,
+        otherOwner,
+        AppEnvironment.dev,
+      );
+      expect(
+        await (await otherPaths.checkedFile(otherPaths.audioPath(id))).exists(),
+        isFalse,
+      );
+      await expectLater(
+        repoA.dispatch(transport: senderA, session: () async => authA),
+        throwsStateError,
+      );
+      final restored = await managerA.openAccount(owner);
+      final restoredRepo = LocalRepository(restored);
+      final wrongAuth = AuthSession(
+        userId: otherOwner,
+        deviceId: authA.deviceId,
+        accessToken: 'synthetic-other',
+        refreshToken: 'unused',
+        accessExpiresAt: DateTime.utc(2030),
+        refreshExpiresAt: DateTime.utc(2030),
+      );
+      await expectLater(
+        restoredRepo.dispatch(
+          transport: senderA,
+          session: () async => wrongAuth,
+        ),
+        throwsStateError,
+      );
+      final pendingAfter = (await restoredRepo.pendingWork()).single;
+      expect(pendingAfter.opId, pendingBefore.opId);
+      expect(pendingAfter.payload, pendingBefore.payload);
+      expect(pendingAfter.attemptCount, 0);
+      expect(
+        (jsonDecode(await restored.recoveryData()) as Map)['tables'],
+        beforeSwitch['tables'],
+      );
+      expect(senderA.position, 2);
+      expect(await audioA.readAsBytes(), [1, 3, 5, 7]);
+      expect((await restored.readChangeFeedPosition())!.cursor, 3);
+      expect(
+        jsonDecode(
+          (await b.readMetadata(LocalEntity.recording, id))!.serverJson!,
+        )['note'],
+        'retained note',
+      );
     } finally {
       await managerA.logout();
       await managerB.logout();
