@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:song_record/features/sync/sync_screen.dart';
 
+import 'deleted_song_verification.dart';
 import 'sync_verification_fixture.dart';
 
 void main() {
@@ -86,6 +87,11 @@ class _VerificationHomeState extends State<VerificationHome> {
       children: [
         const Text('합성 자료만 사용하는 별도 앱입니다. 로그인·서버 통신·녹음은 하지 않습니다.'),
         if (message != null) Text(message!),
+        FilledButton(
+          onPressed: busy ? null : () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const DeletedSongVerificationScreen())),
+          child: const Text('삭제된 곡·새 녹음 보존'),
+        ),
         for (final run in savedRuns)
           OutlinedButton(
             onPressed: busy ? null : () => open(null, resumeRun: run),
