@@ -52,4 +52,13 @@ public final class RetentionJobDatabaseChecks {
         PinReservationDatabaseChecks.verify(db,new PinSlots(db,access,mutations),"Bearer fixture",dev.toString(),owner);
     }
 
+    public static void verifyRelease(JdbcTemplate db) {
+        UUID owner=account(db),dev=device(db,owner);
+        db.update("INSERT INTO user_sync_state(user_id) VALUES(?)",bytes(owner));db.update("INSERT INTO user_entitlement(user_id) VALUES(?)",bytes(owner));db.update("INSERT INTO storage_usage(user_id) VALUES(?)",bytes(owner));
+        var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);var principal=new SessionService.Principal(owner,dev,UUID.randomUUID());
+        when(access.revalidate(account)).thenReturn(principal);when(account.principal()).thenReturn(principal);when(access.authenticate("Bearer fixture",dev.toString())).thenReturn(account);
+        var manager=new DataSourceTransactionManager(db.getDataSource());var mutations=new com.ksh321.songrecord.api.idempotency.IdempotentMutations(db,access,manager,Clock.systemUTC());
+        PinReleaseDatabaseChecks.verify(db,new PinSlots(db,access,mutations),new RetentionQueries(db,access,manager),"Bearer fixture",dev.toString(),owner);
+    }
+
 }

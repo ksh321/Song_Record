@@ -16,7 +16,7 @@ public final class RetentionCandidateDatabaseChecks {
         UUID id = UUID.randomUUID(); db.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',CURRENT_TIMESTAMP)", bytes(id), bytes(owner)); return id;
     }
     public static UUID song(JdbcTemplate db, UUID owner) {
-        UUID id = UUID.randomUUID(); db.update("INSERT INTO song(id,user_id,source_type,title,artist,note) VALUES(?,?,'MANUAL','song','artist','')", bytes(id), bytes(owner)); return id;
+        UUID id = UUID.randomUUID(); db.update("INSERT INTO song(id,user_id,source_type,title,artist,note,lifecycle_state) VALUES(?,?,'MANUAL','song','artist','','ACTIVE')", bytes(id), bytes(owner)); return id;
     }
     public static UUID recording(JdbcTemplate db, UUID owner, UUID device, UUID song, boolean saved, boolean spec, String integrity) {
         return recordingWithId(db, owner, device, song, saved, spec, integrity, UUID.randomUUID());

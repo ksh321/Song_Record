@@ -10,6 +10,80 @@ servers:
 security:
 - BearerAuth: []
 paths:
+  /pins/{slotNo}:
+    delete:
+      operationId: releasePin
+      summary: 고정 또는 대기 고정 해제
+      description: 슬롯 버전을 확인하고 current와 pending을 해제한다. 파일·자동 역할·보존 사유를 삭제하지 않는다. 교체의 pending만 취소하는 API는 후속 P13 범위다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/RequestId'
+      - name: slotNo
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1, maximum: 2147483647}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [base_revision]
+              properties:
+                base_revision: {type: integer, format: int64, minimum: 1}
+      responses:
+        '200':
+          description: 비워진 슬롯. 슬롯 행과 증가한 버전은 유지한다. Cache-Control no-store.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PinSlot'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
+        '404': {$ref: '#/components/responses/Error404'}
+        '409': {$ref: '#/components/responses/Error409'}
+  /recordings/{id}/retention:
+    get:
+      operationId: getRecordingRetention
+      summary: 자동 역할·고정·보존 사유와 실제 서버 파일 조회
+      description: 서버의 현재 보관 상태만 반환한다. 기기 파일 유무를 추정하지 않으며 녹음 정보만으로 stored를 참으로 표시하지 않는다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/RequestId'
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: 동일 DB 읽기 시점의 계정 소유 녹음 상태. Cache-Control no-store.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RecordingRetention'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
+        '404': {$ref: '#/components/responses/Error404'}
+  /storage:
+    get:
+      operationId: getStorage
+      summary: 계정 용량·고정 슬롯·대기 집계
+      description: used와 reserved는 기존 서버 사용량 장부다. 파일은 recording_asset별, 고정은 점유 slot별로 한 번 센다. trash_bytes·cleanup_pending_bytes·hold_bytes는 used의 겹칠 수 있는 부분집합이며 합산하지 않는다. 정리 대기는 DELETING 또는 PENDING_REPLACEMENT/WAITING_LOCAL_CONFIRM이다. ORPHAN_KEEP만 있는 사본은 hold_bytes로 분리한다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 동일 DB 읽기 시점의 계정 집계. Cache-Control no-store.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StorageSummary'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
   /pins:
     post:
       operationId: reservePin
@@ -1447,6 +1521,56 @@ components:
         $ref: '#/components/schemas/RequestId'
       description: 생략하거나 유효하지 않으면 서버가 새 추적 ID를 발급한다.
   schemas:
+    RecordingRetention:
+      type: object
+      additionalProperties: false
+      required: [recording_id, automatic_roles, pin_slots, hold_reasons, desired_reasons, cloud]
+      properties:
+        recording_id: {type: string, format: uuid}
+        automatic_roles:
+          type: array
+          uniqueItems: true
+          items: {type: string, enum: [REPRESENTATIVE, LATEST, LOWEST_TIER]}
+        pin_slots:
+          type: array
+          items: {$ref: '#/components/schemas/PinSlot'}
+        hold_reasons:
+          type: array
+          uniqueItems: true
+          items: {type: string, enum: [PENDING_REPLACEMENT, WAITING_LOCAL_CONFIRM, ORPHAN_KEEP]}
+        desired_reasons:
+          type: array
+          uniqueItems: true
+          items: {type: string, enum: [REPRESENTATIVE, LATEST, LOWEST_TIER, PINNED, PENDING_REPLACEMENT, WAITING_LOCAL_CONFIRM, ORPHAN_KEEP]}
+        cloud:
+          type: object
+          additionalProperties: false
+          required: [state, stored, blocked_reason, verified_size, cloud_revision]
+          properties:
+            state: {type: string, enum: [NONE, QUEUED, UPLOADING, VERIFYING, STORED, DELETING]}
+            stored: {type: boolean}
+            blocked_reason: {type: [string, 'null']}
+            verified_size: {type: [integer, 'null'], format: int64, minimum: 0}
+            cloud_revision: {type: [integer, 'null'], format: int64, minimum: 1}
+    StorageSummary:
+      type: object
+      additionalProperties: false
+      required: [used_bytes, reserved_bytes, quota_bytes, pinned_limit, entitlement_revision, pinned_used, pinned_pending, physical_file_count, trash_bytes, cleanup_pending_bytes, hold_bytes, waiting_by_reason]
+      properties:
+        used_bytes: {type: integer, format: int64, minimum: 0}
+        reserved_bytes: {type: integer, format: int64, minimum: 0}
+        quota_bytes: {type: integer, format: int64, minimum: 0}
+        pinned_limit: {type: integer, format: int64, minimum: 0}
+        entitlement_revision: {type: integer, format: int64, minimum: 1}
+        pinned_used: {type: integer, format: int64, minimum: 0}
+        pinned_pending: {type: integer, format: int64, minimum: 0}
+        physical_file_count: {type: integer, format: int64, minimum: 0}
+        trash_bytes: {type: integer, format: int64, minimum: 0}
+        cleanup_pending_bytes: {type: integer, format: int64, minimum: 0}
+        hold_bytes: {type: integer, format: int64, minimum: 0}
+        waiting_by_reason:
+          type: object
+          additionalProperties: {type: integer, format: int64, minimum: 0}
     PinSlot:
       type: object
       additionalProperties: false

@@ -56,6 +56,26 @@ public final class PinSlots {
             return reply(new Slot(number,stored?recording:null,stored?null:recording,next),201);
         });
     }
+    public IdempotentMutations.Reply release(String auth,String device,String operation,String number,String body){
+        var account=access.authenticate(auth,device);int slot;
+        try{slot=Integer.parseInt(number);if(slot<1 || !Integer.toString(slot).equals(number))throw new IllegalArgumentException();}catch(IllegalArgumentException e){throw missing();}
+        CanonicalRequest.canonical(body);var root=JSON.readTree(body);
+        if(!root.isObject() || root.size()!=1 || !root.has("base_revision"))throw invalid();var base=root.get("base_revision");
+        if(!base.isIntegralNumber() || !base.canConvertToLong() || base.asLong()<1)throw invalid();UUID owner=account.principal().userId();
+        return mutations.execute(account,operation,"DELETE","/v1/pins/"+slot,body,()->{
+            lockAccount(account);entitlement(owner);
+            LockOrder.before(LockOrder.Rank.PIN_SLOT,owner+"/"+String.format(Locale.ROOT,"%010d",slot));
+            var rows=db.query("SELECT slot_no,current_recording_id,pending_recording_id,revision FROM pin_slot WHERE user_id=? AND slot_no=? FOR UPDATE",(r,n)->new Slot(r.getInt(1),id(r.getBytes(2)),id(r.getBytes(3)),r.getLong(4)),bytes(owner),slot);
+            if(rows.isEmpty())throw missing();var current=rows.getFirst();
+            if(current.revision()!=base.asLong())throw new ApiException(HttpStatus.CONFLICT,"REVISION_CONFLICT","최신 슬롯 상태를 확인해 주세요.",false,Map.of("current_revision",current.revision(),"current",current.wire()));
+            if(!current.occupied())return reply(current,200);
+            long next=increment(current.revision());var affected=new HashSet<UUID>();if(current.current()!=null)affected.add(current.current());if(current.pending()!=null)affected.add(current.pending());
+            db.update("UPDATE pin_slot SET current_recording_id=NULL,pending_recording_id=NULL,revision=?,operation_id=NULL,requested_at=NULL,updated_at=CURRENT_TIMESTAMP(3) WHERE user_id=? AND slot_no=?",next,bytes(owner),slot);
+            RetentionAssetVersions.bump(db,owner,affected);
+            // No physical delete or hold removal. P13 evaluates any later cleanup separately.
+            return reply(new Slot(slot,null,null,next),200);
+        });
+    }
     void lockAccount(AccountAccess.Account account){
         UUID owner=access.revalidate(account).userId();LockOrder.before(LockOrder.Rank.USER_SYNC,owner.toString());
         if(db.queryForList("SELECT user_id FROM user_sync_state WHERE user_id=? FOR UPDATE",bytes(owner)).size()!=1)throw new IllegalStateException("Account sync state missing");
