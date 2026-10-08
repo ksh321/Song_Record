@@ -13,7 +13,7 @@ import tools.jackson.databind.json.JsonMapper;
 import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 import static com.ksh321.songrecord.api.songs.SongQueryKeys.uuid;
 
-/** Approval boundary only. P12-04 will combine it with actual PUT URL issuance before exposing HTTP. */
+/** Approval policy. UploadUrls combines it with local signing in the receipt transaction. */
 public final class UploadApproval {
     private final JdbcTemplate db; private final AccountAccess access;private final UploadReservations reservations;
     private final IdempotentMutations mutations;private final Clock clock;private final RetentionRoles roles;
@@ -22,6 +22,9 @@ public final class UploadApproval {
         this.db=db;this.access=access;this.clock=clock;this.mutations=mutations;reservations=new UploadReservations(db,access,manager,clock);roles=new RetentionRoles(new RetentionCandidates(db));
     }
     public IdempotentMutations.Reply authorize(String auth,String device,String operation,UUID recording,String body){
+        return authorize(auth,device,operation,recording,body,(account,result)->Map.of());
+    }
+    public IdempotentMutations.Reply authorize(String auth,String device,String operation,UUID recording,String body,java.util.function.BiFunction<AccountAccess.Account,Approval,Map<String,Object>> issuance){
         var account=access.authenticate(auth,device);CanonicalRequest.canonical(body);var root=JSON.readTree(body);
         if(!root.isObject() || root.size()!=2 || !root.has("expected_size") || !root.has("sha256") || !root.get("expected_size").isIntegralNumber() || !root.get("expected_size").canConvertToLong() || !root.get("sha256").isTextual())throw error("INVALID_REQUEST",HttpStatus.BAD_REQUEST);
         long size=root.get("expected_size").asLong();String sha=root.get("sha256").asText();
@@ -30,6 +33,7 @@ public final class UploadApproval {
             var result=approve(account,recording,size,sha);
             var response=new LinkedHashMap<String,Object>();response.put("state",result.state());
             if(result.attempt()!=null){response.put("attempt_id",result.attempt().toString());response.put("expires_at",result.expiresAt().toString());}
+            response.putAll(issuance.apply(account,result));
             return new IdempotentMutations.Reply(result.state().equals("STORED")?200:201,JSON.writeValueAsString(response));
         });
     }

@@ -33,3 +33,8 @@
 - 개발 버킷의 고유 `connection-check/{UUID}.txt`에 합성 바이트만 조건부 PUT → GET 바이트 비교 → 서명 없는 S3 GET의 403 또는 400+InvalidArgument/Authorization 확인 → 해당 시험 객체 DELETE. API final PUT은 403이어야 통과한다.
 - 운영 버킷 쓰기는 거절한다. 기존 객체와 충돌(412)하면 삭제하지 않는다. PUT 응답 유실 시 생성됐을 수 있는 해당 시험 키만 정리 시도하며, 정리 실패는 CLEANUP_FAILED로 통과를 막는다.
 - S3 비서명 거절만으로 r2.dev/사용자 지정 도메인 비공개를 증명하지 않는다. 사용자가 4개 버킷 Settings에서 Public Development URL 비활성 및 Custom Domains 연결 없음을 별도 확인한다. [공식 공개 버킷 문서](https://developers.cloudflare.com/r2/buckets/public-buckets/) 기준, 두 공개 경로는 서로 독립적이다.
+
+
+## P12-04 실제 서명 PUT 검사
+
+기존 일회용 입력 도구에 `--signed-put` 모드를 추가했다. dev.api만 선택하며 개발 temporary 버킷의 무작위 시험 키를 조건부로 선점한 뒤, 제품 R2PutSigner가 발급한 URL로 두 번 PUT하고 원본 일치를 확인·정리한다. 결과는 `.local/workflow/cloudflare/signed-put-reports/dev.api.json`의 고정 상태만 기록한다. URL 재발급 후 24시간 만료 불변·분당 제한·영수증 재시도는 서버 테스트가 별도로 검증한다. 실제 키나 서명 URL을 출력·파일 저장하지 않는다.

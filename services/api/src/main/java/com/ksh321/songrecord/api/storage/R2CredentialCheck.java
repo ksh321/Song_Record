@@ -25,6 +25,11 @@ public final class R2CredentialCheck {
                 if(!"dev".equals(own)&&!"prod".equals(own))throw new IllegalArgumentException();
                 boolean full=properties.getProperty("diagnostic.mode", "read").equals("development-write");
                 if(full && !own.equals("dev")) throw new IllegalArgumentException();
+                if(properties.getProperty("diagnostic.mode", "read").equals("signed-put")){
+                    if(!own.equals("dev") || !properties.getProperty("songrecord.storage.role").equals("api"))throw new IllegalArgumentException();
+                    try(var signer=new R2StorageConfiguration().r2PutSigner(env)){report.println("signed.temporary="+storage.checkDevelopmentSignedPut(signer));}
+                    properties.clear();return;
+                }
                 // Test an accessible bucket first; four DENIED results cannot pass as isolation.
                 for(String name:new String[]{own,"dev".equals(own)?"prod":"dev"})
                     for(String kind:new String[]{"temporary","final"})

@@ -46,6 +46,17 @@ class R2CredentialsTests(unittest.TestCase):
     self.assertEqual(r2.check('dev.api','java','a'*32,'b'*64,d,full=True),'PASS')
    self.assertEqual(old.read_text(),'read evidence');self.assertTrue((d/'development-reports/dev.api.json').exists())
   with self.assertRaises(r2.SecretError):r2.check('prod.api','java','a'*32,'b'*64,full=True)
+ def test_signed_probe_only_accepts_fixed_results_and_dev_api(self):
+  self.assertEqual(r2.parse_report('signed.temporary=VERIFIED\n','dev.api',signed=True)['status'],'PASS')
+  for unsafe in ('signed.temporary=https://secret.invalid', 'signed.temporary=VERIFIED\nsecret=key'):
+   with self.assertRaises(r2.SecretError):r2.parse_report(unsafe,'dev.api',signed=True)
+  with tempfile.TemporaryDirectory() as f:
+   d=Path(f);(d/'checker-classpath.txt').write_text('fixture')
+   with patch.object(r2.subprocess,'run',return_value=subprocess.CompletedProcess([],0,'signed.temporary=VERIFIED','secret')) as run:
+    self.assertEqual(r2.check('dev.api','java','a'*32,'b'*64,d,signed=True),'PASS')
+   self.assertIn('diagnostic.mode=signed-put',run.call_args.kwargs['input'])
+   self.assertNotIn('secret',(d/'signed-put-reports/dev.api.json').read_text())
+  with self.assertRaises(r2.SecretError):r2.check('prod.api','java','a'*32,'b'*64,signed=True)
  def test_invalid_role(self):
   with self.assertRaises(r2.SecretError):r2.check('../escape','java','a'*32,'b'*64)
 if __name__=='__main__':unittest.main()

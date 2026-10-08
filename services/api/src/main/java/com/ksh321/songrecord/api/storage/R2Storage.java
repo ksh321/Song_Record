@@ -26,6 +26,10 @@ public final class R2Storage implements AutoCloseable {
             throw new IllegalArgumentException("Development probe only");
         return DevelopmentStorageProbe.run(client, settings.endpoint, "song-record-dev-" + kind);
     }
+    String checkDevelopmentSignedPut(R2PutSigner signer){
+        if(!settings.environment.equals("dev") || !settings.role.equals("api"))throw new IllegalArgumentException("Development API probe only");
+        return DevelopmentSignedPutProbe.run(client,signer);
+    }
     public String temporaryBucket(){return settings.temporaryBucket;}
     // API-role processes cannot request the final writer's bucket through this boundary.
     public String finalWriterBucket(){if(!settings.role.equals("worker"))throw new IllegalStateException("Final storage requires worker role");return settings.finalBucket;}

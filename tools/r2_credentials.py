@@ -18,7 +18,11 @@ def validate(access, secret):
     if not re.fullmatch(r'[a-fA-F0-9]{32}', access) or not re.fullmatch(r'[a-fA-F0-9]{64}', secret):
         raise SecretError('Check Access Key ID and Secret Access Key fields')
 
-def parse_report(output, label, full=False):
+def parse_report(output, label, full=False, signed=False):
+    if signed:
+        key, separator, value=output.strip().partition("=")
+        if key!="signed.temporary" or not separator or value not in ("VERIFIED","ERROR","PUT_FAILED","BYTES_MISMATCH","EXPIRY_FAILED","CLEANUP_FAILED"): raise SecretError("Invalid signed checker result")
+        return {"status":"PASS" if value=="VERIFIED" else "FAIL", "checks":{key:value}}
     expected = {e+'.'+k for e in ('dev','prod') for k in ('temporary','final')}
     if full: expected |= {'write.temporary','write.final'}
     result = {}
@@ -35,9 +39,10 @@ def parse_report(output, label, full=False):
         wanted.update({'write.temporary':'VERIFIED','write.final':'VERIFIED' if role=='worker' else 'DENIED'})
     return {'status': 'PASS' if result==wanted else 'FAIL', 'checks': result} if full else {'status': 'PASS' if result==wanted else 'FAIL', 'bucket_read_scope': result}
 
-def check(label, java, access, secret, directory=DIRECTORY, full=False):
+def check(label, java, access, secret, directory=DIRECTORY, full=False, signed=False):
     if label not in LABELS or (full and not label.startswith('dev.')): raise SecretError('Invalid role')
-    report_name='development-reports' if full else 'reports'
+    if signed and label!='dev.api': raise SecretError('Development API only')
+    report_name='signed-put-reports' if signed else 'development-reports' if full else 'reports'
     try:
         # Invalidate prior PASS before trying new input, including failed validation.
         (directory/report_name/(label+'.json')).unlink(missing_ok=True)
@@ -48,13 +53,14 @@ def check(label, java, access, secret, directory=DIRECTORY, full=False):
                  prefix+'account-id='+ACCOUNT, prefix+'temporary-bucket=song-record-'+environment+'-temporary',
                  prefix+'final-bucket=song-record-'+environment+'-final',
                  prefix+role+'.access-key='+access, prefix+role+'.secret-key='+secret]
-        if full: lines.append('diagnostic.mode=development-write')
+        if signed: lines.append('diagnostic.mode=signed-put')
+        elif full: lines.append('diagnostic.mode=development-write')
         classpath = (directory/'checker-classpath.txt').read_text(encoding='utf-8')
         child = subprocess.run([str(java), '-cp', classpath, 'com.ksh321.songrecord.api.storage.R2CredentialCheck'],
             input='\n'.join(lines), encoding='utf-8', capture_output=True, timeout=240 if full else 100,
             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
         if child.returncode != 0: raise SecretError('Connection check failed')
-        result = parse_report(child.stdout, label, full)
+        result = parse_report(child.stdout, label, full, signed)
         # Persist only a closed set of labels/statuses. Never copy stderr or provider responses.
         report = directory/report_name;report.mkdir(exist_ok=True)
         from datetime import datetime, timezone
@@ -65,15 +71,15 @@ def check(label, java, access, secret, directory=DIRECTORY, full=False):
     except Exception:
         raise SecretError('Connection check failed; verify credentials, scope and network') from None
 
-def gui(java, full=False):
+def gui(java, full=False, signed=False):
     import tkinter as tk
     from tkinter import ttk, messagebox
     import queue
-    window=tk.Tk();window.title('Song_Record — R2 개발 쓰기 검사' if full else 'Song_Record — R2 일회용 검사');window.geometry('690x430')
+    window=tk.Tk();window.title('Song_Record — P12-04 서명 URL 검사' if signed else 'Song_Record — R2 개발 쓰기 검사' if full else 'Song_Record — R2 일회용 검사');window.geometry('690x430')
     window.report_callback_exception=lambda *args: messagebox.showerror('오류','처리하지 못했습니다. 키 내용은 기록하지 않았습니다.')
-    ttk.Label(window,text='R2 개발 쓰기·읽기·삭제 검사 — 키 저장 없음' if full else 'R2 일회용 연결 검사 — 키 저장 없음',font=('',16)).pack(pady=12)
+    ttk.Label(window,text='P12-04 개발 PUT URL·재발급 검사 — 키 저장 없음' if signed else 'R2 개발 쓰기·읽기·삭제 검사 — 키 저장 없음' if full else 'R2 일회용 연결 검사 — 키 저장 없음',font=('',16)).pack(pady=12)
     ttk.Label(window,text='개발 버킷에 작은 시험 파일을 쓰고 읽은 뒤 삭제합니다. 운영 버킷 쓰기 없음.' if full else '키는 이번 검사에만 사용합니다. 저장 파일을 만들거나 기존 키 파일을 읽지 않습니다.').pack(pady=6)
-    role=tk.StringVar(value=LABELS[0]);selector=ttk.Combobox(window,textvariable=role,values=LABELS[:2] if full else LABELS,state='readonly',width=24);selector.pack(pady=8)
+    role=tk.StringVar(value=LABELS[0]);selector=ttk.Combobox(window,textvariable=role,values=LABELS[:1] if signed else LABELS[:2] if full else LABELS,state='readonly',width=24);selector.pack(pady=8)
     form=ttk.Frame(window);form.pack(fill='x',padx=30)
     ttk.Label(form,text='Access Key ID').pack(anchor='w');access=ttk.Entry(form,show='*',width=76);access.pack(fill='x',pady=4)
     ttk.Label(form,text='Secret Access Key').pack(anchor='w');secret=ttk.Entry(form,show='*',width=76);secret.pack(fill='x',pady=4)
@@ -86,7 +92,7 @@ def gui(java, full=False):
         busy=True;verify.config(state='disabled');selector.config(state='disabled');status.set(chosen+' 검사 중… 입력란을 비웠습니다.')
         def run(pair):
             try:
-                result=check(chosen,java,pair[0],pair[1],full=full);message=chosen+((' 개발 쓰기·비서명 접근 차단·정리 확인 완료' if full else ' 연결·읽기 권한 확인 완료') if result=='PASS' else ' 검사 단계에 실패가 있습니다. AI가 결과 파일로 원인을 확인합니다.')
+                result=check(chosen,java,pair[0],pair[1],full=full,signed=signed);message=chosen+((' PUT URL·재발급·시험 파일 정리 확인 완료' if signed else ' 개발 쓰기·비서명 접근 차단·정리 확인 완료' if full else ' 연결·읽기 권한 확인 완료') if result=='PASS' else ' 검사 단계에 실패가 있습니다. AI가 결과 파일로 원인을 확인합니다.')
             except Exception:message=chosen+' 검사 실행 실패. 키를 바꾸지 말고 AI에게 알려 주세요.'
             finally:pair=None
             messages.put(message)
@@ -110,6 +116,6 @@ def gui(java, full=False):
 
 if __name__=='__main__':
     import argparse
-    parser=argparse.ArgumentParser();parser.add_argument('--java',type=Path,required=True);parser.add_argument('--development-write',action='store_true');args=parser.parse_args()
-    try:gui(args.java,args.development_write)
+    parser=argparse.ArgumentParser();parser.add_argument('--java',type=Path,required=True);parser.add_argument('--development-write',action='store_true');parser.add_argument('--signed-put',action='store_true');args=parser.parse_args()
+    try:gui(args.java,args.development_write,args.signed_put)
     except Exception:raise SystemExit(1)
