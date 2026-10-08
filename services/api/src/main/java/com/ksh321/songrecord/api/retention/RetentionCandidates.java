@@ -55,7 +55,7 @@ public final class RetentionCandidates {
     public record FileSpec(String sha256, long sizeBytes, int durationMs, String codec,
                            int sampleRate, int channels, String captureIntegrity) {
         // Same completion contract as RecordingSaving and V2; reject damaged/incomplete imported rows too.
-        boolean valid() {
+        public boolean valid() {
             return sha256 != null && sha256.matches("[0-9a-f]{64}")
                 && sizeBytes >= 1 && sizeBytes <= 6291456 && durationMs >= 1 && durationMs <= 361000
                 && "AAC_LC".equals(codec) && sampleRate == 48000 && channels == 1

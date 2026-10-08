@@ -899,4 +899,12 @@ class MySqlIdempotencyTests {
             com.ksh321.songrecord.api.retention.UploadReservationDatabaseChecks.verify(new JdbcTemplate(ds));
         }finally{admin.execute("DROP DATABASE "+name);}
     }
+    @Test void mysqlUploadApprovalChecksCurrentPolicyAndSharedLimits() throws Exception {
+        String name=database+"_upload_approval";admin.execute("CREATE DATABASE "+name);
+        try {
+            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
+            com.ksh321.songrecord.api.retention.UploadApprovalDatabaseChecks.verify(new JdbcTemplate(ds));
+        }finally{admin.execute("DROP DATABASE "+name);}
+    }
 }

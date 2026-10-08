@@ -18,7 +18,7 @@ public final class UploadReservations {
     private final JdbcTemplate db; private final AccountAccess access;
     private final TransactionTemplate tx; private final StorageLocks locks; private final Clock clock;
     public UploadReservations(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,Clock clock){
-        this.db=db;this.access=access;this.clock=clock;tx=new TransactionTemplate(manager);locks=new StorageLocks(db,access,manager);
+        this.db=db;this.access=access;this.clock=clock;tx=new TransactionTemplate(manager);tx.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_READ_COMMITTED);locks=new StorageLocks(db,access,manager);
     }
     /** May join the command/receipt transaction. All upload policy checks execute inside these locks. */
     public <T>T locked(AccountAccess.Account account,Supplier<T> work){
