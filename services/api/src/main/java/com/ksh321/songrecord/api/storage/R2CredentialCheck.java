@@ -35,7 +35,7 @@ public final class R2CredentialCheck {
                     byte[] synthetic;
                     try(var file=java.nio.file.Files.newInputStream(java.nio.file.Path.of(properties.getProperty("diagnostic.audio-file")))){synthetic=file.readNBytes(6*1024*1024+1);}
                     var validator=new com.ksh321.songrecord.api.uploads.AudioValidator(properties.getProperty("diagnostic.ffmpeg"),properties.getProperty("diagnostic.ffprobe"));
-                    report.println("audio.temporary="+storage.checkDevelopmentAudio(validator,synthetic));
+                    try(var signer=new R2StorageConfiguration().r2PutSigner(env)){report.println("audio.temporary="+storage.checkDevelopmentAudio(validator,synthetic,signer));}
                     properties.clear();return;
                 }
                 // Test an accessible bucket first; four DENIED results cannot pass as isolation.

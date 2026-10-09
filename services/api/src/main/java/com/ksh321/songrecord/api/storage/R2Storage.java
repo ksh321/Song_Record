@@ -34,6 +34,10 @@ public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.
         if(!settings.environment.equals("dev") || !settings.role.equals("worker"))throw new IllegalArgumentException("Development worker probe only");
         return DevelopmentAudioProbe.run(client,this,validator,synthetic);
     }
+    String checkDevelopmentAudio(com.ksh321.songrecord.api.uploads.AudioValidator validator,byte[] synthetic,R2PutSigner signer){
+        if(!settings.environment.equals("dev") || !settings.role.equals("worker"))throw new IllegalArgumentException("Development worker probe only");
+        return DevelopmentAudioProbe.run(client,this,validator,synthetic,Objects.requireNonNull(signer));
+    }
     /** Streaming GET only in worker role; SDK connection/read/call timeouts remain bounded. */
     public java.io.InputStream openTemporary(StorageObjectKeys.Temporary key){
         com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();
