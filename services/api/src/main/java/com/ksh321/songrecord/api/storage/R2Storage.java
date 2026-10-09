@@ -53,18 +53,22 @@ public final class R2Storage implements AutoCloseable {
         try{client.putObject(r->r.bucket(bucket).key(key.value()).ifNoneMatch("*").contentType("audio/mp4"),software.amazon.awssdk.core.sync.RequestBody.fromBytes(bytes));}
         catch(software.amazon.awssdk.services.s3.model.S3Exception e){if(e.statusCode()!=412 && e.statusCode()!=409)throw new java.io.IOException("FINAL_WRITE_FAILED");}
         var input=client.getObject(r->r.bucket(bucket).key(key.value()));try{
-            byte[] actual=input.readNBytes(6291457);
+            byte[] actual=boundedBytes(input);
             if(!java.util.Arrays.equals(bytes,actual))throw new java.io.IOException("FINAL_OBJECT_MISMATCH");
         }catch(java.io.IOException e){throw e;}catch(RuntimeException e){throw new java.io.IOException("FINAL_OBJECT_UNAVAILABLE");}finally{input.abort();}
     }
     public java.util.Optional<java.nio.ByteBuffer> readFinal(StorageObjectKeys.Final key)throws Exception{
         com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();
-        try{var input=client.getObject(r->r.bucket(finalWriterBucket()).key(key.value()));try{byte[] data=input.readNBytes(6291457);if(data.length>6291456)throw new java.io.IOException("FINAL_OBJECT_MISMATCH");return java.util.Optional.of(java.nio.ByteBuffer.wrap(data).asReadOnlyBuffer());}finally{input.abort();}}
+        try{var input=client.getObject(r->r.bucket(finalWriterBucket()).key(key.value()));try{byte[] data=boundedBytes(input);if(data.length>6291456)throw new java.io.IOException("FINAL_OBJECT_MISMATCH");return java.util.Optional.of(java.nio.ByteBuffer.wrap(data).asReadOnlyBuffer());}finally{input.abort();}}
         catch(software.amazon.awssdk.services.s3.model.NoSuchKeyException e){return java.util.Optional.empty();}
         catch(software.amazon.awssdk.services.s3.model.S3Exception e){if(e.statusCode()==404)return java.util.Optional.empty();throw new java.io.IOException("FINAL_OBJECT_UNAVAILABLE");}
     }
     public void deleteTemporary(StorageObjectKeys.Temporary key){com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();finalWriterBucket();client.deleteObject(r->r.bucket(settings.temporaryBucket).key(key.value()));}
     public void deleteUncommittedFinal(StorageObjectKeys.Final key){com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();client.deleteObject(r->r.bucket(finalWriterBucket()).key(key.value()));}
+    private static byte[] boundedBytes(java.io.InputStream input)throws java.io.IOException{
+        long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(60);var output=new java.io.ByteArrayOutputStream();var buffer=new byte[32768];
+        while(output.size()<=6291456){if(Thread.currentThread().isInterrupted() || System.nanoTime()>=deadline)throw new java.io.IOException("FILE_VALIDATION_TIMEOUT");int n=input.read(buffer,0,Math.min(buffer.length,6291457-output.size()));if(n<0)break;if(n==0)throw new java.io.IOException("FINAL_OBJECT_UNAVAILABLE");output.write(buffer,0,n);}return output.toByteArray();
+    }
     public String temporaryBucket(){return settings.temporaryBucket;}
     // API-role processes cannot request the final writer's bucket through this boundary.
     public String finalWriterBucket(){if(!settings.role.equals("worker"))throw new IllegalStateException("Final storage requires worker role");return settings.finalBucket;}
