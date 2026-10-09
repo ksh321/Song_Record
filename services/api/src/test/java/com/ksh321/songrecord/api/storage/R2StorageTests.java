@@ -70,7 +70,9 @@ class R2StorageTests {
             assertThat(storage.finalWriterBucket()).isEqualTo("song-record-prod-final");
         }
         try(var c=new AnnotationConfigApplicationContext()){
-            c.setEnvironment(environment("dev","worker"));c.register(R2StorageConfiguration.class);c.refresh();
+            c.setEnvironment(environment("dev","worker")
+                .withProperty("songrecord.storage.dev.playback.access-key","fixture-reader")
+                .withProperty("songrecord.storage.dev.playback.secret-key","fixture-reader-secret"));c.register(R2StorageConfiguration.class);c.refresh();
             assertThat(c.getBean(R2Storage.class).finalWriterBucket()).isEqualTo("song-record-dev-final");
         }
     }

@@ -17,7 +17,8 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val accountBridge by lazy { AccountBridge(this) { mediaPlayer?.release(); mediaPlayer = null } }
+    private val playbackBridge by lazy { PlaybackBridge(this) }
+    private val accountBridge by lazy { AccountBridge(this) { mediaPlayer?.release(); mediaPlayer = null; playbackBridge.stop() } }
     private val identityLinkBridge by lazy { IdentityLinkBridge(this) }
     private var pendingPermissionResult: MethodChannel.Result? = null
     private var recorderEventSink: EventChannel.EventSink? = null
@@ -28,6 +29,13 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/playback")
+            .setMethodCallHandler(playbackBridge::handle)
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/playback_events")
+            .setStreamHandler(object: EventChannel.StreamHandler {
+                override fun onListen(arguments: Any?, sink: EventChannel.EventSink) { playbackBridge.events=sink }
+                override fun onCancel(arguments: Any?) { playbackBridge.events=null }
+            })
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/identity_link")
             .setMethodCallHandler(identityLinkBridge::handle)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/account")
@@ -195,6 +203,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        playbackBridge.close()
         accountBridge.close()
         mediaPlayer?.release()
         mediaPlayer = null

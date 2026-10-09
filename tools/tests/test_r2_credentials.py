@@ -73,6 +73,17 @@ class R2CredentialsTests(unittest.TestCase):
    self.assertIn('diagnostic.mode=signed-put',run.call_args.kwargs['input'])
    self.assertNotIn('secret',(d/'signed-put-reports/dev.api.json').read_text())
   with self.assertRaises(r2.SecretError):r2.check('prod.api','java','a'*32,'b'*64,signed=True)
+ def test_playback_reader_requires_final_only_and_denied_writes(self):
+  scope='dev.temporary=DENIED\ndev.final=ALLOWED\nprod.temporary=DENIED\nprod.final=DENIED\nwrite.temporary=DENIED\nwrite.final=DENIED\n'
+  self.assertEqual(r2.parse_report(scope,'dev.playback',True)['status'],'PASS')
+  for wrong in (scope.replace('write.final=DENIED','write.final=VERIFIED'),scope.replace('dev.temporary=DENIED','dev.temporary=ALLOWED'),scope.replace('prod.final=DENIED','prod.final=ALLOWED')):
+   self.assertEqual(r2.parse_report(wrong,'dev.playback',True)['status'],'FAIL')
+  with tempfile.TemporaryDirectory() as f:
+   d=Path(f);(d/'checker-classpath.txt').write_text('fixture')
+   with patch.object(r2.subprocess,'run',return_value=subprocess.CompletedProcess([],0,scope,'')) as child:
+    self.assertEqual(r2.check('dev.playback','java','a'*32,'b'*64,d),'PASS')
+   self.assertIn('diagnostic.mode=development-write',child.call_args.kwargs['input'])
+   self.assertNotIn('b'*64,(d/'development-reports/dev.playback.json').read_text())
  def test_invalid_role(self):
   with self.assertRaises(r2.SecretError):r2.check('../escape','java','a'*32,'b'*64)
 if __name__=='__main__':unittest.main()

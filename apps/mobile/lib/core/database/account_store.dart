@@ -182,6 +182,7 @@ final class AccountStore {
   final AccountDatabase _database;
   final AccountPaths _paths;
   final int _generation;
+  AppEnvironment get environment => _paths.environment;
   late final RetryControls _retry = RetryControls(
     _database,
     clock: _manager._clock,

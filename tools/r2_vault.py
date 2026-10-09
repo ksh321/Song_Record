@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 import uuid
 DIRECTORY=Path(__file__).resolve().parents[1]/'.local/workflow/cloudflare/credentials'
-ROLES=('dev.api','dev.worker')
+ROLES=('dev.api','dev.worker','dev.playback')
 class VaultError(Exception): pass
 class Blob(ctypes.Structure):
     _fields_=[('size',wintypes.DWORD),('data',ctypes.POINTER(ctypes.c_ubyte))]

@@ -32,6 +32,13 @@ class VaultTests(unittest.TestCase):
             changed=bytearray(cipher);changed[len(changed)//2]^=1;target.write_bytes(changed)
             with self.assertRaises(vault.VaultError) as result:vault.load('dev.worker',path)
             self.assertNotIn('b'*64,str(result.exception));self.assertIsNone(result.exception.__cause__)
+    @unittest.skipUnless(os.name=='nt','Real Windows DPAPI required')
+    def test_playback_key_has_separate_role_bound_encryption(self):
+        with tempfile.TemporaryDirectory() as f:
+            p=Path(f)/'credentials';vault.save('dev.playback','a'*32,'b'*64,p)
+            self.assertEqual(vault.load('dev.playback',p),('a'*32,'b'*64))
+            cipher=(p/'dev.playback.dpapi').read_bytes();(p/'dev.worker.dpapi').write_bytes(cipher)
+            with self.assertRaises(vault.VaultError):vault.load('dev.worker',p)
     def test_failed_encryption_or_invalid_input_preserves_existing_registration(self):
         with tempfile.TemporaryDirectory() as directory:
             path=Path(directory);target=path/'dev.worker.dpapi';target.write_bytes(b'existing-encrypted-fixture')

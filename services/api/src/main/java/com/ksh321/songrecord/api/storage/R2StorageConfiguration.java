@@ -15,13 +15,14 @@ import software.amazon.awssdk.services.s3.*;
 public class R2StorageConfiguration {
     @Bean(destroyMethod="close") R2PutSigner r2PutSigner(Environment environment){
         var s=R2Settings.from(environment);
+        if(s.role.equals("playback"))throw new IllegalStateException("Read-only playback cannot sign uploads");
         var signer=software.amazon.awssdk.services.s3.presigner.S3Presigner.builder().endpointOverride(s.endpoint).region(Region.of("auto"))
             .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(s.accessKey,s.secretKey)))
             .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build()).build();
         return new R2PutSigner(signer,s.temporaryBucket,java.time.Clock.systemUTC());
     }
     @Bean(destroyMethod="close") R2GetSigner r2GetSigner(Environment environment){
-        var s=R2Settings.from(environment);
+        var s=R2Settings.playbackFrom(environment);
         var signer=software.amazon.awssdk.services.s3.presigner.S3Presigner.builder().endpointOverride(s.endpoint).region(Region.of("auto"))
             .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(s.accessKey,s.secretKey)))
             .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build()).build();

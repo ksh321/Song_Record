@@ -9,7 +9,7 @@ import threading
 
 ROOT = Path(__file__).resolve().parents[1]
 DIRECTORY = ROOT / '.local/workflow/cloudflare'
-LABELS = ('dev.api', 'dev.worker', 'prod.api', 'prod.worker')
+LABELS = ('dev.api', 'dev.worker', 'prod.api', 'prod.worker', 'dev.playback')
 ACCOUNT = 'c061b2724b72861b43bfe2817be31f35'
 
 class SecretError(Exception):
@@ -40,12 +40,15 @@ def parse_report(output, label, full=False, signed=False, audio=False):
     if result.keys() != expected: raise SecretError('Incomplete checker result')
     environment, role = label.split('.')
     wanted = {key: 'ALLOWED' if key.startswith(environment+'.') and (key.endswith('temporary') or role=='worker') else 'DENIED' for key in expected}
+    if role=='playback':
+        wanted={key:'ALLOWED' if key==environment+'.final' else 'DENIED' for key in expected if not key.startswith('write.')}
     if full:
-        wanted.update({'write.temporary':'VERIFIED','write.final':'VERIFIED' if role=='worker' else 'DENIED'})
+        wanted.update({'write.temporary':'DENIED' if role=='playback' else 'VERIFIED','write.final':'VERIFIED' if role=='worker' else 'DENIED'})
     return {'status': 'PASS' if result==wanted else 'FAIL', 'checks': result} if full else {'status': 'PASS' if result==wanted else 'FAIL', 'bucket_read_scope': result}
 
 def check(label, java, access=None, secret=None, directory=DIRECTORY, full=False, signed=False, audio=False):
     if label not in LABELS or (full and not label.startswith('dev.')): raise SecretError('Invalid role')
+    full = full or label=='dev.playback' # Require actual denied writes for the reader.
     if sum((bool(full),bool(signed),bool(audio)))>1: raise SecretError('Select one diagnostic')
     if audio and label!='dev.worker': raise SecretError('Development worker only')
     if signed and label!='dev.api': raise SecretError('Development API only')
@@ -177,7 +180,7 @@ def register_gui(java,role):
 
 if __name__=='__main__':
     import argparse
-    parser=argparse.ArgumentParser();parser.add_argument('--java',type=Path,required=True);parser.add_argument('--development-write',action='store_true');parser.add_argument('--signed-put',action='store_true');parser.add_argument('--audio-check',action='store_true');parser.add_argument('--register-role',choices=('dev.api','dev.worker'));parser.add_argument('--use-stored-role',choices=('dev.api','dev.worker'));args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--java',type=Path,required=True);parser.add_argument('--development-write',action='store_true');parser.add_argument('--signed-put',action='store_true');parser.add_argument('--audio-check',action='store_true');parser.add_argument('--register-role',choices=('dev.api','dev.worker','dev.playback'));parser.add_argument('--use-stored-role',choices=('dev.api','dev.worker','dev.playback'));args=parser.parse_args()
     try:
         if args.register_role:
             if args.use_stored_role or args.development_write or args.signed_put or args.audio_check: parser.error('Select registration only')
