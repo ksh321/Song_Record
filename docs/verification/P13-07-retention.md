@@ -8,3 +8,7 @@
 - 별도 현재 모델 검토: 원본 요구사항, 실제 diff/실행 결과, USER_SYNC→ENTITLEMENT→AGGREGATE→PIN_SLOT→문자열 정렬 RECORDING_ASSET 락 순서, MySQL pin trigger, 정책 버전/receipt 원자 rollback, 슬롯 중복·계정 격리, 기존 고정/파일·용량 보존, 기존 업로드 승인 연결 대조. 정렬 지적 해결 후 재검사 PASS. P13-08 승격/취소는 미착수.
 - 변경: PinSlots/PinController, OpenAPI, 동일 H2/MySQL 공유 교체 검사 및 HTTP 검사. 도메인·HTTP 단계이며 후속 제품 화면 구현/실제 새 폰 실기를 통과했다고 주장하지 않는다. 이번 변경은 서버/계약 자동 검사 대상이라 추가 사용자 행동 없음.
 - 학습: 고정 슬롯 하나에 두 파일 참조가 있어도 점유는 하나다. 그와 별개로 새 사본의 실제 용량은 기존 사본을 차감하기 전에 모두 확보해야 한다.
+
+- 첫 CI의 실제 MySQL 검사에서 시험 파일10개가 동일 fixture/pin 객체 키를 공유해 UNIQUE 제약 실패. 제품 교체 로직이 아니라 시험 자료 문제이며 최초 발견. 각 owner/recording/generation typed key로 수정하고 H2에도 같은 UNIQUE 제약을 적용했다. 제약을 약화하거나 제거하지 않았다. 수정 후 관련 검사·현재 모델 영향 검토 및 최종 SHA CI 재확인 대기.
+
+- 고유 객체 키 및 H2 UNIQUE 제약 적용 후 관련7검사 PASS11초, 시험 자료/제약 대응 별도 영향 검토 완료. 이전 실패 CI 이력 보존, 수정된 최종 SHA 전체 필수 범위 재확인.
