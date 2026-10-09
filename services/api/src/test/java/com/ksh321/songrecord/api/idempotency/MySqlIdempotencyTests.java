@@ -442,7 +442,7 @@ class MySqlIdempotencyTests {
             var beforeRecording=db.queryForMap("SELECT * FROM recording");
             var before=db.queryForMap("SELECT title,artist,note,version_code,revision,updated_at FROM song");
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();
-            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(9);flyway.validate();
+            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(10);flyway.validate();
             assertThat(db.queryForObject("SELECT title_key FROM recording_query_key",byte[].class)).isEqualTo(com.ksh321.songrecord.api.domain.DomainOrdering.sortKeyBytes("곡02"));
             assertThat(db.queryForMap("SELECT * FROM recording")).usingRecursiveComparison().isEqualTo(beforeRecording);
             assertThat(db.queryForObject("SELECT title_key FROM song_query_key",byte[].class)).isEqualTo(com.ksh321.songrecord.api.domain.DomainOrdering.sortKeyBytes("노래02"));
