@@ -1823,6 +1823,51 @@ final class AccountStore {
     );
   });
 
+  /// Deletes only the explicitly confirmed current-device bytes; metadata and journal remain.
+  /// Serialized with fence establishment/terminal handling so a pending server cleanup cannot lose its proof.
+  Future<void> removeConfirmedDeviceAudio({
+    required String recording,
+    required String checksum,
+    required int size,
+    required bool confirmed,
+  }) => _run(() async {
+    if (!confirmed) {
+      throw StateError('Explicit device-file confirmation required');
+    }
+    final id = UuidValue(recording).value;
+    await _database.transaction(() async {
+      final row = await _database
+          .customSelect(
+            'SELECT cleanup_fence FROM local_recording_files WHERE recording_id=? AND user_id=?',
+            variables: [Variable(id), Variable(userId)],
+          )
+          .getSingleOrNull();
+      final pending = await _database
+          .customSelect(
+            "SELECT token FROM local_cleanup_confirmations WHERE recording_id=? AND user_id=? AND state IN ('PREPARING','CONFIRMED')",
+            variables: [Variable(id), Variable(userId)],
+          )
+          .get();
+      if (row == null ||
+          row.read<int>('cleanup_fence') > 0 ||
+          pending.isNotEmpty) {
+        throw StateError('A cleanup result still protects this file');
+      }
+      final bytes = await _readLocalAudio(id);
+      requireActive();
+      if (bytes.length != size || sha256.convert(bytes).toString() != checksum) {
+        throw StateError('Confirmed file changed');
+      }
+      final file = await _paths.checkedFile(_paths.audioPath(id));
+      requireActive();
+      await file.delete();
+      await _database.customStatement(
+        "UPDATE local_recording_files SET local_state='MISSING',updated_at=? WHERE recording_id=? AND user_id=?",
+        [_manager._clock().toUtc().millisecondsSinceEpoch, id, userId],
+      );
+    });
+  });
+
   /// Establish the durable fence before any confirmation request leaves the device.
   Future<void> beginLocalCleanupFence({
     required String token,
