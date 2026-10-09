@@ -30,6 +30,7 @@ public class GlobalExceptionHandler {
         );
 
         var response = ResponseEntity.status(exception.status());
+        if (request.getRequestURI().startsWith("/v1/karaoke/")) response.header("Cache-Control", "no-store");
         if (exception.code().equals("CONDITION_CATALOG_READ_ONLY")) {
             response.header("Allow", request.getRequestURI().endsWith("/conditions") ? "GET, HEAD" : "");
             response.header("Cache-Control", "no-store");
