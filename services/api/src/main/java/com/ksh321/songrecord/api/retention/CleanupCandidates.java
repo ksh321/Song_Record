@@ -30,6 +30,8 @@ public final class CleanupCandidates {
    boolean changed=false;
    // Disconnected server copies retain a standing orphan reason without occupying a pin slot.
    if(metadata.get("song_id")==null)changed=ensure(owner,recording,"ORPHAN_KEEP");
+   else if(automatic || pinned)changed=db.update("DELETE FROM cloud_hold WHERE user_id=? AND recording_id=? AND reason='ORPHAN_KEEP'",bytes(owner),bytes(recording))>0;
+   // Without a new mandatory role the standing orphan reason survives until valid cleanup confirmation.
    boolean protectedCopy=automatic || pinned || !db.queryForList("SELECT id FROM cloud_hold WHERE user_id=? AND recording_id=? AND reason<>'WAITING_LOCAL_CONFIRM'",bytes(owner),bytes(recording)).isEmpty();
    if(protectedCopy)changed=db.update("DELETE FROM cloud_hold WHERE user_id=? AND recording_id=? AND reason='WAITING_LOCAL_CONFIRM'",bytes(owner),bytes(recording))>0 || changed;
    else changed=ensure(owner,recording,"WAITING_LOCAL_CONFIRM") || changed;
