@@ -41,8 +41,9 @@ public final class UploadReservations {
             if(db.queryForList("SELECT id FROM recording WHERE user_id=? AND id=?",bytes(owner),bytes(request.recording())).isEmpty())throw error("RESOURCE_NOT_FOUND",HttpStatus.NOT_FOUND);
             var existing=db.query("SELECT id,recording_id,expected_size,state,expires_at FROM recording_upload WHERE user_id=? AND recording_id=? AND state IN ('RESERVED','UPLOADING','VERIFYING') FOR UPDATE",(r,n)->new Reservation(id(r.getBytes(1)),id(r.getBytes(2)),r.getLong(3),r.getString(4),r.getTimestamp(5).toInstant()),bytes(owner),bytes(request.recording()));
             if(!existing.isEmpty())return existing.getFirst();
-            var global=db.queryForMap("SELECT used_bytes,reserved_bytes,primary_quota_bytes,upload_locked,revision FROM global_storage_usage WHERE id=1 FOR UPDATE");
+            var global=db.queryForMap("SELECT used_bytes,reserved_bytes,primary_quota_bytes,upload_locked,temp_observed_bytes,reconciliation_locked,revision FROM global_storage_usage WHERE id=1 FOR UPDATE");
             var personal=db.queryForMap("SELECT s.used_bytes,s.reserved_bytes,s.revision,e.quota_bytes FROM storage_usage s JOIN user_entitlement e ON e.user_id=s.user_id WHERE s.user_id=? FOR UPDATE",bytes(owner));
+            if(number(global,"temp_observed_bytes")>=536870912 || Boolean.TRUE.equals(global.get("reconciliation_locked")) || (global.get("reconciliation_locked") instanceof Number flag && flag.intValue()!=0))throw error("UPLOAD_BUDGET_LOCKED",HttpStatus.SERVICE_UNAVAILABLE);
             if(Boolean.TRUE.equals(global.get("upload_locked")) || (global.get("upload_locked") instanceof Number n && n.intValue()!=0))throw error("UPLOAD_BUDGET_LOCKED",HttpStatus.SERVICE_UNAVAILABLE);
             if(!fits(number(personal,"used_bytes"),number(personal,"reserved_bytes"),request.size(),number(personal,"quota_bytes"))
                 || !fits(number(global,"used_bytes"),number(global,"reserved_bytes"),request.size(),number(global,"primary_quota_bytes")))throw error("QUOTA_EXCEEDED",HttpStatus.CONFLICT);

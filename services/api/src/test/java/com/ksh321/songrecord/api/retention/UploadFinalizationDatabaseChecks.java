@@ -29,15 +29,16 @@ public final class UploadFinalizationDatabaseChecks {
   new UploadRecovery(db,new DataSourceTransactionManager(db.getDataSource()),other.clock).failed(other.lease,"NOT_CLOUD_TARGET");
  }
  public record Fixture(UUID owner,UUID recording,UUID attempt,JobQueue jobs,JobQueue.Lease lease,UploadApprovalDatabaseChecks.MutableClock clock){}
- public static Fixture fixture(JdbcTemplate db){
+ public static Fixture fixture(JdbcTemplate db){return fixture(db,"a".repeat(64));}
+ public static Fixture fixture(JdbcTemplate db,String hash){
   var manager=new DataSourceTransactionManager(db.getDataSource());UUID owner=account(db),device=device(db,owner),recording=recording(db,owner,device,null,false,false,"VALIDATED");
-  db.update("INSERT INTO recording_file_spec(recording_id,user_id,sha256,size_bytes,duration_ms,codec,sample_rate,channels,capture_integrity) VALUES(?,?,?,3,1000,'AAC_LC',48000,1,'VALIDATED')",bytes(recording),bytes(owner),"a".repeat(64));
+  db.update("INSERT INTO recording_file_spec(recording_id,user_id,sha256,size_bytes,duration_ms,codec,sample_rate,channels,capture_integrity) VALUES(?,?,?,3,1000,'AAC_LC',48000,1,'VALIDATED')",bytes(recording),bytes(owner),hash);
   db.update("UPDATE recording SET metadata_state='SAVED' WHERE id=?",bytes(recording));
   for(String table:List.of("user_sync_state","user_entitlement","storage_usage"))db.update("INSERT INTO "+table+"(user_id) VALUES(?)",bytes(owner));
   db.update("INSERT INTO pin_slot(user_id,slot_no,pending_recording_id,operation_id,requested_at) VALUES(?,1,?,?,CURRENT_TIMESTAMP)",bytes(owner),bytes(recording),bytes(UUID.randomUUID()));
   var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,device,UUID.randomUUID()));
   var clock=new UploadApprovalDatabaseChecks.MutableClock();var jobs=new JobQueue(db,access,manager,clock,Duration.ofMinutes(2),5);
-  UUID attempt=new UploadReservations(db,access,manager,clock).reserve(account,new UploadReservations.Request(recording,3,"a".repeat(64),1)).attempt();
+  UUID attempt=new UploadReservations(db,access,manager,clock).reserve(account,new UploadReservations.Request(recording,3,hash,1)).attempt();
   db.update("UPDATE recording_upload SET state='VERIFYING' WHERE id=?",bytes(attempt));
   new org.springframework.transaction.support.TransactionTemplate(manager).executeWithoutResult(s->jobs.enqueue(account,JobQueue.Type.UPLOAD_VERIFY,attempt,attempt,"{}"));
   return new Fixture(owner,recording,attempt,jobs,jobs.claim(JobQueue.Type.UPLOAD_VERIFY).orElseThrow(),clock);

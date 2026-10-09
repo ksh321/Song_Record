@@ -16,6 +16,7 @@ final class DevelopmentAudioProbe {
         try{
             if(synthetic.length<1 || synthetic.length>6*1024*1024)return "ERROR";
             client.putObject(r->r.bucket(bucket).key(key.value()).ifNoneMatch("*"),RequestBody.fromBytes(synthetic));owned=true;
+            var observedTemp=new java.util.concurrent.atomic.AtomicBoolean();storage.temporaryObjects(e->{if(e.key().equals(key.value()) && e.size()==synthetic.length)observedTemp.set(true);});if(!observedTemp.get())return "INVENTORY_FAILED";
             byte[] downloaded=download(storage,key);
             if(!Arrays.equals(downloaded,synthetic))return "BYTES_MISMATCH";
             var valid=validator.validate(ByteBuffer.wrap(downloaded),synthetic.length,hash(synthetic));
@@ -27,6 +28,7 @@ final class DevelopmentAudioProbe {
             try{validator.validate(ByteBuffer.wrap(changed),changed.length,hash(changed));return "VALIDATION_FAILED";}
             catch(AudioValidator.Invalid expected){if(!expected.code.equals("FILE_DECODE_FAILED") && !expected.code.equals("FILE_AUDIO_FORMAT"))return "VALIDATION_FAILED";}
             storage.ensureFinal(finalKey,valid.bytes(),valid.sha256());finalOwned=true;
+            var observedFinal=new java.util.concurrent.atomic.AtomicBoolean();storage.finalObjects(e->{if(e.key().equals(finalKey.value()) && e.size()==synthetic.length)observedFinal.set(true);});if(!observedFinal.get())return "INVENTORY_FAILED";
             storage.ensureFinal(finalKey,valid.bytes(),valid.sha256());
             try{storage.ensureFinal(finalKey,ByteBuffer.wrap(corrupt),hash(corrupt));return "FINAL_OVERWRITE_ALLOWED";}catch(java.io.IOException expected){}
             try(var finalRead=client.getObject(r->r.bucket(storage.finalWriterBucket()).key(finalKey.value()))){if(!Arrays.equals(finalRead.readNBytes(synthetic.length+1),synthetic))return "FINAL_BYTES_MISMATCH";}

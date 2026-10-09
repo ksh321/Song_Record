@@ -4,7 +4,7 @@ import java.util.Objects;
 import software.amazon.awssdk.services.s3.S3Client;
 
 /** Connection boundary only. Upload authorization/signing and verified writes follow in P12-03/04/09. */
-public final class R2Storage implements AutoCloseable {
+public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.uploads.UploadObjectInventory {
     private final R2Settings settings;
     private final S3Client client;
     R2Storage(R2Settings settings,S3Client client){this.settings=Objects.requireNonNull(settings);this.client=Objects.requireNonNull(client);}
@@ -68,6 +68,12 @@ public final class R2Storage implements AutoCloseable {
     private static byte[] boundedBytes(java.io.InputStream input)throws java.io.IOException{
         long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(60);var output=new java.io.ByteArrayOutputStream();var buffer=new byte[32768];
         while(output.size()<=6291456){if(Thread.currentThread().isInterrupted() || System.nanoTime()>=deadline)throw new java.io.IOException("FILE_VALIDATION_TIMEOUT");int n=input.read(buffer,0,Math.min(buffer.length,6291457-output.size()));if(n<0)break;if(n==0)throw new java.io.IOException("FINAL_OBJECT_UNAVAILABLE");output.write(buffer,0,n);}return output.toByteArray();
+    }
+    public void temporaryObjects(com.ksh321.songrecord.api.uploads.UploadObjectInventory.Visitor visitor)throws Exception{finalWriterBucket();observe(settings.temporaryBucket,visitor);}
+    public void finalObjects(com.ksh321.songrecord.api.uploads.UploadObjectInventory.Visitor visitor)throws Exception{observe(finalWriterBucket(),visitor);}
+    private void observe(String bucket,com.ksh321.songrecord.api.uploads.UploadObjectInventory.Visitor visitor)throws Exception{
+        com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();String token=null;long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(120);
+        do{if(System.nanoTime()>=deadline)throw new java.io.IOException("INVENTORY_TIMEOUT");String current=token;var page=client.listObjectsV2(r->r.bucket(bucket).maxKeys(1000).continuationToken(current));for(var entry:page.contents()){if(System.nanoTime()>=deadline)throw new java.io.IOException("INVENTORY_TIMEOUT");visitor.accept(new com.ksh321.songrecord.api.uploads.UploadObjectInventory.Entry(entry.key(),entry.size(),entry.lastModified()));}token=Boolean.TRUE.equals(page.isTruncated())?page.nextContinuationToken():null;if(Boolean.TRUE.equals(page.isTruncated()) && (token==null || token.equals(current)))throw new java.io.IOException("INVENTORY_INCOMPLETE");}while(token!=null);
     }
     public String temporaryBucket(){return settings.temporaryBucket;}
     // API-role processes cannot request the final writer's bucket through this boundary.

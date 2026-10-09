@@ -22,3 +22,8 @@ worker 서버에 Python 3·FFmpeg·ffprobe가 필요하다. 기본 실행 이름
 
 ## P12-10 재실행·만료
 worker는 사전 final key가 존재하면 그 바이트를 재검증하고 동일 attempt를 복구한다. 영속 job retry와60초 예산을 공유한다. 실패·만료·취소는 예약만1회 해제하고 기존 자산을 유지한다. 미확정 객체 정리는 live lease 없음·자산 미연결·2분 grace 후 별도 스케줄에서 수행한다. cancel API는 앱 인증·기기·멱등 키·소유권을 요구한다.
+
+## P12-11 객체 대조와 보조 수명주기
+worker는 1분 간격으로 임시 목록을 대조한다. 활성 시도·live lease를 보호하고 종료 뒤10분이 지난 관리 대상 임시 키를 반복 정리한다. 임시 공간512MiB 이상 또는 목록 불완전 시 새 예약을 차단한다. 정리 전 관측값을 저장하므로 줄어든 용량은 다음 완전한 검사에서 반영된다.
+매일 실제 최종 바이트·자산·개인/전체 사용량을 대조한다. reconciliation_locked·개수·시각을 기록하며 운영자 upload_locked·실제 회계는 자동 보정하지 않는다. 문제 해결 뒤 완전한 대조로 해당 잠금을 해제한다.
+개발·운영 임시 버킷에 각각 활성 접두어 temporary/, 객체 삭제2일 규칙을 설정한다. 기존 규칙 보존, 동일 규칙은 확인만 한다. 예시는 infra/r2/temporary-lifecycle.json이며 자동 적용 파일이 아니다. 최종 버킷에는 적용하지 않는다. Cloudflare 공식 문서: https://developers.cloudflare.com/r2/buckets/object-lifecycles/ . worker 객체 키를 버킷 설정 권한으로 확대하지 않는다.

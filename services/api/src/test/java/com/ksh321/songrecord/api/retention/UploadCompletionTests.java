@@ -19,6 +19,7 @@ class UploadCompletionTests {
                 context.setEnvironment(new org.springframework.mock.env.MockEnvironment().withProperty("songrecord.storage.enabled","true").withProperty("songrecord.storage.role",role));
                 context.registerBean(org.springframework.jdbc.core.JdbcTemplate.class,()->org.mockito.Mockito.mock(org.springframework.jdbc.core.JdbcTemplate.class));
                 context.registerBean(com.ksh321.songrecord.api.storage.R2Storage.class,()->org.mockito.Mockito.mock(com.ksh321.songrecord.api.storage.R2Storage.class));
+                context.registerBean(org.springframework.transaction.PlatformTransactionManager.class,()->org.mockito.Mockito.mock(org.springframework.transaction.PlatformTransactionManager.class));
                 context.register(com.ksh321.songrecord.api.uploads.UploadWorkerConfiguration.class);context.refresh();
                 org.assertj.core.api.Assertions.assertThat(context.getBeansOfType(com.ksh321.songrecord.api.uploads.UploadVerification.class).size()).isEqualTo(role.equals("worker")?1:0);
             }
