@@ -10,6 +10,20 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class R2StorageTests {
+    @Test void cleanupAbsenceRequiresAccessibleBucketAndNeverTreatsForbiddenAsMissing()throws Exception {
+        var client=mock(S3Client.class);var key=new StorageObjectKeys.Final(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID());
+        when(client.headObject(any(java.util.function.Consumer.class)))
+          .thenThrow(S3Exception.builder().statusCode(403).message("private").build())
+          .thenThrow(S3Exception.builder().statusCode(404).build())
+          .thenThrow(S3Exception.builder().statusCode(404).build());
+        try(var storage=new R2Storage(R2Settings.from(environment("dev","worker")),client)) {
+            assertThatThrownBy(()->storage.existsFinal(key)).hasMessage("CLEANUP_OBJECT_UNAVAILABLE").hasNoCause();
+            verify(client,never()).headBucket(any(java.util.function.Consumer.class));
+            assertThat(storage.existsFinal(key)).isFalse();
+            doThrow(S3Exception.builder().statusCode(404).build()).when(client).headBucket(any(java.util.function.Consumer.class));
+            assertThatThrownBy(()->storage.existsFinal(key)).hasMessage("CLEANUP_BUCKET_UNAVAILABLE").hasNoCause();
+        }
+    }
     MockEnvironment environment(String name,String role){
         String prefix="songrecord.storage."+name+".";
         return new MockEnvironment().withProperty("songrecord.storage.enabled","true")

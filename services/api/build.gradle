@@ -60,3 +60,13 @@ tasks.register('r2CheckerClasspath') {
         target.text = sourceSets.main.runtimeClasspath.asPath
     }
 }
+
+// Development-only synthetic deletion probe; credentials stay on stdin.
+tasks.register('r2CleanupProbeClasspath') {
+    dependsOn tasks.named('testClasses')
+    doLast {
+        def target = rootProject.file('../../.local/workflow/p13-06/checker-classpath.txt')
+        target.parentFile.mkdirs()
+        target.text = sourceSets.test.runtimeClasspath.asPath
+    }
+}

@@ -28,6 +28,19 @@ final class LostConfirmation implements CleanupTransport {
   }
 }
 
+final class CleanupResult implements CleanupStatusTransport {
+  CleanupResult(this.state);
+  final String? state;
+  @override
+  Future<String?> terminal(
+    CleanupToken token,
+    Future<void> Function() guard,
+  ) async {
+    await guard();
+    return state;
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test('response loss, reopen and expiry keep the actual file fenced until a matching terminal result', () async {
@@ -107,8 +120,15 @@ void main() {
         store.finishLocalCleanupFence(tokenId, gen, 'DELETING'),
         throwsStateError,
       );
-      await store.finishLocalCleanupFence(tokenId, gen, 'EXPIRED');
-      await store.finishLocalCleanupFence(tokenId, gen, 'EXPIRED');
+      final resumed = LocalCleanupCoordinator(
+        store,
+        LocalPreservation(store, SyntheticPreservationDownload(bytes)),
+        LostConfirmation(store),
+      );
+      await resumed.resume(CleanupResult(null));
+      expect((await store.pendingLocalCleanup()).single['state'], 'PREPARING');
+      await resumed.resume(CleanupResult('EXPIRED'));
+      await resumed.resume(CleanupResult('EXPIRED'));
       expect(await store.pendingLocalCleanup(), isEmpty);
       expect(await store.readLocalAudio(id), bytes);
     } finally {

@@ -88,6 +88,11 @@ paths:
       parameters:
       - $ref: '#/components/parameters/DeviceId'
       - $ref: '#/components/parameters/RequestId'
+      - name: X-Cleanup-Confirmation-Id
+        in: header
+        required: false
+        description: 로컬 보호 복구를 위한 본인 확인 ID. URL에 넣지 않으며 같은 계정·녹음의 결과만 반환한다.
+        schema: {type: string, format: uuid}
       - name: id
         in: path
         required: true
@@ -1662,11 +1667,26 @@ components:
           type: array
           uniqueItems: true
           items: {type: string, enum: [WAITING_LOCAL_CONFIRM, ORPHAN_KEEP]}
+    CleanupResult:
+      type: object
+      additionalProperties: false
+      required: [token, user_id, recording_id, generation, state]
+      properties:
+        token: {type: string, format: uuid}
+        user_id: {type: string, format: uuid}
+        recording_id: {type: string, format: uuid}
+        generation: {type: string, format: uuid}
+        state: {type: string, enum: [WAITING_CONFIRMATION, CONFIRMED, DELETING, RETRY_WAIT, SUCCEEDED, CANCELLED, EXPIRED]}
     RecordingRetention:
       type: object
       additionalProperties: false
       required: [recording_id, automatic_roles, pin_slots, hold_reasons, desired_reasons, cloud]
       properties:
+        cleanup_confirmation:
+          description: 요청 헤더가 있을 때만 포함. null/진행 상태/조회 실패/로컬 만료 추정으로 cleanup_fence를 해제하지 않는다.
+          oneOf:
+          - {type: 'null'}
+          - $ref: '#/components/schemas/CleanupResult'
         recording_id: {type: string, format: uuid}
         automatic_roles:
           type: array

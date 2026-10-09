@@ -17,7 +17,8 @@ public final class RetentionQueries {
     public RetentionQueries(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager){
         this.db=db;this.access=access;read=new TransactionTemplate(manager);read.setReadOnly(true);read.setIsolationLevel(TransactionDefinition.ISOLATION_REPEATABLE_READ);
     }
-    public Map<String,Object> retention(String auth,String device,String text){
+    public Map<String,Object> retention(String auth,String device,String text){return retention(auth,device,text,null);}
+    public Map<String,Object> retention(String auth,String device,String text,String cleanupId){
         var account=access.authenticate(auth,device);UUID id;try{id=PinSlots.parse(text);}catch(com.ksh321.songrecord.api.web.ApiException e){throw PinSlots.missing();}
         UUID owner=account.principal().userId();return view(account,()->{
             var records=db.queryForList("SELECT song_id,lifecycle_state,metadata_state FROM recording WHERE user_id=? AND id=?",bytes(owner),bytes(id));
@@ -31,7 +32,7 @@ public final class RetentionQueries {
             var assets=db.queryForList("SELECT cloud_state,blocked_reason,verified_size,cloud_revision FROM recording_asset WHERE user_id=? AND recording_id=?",bytes(owner),bytes(id));
             var cloud=new LinkedHashMap<String,Object>();cloud.put("state",assets.isEmpty()?"NONE":assets.getFirst().get("cloud_state"));cloud.put("stored","STORED".equals(cloud.get("state")));cloud.put("blocked_reason",assets.isEmpty()?null:assets.getFirst().get("blocked_reason"));cloud.put("verified_size",assets.isEmpty()?null:assets.getFirst().get("verified_size"));cloud.put("cloud_revision",assets.isEmpty()?null:assets.getFirst().get("cloud_revision"));
             var reasons=new LinkedHashSet<String>(roles);if(!slots.isEmpty())reasons.add("PINNED");reasons.addAll(holds);
-            var result=new LinkedHashMap<String,Object>();result.put("recording_id",id.toString());result.put("automatic_roles",roles);result.put("pin_slots",slots);result.put("hold_reasons",holds);result.put("desired_reasons",List.copyOf(reasons));result.put("cloud",cloud);return result;
+            var result=new LinkedHashMap<String,Object>();result.put("recording_id",id.toString());result.put("automatic_roles",roles);result.put("pin_slots",slots);result.put("hold_reasons",holds);result.put("desired_reasons",List.copyOf(reasons));result.put("cloud",cloud);if(cleanupId!=null){UUID token=PinSlots.parse(cleanupId);var confirmations=db.query("SELECT id,generation,state FROM cloud_cleanup WHERE user_id=? AND recording_id=? AND id=?",(rs,n)->Map.<String,Object>of("token",com.ksh321.songrecord.api.songs.SongQueryKeys.uuid(rs.getBytes(1)).toString(),"user_id",owner.toString(),"recording_id",id.toString(),"generation",com.ksh321.songrecord.api.songs.SongQueryKeys.uuid(rs.getBytes(2)).toString(),"state",rs.getString(3)),bytes(owner),bytes(id),bytes(token));result.put("cleanup_confirmation",confirmations.isEmpty()?null:confirmations.getFirst());}return result;
         });
     }
     public Map<String,Object> storage(String auth,String device){

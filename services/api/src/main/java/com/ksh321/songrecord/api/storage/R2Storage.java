@@ -4,7 +4,7 @@ import java.util.Objects;
 import software.amazon.awssdk.services.s3.S3Client;
 
 /** Connection boundary only. Upload authorization/signing and verified writes follow in P12-03/04/09. */
-public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.uploads.UploadObjectInventory {
+public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.uploads.UploadObjectInventory,com.ksh321.songrecord.api.retention.CleanupObjects {
     private final R2Settings settings;
     private final S3Client client;
     R2Storage(R2Settings settings,S3Client client){this.settings=Objects.requireNonNull(settings);this.client=Objects.requireNonNull(client);}
@@ -69,6 +69,15 @@ public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.
     }
     public void deleteTemporary(StorageObjectKeys.Temporary key){com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();finalWriterBucket();client.deleteObject(r->r.bucket(settings.temporaryBucket).key(key.value()));}
     public void deleteUncommittedFinal(StorageObjectKeys.Final key){com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();client.deleteObject(r->r.bucket(finalWriterBucket()).key(key.value()));}
+    @Override public boolean existsFinal(StorageObjectKeys.Final key)throws java.io.IOException{
+        com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();String bucket=finalWriterBucket();
+        try{client.headObject(r->r.bucket(bucket).key(key.value()));return true;}
+        catch(software.amazon.awssdk.services.s3.model.S3Exception e){if(e.statusCode()!=404)throw new java.io.IOException("CLEANUP_OBJECT_UNAVAILABLE");try{client.headBucket(r->r.bucket(bucket));return false;}catch(RuntimeException missingBucket){throw new java.io.IOException("CLEANUP_BUCKET_UNAVAILABLE");}}
+        catch(RuntimeException e){throw new java.io.IOException("CLEANUP_OBJECT_UNAVAILABLE");}
+    }
+    @Override public void deleteFinal(StorageObjectKeys.Final key)throws java.io.IOException{
+        com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();try{client.deleteObject(r->r.bucket(finalWriterBucket()).key(key.value()));}catch(RuntimeException e){throw new java.io.IOException("CLEANUP_DELETE_UNCONFIRMED");}
+    }
     private static byte[] boundedBytes(java.io.InputStream input)throws java.io.IOException{
         long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(60);var output=new java.io.ByteArrayOutputStream();var buffer=new byte[32768];
         while(output.size()<=6291456){if(Thread.currentThread().isInterrupted() || System.nanoTime()>=deadline)throw new java.io.IOException("FILE_VALIDATION_TIMEOUT");int n=input.read(buffer,0,Math.min(buffer.length,6291457-output.size()));if(n<0)break;if(n==0)throw new java.io.IOException("FINAL_OBJECT_UNAVAILABLE");output.write(buffer,0,n);}return output.toByteArray();
