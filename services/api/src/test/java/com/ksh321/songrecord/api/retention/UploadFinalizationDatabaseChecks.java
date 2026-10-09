@@ -27,8 +27,8 @@ public final class UploadFinalizationDatabaseChecks {
  public record Fixture(UUID owner,UUID recording,UUID attempt,JobQueue jobs,JobQueue.Lease lease,UploadApprovalDatabaseChecks.MutableClock clock){}
  public static Fixture fixture(JdbcTemplate db){
   var manager=new DataSourceTransactionManager(db.getDataSource());UUID owner=account(db),device=device(db,owner),recording=recording(db,owner,device,null,false,false,"VALIDATED");
-  db.update("UPDATE recording SET metadata_state='SAVED' WHERE id=?",bytes(recording));
   db.update("INSERT INTO recording_file_spec(recording_id,user_id,sha256,size_bytes,duration_ms,codec,sample_rate,channels,capture_integrity) VALUES(?,?,?,3,1000,'AAC_LC',48000,1,'VALIDATED')",bytes(recording),bytes(owner),"a".repeat(64));
+  db.update("UPDATE recording SET metadata_state='SAVED' WHERE id=?",bytes(recording));
   for(String table:List.of("user_sync_state","user_entitlement","storage_usage"))db.update("INSERT INTO "+table+"(user_id) VALUES(?)",bytes(owner));
   db.update("INSERT INTO pin_slot(user_id,slot_no,pending_recording_id,operation_id,requested_at) VALUES(?,1,?,?,CURRENT_TIMESTAMP)",bytes(owner),bytes(recording),bytes(UUID.randomUUID()));
   var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,device,UUID.randomUUID()));
