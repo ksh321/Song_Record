@@ -15,3 +15,7 @@
 - 원인 P13-04-JDBC-TIME: 실제 MySQL JDBC는 DATETIME을 LocalDateTime으로 반환하며 H2는 Timestamp를 반환해 강제 형변환이 실패했다. 최초 CI 37878841230에서 확인. UTC 변환을 두 타입 모두 지원하도록 수정1회, 타입 동등성 회귀 및 CleanupConfirmationTests/bootJar PASS9초. 로컬 Docker 엔진 미실행으로 실제 MySQL 로컬 검사 불가, 필수 원격 MySQL로 재검증. 기존 푸시 이력 재작성 없음. 최종 SHA에서 작업 전체 영향 검증을 위해 CI와 계약 workflow_dispatch 사용; 기존 앱/계약 변경이 최근 서버 수정 커밋에 가려지지 않도록 최초 push 전 BaseCommit c99c1b6 유지.
 
 - 같은 시간 변환 검토에서 SQL DATETIME 쓰기도 JVM 시간대에 의존하지 않도록 UTC LocalDateTime으로 고정. Timestamp는 DATETIME의 UTC 벽시각으로 읽는다. 기본 JVM 시간대를 Asia/Seoul로 바꾼 전체 토큰 시나리오 및 타입 동등성 검사 PASS9초(utc-write-review.log). 기존 UTC CI 외의 노트북 시간대도 확인. 별도 근본 원인 실패 횟수 초기화 없음.
+
+- 감시 선택 문제: d389b02에서 push와 전체 workflow_dispatch가 같은 초에 만들어져 ID 정렬이 취소된 좁은 push 실행37879485259를 선택했다. 실제 전체 CI37879485117은 실행 중, 실제 MySQL37879485291 PASS, 계약37879487006 PASS로 코드 오류가 아니다. 뒤 시각 전체 CI를 명시 재실행해 최신 실행을 모호하지 않게 한다. 기존 FAIL 알림/감시 기록 보존. 기존 watcher를 local watch-recovery.ps1에 재사용하고 별도 관측 상태 파일로 후속 결과 알림을 관리한다(추가 모델 호출 없음). CI/검사 비활성화 없음.
+
+- 원인 P13-04-H2-ZONE-CACHE: UTC에서 초기화된 H2 시간대 캐시와 실행 중 Asia/Seoul 전환이 JDBC Timestamp를 다른 벽시각으로 노출했다(전체 CI37879986496의 utcDateTimeSurvivesNonUtcJvm 1개 실패). JDBC created_at을 LocalDateTime 타입으로 직접 요청해 SQL DATETIME의 UTC 벽시각을 보존했다. CI와 같은 JVM UTC에서 전체 서버605/실패0/오류0/조건부76 및 bootJar PASS54초(utc-full.log). 기존 타입 오류와 별도 원인으로 기록, 수정·재검사1회 성공. 시간대 회귀를 제거/완화하지 않았다. 현재 모델 변경 범위 재검토 완료.
