@@ -13,6 +13,11 @@ public final class PinController {
         @RequestHeader(value="X-Device-Id",required=false) String device,@RequestHeader(value="Idempotency-Key",required=false) String op,@RequestBody String body){
         var result=pins.reserve(auth,device,op,body);return ResponseEntity.status(result.status()).header("Cache-Control","no-store").contentType(MediaType.APPLICATION_JSON).body(result.body());
     }
+    @PostMapping(path="/{slotNo}/replacement",consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> replace(@RequestHeader(value="Authorization",required=false) String auth,
+        @RequestHeader(value="X-Device-Id",required=false) String device,@RequestHeader(value="Idempotency-Key",required=false) String op,@PathVariable("slotNo") String slot,@RequestBody String body){
+        var result=pins.replace(auth,device,op,slot,body);return ResponseEntity.status(result.status()).header("Cache-Control","no-store").contentType(MediaType.APPLICATION_JSON).body(result.body());
+    }
     @DeleteMapping(path="/{slotNo}",consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> release(@RequestHeader(value="Authorization",required=false) String auth,
         @RequestHeader(value="X-Device-Id",required=false) String device,@RequestHeader(value="Idempotency-Key",required=false) String op,@PathVariable("slotNo") String slot,@RequestBody String body){

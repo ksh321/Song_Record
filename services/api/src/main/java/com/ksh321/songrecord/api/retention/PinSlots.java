@@ -56,6 +56,28 @@ public final class PinSlots {
             return reply(new Slot(number,stored?recording:null,stored?null:recording,next),201);
         });
     }
+    /** Replacement never releases current or reserves upload quota optimistically. */
+    public IdempotentMutations.Reply replace(String auth,String device,String operation,String number,String body){
+        var account=access.authenticate(auth,device);int slot=slotNumber(number);CanonicalRequest.canonical(body);var root=JSON.readTree(body);
+        if(!root.isObject() || root.size()!=2 || !root.has("recording_id") || !root.has("base_revision") || !root.get("recording_id").isTextual())throw invalid();
+        UUID target=parse(root.get("recording_id").asText());var base=root.get("base_revision");if(!base.isIntegralNumber() || !base.canConvertToLong() || base.asLong()<1)throw invalid();UUID owner=account.principal().userId();
+        return mutations.execute(account,operation,"POST","/v1/pins/"+slot+"/replacement",body,()->{
+            lockAccount(account);entitlement(owner);
+            LockOrder.before(LockOrder.Rank.AGGREGATE,owner+"/1/"+target);var records=db.queryForList("SELECT lifecycle_state,metadata_state FROM recording WHERE user_id=? AND id=? FOR UPDATE",bytes(owner),bytes(target));if(records.isEmpty())throw missing();var metadata=records.getFirst();if(!"ACTIVE".equals(metadata.get("lifecycle_state")) || !"SAVED".equals(metadata.get("metadata_state")))throw error(HttpStatus.CONFLICT,"PIN_NOT_ELIGIBLE","활성 상태의 저장 완료 녹음만 교체할 수 있습니다.");
+            LockOrder.before(LockOrder.Rank.PIN_SLOT,owner+"/"+String.format(Locale.ROOT,"%010d",slot));var rows=db.query("SELECT slot_no,current_recording_id,pending_recording_id,revision FROM pin_slot WHERE user_id=? AND slot_no=? FOR UPDATE",(r,n)->new Slot(r.getInt(1),id(r.getBytes(2)),id(r.getBytes(3)),r.getLong(4)),bytes(owner),slot);if(rows.isEmpty())throw missing();var current=rows.getFirst();requireRevision(current,base.asLong());
+            if(current.current()==null)throw error(HttpStatus.CONFLICT,"PIN_REPLACEMENT_REQUIRES_CURRENT","기존 고정이 있는 슬롯을 선택해 주세요.");
+            if(target.equals(current.pending()) || target.equals(current.current()))return reply(current,200);
+            if(current.pending()!=null)throw error(HttpStatus.CONFLICT,"PIN_REPLACEMENT_IN_PROGRESS","기존 교체 대기를 먼저 취소해 주세요.");
+            if(slots(owner).stream().anyMatch(x->target.equals(x.current()) || target.equals(x.pending())))throw error(HttpStatus.CONFLICT,"PIN_ALREADY_IN_SLOT","이미 다른 슬롯에서 고정된 녹음입니다.");
+            var affected=new TreeSet<UUID>(Comparator.comparing(UUID::toString));affected.add(current.current());affected.add(target);var assets=new LinkedHashMap<UUID,List<Map<String,Object>>>();
+            for(UUID id:affected){LockOrder.before(LockOrder.Rank.RECORDING_ASSET,owner+"/"+id);assets.put(id,db.queryForList("SELECT cloud_state,cloud_revision FROM recording_asset WHERE user_id=? AND recording_id=? FOR UPDATE",bytes(owner),bytes(id)));}
+            var targetAssets=assets.get(target);if(!targetAssets.isEmpty() && "DELETING".equals(targetAssets.getFirst().get("cloud_state")))throw error(HttpStatus.CONFLICT,"FILE_CLEANUP_IN_PROGRESS","서버 파일 정리가 끝난 뒤 다시 교체해 주세요.");
+            long next=increment(current.revision());db.update("UPDATE pin_slot SET pending_recording_id=?,revision=?,operation_id=?,requested_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE user_id=? AND slot_no=?",bytes(target),next,bytes(parse(operation)),bytes(owner),slot);
+            for(UUID id:affected)RetentionAssetVersions.bumpLocked(db,owner,id,assets.get(id));return reply(new Slot(slot,current.current(),target,next),200);
+        });
+    }
+    static int slotNumber(String number){try{int slot=Integer.parseInt(number);if(slot<1 || !Integer.toString(slot).equals(number))throw new IllegalArgumentException();return slot;}catch(IllegalArgumentException e){throw missing();}}
+    static void requireRevision(Slot slot,long expected){if(slot.revision()!=expected)throw new ApiException(HttpStatus.CONFLICT,"REVISION_CONFLICT","최신 슬롯 상태를 확인해 주세요.",false,Map.of("current_revision",slot.revision(),"current",slot.wire()));}
     public IdempotentMutations.Reply release(String auth,String device,String operation,String number,String body){
         var account=access.authenticate(auth,device);int slot;
         try{slot=Integer.parseInt(number);if(slot<1 || !Integer.toString(slot).equals(number))throw new IllegalArgumentException();}catch(IllegalArgumentException e){throw missing();}

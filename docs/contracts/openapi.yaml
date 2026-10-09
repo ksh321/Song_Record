@@ -10,6 +10,42 @@ servers:
 security:
 - BearerAuth: []
 paths:
+  /pins/{slotNo}/replacement:
+    post:
+      operationId: replacePin
+      summary: 같은 슬롯에서 기존 고정을 보호하며 교체 대기
+      description: current를 유지하고 pending만 추가하며 점유 슬롯 수는 늘리지 않는다. base_revision과 소유 계정을 확인한다. 파일 보관 전환은 후속 확정 단계에서 수행하고 업로드는 기존 used+reserved 용량 제한을 따른다. 다른 pending을 덮어쓰지 않는다. Cache-Control no-store.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/RequestId'
+      - name: slotNo
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1, maximum: 2147483647}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [recording_id, base_revision]
+              properties:
+                recording_id: {type: string, format: uuid}
+                base_revision: {type: integer, format: int64, minimum: 1}
+      responses:
+        '200':
+          description: 기존 current와 새 pending을 가진 동일 슬롯. 동일 대상은 현재 상태 반환.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PinSlot'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
+        '404': {$ref: '#/components/responses/Error404'}
+        '409': {$ref: '#/components/responses/Error409'}
   /pins/{slotNo}:
     delete:
       operationId: releasePin

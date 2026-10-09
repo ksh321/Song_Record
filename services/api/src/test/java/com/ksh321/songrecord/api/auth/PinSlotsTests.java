@@ -52,6 +52,12 @@ class PinSlotsTests {
         UUID id=saved();asset(id,"STORED");f.jdbc.update("UPDATE recording_asset SET cloud_revision=?",Long.MAX_VALUE);
         assertRejected(id,"REVISION_LIMIT_REACHED");assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM pin_slot",Long.class)).isZero();assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Long.class)).isZero();
     }
+    @Test void replacementHttpChecksAuthenticationBodyRevisionAndOwner()throws Exception {
+        UUID id=saved(),target=saved();asset(id,"STORED");pins.reserve(auth,device,UUID.randomUUID().toString(),body(id,1));String path="/v1/pins/1/replacement",input=PinReplacementDatabaseChecks.body(target,1);
+        assertThat(mvc.perform(post(path).contentType("application/json").content(input)).andReturn().getResponse().getStatus()).isEqualTo(401);
+        for(String invalid:List.of("{}","[]",input.replace("1}","1.5}"),input.replace("}",",\"user_id\":\""+owner+"\"}")))assertThat(mvc.perform(post(path).header("Authorization",auth).header("X-Device-Id",device).header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content(invalid)).andReturn().getResponse().getStatus()).isEqualTo(400);
+        var response=mvc.perform(post(path).header("Authorization",auth).header("X-Device-Id",device).header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content(input)).andReturn().getResponse();assertThat(response.getStatus()).isEqualTo(200);assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");assertThat(response.getContentAsString()).contains(id.toString(),target.toString());
+    }
     @Test void httpRequiresSessionAndStrictRequestAndReturnsNoStore()throws Exception {
         UUID id=saved();assertThat(mvc.perform(post("/v1/pins").contentType("application/json").content(body(id,1))).andReturn().getResponse().getStatus()).isEqualTo(401);
         for(String input:List.of("{}","[]",body(id,0),body(id,1).replace("1}","1.5}"),body(id,1).replace("}",",\"user_id\":\""+owner+"\"}"))){assertThat(mvc.perform(post("/v1/pins").header("Authorization",auth).header("X-Device-Id",device).header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content(input)).andReturn().getResponse().getStatus()).isEqualTo(400);}
