@@ -26,6 +26,25 @@ final class RecordingFileStatus {
   final String? blockedReason;
   final bool pinCurrent, pinPending;
   bool get serverStored => serverState == 'STORED';
+  bool get canPlay =>
+      information != InformationSyncState.deleted &&
+      (device == DeviceAudioState.available || serverStored);
+  bool get filesConfirmedAbsent =>
+      device == DeviceAudioState.missing && serverState == 'NONE';
+  String get playbackUnavailableLabel =>
+      information == InformationSyncState.deleted
+      ? '삭제된 녹음입니다. 녹음 정보의 복원 상태를 먼저 확인하세요.'
+      : filesConfirmedAbsent
+      ? '현재 기기와 서버에 재생할 파일이 없습니다. 녹음 정보는 유지됩니다.'
+      : device == DeviceAudioState.unknown || serverState == 'UNKNOWN'
+      ? '파일 위치를 확인할 수 없습니다. 상태를 다시 확인하거나 원래 기기·백업을 확인하세요.'
+      : '현재 기기에 재생할 파일이 없고 서버 보관은 아직 완료되지 않았습니다.';
+  static const restorationGuide =
+      '1. 녹음한 원래 기기에서 파일이 남아 있는지 확인하세요.\n'
+      '2. 직접 보관한 M4A 사본이나 사용자 백업을 확인하세요.\n'
+      '3. 원래 기기·백업에도 파일이 없다면 녹음 정보만 유지됩니다.\n'
+      '파일을 복원한 뒤 실제 파일 검증을 마쳐야 재생할 수 있습니다. 보관 대상으로 선택한 것만으로 백업이 완료되지는 않습니다.';
+
   String get informationLabel => switch (information) {
     InformationSyncState.synced => '정보 동기화 완료',
     InformationSyncState.pending => '정보 동기화 대기',

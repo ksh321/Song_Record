@@ -4,17 +4,20 @@ import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/music_row_surface.dart';
 import 'package:song_record/core/widgets/music_view_data.dart';
 import 'package:song_record/core/widgets/recording_file_status_card.dart';
+import 'package:song_record/core/widgets/recording_playback_actions.dart';
 
 class RecordingRow extends StatelessWidget {
   const RecordingRow({
     required this.recording,
     this.onTap,
+    this.onPlay,
     this.selected = false,
     super.key,
   });
 
   final RecordingViewData recording;
   final VoidCallback? onTap;
+  final VoidCallback? onPlay;
   final bool selected;
 
   @override
@@ -51,6 +54,11 @@ class RecordingRow extends StatelessWidget {
                   ),
                 if (recording.fileStatus != null)
                   RecordingFileStatusCard(status: recording.fileStatus!),
+                if (recording.fileStatus != null)
+                  RecordingPlaybackActions(
+                    status: recording.fileStatus!,
+                    onPlay: onPlay,
+                  ),
                 if (snapshot.songId == null)
                   const Text('곡 미연결', style: AppTypography.supporting),
                 if (selected)
