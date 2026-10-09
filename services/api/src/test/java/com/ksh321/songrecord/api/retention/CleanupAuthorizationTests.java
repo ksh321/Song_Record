@@ -2,6 +2,7 @@ package com.ksh321.songrecord.api.retention;
 import org.junit.jupiter.api.Test;import org.springframework.core.io.ClassPathResource;import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 class CleanupAuthorizationTests {
  @Test void lockedDecisionsPreserveEarlierPinsAndRejectLaterPins()throws Exception{var f=new RetentionCandidatesTests();f.setup();try{f.selectionSchema();var db=f.db;
+ db.execute("ALTER TABLE cloud_hold ADD CONSTRAINT ck_authorization_hold_replacement CHECK(reason<>'PENDING_REPLACEMENT' OR (related_operation_id IS NOT NULL AND required_selection_revision IS NOT NULL))");
  db.execute("ALTER TABLE user_sync_state ADD last_change_seq BIGINT DEFAULT 0");db.execute("ALTER TABLE user_sync_state ADD updated_at TIMESTAMP");db.execute("ALTER TABLE recording_asset ADD blocked_reason VARCHAR(32)");db.execute("ALTER TABLE recording_asset ADD created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
  db.execute("CREATE TABLE user_entitlement(user_id BINARY(16) PRIMARY KEY,pinned_limit INT DEFAULT 10,quota_bytes BIGINT DEFAULT 1073741824,revision BIGINT DEFAULT 1)");db.execute("CREATE TABLE storage_usage(user_id BINARY(16) PRIMARY KEY,used_bytes BIGINT DEFAULT 0)");
  db.execute("CREATE TABLE pin_slot(user_id BINARY(16),slot_no INT,current_recording_id BINARY(16),pending_recording_id BINARY(16),revision BIGINT,operation_id BINARY(16),requested_at TIMESTAMP,updated_at TIMESTAMP,PRIMARY KEY(user_id,slot_no))");

@@ -9,3 +9,5 @@
 - 현재 모델 별도 검토: 원본 완료 기준·diff·검사·잠금 순서·계정/객체 범위·revision·토큰 기간·hold 구분·job dedupe·원자 rollback·변경 피드의 키/URL 제외·파일 I/O 분리·기존 데이터 보존 대조 완료. 방어적 null confirmation_mode 판정도 추가했다. 새 폰/플랫폼 변경 없음, 직접 조작 요구 없음.
 - 서버 변경 영향 CI만 필요. 앱/계약 재검사는 NOT_APPLICABLE이며 통과 실적으로 세지 않는다. 푸시 직전 원격 HEAD a0a8d6d를 BaseCommit으로 확인. 최종 SHA 서버·MySQL CI 대기.
 - 학습: 삭제와 고정은 같은 계정 잠금으로 순서를 정해야 한다. 확인과 작업 등록을 분리된 트랜잭션으로 처리하면 중간 실패로 보호만 사라질 수 있으므로 함께 확정한다.
+
+- MySQL 제약 재대조에서 PENDING_REPLACEMENT 시험 데이터에 related_operation_id/required_selection_revision가 필요함을 확인. 실제 V5 제약을 H2 fixture에도 추가하고 올바른 연관 값을 넣었다. hold-constraint-review 검사 PASS8초. 제품 보호 논리 변화/제약 완화 없음. 최초 8c6c5f1 대신 최종 수정 SHA CI로 검증하며 이전 감시 기록 보존.
