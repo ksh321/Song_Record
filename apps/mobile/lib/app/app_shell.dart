@@ -9,9 +9,15 @@ import 'package:song_record/routing/app_routes.dart';
 import 'package:song_record/routing/tab_navigation.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({required this.recorderGateway, this.tabBuilder, super.key});
+  const AppShell({
+    required this.recorderGateway,
+    this.tabBuilder,
+    this.searchBuilder,
+    super.key,
+  });
 
   final RecorderGateway recorderGateway;
+  final WidgetBuilder? searchBuilder;
 
   /// Allows a separate preview/test to exercise future tab bodies.
   /// Production uses the existing placeholders and single recorder panel.
@@ -103,7 +109,8 @@ class _AppShellState extends State<AppShell> {
           border: Border(top: BorderSide(color: AppColors.line)),
         ),
         child: NavigationBar(
-          animationDuration: MediaQuery.of(context).disableAnimations ||
+          animationDuration:
+              MediaQuery.of(context).disableAnimations ||
                   MediaQuery.of(context).accessibleNavigation
               ? Duration.zero
               : null,
@@ -127,6 +134,9 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _buildTab(AppTab tab) {
+    if (tab == AppTab.search && widget.searchBuilder != null) {
+      return widget.searchBuilder!(context);
+    }
     return ListView(
       key: PageStorageKey('page-${tab.name}'),
       primary: false,

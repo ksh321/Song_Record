@@ -10,3 +10,8 @@
 - 개념: 외부 재조회와 DB 변경을 분리하면 외부 장애가 데이터 잠금을 길게 잡지 않으며, 성공 영수증은 재조회 장애와 무관하게 재현할 수 있다.
 
 - 검토 보완 영향 재검증: test (*CandidateTests/*LiveCandidatesTests/*IdempotencyTests/*SongCreationTests) bootJar 종료0 BUILD SUCCESSFUL25초, XML {'tests': 97, 'failures': 0, 'errors': 0, 'skipped': 45}; 기존 MySQL 조건은 CI에서만 충족. 수정 후 현재 모델 재검토: 실제 구성 선택·토큰/번호/원본·계정 재검증·잠금 밖 재조회·재실행 본문 충돌·회귀를 대조, 남은 코드 지적 없음.
+
+- 푸시 시 GH007 이메일 보호 거절은 코드 실패가 아니다. 이번 미푸시 커밋 b64af70은 로컬 codex/p15-04-before-email-fix에 보존하고 공식 계정 noreply 작성자로만 정정했다. 서버 이메일 보호 설정·기존 푸시 이력은 유지. 최종0029591e32bbeab3381d9d079218007ec9061c94 일반 main 푸시 성공, 기준ee190a6의 필수 CI 감시PID21188 시작.
+
+## 최종 완료
+- 최종 SHA 0029591e32bbeab3381d9d079218007ec9061c94, 필수 CI 37939608067, 37939607831 PASS. 로컬·현재 모델 검토·실제 검사 근거 대조. 완료 폰 알림 서버 접수, 실제 수신 미확인. 직접 할 일 0건.

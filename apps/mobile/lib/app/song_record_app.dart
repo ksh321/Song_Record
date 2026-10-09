@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:song_record/app/app_shell.dart';
 import 'package:song_record/config/app_config.dart';
@@ -7,6 +8,9 @@ import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/auth/identity_link.dart';
 import 'package:song_record/features/health/health_screen.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
+import 'package:song_record/features/search/karaoke_http.dart';
+import 'package:song_record/features/search/karaoke_search.dart';
+import 'package:song_record/features/search/karaoke_search_screen.dart';
 import 'package:song_record/features/settings/settings_screen.dart';
 import 'package:song_record/features/sync/sync_controller.dart';
 import 'package:song_record/network/health_client.dart';
@@ -42,7 +46,46 @@ class SongRecordApp extends StatelessWidget {
       debugShowCheckedModeBanner: config.environment != AppEnvironment.prod,
       initialRoute: AppRoutes.home,
       routes: {
-        AppRoutes.home: (context) => AppShell(recorderGateway: recorderGateway),
+        AppRoutes.home: (context) => AppShell(
+          recorderGateway: recorderGateway,
+          searchBuilder: (context) => KaraokeSearchScreen(
+            auth: authController,
+            load: (query) async {
+              final auth = authController;
+              if (auth == null || auth.phase != AuthPhase.ready) {
+                throw const KaraokeFailure(
+                  '로그인이 필요해요.',
+                  code: 'LOGIN_REQUIRED',
+                );
+              }
+              final expectedUser = auth.session?.userId;
+              final expectedDevice = auth.session?.deviceId;
+              final session = await auth.validSession();
+              if (auth.phase != AuthPhase.ready ||
+                  session.userId != expectedUser ||
+                  session.deviceId != expectedDevice) {
+                throw const KaraokeFailure(
+                  '계정이 변경됐어요. 다시 검색해 주세요.',
+                  code: 'ACCOUNT_CHANGED',
+                );
+              }
+              final result = await HttpKaraokeSearch(
+                config.apiBaseUrl,
+                allowLocalHttp:
+                    kDebugMode && config.environment == AppEnvironment.dev,
+              ).search(query, session);
+              if (auth.phase != AuthPhase.ready ||
+                  auth.session?.userId != session.userId ||
+                  auth.session?.deviceId != session.deviceId) {
+                throw const KaraokeFailure(
+                  '계정이 변경됐어요. 다시 검색해 주세요.',
+                  code: 'ACCOUNT_CHANGED',
+                );
+              }
+              return result;
+            },
+          ),
+        ),
         AppRoutes.settings: (context) => SettingsScreen(
           showDevelopmentTools: config.environment == AppEnvironment.dev,
           identityLink: identityLink,
