@@ -19,3 +19,6 @@ worker 서버에 Python 3·FFmpeg·ffprobe가 필요하다. 기본 실행 이름
 
 ## P12-09 최종 객체 확정
 검증된 바이트는 사전 예약 final key에 If-None-Match 생성하며 기존 키는 실제 바이트가 같은 경우만 재사용한다. 네트워크 작업은 DB 잠금 밖이고 사용량·자산·시도 확정은 lease로 보호된 트랜잭션이다. 초기 단일 worker 역할에서 `songrecord.storage.enabled=true`, `songrecord.storage.role=worker`, `songrecord.upload.scheduling-enabled=true`로 UPLOAD_VERIFY 실행을 켠다. API 역할에는 최종 writer/스케줄이 없다.
+
+## P12-10 재실행·만료
+worker는 사전 final key가 존재하면 그 바이트를 재검증하고 동일 attempt를 복구한다. 영속 job retry와60초 예산을 공유한다. 실패·만료·취소는 예약만1회 해제하고 기존 자산을 유지한다. 미확정 객체 정리는 live lease 없음·자산 미연결·2분 grace 후 별도 스케줄에서 수행한다. cancel API는 앱 인증·기기·멱등 키·소유권을 요구한다.

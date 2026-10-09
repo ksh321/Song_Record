@@ -15,9 +15,26 @@ public final class UploadFinalization implements AudioValidator.Next {
         UUID recording=uuid((byte[])row.get("recording_id"));var key=finalKey(lease.userId(),recording,(String)row.get("final_key"));
         if(!"VERIFYING".equals(row.get("state")) || audio.bytes().remaining()!=n(row,"expected_size") || !audio.sha256().equals(row.get("expected_sha256")))throw new IllegalStateException("UPLOAD_STATE_CONFLICT");
         if(!eligible(lease.userId(),recording))throw new IllegalStateException("NOT_CLOUD_TARGET");
-        objects.ensure(key,audio.bytes(),audio.sha256());
+        bounded(()->{objects.ensure(key,audio.bytes(),audio.sha256());return Boolean.TRUE;});
         requireLease(lease);
         return ()->commit(lease,audio.sha256(),audio.bytes().remaining());
+    }
+    public Optional<Runnable> recover(JobQueue.Lease lease,AudioValidator validator)throws Exception{
+        LockOrder.requireOutsideTransaction();requireLease(lease);var row=attempt(lease);UUID recording=uuid((byte[])row.get("recording_id"));
+        var saved=bounded(()->objects.read(finalKey(lease.userId(),recording,(String)row.get("final_key"))));
+        if(saved.isEmpty())return Optional.empty();
+        var validated=validator.validate(saved.get(),n(row,"expected_size"),(String)row.get("expected_sha256"));
+        return Optional.of(prepare(lease,validated));
+    }
+    private static <T>T bounded(java.util.concurrent.Callable<T> work)throws Exception{
+        try(var budget=ValidationBudget.enter()){
+            var pool=java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();var done=new java.util.concurrent.CompletableFuture<T>();var release=budget.holdUntilReaderStops();
+            pool.execute(()->{try{done.complete(work.call());}catch(Throwable e){done.completeExceptionally(e);}finally{release.run();}});
+            try{return done.get(budget.remaining(),java.util.concurrent.TimeUnit.NANOSECONDS);}
+            catch(java.util.concurrent.TimeoutException e){throw new java.io.IOException("FILE_VALIDATION_TIMEOUT");}
+            catch(java.util.concurrent.ExecutionException e){if(e.getCause() instanceof Exception cause)throw cause;throw new java.io.IOException("FINAL_OBJECT_UNAVAILABLE");}
+            finally{done.cancel(true);pool.shutdownNow();}
+        }
     }
     private void commit(JobQueue.Lease lease,String hash,long size){
         UUID owner=lease.userId();lock(owner);
@@ -54,7 +71,8 @@ public final class UploadFinalization implements AudioValidator.Next {
         db.update("INSERT INTO change_log(user_id,change_seq,entity_type,entity_id,revision,operation,payload,created_at,expires_at) VALUES(?,?,'RECORDING_ASSET',?,?,'UPSERT',?,?,?)",bytes(owner),next,bytes(recording),revision,new tools.jackson.databind.json.JsonMapper().writeValueAsString(payload),now,now.plusDays(90));
         if(db.update("UPDATE user_sync_state SET last_change_seq=?,updated_at=? WHERE user_id=? AND last_change_seq=?",next,now,bytes(owner),sequence)!=1)throw new IllegalStateException("UPLOAD_SYNC_CONFLICT");
     }
-    void lock(UUID owner){
+    void lock(UUID owner){lock(db,owner);}
+    static void lock(JdbcTemplate db,UUID owner){
         LockOrder.before(LockOrder.Rank.GLOBAL_STORAGE,"1");db.queryForMap("SELECT id FROM global_storage_usage WHERE id=1 FOR UPDATE");
         LockOrder.before(LockOrder.Rank.USER_SYNC,owner.toString());db.queryForMap("SELECT user_id FROM user_sync_state WHERE user_id=? FOR UPDATE",bytes(owner));
         LockOrder.before(LockOrder.Rank.ENTITLEMENT,owner+"/");db.queryForMap("SELECT user_id FROM user_entitlement WHERE user_id=? FOR UPDATE",bytes(owner));

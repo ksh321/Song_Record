@@ -84,5 +84,10 @@ public final class UploadCompletionDatabaseChecks {
         assertThat(reads.get()).isEqualTo(1);
         clock.now=reservation.expiresAt();assertCode(()->completion.complete("fixture",dev.toString(),UUID.randomUUID().toString(),attempt),"UPLOAD_EXPIRED");
         assertThat(db.queryForObject("SELECT reserved_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(owner))).isEqualTo(3);
+        String cancelOperation=UUID.randomUUID().toString();var cancelled=completion.cancel("fixture",dev.toString(),cancelOperation,attempt);assertThat(cancelled.status()).isEqualTo(200);
+        assertThat(completion.cancel("fixture",dev.toString(),cancelOperation,attempt)).isEqualTo(cancelled);
+        assertThat(completion.cancel("fixture",dev.toString(),UUID.randomUUID().toString(),attempt).status()).isEqualTo(200);
+        assertCode(()->completion.cancel("fixture",dev.toString(),UUID.randomUUID().toString(),UUID.randomUUID()),"RESOURCE_NOT_FOUND");
+        assertThat(db.queryForObject("SELECT reserved_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(owner))).isZero();
     }
 }

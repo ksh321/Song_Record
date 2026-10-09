@@ -31,7 +31,11 @@ final class DevelopmentAudioProbe {
             try{storage.ensureFinal(finalKey,ByteBuffer.wrap(corrupt),hash(corrupt));return "FINAL_OVERWRITE_ALLOWED";}catch(java.io.IOException expected){}
             try(var finalRead=client.getObject(r->r.bucket(storage.finalWriterBucket()).key(finalKey.value()))){if(!Arrays.equals(finalRead.readNBytes(synthetic.length+1),synthetic))return "FINAL_BYTES_MISMATCH";}
             byte[] preserved=new byte[valid.bytes().remaining()];valid.bytes().get(preserved);
-            return Arrays.equals(preserved,synthetic)?"VERIFIED":"BYTES_MISMATCH";
+            if(!Arrays.equals(preserved,synthetic))return "BYTES_MISMATCH";
+            storage.deleteTemporary(key);owned=false;
+            var recovered=storage.readFinal(finalKey).orElseThrow();validator.validate(recovered,synthetic.length,hash(synthetic));
+            storage.deleteUncommittedFinal(finalKey);finalOwned=false;storage.deleteUncommittedFinal(finalKey);
+            return storage.readFinal(finalKey).isEmpty()?"VERIFIED":"CLEANUP_FAILED";
         }catch(Exception ignored){return "ERROR";}
         finally{if(finalOwned)try{client.deleteObject(r->r.bucket(storage.finalWriterBucket()).key(finalKey.value()));}catch(Exception ignored){return "CLEANUP_FAILED";}if(owned)try{client.deleteObject(r->r.bucket(bucket).key(key.value()));}catch(Exception ignored){return "CLEANUP_FAILED";}}
     }

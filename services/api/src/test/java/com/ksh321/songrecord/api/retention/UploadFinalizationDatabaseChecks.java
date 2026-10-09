@@ -26,6 +26,7 @@ public final class UploadFinalizationDatabaseChecks {
   assertThatThrownBy(()->other.jobs.complete(other.lease,pending)).isInstanceOf(IllegalStateException.class);
   assertThat(db.queryForObject("SELECT COUNT(*) FROM recording_asset WHERE user_id=?",Long.class,bytes(other.owner))).isZero();
   assertThat(db.queryForObject("SELECT reserved_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(other.owner))).isEqualTo(3);
+  new UploadRecovery(db,new DataSourceTransactionManager(db.getDataSource()),other.clock).failed(other.lease,"NOT_CLOUD_TARGET");
  }
  public record Fixture(UUID owner,UUID recording,UUID attempt,JobQueue jobs,JobQueue.Lease lease,UploadApprovalDatabaseChecks.MutableClock clock){}
  public static Fixture fixture(JdbcTemplate db){

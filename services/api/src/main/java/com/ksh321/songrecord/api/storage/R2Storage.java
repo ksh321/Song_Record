@@ -52,11 +52,19 @@ public final class R2Storage implements AutoCloseable {
         if(bytes.length<1 || bytes.length>6291456)throw new IllegalStateException("FILE_SIZE_MISMATCH");
         try{client.putObject(r->r.bucket(bucket).key(key.value()).ifNoneMatch("*").contentType("audio/mp4"),software.amazon.awssdk.core.sync.RequestBody.fromBytes(bytes));}
         catch(software.amazon.awssdk.services.s3.model.S3Exception e){if(e.statusCode()!=412 && e.statusCode()!=409)throw new java.io.IOException("FINAL_WRITE_FAILED");}
-        try(var input=client.getObject(r->r.bucket(bucket).key(key.value()))){
+        var input=client.getObject(r->r.bucket(bucket).key(key.value()));try{
             byte[] actual=input.readNBytes(6291457);
             if(!java.util.Arrays.equals(bytes,actual))throw new java.io.IOException("FINAL_OBJECT_MISMATCH");
-        }catch(java.io.IOException e){throw e;}catch(RuntimeException e){throw new java.io.IOException("FINAL_OBJECT_UNAVAILABLE");}
+        }catch(java.io.IOException e){throw e;}catch(RuntimeException e){throw new java.io.IOException("FINAL_OBJECT_UNAVAILABLE");}finally{input.abort();}
     }
+    public java.util.Optional<java.nio.ByteBuffer> readFinal(StorageObjectKeys.Final key)throws Exception{
+        com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();
+        try{var input=client.getObject(r->r.bucket(finalWriterBucket()).key(key.value()));try{byte[] data=input.readNBytes(6291457);if(data.length>6291456)throw new java.io.IOException("FINAL_OBJECT_MISMATCH");return java.util.Optional.of(java.nio.ByteBuffer.wrap(data).asReadOnlyBuffer());}finally{input.abort();}}
+        catch(software.amazon.awssdk.services.s3.model.NoSuchKeyException e){return java.util.Optional.empty();}
+        catch(software.amazon.awssdk.services.s3.model.S3Exception e){if(e.statusCode()==404)return java.util.Optional.empty();throw new java.io.IOException("FINAL_OBJECT_UNAVAILABLE");}
+    }
+    public void deleteTemporary(StorageObjectKeys.Temporary key){com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();finalWriterBucket();client.deleteObject(r->r.bucket(settings.temporaryBucket).key(key.value()));}
+    public void deleteUncommittedFinal(StorageObjectKeys.Final key){com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();client.deleteObject(r->r.bucket(finalWriterBucket()).key(key.value()));}
     public String temporaryBucket(){return settings.temporaryBucket;}
     // API-role processes cannot request the final writer's bucket through this boundary.
     public String finalWriterBucket(){if(!settings.role.equals("worker"))throw new IllegalStateException("Final storage requires worker role");return settings.finalBucket;}

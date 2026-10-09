@@ -22,5 +22,9 @@ public final class UploadController {
     public ResponseEntity<String> complete(@RequestHeader(value="Authorization",required=false)String auth,
         @RequestHeader(value="X-Device-Id",required=false)String device,@RequestHeader(value="Idempotency-Key",required=false)String op,
         @PathVariable("id")UUID id){return response(completion.complete(auth,device,op,id));}
+    @PostMapping(path="/uploads/{id}/cancel",produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> cancel(@RequestHeader(value="Authorization",required=false)String auth,
+        @RequestHeader(value="X-Device-Id",required=false)String device,@RequestHeader(value="Idempotency-Key",required=false)String op,
+        @PathVariable("id")UUID id){return response(completion.cancel(auth,device,op,id));}
     private static ResponseEntity<String> response(IdempotentMutations.Reply r){return ResponseEntity.status(r.status()).header("Cache-Control","no-store").contentType(MediaType.APPLICATION_JSON).body(r.body());}
 }

@@ -16,16 +16,25 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.*;
 public final class UploadCompletion {
     private static final JsonMapper JSON=new JsonMapper();
     private final JdbcTemplate db; private final AccountAccess access; private final IdempotentMutations mutations;
-    private final UploadReservations reservations; private final JobQueue jobs; private final Clock clock;
+    private final PlatformTransactionManager mutationsManager; private final UploadReservations reservations; private final JobQueue jobs; private final Clock clock;
     public UploadCompletion(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,
             IdempotentMutations mutations,JobQueue jobs,Clock clock){
-        this.db=db;this.access=access;this.mutations=mutations;this.jobs=jobs;this.clock=clock;
+        this.db=db;this.access=access;this.mutations=mutations;this.mutationsManager=manager;this.jobs=jobs;this.clock=clock;
         reservations=new UploadReservations(db,access,manager,clock);
     }
     public IdempotentMutations.Reply complete(String auth,String device,String operation,UUID attempt){
         var account=access.authenticate(auth,device);
         return mutations.execute(account,operation,"POST","/v1/uploads/"+attempt+"/complete","{}",()->
             reservations.locked(account,()->accept(account,attempt)));
+    }
+    public IdempotentMutations.Reply cancel(String auth,String device,String operation,UUID attempt){
+        var account=access.authenticate(auth,device);
+        return mutations.execute(account,operation,"POST","/v1/uploads/"+attempt+"/cancel","{}",()->reservations.locked(account,()->{
+            UUID owner=access.revalidate(account).userId();if(db.queryForList("SELECT id FROM recording_upload WHERE user_id=? AND id=?",bytes(owner),bytes(attempt)).isEmpty())throw error("RESOURCE_NOT_FOUND",HttpStatus.NOT_FOUND);
+            String state=new UploadRecovery(db,mutationsManager,clock).cancel(owner,attempt);
+            if("COMMITTED".equals(state))throw error("UPLOAD_STATE_CONFLICT",HttpStatus.CONFLICT);
+            return reply(200,Map.of("attempt_id",attempt.toString(),"state",state));
+        }));
     }
     private IdempotentMutations.Reply accept(AccountAccess.Account account,UUID attempt){
         UUID owner=access.revalidate(account).userId();

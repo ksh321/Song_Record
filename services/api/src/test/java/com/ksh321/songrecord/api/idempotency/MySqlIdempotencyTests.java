@@ -918,6 +918,6 @@ class MySqlIdempotencyTests {
 
     @Test void mysqlVerifiedUploadFinalization()throws Exception {
         String name=database+"_upload_finalization";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.UploadFinalizationDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.UploadFinalizationDatabaseChecks.verify(new JdbcTemplate(ds));com.ksh321.songrecord.api.retention.UploadRecoveryDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
 }
