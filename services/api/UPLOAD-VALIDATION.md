@@ -16,3 +16,6 @@ worker 서버에 Python 3·FFmpeg·ffprobe가 필요하다. 기본 실행 이름
 다운로드가 성공하거나 PUT을 완료했다는 사실만으로 파일 보관 완료가 아니다. 제한 내 실제 검증 이후 기존 lease·계정·녹음 상태를 다시 확인하며, 확정은 후속 단계에서 검증한 같은 바이트만 사용한다.
 
 설계 근거: 원본 계획 P12-08 XML p00663~665, 설계 8.2 p00497. 구현 참조: [Windows Job Object](https://learn.microsoft.com/en-us/windows/win32/procthread/job-objects), [Python resource 한도](https://docs.python.org/3/library/resource.html), [FFmpeg 옵션](https://ffmpeg.org/ffmpeg.html).
+
+## P12-09 최종 객체 확정
+검증된 바이트는 사전 예약 final key에 If-None-Match 생성하며 기존 키는 실제 바이트가 같은 경우만 재사용한다. 네트워크 작업은 DB 잠금 밖이고 사용량·자산·시도 확정은 lease로 보호된 트랜잭션이다. 초기 단일 worker 역할에서 `songrecord.storage.enabled=true`, `songrecord.storage.role=worker`, `songrecord.upload.scheduling-enabled=true`로 UPLOAD_VERIFY 실행을 켠다. API 역할에는 최종 writer/스케줄이 없다.

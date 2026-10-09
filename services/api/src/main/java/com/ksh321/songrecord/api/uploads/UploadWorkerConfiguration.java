@@ -10,5 +10,7 @@ public class UploadWorkerConfiguration {
     @Bean @ConditionalOnProperty(name="songrecord.storage.role",havingValue="worker")
     UploadVerification uploadVerification(JdbcTemplate db,R2Storage storage){return new UploadVerification(db,storage::openTemporary,Clock.systemUTC());}
     @Bean @ConditionalOnProperty(name="songrecord.storage.role",havingValue="worker")
+    UploadFinalization uploadFinalization(JdbcTemplate db,R2Storage storage){return new UploadFinalization(db,storage::ensureFinal,Clock.systemUTC());}
+    @Bean @ConditionalOnProperty(name="songrecord.storage.role",havingValue="worker")
     AudioValidator audioValidator(org.springframework.core.env.Environment environment){return new AudioValidator(environment.getProperty("songrecord.upload.ffmpeg","ffmpeg"),environment.getProperty("songrecord.upload.ffprobe","ffprobe"),environment.getProperty("songrecord.upload.python",System.getProperty("os.name").startsWith("Windows")?"python":"python3"));}
 }
