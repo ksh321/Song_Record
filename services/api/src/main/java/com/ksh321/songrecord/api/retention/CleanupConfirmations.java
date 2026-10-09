@@ -47,7 +47,7 @@ public final class CleanupConfirmations {
  }
  private UUID lock(AccountAccess.Account account){UUID owner=access.revalidate(account).userId();LockOrder.before(LockOrder.Rank.USER_SYNC,owner.toString());if(db.queryForList("SELECT user_id FROM user_sync_state WHERE user_id=? FOR UPDATE",bytes(owner)).isEmpty())throw error("CLEANUP_TOKEN_INVALID");access.revalidate(account);return owner;}
  private Map<String,Object> asset(UUID owner,UUID id){LockOrder.before(LockOrder.Rank.RECORDING_ASSET,owner+"/"+id);var rows=db.queryForList("SELECT generation,sha256,verified_size,cloud_revision FROM recording_asset WHERE user_id=? AND recording_id=? AND cloud_state='STORED' FOR UPDATE",bytes(owner),bytes(id));if(rows.isEmpty())throw error("FILE_NOT_STORED");return rows.getFirst();}
- static Instant instant(Object value){if(value instanceof java.sql.Timestamp t)return t.toInstant();if(value instanceof LocalDateTime t)return t.toInstant(ZoneOffset.UTC);throw new IllegalStateException("CLEANUP_TIME_INVALID");}
- private Instant now(){return clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);}private static java.sql.Timestamp stamp(Instant instant){return java.sql.Timestamp.from(instant);}
+ static Instant instant(Object value){if(value instanceof java.sql.Timestamp t)return t.toLocalDateTime().toInstant(ZoneOffset.UTC);if(value instanceof LocalDateTime t)return t.toInstant(ZoneOffset.UTC);throw new IllegalStateException("CLEANUP_TIME_INVALID");}
+ private Instant now(){return clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);}static LocalDateTime stamp(Instant instant){return LocalDateTime.ofInstant(instant,ZoneOffset.UTC);}
  private static ApiException invalid(){return PinSlots.invalid();}private static ApiException error(String code){return new ApiException(HttpStatus.CONFLICT,code,"서버 사본 상태와 보존 확인을 다시 확인해 주세요.",false,Map.of());}
 }
