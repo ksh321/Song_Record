@@ -56,6 +56,11 @@ public final class JobQueue {
     public UUID enqueueMaintenance(Type type,UUID aggregate,UUID operation,String payload) {
         requireTransaction();return joined.execute(s->insert(null,type,aggregate,operation,payload));
     }
+    /** Trusted scheduler only: owner is read from persisted domain state, never a public submission. */
+    public UUID enqueueOwnedMaintenance(UUID owner,Type type,UUID aggregate,UUID operation,String payload) {
+        requireTransaction();Objects.requireNonNull(owner);
+        return joined.execute(s->{if(jdbc.queryForList("SELECT id FROM app_user WHERE id=? AND status='ACTIVE'",bytes(owner)).isEmpty())throw new IllegalStateException("Maintenance owner inactive");return insert(owner,type,aggregate,operation,payload);});
+    }
     private UUID insert(UUID user,Type type,UUID aggregate,UUID operation,String payload) {
         Objects.requireNonNull(type);Objects.requireNonNull(aggregate);Objects.requireNonNull(operation);
         String canonical=CanonicalRequest.canonical(payload);
