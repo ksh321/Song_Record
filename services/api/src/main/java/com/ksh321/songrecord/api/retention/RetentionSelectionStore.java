@@ -11,7 +11,7 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 import static com.ksh321.songrecord.api.songs.SongQueryKeys.uuid;
 
 /** Trusted server worker entry. Not an HTTP authorization boundary. Owns one short transaction.
- * Job completion joins a fresh transaction; no asset/pin/hold/file changes or external work here. */
+ * Job completion joins a fresh transaction; policy holds/asset versions change without external work. */
 @Component
 @Profile("!bootstrap")
 public final class RetentionSelectionStore {
@@ -59,15 +59,29 @@ public final class RetentionSelectionStore {
                 return Optional.of(new Snapshot(selected,1));
             }
             var previous=stored.getFirst();
-            if(previous.ids().equals(selected))return Optional.of(previous); // Retry/no-op does not consume a version.
+            if(previous.ids().equals(selected)){
+                var changes=ReplacementProtection.reconcile(jdbc,owner,song,previous.recordingIds(),selected.recordingIds(),previous.revision());
+                RetentionAssetVersions.bump(jdbc,owner,changes);return Optional.of(previous);
+            } // A stored replacement can release a hold without changing selection.
             if(previous.revision()==Long.MAX_VALUE)throw new IllegalStateException("Selection revision exhausted");
             long next=previous.revision()+1;
             int changed=jdbc.update("UPDATE song_cloud_selection SET representative_id=?,latest_id=?,lowest_tier_id=?,selection_revision=?,updated_at=CURRENT_TIMESTAMP(3) WHERE user_id=? AND song_id=? AND selection_revision=?",
                 value(selected.representative()),value(selected.latest()),value(selected.lowestTier()),next,bytes(owner),bytes(song),previous.revision());
             if(changed!=1)throw new IllegalStateException("Selection revision changed");
             var affected=new HashSet<UUID>(previous.recordingIds());affected.addAll(selected.recordingIds());
+            affected.addAll(ReplacementProtection.reconcile(jdbc,owner,song,previous.recordingIds(),selected.recordingIds(),next));
             RetentionAssetVersions.bump(jdbc,owner,affected);
             return Optional.of(new Snapshot(selected,next));
+    }
+    private UUID refreshOwner,refreshSong;
+    /** Bounded cursor page: periodic retry observes successful uploads even without a metadata event. */
+    public synchronized void refreshReplacementHolds(){
+        LockOrder.requireOutsideTransaction();
+        String cursor=refreshOwner==null?"":" AND (user_id>? OR (user_id=? AND related_operation_id>?))";
+        Object[] args=refreshOwner==null?new Object[0]:new Object[]{bytes(refreshOwner),bytes(refreshOwner),bytes(refreshSong)};
+        var rows=jdbc.queryForList("SELECT DISTINCT user_id,related_operation_id FROM cloud_hold WHERE reason='PENDING_REPLACEMENT' AND related_operation_id IS NOT NULL"+cursor+" ORDER BY user_id,related_operation_id LIMIT 100",args);
+        if(rows.isEmpty()){refreshOwner=null;refreshSong=null;return;}
+        for(var row:rows){UUID owner=uuid((byte[])row.get("user_id")),song=uuid((byte[])row.get("related_operation_id"));recalculate(owner,song);refreshOwner=owner;refreshSong=song;}
     }
     private record Song(UUID representative,boolean active) {}
     private boolean active(UUID owner) {

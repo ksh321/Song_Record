@@ -10,7 +10,7 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 
 class RecordingLinkingTests {
     final RecordingEditingTests setup=new RecordingEditingTests();
-    @BeforeEach void open()throws Exception{setup.open();setup.f.jdbc.execute("ALTER TABLE song_cloud_selection ADD selection_revision BIGINT DEFAULT 1");setup.f.jdbc.execute("ALTER TABLE song_cloud_selection ADD updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP");}
+    @BeforeEach void open()throws Exception{setup.open();setup.f.jdbc.execute("CREATE TABLE cloud_hold(id BINARY(16) PRIMARY KEY,user_id BINARY(16),recording_id BINARY(16),reason VARCHAR(32),related_operation_id BINARY(16),required_selection_revision BIGINT,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE(user_id,recording_id,reason,related_operation_id))");setup.f.jdbc.execute("ALTER TABLE song_cloud_selection ADD selection_revision BIGINT DEFAULT 1");setup.f.jdbc.execute("ALTER TABLE song_cloud_selection ADD updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP");}
     @AfterEach void close()throws Exception{setup.close();}
     UUID song(UUID owner,String state){UUID id=UUID.randomUUID();setup.f.jdbc.update("INSERT INTO song(id,user_id,source_type,title,artist,version_code,note,lifecycle_state) VALUES(?,?,'MANUAL','different title','different artist','MR','different note',?)",bytes(id),bytes(owner),state);return id;}
     MockHttpServletResponse link(String body)throws Exception{return setup.setup.setup.mvc.perform(patch("/v1/recordings/"+setup.setup.id+"/song").header("Authorization","Bearer "+setup.f.tokens.accessToken()).header("X-Device-Id",setup.f.registration.deviceId()).header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content(body)).andReturn().getResponse();}

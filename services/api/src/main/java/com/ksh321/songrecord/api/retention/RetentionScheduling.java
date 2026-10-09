@@ -15,10 +15,12 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 @EnableScheduling
 @ConditionalOnProperty(name="songrecord.retention.scheduling-enabled",havingValue="true",matchIfMissing=true)
 public class RetentionScheduling {
-    private final RetentionWorker worker;
+    private final RetentionWorker worker;private final RetentionSelectionStore store;
     public RetentionScheduling(JdbcTemplate jdbc,AccountAccess access,PlatformTransactionManager manager,RetentionSelectionStore store){
-        worker=new RetentionWorker(new JobQueue(jdbc,access,manager,Clock.systemUTC(),Duration.ofMinutes(2),5),store);
+        this.store=store;worker=new RetentionWorker(new JobQueue(jdbc,access,manager,Clock.systemUTC(),Duration.ofMinutes(2),5),store);
     }
+    @Scheduled(fixedDelay=60000,initialDelay=60000,scheduler="retentionScheduler")
+    public void refresh(){try{store.refreshReplacementHolds();}catch(RuntimeException e){org.slf4j.LoggerFactory.getLogger(RetentionScheduling.class).warn("replacement_protection_refresh_failed");}}
     @Bean ThreadPoolTaskScheduler retentionScheduler(){var scheduler=new ThreadPoolTaskScheduler();scheduler.setPoolSize(1);scheduler.setThreadNamePrefix("retention-");return scheduler;}
     @Scheduled(fixedDelay=1000,initialDelay=1000,scheduler="retentionScheduler")
     public void tick(){try{worker.runOnce();}catch(RuntimeException e){org.slf4j.LoggerFactory.getLogger(RetentionScheduling.class).warn("retention_worker_tick_failed type={}",e.getClass().getSimpleName());}}

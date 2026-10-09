@@ -50,11 +50,12 @@ class RetentionCandidatesTests {
         selectionSchema();
         RetentionExampleDatabaseChecks.verify(db);
     }
-    private void selectionSchema() {
+    void selectionSchema() {
         db.execute("ALTER TABLE song ADD representative_recording_id BINARY(16)");
         db.execute("CREATE TABLE user_sync_state(user_id BINARY(16) PRIMARY KEY)");
         db.execute("CREATE TABLE song_cloud_selection(song_id BINARY(16) PRIMARY KEY,user_id BINARY(16),representative_id BINARY(16),latest_id BINARY(16),lowest_tier_id BINARY(16),selection_revision BIGINT NOT NULL,updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP)");
-        db.execute("CREATE TABLE recording_asset(recording_id BINARY(16) PRIMARY KEY,user_id BINARY(16),cloud_revision BIGINT DEFAULT 1,updated_at TIMESTAMP)");
+        db.execute("CREATE TABLE recording_asset(recording_id BINARY(16) PRIMARY KEY,user_id BINARY(16),cloud_state VARCHAR(16) DEFAULT 'NONE',cloud_revision BIGINT DEFAULT 1,object_key VARCHAR(512),generation BINARY(16),verified_size BIGINT,sha256 VARCHAR(64),stored_at TIMESTAMP,updated_at TIMESTAMP)");
+        db.execute("CREATE TABLE cloud_hold(id BINARY(16) PRIMARY KEY,user_id BINARY(16),recording_id BINARY(16),reason VARCHAR(32),related_operation_id BINARY(16),required_selection_revision BIGINT,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE(user_id,recording_id,reason,related_operation_id))");
     }
     @AfterEach void close() { db.execute("SHUTDOWN"); }
     @Test void ownerSongLifecycleAndCrossDeviceEligibility() { verify(db); }
