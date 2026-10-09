@@ -148,11 +148,11 @@ versions="$(run_sql "SELECT GROUP_CONCAT(version ORDER BY installed_rank) FROM f
 [[ "$versions" == "1,2,3,4,5,6,7,8,9" ]] || { echo "Unexpected Flyway versions: $versions"; exit 1; }
 python3 "$infra_dir/scripts/verify_p06_link_schema.py"
 
-# Populated V9 -> V16: preserve metadata and fill song/recording keys before serving lists.
+# Populated V9 -> V18: preserve metadata and fill song/recording keys before serving lists.
 start_api ""
 stop_api
 versions="$(run_sql "SELECT GROUP_CONCAT(version ORDER BY installed_rank) FROM flyway_schema_history WHERE success=1;")"
-[[ "$versions" == "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17" ]] || { echo "Unexpected Flyway versions: $versions"; exit 1; }
+[[ "$versions" == "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18" ]] || { echo "Unexpected Flyway versions: $versions"; exit 1; }
 missing_keys="$(run_sql "SELECT COUNT(*) FROM song s LEFT JOIN song_query_key k ON k.song_id=s.id AND k.user_id=s.user_id WHERE k.song_id IS NULL OR k.key_version<>'SR-SORT-1/SR-SORT-BYTES-1';")"
 [[ "$missing_keys" == "0" ]] || { echo "Song key backfill is incomplete"; exit 1; }
 missing_recording_keys="$(run_sql "SELECT COUNT(*) FROM recording r LEFT JOIN recording_query_key k ON k.recording_id=r.id AND k.user_id=r.user_id WHERE k.recording_id IS NULL OR k.key_version<>'SR-SORT-1/SR-SORT-BYTES-1';")"

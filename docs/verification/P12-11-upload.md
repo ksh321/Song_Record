@@ -17,3 +17,5 @@
 
 ## CI 수정 근거
 - P12-11-MIGRATION-COUNT: 실제 MySQL 71개 중1개 실패. V9→최신 업그레이드 실행 개수가 V18 추가로8→9가 됐는데 기대값8 유지. 기대9로 수정, 기존 데이터 보존·Flyway validate·재실행0 검사 유지. 새 객체 대조 MySQL 검사 및 서버 전체 검사 PASS. 원인별 수정1회, 모델 추가 호출/상향 없음.
+
+- 동일 근본 원인 P12-11-MIGRATION-COUNT 두 번째 위치: infra/scripts/verify_p04_migrations.sh 최신 목록 V17까지만 허용하여 V18 후 실패. 전체 저장소 관련 버전 기대 검색 후 최종 목록 V18 포함·설명 갱신. 단계별 V4~V9 기대 및 키 backfill/동일 데이터 재시작 검사는 유지. 실제 MySQL 테스트71개 PASS 및 서버 PASS, 수정 후 최종 전체 필수 CI 재확인. 별도 사용자 행동 없음.
