@@ -455,6 +455,79 @@ final class AccountStore {
     }),
   );
 
+  /// One account-scoped read of effective server evidence; roles confer no file availability.
+  Future<Map<String, Object?>> recordingStorageEvidence(
+    String recordingId,
+  ) => _run(
+    () => _database.transaction(() async {
+      final id = UuidValue(recordingId).value;
+      final record = await _readMetadata(LocalEntity.recording, id);
+      final asset = await _readMetadata(LocalEntity.recordingAsset, id);
+      final recordBaseline = await _snapshots.baselineRecord('RECORDING', id);
+      // Asset relation rows are outside baselineRecord's point-entity contract.
+      final assetBaseline = await _database
+          .customSelect(
+            """SELECT p.canonical_payload FROM snapshot_download_rows p
+        JOIN snapshot_baseline b ON b.snapshot_token=p.snapshot_token AND b.user_id=p.user_id
+        JOIN snapshot_downloads h ON h.snapshot_token=b.snapshot_token AND h.user_id=b.user_id
+        WHERE b.singleton=1 AND p.user_id=? AND h.state='APPLIED'
+        AND p.entity='RECORDING_ASSET' AND p.resource_id=?""",
+            variables: [Variable(userId), Variable(id)],
+          )
+          .getSingleOrNull();
+      final pins = await _database
+          .customSelect(
+            """SELECT server_payload AS payload FROM metadata_copies
+        WHERE entity_type='PIN_SLOT' AND user_id=? AND tombstone=0 AND server_payload IS NOT NULL
+        UNION ALL SELECT p.canonical_payload AS payload FROM snapshot_download_rows p
+        JOIN snapshot_baseline b ON b.snapshot_token=p.snapshot_token
+        WHERE p.entity='PIN_SLOT' AND p.user_id=? AND NOT EXISTS(SELECT 1 FROM metadata_copies newer
+        WHERE newer.entity_type='PIN_SLOT' AND newer.entity_id=p.resource_id)""",
+            variables: [Variable(userId), Variable(userId)],
+          )
+          .get();
+      bool current = false, pending = false;
+      for (final pin in pins) {
+        final value = jsonDecode(pin.read<String>('payload'));
+        if (value is! Map ||
+            (value['user_id'] != null && value['user_id'] != userId)) {
+          continue;
+        }
+        current |= value['current_recording_id'] == id;
+        pending |= value['pending_recording_id'] == id;
+      }
+      requireActive();
+      return {
+        'record':
+            record?.serverJson ??
+            (record == null ? recordBaseline?.entry?.canonicalPayload : null),
+        'draft':
+            (record?.localJson != null &&
+                record?.localJson != record?.serverJson) ||
+            (await _database
+                        .customSelect(
+                          "SELECT COUNT(*) AS n FROM local_mutations WHERE entity_type='RECORDING' AND entity_id=? AND queue_state<>'ACKED'",
+                          variables: [Variable(id)],
+                        )
+                        .getSingle())
+                    .read<int>('n') >
+                0,
+        'deleted': record?.tombstone ?? false,
+        'asset': asset?.tombstone == true
+            ? null
+            : asset?.serverJson ??
+                  (asset == null
+                      ? assetBaseline?.read<String>('canonical_payload')
+                      : null),
+        'asset_absent':
+            asset?.tombstone == true ||
+            (asset == null && recordBaseline != null && assetBaseline == null),
+        'pin_current': current,
+        'pin_pending': pending,
+      };
+    }),
+  );
+
   Future<MetadataCopy?> _readMetadata(
     LocalEntity entity,
     String entityId,

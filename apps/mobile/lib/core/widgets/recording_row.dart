@@ -3,6 +3,7 @@ import 'package:song_record/core/domain/song_types.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/music_row_surface.dart';
 import 'package:song_record/core/widgets/music_view_data.dart';
+import 'package:song_record/core/widgets/recording_file_status_card.dart';
 
 class RecordingRow extends StatelessWidget {
   const RecordingRow({
@@ -43,10 +44,13 @@ class RecordingRow extends StatelessWidget {
                   '티어 ${formatRecordingTier(recording.tier)}',
                   style: AppTypography.supporting,
                 ),
-                Text(
-                  recording.fileAvailability.label,
-                  style: AppTypography.supporting,
-                ),
+                if (recording.fileStatus == null)
+                  Text(
+                    recording.fileAvailability.label,
+                    style: AppTypography.supporting,
+                  ),
+                if (recording.fileStatus != null)
+                  RecordingFileStatusCard(status: recording.fileStatus!),
                 if (snapshot.songId == null)
                   const Text('곡 미연결', style: AppTypography.supporting),
                 if (selected)

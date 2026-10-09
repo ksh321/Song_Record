@@ -1,6 +1,8 @@
+import 'package:song_record/core/database/account_store.dart';
 import 'package:song_record/core/domain/identifiers.dart';
 import 'package:song_record/core/domain/recording_snapshot.dart';
 import 'package:song_record/core/domain/song_types.dart';
+import 'package:song_record/core/files/recording_file_status.dart';
 
 /// Read-only presentation data. Callers supply validated domain/account data.
 class RegisteredSongViewData {
@@ -71,8 +73,12 @@ class RecordingViewData {
     required this.snapshot,
     required this.duration,
     required this.fileAvailability,
+    this.fileStatus,
     this.tier,
   }) {
+    if (fileStatus != null && fileStatus!.recording != snapshot.id.value) {
+      throw ArgumentError('File status belongs to another recording');
+    }
     if (duration.isNegative) {
       throw ArgumentError.value(duration, 'duration', '길이는 음수일 수 없습니다.');
     }
@@ -81,7 +87,34 @@ class RecordingViewData {
   final RecordingSnapshot snapshot;
   final Duration duration;
   final RecordingFileAvailability fileAvailability;
+  final RecordingFileStatus? fileStatus;
   final RecordingTier? tier;
+
+  /// Read actual account files and independent server/sync evidence before presentation.
+  Future<RecordingViewData> withVerifiedFiles(AccountStore store) async {
+    final status = await RecordingFileStatuses(store).read(snapshot.id.value);
+    store.requireActive();
+    final local = status.device == DeviceAudioState.available;
+    final availability =
+        status.device == DeviceAudioState.unknown ||
+            status.serverState == 'UNKNOWN' ||
+            status.serverState == 'DELETING'
+        ? RecordingFileAvailability.unknown
+        : local && status.serverStored
+        ? RecordingFileAvailability.localAndCloud
+        : local
+        ? RecordingFileAvailability.localOnly
+        : status.serverStored
+        ? RecordingFileAvailability.cloudOnly
+        : RecordingFileAvailability.metadataOnly;
+    return RecordingViewData(
+      snapshot: snapshot,
+      duration: duration,
+      fileAvailability: availability,
+      fileStatus: status,
+      tier: tier,
+    );
+  }
 
   RecordingId get id => snapshot.id;
 
