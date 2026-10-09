@@ -1,6 +1,8 @@
 package com.ksh321.songrecord.api.retention;
 import org.junit.jupiter.api.Test;
 class CleanupConfirmationTests {
+ @org.junit.jupiter.api.Test void jdbcDateTimeTypesHaveTheSameUtcExpiry(){var time=java.time.Instant.parse("2026-10-09T03:00:00Z");org.assertj.core.api.Assertions.assertThat(CleanupConfirmations.instant(java.sql.Timestamp.from(time))).isEqualTo(time);org.assertj.core.api.Assertions.assertThat(CleanupConfirmations.instant(java.time.LocalDateTime.ofInstant(time,java.time.ZoneOffset.UTC))).isEqualTo(time);}
+
  @Test void opaqueTokenBindsOwnerGenerationHashRevisionAndExpiresWithoutDeletion(){var f=new RetentionCandidatesTests();f.setup();try{f.selectionSchema();var db=f.db;
  db.execute("CREATE TABLE storage_usage(user_id BINARY(16) PRIMARY KEY,used_bytes BIGINT DEFAULT 0)");
  db.execute("CREATE TABLE pin_slot(user_id BINARY(16),slot_no INT,current_recording_id BINARY(16),pending_recording_id BINARY(16))");
