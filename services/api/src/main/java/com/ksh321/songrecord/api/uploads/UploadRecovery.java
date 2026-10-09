@@ -22,6 +22,7 @@ public final class UploadRecovery {
    if(db.update("UPDATE storage_usage SET reserved_bytes=reserved_bytes-?,revision=revision+1,updated_at=? WHERE user_id=? AND reserved_bytes>=?",size,timestamp,bytes(owner),size)!=1 || db.update("UPDATE global_storage_usage SET reserved_bytes=reserved_bytes-?,revision=revision+1,updated_at=? WHERE id=1 AND reserved_bytes>=?",size,timestamp,size)!=1)throw new IllegalStateException("UPLOAD_ACCOUNTING_MISMATCH");
   }
   db.update("UPDATE recording_upload SET state=?,active_slot=NULL,reservation_released_at=COALESCE(reservation_released_at,?),error_code=?,updated_at=? WHERE user_id=? AND id=?",target,timestamp,code,timestamp,bytes(owner),bytes(attempt));
+  com.ksh321.songrecord.api.retention.PinTransitions.failedLocked(db,owner,uuid((byte[])row.get("recording_id")),row.get("pin_operation_id")==null?null:uuid((byte[])row.get("pin_operation_id")),clock);
   // No job lock precedes domain locks. Old effects fail their state/token fence after this transition.
   db.update("UPDATE job SET state='CANCELLED',lease_token=NULL,claimed_at=NULL,lease_until=NULL,last_error=?,finished_at=?,updated_at=?,revision=revision+1 WHERE user_id=? AND aggregate_id=? AND type='UPLOAD_VERIFY' AND state IN ('QUEUED','RETRY_WAIT','RUNNING')",code,now,now,bytes(owner),bytes(attempt));
   return target;

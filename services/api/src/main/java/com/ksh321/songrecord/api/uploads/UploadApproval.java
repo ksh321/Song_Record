@@ -71,7 +71,8 @@ public final class UploadApproval {
             LocalDate day=LocalDate.ofInstant(clock.instant(),ZoneOffset.UTC);
             var daily=db.query("SELECT approved_bytes FROM upload_approval_daily WHERE user_id=? AND utc_day=? FOR UPDATE",(r,n)->r.getLong(1),bytes(owner),java.sql.Date.valueOf(day));
             long used=daily.isEmpty()?0:daily.getFirst();if(used<0 || size>104857600-used)throw error("UPLOAD_DAILY_LIMIT",HttpStatus.TOO_MANY_REQUESTS);
-            var result=reservations.reserve(account,new UploadReservations.Request(recording,size,sha,policy));
+            var pins=db.queryForList("SELECT operation_id FROM pin_slot WHERE user_id=? AND pending_recording_id=?",bytes(owner),bytes(recording));UUID pinOperation=pins.isEmpty() || pins.getFirst().get("operation_id")==null?null:uuid((byte[])pins.getFirst().get("operation_id"));
+            var result=reservations.reserve(account,new UploadReservations.Request(recording,size,sha,policy,pinOperation));
             issuePermit(account);
             if(daily.isEmpty())db.update("INSERT INTO upload_approval_daily(user_id,utc_day,approved_bytes) VALUES(?,?,?)",bytes(owner),java.sql.Date.valueOf(day),size);
             else db.update("UPDATE upload_approval_daily SET approved_bytes=? WHERE user_id=? AND utc_day=?",used+size,bytes(owner),java.sql.Date.valueOf(day));

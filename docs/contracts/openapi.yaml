@@ -14,7 +14,7 @@ paths:
     post:
       operationId: replacePin
       summary: 같은 슬롯에서 기존 고정을 보호하며 교체 대기
-      description: current를 유지하고 pending만 추가하며 점유 슬롯 수는 늘리지 않는다. base_revision과 소유 계정을 확인한다. 파일 보관 전환은 후속 확정 단계에서 수행하고 업로드는 기존 used+reserved 용량 제한을 따른다. 다른 pending을 덮어쓰지 않는다. Cache-Control no-store.
+      description: current를 유지하고 pending만 추가하며 점유 슬롯 수는 늘리지 않는다. base_revision과 소유 계정을 확인한다. 이미 STORED인 대상은 같은 트랜잭션에서 확정하고 나머지는 업로드 확정 후 전환한다. 업로드는 기존 used+reserved 용량 제한을 따른다. 다른 pending을 덮어쓰지 않는다. Cache-Control no-store.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/DeviceId'
@@ -46,11 +46,46 @@ paths:
         '403': {$ref: '#/components/responses/Error403'}
         '404': {$ref: '#/components/responses/Error404'}
         '409': {$ref: '#/components/responses/Error409'}
+  /pins/{slotNo}/replacement/cancel:
+    post:
+      operationId: cancelPinReplacement
+      summary: 교체 대기만 취소하고 기존 고정 유지
+      description: 인증 소유 계정과 슬롯 base_revision을 확인한다. pending만 비우며 current·다른 자동 역할·실제 파일을 삭제하지 않는다. 업로드 실패 정리도 당시 고정 요청 ID가 일치해야 한다. Cache-Control no-store.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/RequestId'
+      - name: slotNo
+        in: path
+        required: true
+        schema: {type: integer, minimum: 1, maximum: 2147483647}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [base_revision]
+              properties:
+                base_revision: {type: integer, format: int64, minimum: 1}
+      responses:
+        '200':
+          description: current를 유지하고 pending이 없는 슬롯. 이미 비어 있으면 현재 상태 반환.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PinSlot'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
+        '404': {$ref: '#/components/responses/Error404'}
+        '409': {$ref: '#/components/responses/Error409'}
   /pins/{slotNo}:
     delete:
       operationId: releasePin
       summary: 고정 또는 대기 고정 해제
-      description: 슬롯 버전을 확인하고 current와 pending을 해제한다. 파일·자동 역할·보존 사유를 삭제하지 않는다. 교체의 pending만 취소하는 API는 후속 P13 범위다.
+      description: 슬롯 버전을 확인하고 current와 pending을 해제한다. 파일·자동 역할·보존 사유를 삭제하지 않는다. 교체의 pending만 취소하려면 replacement/cancel을 사용한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/DeviceId'

@@ -945,6 +945,10 @@ class MySqlIdempotencyTests {
         String name=database+"_pin_replace";admin.execute("CREATE DATABASE "+name);
         try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.PinReplacementDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
+    @Test void mysqlPinCompletionKeepsOldRolesAndFencesStaleFailure() throws Exception {
+        String name=database+"_pin_complete";admin.execute("CREATE DATABASE "+name);
+        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.PinCompletionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+    }
     @Test void mysqlCleanupCandidateReasons() throws Exception {
         String name=database+"_cleanup_candidates";admin.execute("CREATE DATABASE "+name);
         try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.CleanupCandidateDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}

@@ -38,7 +38,8 @@ public final class UploadFinalizationDatabaseChecks {
   db.update("INSERT INTO pin_slot(user_id,slot_no,pending_recording_id,operation_id,requested_at) VALUES(?,1,?,?,CURRENT_TIMESTAMP)",bytes(owner),bytes(recording),bytes(UUID.randomUUID()));
   var access=mock(AccountAccess.class);var account=mock(AccountAccess.Account.class);when(access.revalidate(account)).thenReturn(new SessionService.Principal(owner,device,UUID.randomUUID()));
   var clock=new UploadApprovalDatabaseChecks.MutableClock();var jobs=new JobQueue(db,access,manager,clock,Duration.ofMinutes(2),5);
-  UUID attempt=new UploadReservations(db,access,manager,clock).reserve(account,new UploadReservations.Request(recording,3,hash,1)).attempt();
+  UUID pinOperation=com.ksh321.songrecord.api.songs.SongQueryKeys.uuid(db.queryForObject("SELECT operation_id FROM pin_slot WHERE user_id=? AND slot_no=1",byte[].class,bytes(owner)));
+  UUID attempt=new UploadReservations(db,access,manager,clock).reserve(account,new UploadReservations.Request(recording,3,hash,1,pinOperation)).attempt();
   db.update("UPDATE recording_upload SET state='VERIFYING' WHERE id=?",bytes(attempt));
   new org.springframework.transaction.support.TransactionTemplate(manager).executeWithoutResult(s->jobs.enqueue(account,JobQueue.Type.UPLOAD_VERIFY,attempt,attempt,"{}"));
   return new Fixture(owner,recording,attempt,jobs,jobs.claim(JobQueue.Type.UPLOAD_VERIFY).orElseThrow(),clock);

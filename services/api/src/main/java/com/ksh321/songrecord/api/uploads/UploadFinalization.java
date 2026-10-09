@@ -46,6 +46,8 @@ public final class UploadFinalization implements AudioValidator.Next {
         if(recordingRows.size()!=1 || !eligible(owner,recording) || !instant(row.get("expires_at")).isAfter(clock.instant()) || !"VERIFYING".equals(row.get("state")))throw new IllegalStateException("UPLOAD_AUTHORITY_LOST");
         var spec=db.queryForList("SELECT size_bytes,sha256 FROM recording_file_spec WHERE user_id=? AND recording_id=?",bytes(owner),bytes(recording));
         if(spec.size()!=1 || n(spec.getFirst(),"size_bytes")!=size || !hash.equals(spec.getFirst().get("sha256")))throw new IllegalStateException("FILE_SPEC_MISMATCH");
+        var pendingPins=PinTransitions.lockPending(db,owner,recording,null);
+        var pinAssets=PinTransitions.lockAssets(db,owner,pendingPins,recording);
         LockOrder.before(LockOrder.Rank.RECORDING_ASSET,owner+"/"+recording);
         var assets=db.queryForList("SELECT cloud_state,cloud_revision,generation FROM recording_asset WHERE user_id=? AND recording_id=? FOR UPDATE",bytes(owner),bytes(recording));
         long revision=assets.isEmpty()?1:n(assets.getFirst(),"cloud_revision");
@@ -55,6 +57,7 @@ public final class UploadFinalization implements AudioValidator.Next {
         if(assets.isEmpty())db.update("INSERT INTO recording_asset(recording_id,user_id,cloud_state,object_key,generation,verified_size,sha256,stored_at,cloud_revision) VALUES(?,?,'STORED',?,?,?,?,?,?)",bytes(recording),bytes(owner),row.get("final_key"),bytes(generation),size,hash,now,Math.incrementExact(revision));
         else db.update("UPDATE recording_asset SET cloud_state='STORED',blocked_reason=NULL,object_key=?,generation=?,verified_size=?,sha256=?,stored_at=?,cloud_revision=?,updated_at=? WHERE user_id=? AND recording_id=?",row.get("final_key"),bytes(generation),size,hash,now,Math.incrementExact(revision),now,bytes(owner),bytes(recording));
         if(db.update("UPDATE storage_usage SET reserved_bytes=reserved_bytes-?,used_bytes=used_bytes+?,revision=revision+1,updated_at=? WHERE user_id=? AND reserved_bytes>=?",size,size,now,bytes(owner),size)!=1 || db.update("UPDATE global_storage_usage SET reserved_bytes=reserved_bytes-?,used_bytes=used_bytes+?,revision=revision+1,updated_at=? WHERE id=1 AND reserved_bytes>=?",size,size,now,size)!=1)throw new IllegalStateException("UPLOAD_ACCOUNTING_MISMATCH");
+        PinTransitions.promoteLocked(db,owner,pendingPins,recording,pinAssets,true,clock);
         publishAsset(owner,recording,Math.incrementExact(revision));
         db.update("UPDATE recording_upload SET state='COMMITTED',active_slot=NULL,reservation_released_at=?,error_code=NULL,updated_at=? WHERE user_id=? AND id=?",now,now,bytes(owner),bytes(lease.aggregateId()));
     }

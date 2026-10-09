@@ -30,7 +30,8 @@ public final class UploadReservations {
             return work.get();
         });
     }
-    public record Request(UUID recording,long size,String sha256,long policyRevision){
+    public record Request(UUID recording,long size,String sha256,long policyRevision,UUID pinOperation){
+        public Request(UUID recording,long size,String sha256,long policyRevision){this(recording,size,sha256,policyRevision,null);}
         public Request{Objects.requireNonNull(recording);if(size<1 || size>6291456 || sha256==null || !sha256.matches("[0-9a-f]{64}") || policyRevision<1)throw new IllegalArgumentException("Invalid upload reservation");}
     }
     public record Reservation(UUID attempt,UUID recording,long size,String state,Instant expiresAt) {}
@@ -51,8 +52,8 @@ public final class UploadReservations {
             int slot=!slots.contains(0)?0:!slots.contains(1)?1:-1;if(slot<0)throw error("UPLOAD_CONCURRENCY_LIMIT",HttpStatus.CONFLICT);
             long personalRevision=Math.incrementExact(number(personal,"revision")),globalRevision=Math.incrementExact(number(global,"revision"));
             UUID attempt=UUID.randomUUID();Instant now=clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MILLIS),expiry=now.plus(Duration.ofHours(24));
-            db.update("INSERT INTO recording_upload(id,user_id,recording_id,state,active_slot,expected_size,expected_sha256,temp_key,final_key,policy_revision,expires_at,created_at,updated_at) VALUES(?,?,?,'RESERVED',?,?,?,?,?,?,?,?,?)",
-                bytes(attempt),bytes(owner),bytes(request.recording()),slot,request.size(),request.sha256(),new StorageObjectKeys.Temporary(owner,request.recording(),attempt).value(),new StorageObjectKeys.Final(owner,request.recording(),UUID.randomUUID()).value(),request.policyRevision(),java.sql.Timestamp.from(expiry),java.sql.Timestamp.from(now),java.sql.Timestamp.from(now));
+            db.update("INSERT INTO recording_upload(id,user_id,recording_id,state,active_slot,expected_size,expected_sha256,temp_key,final_key,policy_revision,pin_operation_id,expires_at,created_at,updated_at) VALUES(?,?,?,'RESERVED',?,?,?,?,?,?,?,?,?,?)",
+                bytes(attempt),bytes(owner),bytes(request.recording()),slot,request.size(),request.sha256(),new StorageObjectKeys.Temporary(owner,request.recording(),attempt).value(),new StorageObjectKeys.Final(owner,request.recording(),UUID.randomUUID()).value(),request.policyRevision(),request.pinOperation()==null?null:bytes(request.pinOperation()),java.sql.Timestamp.from(expiry),java.sql.Timestamp.from(now),java.sql.Timestamp.from(now));
             db.update("UPDATE storage_usage SET reserved_bytes=?,revision=?,updated_at=? WHERE user_id=?",number(personal,"reserved_bytes")+request.size(),personalRevision,java.sql.Timestamp.from(now),bytes(owner));
             db.update("UPDATE global_storage_usage SET reserved_bytes=?,revision=?,updated_at=? WHERE id=1",number(global,"reserved_bytes")+request.size(),globalRevision,java.sql.Timestamp.from(now));
             return new Reservation(attempt,request.recording(),request.size(),"RESERVED",expiry);

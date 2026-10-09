@@ -18,7 +18,7 @@ class PinSlotsTests {
     @BeforeEach void open()throws Exception {
         setup.open();f=setup.setup.setup.f;owner=f.registration.userId();device=f.registration.deviceId().toString();auth="Bearer "+f.tokens.accessToken();
         for(String column:List.of("revision BIGINT DEFAULT 1","operation_id BINARY(16)","requested_at TIMESTAMP(3)","updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP"))f.jdbc.execute("ALTER TABLE pin_slot ADD "+column);
-        pins=new PinSlots(f.jdbc,f.access,f.mutations);mvc=MockMvcBuilders.standaloneSetup(new PinController(pins)).setControllerAdvice(new GlobalExceptionHandler()).build();
+        f.jdbc.execute("ALTER TABLE recording_asset ADD created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");pins=new PinSlots(f.jdbc,f.access,f.mutations);mvc=MockMvcBuilders.standaloneSetup(new PinController(pins)).setControllerAdvice(new GlobalExceptionHandler()).build();
     }
     @AfterEach void close()throws Exception{setup.close();}
     UUID saved(){return recording(f.jdbc,owner,f.registration.deviceId(),null,true,true,"VALIDATED");}
@@ -51,6 +51,12 @@ class PinSlotsTests {
     @Test void failedVersionFenceRollsBackSlotAndReceipt(){
         UUID id=saved();asset(id,"STORED");f.jdbc.update("UPDATE recording_asset SET cloud_revision=?",Long.MAX_VALUE);
         assertRejected(id,"REVISION_LIMIT_REACHED");assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM pin_slot",Long.class)).isZero();assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Long.class)).isZero();
+    }
+    @Test void cancellationHttpKeepsCurrentAndRejectsUnauthenticatedAndStaleRequests()throws Exception{
+        UUID old=saved(),target=saved();asset(old,"STORED");pins.reserve(auth,device,UUID.randomUUID().toString(),body(old,1));pins.replace(auth,device,UUID.randomUUID().toString(),"1",PinReplacementDatabaseChecks.body(target,1));String path="/v1/pins/1/replacement/cancel";
+        assertThat(mvc.perform(post(path).contentType("application/json").content("{\"base_revision\":2}")).andReturn().getResponse().getStatus()).isEqualTo(401);
+        var response=mvc.perform(post(path).header("Authorization",auth).header("X-Device-Id",device).header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content("{\"base_revision\":2}")).andReturn().getResponse();assertThat(response.getStatus()).isEqualTo(200);assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");assertThat(response.getContentAsString()).contains(old.toString(),"\"pending_recording_id\":null");
+        assertThat(mvc.perform(post(path).header("Authorization",auth).header("X-Device-Id",device).header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content("{\"base_revision\":2}")).andReturn().getResponse().getStatus()).isEqualTo(409);
     }
     @Test void replacementHttpChecksAuthenticationBodyRevisionAndOwner()throws Exception {
         UUID id=saved(),target=saved();asset(id,"STORED");pins.reserve(auth,device,UUID.randomUUID().toString(),body(id,1));String path="/v1/pins/1/replacement",input=PinReplacementDatabaseChecks.body(target,1);
