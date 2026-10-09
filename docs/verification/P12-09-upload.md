@@ -13,3 +13,5 @@
 
 ## 실제 MySQL 검사 발견 보강
 - 4941e9f CI 37862992628 신규 fixture가 파일 명세보다 SAVED 전이를 먼저 실행해 실제 DB 보호 trigger가 거절. ENV가 아니라 테스트 준비 순서 원인 ID P12-09-FIXTURE-ORDER, 최초 검증 발견. 명세 삽입 후 SAVED 순서로 교정. 보호/기대값 유지. 최종 SHA에서 필수 검사 재확인.
+
+- 후속 실제 MySQL 37863364705에서 DATETIME Map 값 LocalDateTime 반환과 H2 Timestamp 차이를 발견. 원인 ID P12-09-DATETIME-PORTABILITY. UTC 변환 경계에서 두 타입을 처리하고 같은 Instant 회귀 추가. 준비 순서 원인과 합산하지 않음. DB/테스트 보호 유지.

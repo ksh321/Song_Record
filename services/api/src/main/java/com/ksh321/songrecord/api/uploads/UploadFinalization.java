@@ -26,7 +26,7 @@ public final class UploadFinalization implements AudioValidator.Next {
         UUID recording=uuid((byte[])row.get("recording_id"));
         LockOrder.before(LockOrder.Rank.AGGREGATE,owner+"/"+recording);
         var recordingRows=db.queryForList("SELECT id FROM recording WHERE user_id=? AND id=? FOR UPDATE",bytes(owner),bytes(recording));
-        if(recordingRows.size()!=1 || !eligible(owner,recording) || !((java.sql.Timestamp)row.get("expires_at")).toInstant().isAfter(clock.instant()) || !"VERIFYING".equals(row.get("state")))throw new IllegalStateException("UPLOAD_AUTHORITY_LOST");
+        if(recordingRows.size()!=1 || !eligible(owner,recording) || !instant(row.get("expires_at")).isAfter(clock.instant()) || !"VERIFYING".equals(row.get("state")))throw new IllegalStateException("UPLOAD_AUTHORITY_LOST");
         var spec=db.queryForList("SELECT size_bytes,sha256 FROM recording_file_spec WHERE user_id=? AND recording_id=?",bytes(owner),bytes(recording));
         if(spec.size()!=1 || n(spec.getFirst(),"size_bytes")!=size || !hash.equals(spec.getFirst().get("sha256")))throw new IllegalStateException("FILE_SPEC_MISMATCH");
         LockOrder.before(LockOrder.Rank.RECORDING_ASSET,owner+"/"+recording);
@@ -57,5 +57,6 @@ public final class UploadFinalization implements AudioValidator.Next {
     Map<String,Object> attemptLocked(JobQueue.Lease lease){return db.queryForMap("SELECT * FROM recording_upload WHERE user_id=? AND id=? FOR UPDATE",bytes(lease.userId()),bytes(lease.aggregateId()));}
     void requireLease(JobQueue.Lease lease){if(db.queryForList("SELECT id FROM job WHERE id=? AND user_id=? AND aggregate_id=? AND type='UPLOAD_VERIFY' AND state='RUNNING' AND lease_token=? AND lease_until>?",bytes(lease.id()),bytes(lease.userId()),bytes(lease.aggregateId()),bytes(lease.token()),LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC)).size()!=1)throw new IllegalStateException("UPLOAD_AUTHORITY_LOST");}
     public static StorageObjectKeys.Final finalKey(UUID owner,UUID recording,String value){String prefix="recordings/"+owner+"/"+recording+"/";if(value==null || !value.startsWith(prefix) || !value.endsWith(".m4a"))throw new IllegalStateException("UPLOAD_KEY_MISMATCH");var key=new StorageObjectKeys.Final(owner,recording,UUID.fromString(value.substring(prefix.length(),value.length()-4)));if(!key.value().equals(value))throw new IllegalStateException("UPLOAD_KEY_MISMATCH");return key;}
+    public static Instant instant(Object value){if(value instanceof java.sql.Timestamp t)return t.toInstant();if(value instanceof LocalDateTime t)return t.toInstant(ZoneOffset.UTC);throw new IllegalStateException("UPLOAD_TIME_INVALID");}
     static long n(Map<String,Object> r,String k){return ((Number)r.get(k)).longValue();}
 }
