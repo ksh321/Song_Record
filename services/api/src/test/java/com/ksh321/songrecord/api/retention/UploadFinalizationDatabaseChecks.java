@@ -17,6 +17,9 @@ public final class UploadFinalizationDatabaseChecks {
   assertThat(db.queryForObject("SELECT reserved_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(f.owner))).isZero();
   assertThat(db.queryForObject("SELECT state FROM recording_upload WHERE id=?",String.class,bytes(f.attempt))).isEqualTo("COMMITTED");
   assertThat(db.queryForObject("SELECT cloud_state FROM recording_asset WHERE user_id=? AND recording_id=?",String.class,bytes(f.owner),bytes(f.recording))).isEqualTo("STORED");
+  assertThat(db.queryForObject("SELECT COUNT(*) FROM change_log WHERE user_id=? AND entity_type='RECORDING_ASSET'",Long.class,bytes(f.owner))).isEqualTo(1);
+  var payload=new tools.jackson.databind.json.JsonMapper().readTree(db.queryForObject("SELECT payload FROM change_log WHERE user_id=?",String.class,bytes(f.owner)));
+  assertThat(payload.path("generation").asString()).isEqualTo(UploadFinalization.finalKey(f.owner,f.recording,db.queryForObject("SELECT final_key FROM recording_upload WHERE id=?",String.class,bytes(f.attempt))).generation().toString());
   // Policy withdrawn after object write: fenced effects roll back; existing bytes/accounting stay intact.
   var other=fixture(db);var fin=new UploadFinalization(db,writer,other.clock);var pending=fin.prepare(other.lease,audio);
   db.update("DELETE FROM pin_slot WHERE user_id=?",bytes(other.owner));

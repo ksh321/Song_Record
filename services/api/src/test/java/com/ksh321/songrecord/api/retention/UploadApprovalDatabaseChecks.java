@@ -56,7 +56,7 @@ public final class UploadApprovalDatabaseChecks {
         assertThat(db.queryForObject("SELECT approved_bytes FROM upload_approval_daily WHERE user_id=? AND utc_day='2026-10-09'",Long.class,bytes(other))).isEqualTo(6291456);
         assertCode(()->approvals.approve(a,r,6291456,"a".repeat(64)),"RESOURCE_NOT_FOUND");
         UUID stored=recording(db,other,od,null,true,true,"VALIDATED");
-        db.update("INSERT INTO recording_asset(recording_id,user_id,cloud_state,cloud_revision,verified_size,sha256,generation,object_key,stored_at) VALUES(?,?,'STORED',1,6291456,?,?,'fixture/stored',CURRENT_TIMESTAMP)",bytes(stored),bytes(other),"a".repeat(64),1L);
+        db.update("INSERT INTO recording_asset(recording_id,user_id,cloud_state,cloud_revision,verified_size,sha256,generation,object_key,stored_at) VALUES(?,?,'STORED',1,6291456,?,?,'fixture/stored',CURRENT_TIMESTAMP)",bytes(stored),bytes(other),"a".repeat(64),bytes(UUID.randomUUID()));
         db.update("INSERT INTO pin_slot(user_id,slot_no,current_recording_id,operation_id,requested_at) VALUES(?,1,?,?,CURRENT_TIMESTAMP)",bytes(other),bytes(stored),bytes(UUID.randomUUID()));
         long before=db.queryForObject("SELECT reserved_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(other));
         assertThat(approvals.approve(b,stored,6291456,"a".repeat(64)).state()).isEqualTo("STORED");

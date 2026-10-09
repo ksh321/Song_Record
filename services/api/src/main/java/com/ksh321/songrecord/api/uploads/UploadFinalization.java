@@ -33,12 +33,26 @@ public final class UploadFinalization implements AudioValidator.Next {
         var assets=db.queryForList("SELECT cloud_state,cloud_revision,generation FROM recording_asset WHERE user_id=? AND recording_id=? FOR UPDATE",bytes(owner),bytes(recording));
         long revision=assets.isEmpty()?1:n(assets.getFirst(),"cloud_revision");
         if(revision!=n(row,"policy_revision") || (!assets.isEmpty() && Set.of("STORED","DELETING").contains(assets.getFirst().get("cloud_state"))))throw new IllegalStateException("UPLOAD_POLICY_CHANGED");
-        long generation=assets.isEmpty() || assets.getFirst().get("generation")==null?1:Math.incrementExact(n(assets.getFirst(),"generation"));
+        UUID generation=finalKey(owner,recording,(String)row.get("final_key")).generation();
         var now=java.sql.Timestamp.from(clock.instant());
-        if(assets.isEmpty())db.update("INSERT INTO recording_asset(recording_id,user_id,cloud_state,object_key,generation,verified_size,sha256,stored_at,cloud_revision) VALUES(?,?,'STORED',?,?,?,?,?,?)",bytes(recording),bytes(owner),row.get("final_key"),generation,size,hash,now,Math.incrementExact(revision));
-        else db.update("UPDATE recording_asset SET cloud_state='STORED',blocked_reason=NULL,object_key=?,generation=?,verified_size=?,sha256=?,stored_at=?,cloud_revision=?,updated_at=? WHERE user_id=? AND recording_id=?",row.get("final_key"),generation,size,hash,now,Math.incrementExact(revision),now,bytes(owner),bytes(recording));
+        if(assets.isEmpty())db.update("INSERT INTO recording_asset(recording_id,user_id,cloud_state,object_key,generation,verified_size,sha256,stored_at,cloud_revision) VALUES(?,?,'STORED',?,?,?,?,?,?)",bytes(recording),bytes(owner),row.get("final_key"),bytes(generation),size,hash,now,Math.incrementExact(revision));
+        else db.update("UPDATE recording_asset SET cloud_state='STORED',blocked_reason=NULL,object_key=?,generation=?,verified_size=?,sha256=?,stored_at=?,cloud_revision=?,updated_at=? WHERE user_id=? AND recording_id=?",row.get("final_key"),bytes(generation),size,hash,now,Math.incrementExact(revision),now,bytes(owner),bytes(recording));
         if(db.update("UPDATE storage_usage SET reserved_bytes=reserved_bytes-?,used_bytes=used_bytes+?,revision=revision+1,updated_at=? WHERE user_id=? AND reserved_bytes>=?",size,size,now,bytes(owner),size)!=1 || db.update("UPDATE global_storage_usage SET reserved_bytes=reserved_bytes-?,used_bytes=used_bytes+?,revision=revision+1,updated_at=? WHERE id=1 AND reserved_bytes>=?",size,size,now,size)!=1)throw new IllegalStateException("UPLOAD_ACCOUNTING_MISMATCH");
+        publishAsset(owner,recording,Math.incrementExact(revision));
         db.update("UPDATE recording_upload SET state='COMMITTED',active_slot=NULL,reservation_released_at=?,error_code=NULL,updated_at=? WHERE user_id=? AND id=?",now,now,bytes(owner),bytes(lease.aggregateId()));
+    }
+    private void publishAsset(UUID owner,UUID recording,long revision){
+        var source=db.queryForMap("SELECT recording_id,cloud_state,blocked_reason,generation,verified_size,sha256,stored_at,cloud_revision,created_at,updated_at FROM recording_asset WHERE user_id=? AND recording_id=?",bytes(owner),bytes(recording));
+        var payload=new LinkedHashMap<String,Object>();
+        for(var e:source.entrySet()){
+            Object value=e.getValue();if(value instanceof byte[] b)value=uuid(b).toString();
+            if(value instanceof java.sql.Timestamp || value instanceof LocalDateTime)value=instant(value).truncatedTo(java.time.temporal.ChronoUnit.MILLIS).toString();
+            payload.put(e.getKey().toLowerCase(Locale.ROOT),value);
+        }
+        long sequence=db.queryForObject("SELECT last_change_seq FROM user_sync_state WHERE user_id=?",Long.class,bytes(owner));long next=Math.incrementExact(sequence);
+        var now=LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+        db.update("INSERT INTO change_log(user_id,change_seq,entity_type,entity_id,revision,operation,payload,created_at,expires_at) VALUES(?,?,'RECORDING_ASSET',?,?,'UPSERT',?,?,?)",bytes(owner),next,bytes(recording),revision,new tools.jackson.databind.json.JsonMapper().writeValueAsString(payload),now,now.plusDays(90));
+        if(db.update("UPDATE user_sync_state SET last_change_seq=?,updated_at=? WHERE user_id=? AND last_change_seq=?",next,now,bytes(owner),sequence)!=1)throw new IllegalStateException("UPLOAD_SYNC_CONFLICT");
     }
     void lock(UUID owner){
         LockOrder.before(LockOrder.Rank.GLOBAL_STORAGE,"1");db.queryForMap("SELECT id FROM global_storage_usage WHERE id=1 FOR UPDATE");
