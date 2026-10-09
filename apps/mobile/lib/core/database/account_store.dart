@@ -1616,11 +1616,38 @@ final class AccountStore {
       throw StateError('Local file size changed');
     }
     final bytes = await file.readAsBytes();
-    if (sha256.convert(bytes).toString() != row.read<String>('sha256')) {
+    if (bytes.length != size ||
+        sha256.convert(bytes).toString() != row.read<String>('sha256')) {
       throw StateError('Local file checksum changed');
     }
     return bytes;
   }
+
+  /// Returns only a current-account file proven against its local database identity.
+  /// Missing/corrupt disk bytes are unavailable, never a historical device report.
+  Future<({String path, int size, String checksum})?> findPlayableLocalAudio(
+    String recordingId,
+  ) => _run(() async {
+    final id = UuidValue(recordingId).value;
+    try {
+      final bytes = await _readLocalAudio(id);
+      requireActive();
+      final file = await _paths.checkedFile(_paths.audioPath(id));
+      return (
+        path: file.path,
+        size: bytes.length,
+        checksum: sha256.convert(bytes).toString(),
+      );
+    } on FileSystemException catch (error) {
+      requireActive();
+      // Permission/I/O failure is unknown, not proof that the file is absent.
+      if (![2, 3].contains(error.osError?.errorCode)) rethrow;
+      return null;
+    } on StateError {
+      requireActive();
+      return null;
+    }
+  });
 
   /// Current disk bytes, never a historical device report, prove preservation.
   Future<bool> verifyPreservedAudio(
