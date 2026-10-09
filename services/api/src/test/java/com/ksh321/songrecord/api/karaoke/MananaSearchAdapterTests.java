@@ -26,4 +26,15 @@ class MananaSearchAdapterTests {
         server.createContext("/",x->{int i=index[0]++;var bytes=(i<3?responses.get(i):"[]").getBytes(StandardCharsets.UTF_8);if(i==3)x.getResponseHeaders().set("Location","https://api.manana.kr/");x.sendResponseHeaders(i==3?302:200,bytes.length);x.getResponseBody().write(bytes);x.close();});server.start();
         try {var adapter=new MananaSearchAdapter(URI.create("http://127.0.0.1:"+server.getAddress().getPort()+"/"),Duration.ofSeconds(3));assertThat(adapter.search(Brand.TJ,MananaSearchAdapter.Kind.TITLE,"곡")).isEmpty();for(int i=0;i<3;i++)assertThatThrownBy(()->adapter.search(Brand.TJ,MananaSearchAdapter.Kind.TITLE,"곡")).isInstanceOf(MananaSearchAdapter.ProviderFailure.class);assertThat(index[0]).isEqualTo(4);} finally {server.stop(0);}
     }
+    @Test void elapsedBodyTimeoutAndOversizeHaveSpecificFailureKinds()throws Exception {
+        var server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        server.setExecutor(java.util.concurrent.Executors.newCachedThreadPool());
+        server.createContext("/",x->{try{if(x.getRequestURI().getPath().contains("/slow/")){x.sendResponseHeaders(200,0);Thread.sleep(250);x.getResponseBody().write("[]".getBytes());}else{var bytes=new byte[2*1024*1024+1];java.util.Arrays.fill(bytes,(byte)' ');x.sendResponseHeaders(200,bytes.length);x.getResponseBody().write(bytes);}}catch(Exception ignored){}finally{x.close();}});server.start();
+        try {
+            var base=URI.create("http://127.0.0.1:"+server.getAddress().getPort()+"/");
+            assertThatThrownBy(()->new MananaSearchAdapter(base,Duration.ofMillis(80)).search(Brand.TJ,MananaSearchAdapter.Kind.TITLE,"slow")).isInstanceOfSatisfying(MananaSearchAdapter.ProviderFailure.class,e->assertThat(e.kind()).isEqualTo(MananaSearchAdapter.Failure.TIMEOUT));
+            assertThatThrownBy(()->new MananaSearchAdapter(base,Duration.ofSeconds(3)).search(Brand.TJ,MananaSearchAdapter.Kind.TITLE,"large")).isInstanceOfSatisfying(MananaSearchAdapter.ProviderFailure.class,e->assertThat(e.kind()).isEqualTo(MananaSearchAdapter.Failure.INVALID_RESPONSE));
+        }finally{server.stop(0);((java.util.concurrent.ExecutorService)server.getExecutor()).shutdownNow();}
+    }
+
 }

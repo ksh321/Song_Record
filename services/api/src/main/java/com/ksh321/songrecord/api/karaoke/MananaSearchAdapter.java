@@ -62,7 +62,7 @@ public final class MananaSearchAdapter {
             return List.copyOf(result);
         } catch(TimeoutException e){throw new ProviderFailure(Failure.TIMEOUT);}
           catch(InterruptedException e){Thread.currentThread().interrupt();throw new ProviderFailure(Failure.NETWORK);}
-          catch(ExecutionException e){throw new ProviderFailure(e.getCause() instanceof HttpTimeoutException ? Failure.TIMEOUT : Failure.NETWORK);}
+          catch(ExecutionException e){if(e.getCause() instanceof ProviderFailure failure) throw failure;throw new ProviderFailure(e.getCause() instanceof HttpTimeoutException ? Failure.TIMEOUT : Failure.NETWORK);}
           catch(ProviderFailure e){throw e;}
           catch(Exception e){throw new ProviderFailure(Failure.INVALID_RESPONSE);}
         finally {future.cancel(true);}
@@ -72,7 +72,7 @@ public final class MananaSearchAdapter {
         final HttpResponse.BodySubscriber<byte[]> delegate=HttpResponse.BodySubscribers.ofByteArray();Flow.Subscription subscription;long bytes;
         public CompletionStage<byte[]> getBody(){return delegate.getBody();}
         public void onSubscribe(Flow.Subscription s){subscription=s;delegate.onSubscribe(s);}
-        public void onNext(List<ByteBuffer> items){for(var b:items)bytes+=b.remaining();if(bytes>MAX_BYTES){subscription.cancel();delegate.onError(new IllegalStateException("Provider response too large"));}else delegate.onNext(items);}
+        public void onNext(List<ByteBuffer> items){for(var b:items)bytes+=b.remaining();if(bytes>MAX_BYTES){subscription.cancel();delegate.onError(new ProviderFailure(Failure.INVALID_RESPONSE));}else delegate.onNext(items);}
         public void onError(Throwable t){delegate.onError(t);}
         public void onComplete(){delegate.onComplete();}
     }
