@@ -1615,6 +1615,101 @@ final class AccountStore {
     return bytes;
   });
 
+  /// Current disk bytes, never a historical device report, prove preservation.
+  Future<bool> verifyPreservedAudio(
+    String owner,
+    String recordingId,
+    String checksum,
+    int size,
+  ) async {
+    requireActive();
+    if (UuidValue(owner).value != userId ||
+        !RegExp(r'^[0-9a-f]{64}$').hasMatch(checksum) ||
+        size < 1 ||
+        size > 6291456) {
+      throw ArgumentError('Invalid preservation identity');
+    }
+    try {
+      final bytes = await readLocalAudio(recordingId);
+      requireActive();
+      return bytes.length == size &&
+          sha256.convert(bytes).toString() == checksum;
+    } on FileSystemException {
+      requireActive();
+      return false;
+    } on StateError {
+      requireActive();
+      return false;
+    }
+  }
+
+  /// Persist a verified download without replacing an existing different local original.
+  Future<void> preserveDownloadedAudio(
+    String owner,
+    String recordingId,
+    String checksum,
+    int size,
+    Uint8List data,
+  ) => _run(() async {
+    final id = UuidValue(recordingId).value;
+    if (UuidValue(owner).value != userId ||
+        size < 1 ||
+        size > 6291456 ||
+        data.length != size ||
+        sha256.convert(data).toString() != checksum) {
+      throw const FormatException('Downloaded preservation identity mismatch');
+    }
+    final old = await _database
+        .customSelect(
+          'SELECT sha256,size_bytes,local_state,cleanup_fence FROM local_recording_files WHERE recording_id=?',
+          variables: [Variable(id)],
+        )
+        .getSingleOrNull();
+    if (old != null &&
+        (old.read<int>('cleanup_fence') > 0 ||
+            old.readNullable<String>('sha256') != checksum ||
+            old.readNullable<int>('size_bytes') != size)) {
+      throw StateError('Existing local original must be preserved');
+    }
+    final file = await _paths.checkedFile(_paths.audioPath(id));
+    if (await file.exists()) {
+      if (await file.length() != size ||
+          (await sha256.bind(file.openRead()).first).toString() != checksum) {
+        throw StateError(
+          'Existing local original differs from the server object',
+        );
+      }
+    } else {
+      final temp = await _paths.checkedFile(
+        _paths.pendingPath(UuidValue.random().value),
+      );
+      try {
+        await temp.writeAsBytes(data, flush: true);
+        requireActive();
+        final target = await _paths.checkedFile(_paths.audioPath(id));
+        if (await target.exists()) {
+          throw StateError('Local original appeared during download');
+        }
+        await temp.rename(target.path);
+      } finally {
+        if (await temp.exists()) await temp.delete();
+      }
+    }
+    requireActive();
+    if (await file.length() != size ||
+        (await sha256.bind(file.openRead()).first).toString() != checksum) {
+      throw StateError('Persistent preservation check failed');
+    }
+    requireActive();
+    final now = _manager._clock().toUtc().millisecondsSinceEpoch;
+    await _database.customStatement(
+      """INSERT INTO local_recording_files(recording_id,user_id,relative_path,sha256,size_bytes,local_state,verified_at,updated_at)
+      VALUES(?,?,?,?,?,'SAVED',?,?) ON CONFLICT(recording_id) DO UPDATE SET relative_path=excluded.relative_path,
+      local_state='SAVED',verified_at=excluded.verified_at,updated_at=excluded.updated_at""",
+      [id, userId, _paths.audioPath(id), checksum, size, now, now],
+    );
+  });
+
   Future<String?> readJournal(String recordingId) => _run(
     () async =>
         (await _database

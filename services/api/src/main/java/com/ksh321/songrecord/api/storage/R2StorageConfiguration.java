@@ -20,6 +20,13 @@ public class R2StorageConfiguration {
             .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build()).build();
         return new R2PutSigner(signer,s.temporaryBucket,java.time.Clock.systemUTC());
     }
+    @Bean(destroyMethod="close") R2GetSigner r2GetSigner(Environment environment){
+        var s=R2Settings.from(environment);
+        var signer=software.amazon.awssdk.services.s3.presigner.S3Presigner.builder().endpointOverride(s.endpoint).region(Region.of("auto"))
+            .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(s.accessKey,s.secretKey)))
+            .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build()).build();
+        return new R2GetSigner(signer,s.finalBucket);
+    }
     @Bean(destroyMethod="close") R2Storage r2Storage(Environment environment){
         var settings=R2Settings.from(environment);
         var client=S3Client.builder().endpointOverride(settings.endpoint).region(Region.of("auto"))

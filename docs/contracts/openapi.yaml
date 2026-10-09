@@ -45,6 +45,40 @@ paths:
         '403': {$ref: '#/components/responses/Error403'}
         '404': {$ref: '#/components/responses/Error404'}
         '409': {$ref: '#/components/responses/Error409'}
+  /recordings/{id}/preservation-url:
+    get:
+      operationId: getPreservationUrl
+      summary: 로컬 보존 확인용 서버 사본 다운로드
+      description: 인증 계정의 현재 STORED 세대만 5분 GET URL로 제공한다. URL은 보존 확인 토큰이 아니며 삭제를 승인하지 않는다. 클라이언트는 기대 객체의 전체 식별자와 바이트 체크섬을 대조한다. Cache-Control no-store.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/RequestId'
+      - name: id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: 현재 서버 객체 식별자와 짧은 다운로드 URL. URL·키는 로그에 기록하지 않는다.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [user_id, recording_id, generation, sha256, size_bytes, cloud_revision, url, expires_at]
+                properties:
+                  user_id: {type: string, format: uuid}
+                  recording_id: {type: string, format: uuid}
+                  generation: {type: string, format: uuid}
+                  sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+                  size_bytes: {type: integer, format: int64, minimum: 1, maximum: 6291456}
+                  cloud_revision: {type: integer, format: int64, minimum: 1}
+                  url: {type: string, format: uri}
+                  expires_at: {type: string, format: date-time}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
+        '409': {$ref: '#/components/responses/Error409'}
   /recordings/{id}/retention:
     get:
       operationId: getRecordingRetention
