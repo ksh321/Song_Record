@@ -11878,6 +11878,637 @@ class LocalUploadQueueCompanion extends UpdateCompanion<LocalUploadQueueData> {
   }
 }
 
+class LocalCleanupConfirmations extends Table
+    with TableInfo<LocalCleanupConfirmations, LocalCleanupConfirmation> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  LocalCleanupConfirmations(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _tokenMeta = const VerificationMeta('token');
+  late final GeneratedColumn<String> token = GeneratedColumn<String>(
+    'token',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL PRIMARY KEY CHECK (length(token) = 36)',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _recordingIdMeta = const VerificationMeta(
+    'recordingId',
+  );
+  late final GeneratedColumn<String> recordingId = GeneratedColumn<String>(
+    'recording_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _generationMeta = const VerificationMeta(
+    'generation',
+  );
+  late final GeneratedColumn<String> generation = GeneratedColumn<String>(
+    'generation',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (length(generation) = 36)',
+  );
+  static const VerificationMeta _sha256Meta = const VerificationMeta('sha256');
+  late final GeneratedColumn<String> sha256 = GeneratedColumn<String>(
+    'sha256',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (length(sha256) = 64 AND sha256 NOT GLOB \'*[^0-9a-f]*\')',
+  );
+  static const VerificationMeta _cloudRevisionMeta = const VerificationMeta(
+    'cloudRevision',
+  );
+  late final GeneratedColumn<int> cloudRevision = GeneratedColumn<int>(
+    'cloud_revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (cloud_revision > 0)',
+  );
+  static const VerificationMeta _expiresAtMeta = const VerificationMeta(
+    'expiresAt',
+  );
+  late final GeneratedColumn<int> expiresAt = GeneratedColumn<int>(
+    'expires_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _stateMeta = const VerificationMeta('state');
+  late final GeneratedColumn<String> state = GeneratedColumn<String>(
+    'state',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (state IN (\'PREPARING\', \'CONFIRMED\', \'SUCCEEDED\', \'CANCELLED\', \'EXPIRED\'))',
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    token,
+    userId,
+    recordingId,
+    generation,
+    sha256,
+    cloudRevision,
+    expiresAt,
+    state,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_cleanup_confirmations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalCleanupConfirmation> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('token')) {
+      context.handle(
+        _tokenMeta,
+        token.isAcceptableOrUnknown(data['token']!, _tokenMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_tokenMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('recording_id')) {
+      context.handle(
+        _recordingIdMeta,
+        recordingId.isAcceptableOrUnknown(
+          data['recording_id']!,
+          _recordingIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_recordingIdMeta);
+    }
+    if (data.containsKey('generation')) {
+      context.handle(
+        _generationMeta,
+        generation.isAcceptableOrUnknown(data['generation']!, _generationMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_generationMeta);
+    }
+    if (data.containsKey('sha256')) {
+      context.handle(
+        _sha256Meta,
+        sha256.isAcceptableOrUnknown(data['sha256']!, _sha256Meta),
+      );
+    } else if (isInserting) {
+      context.missing(_sha256Meta);
+    }
+    if (data.containsKey('cloud_revision')) {
+      context.handle(
+        _cloudRevisionMeta,
+        cloudRevision.isAcceptableOrUnknown(
+          data['cloud_revision']!,
+          _cloudRevisionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_cloudRevisionMeta);
+    }
+    if (data.containsKey('expires_at')) {
+      context.handle(
+        _expiresAtMeta,
+        expiresAt.isAcceptableOrUnknown(data['expires_at']!, _expiresAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_expiresAtMeta);
+    }
+    if (data.containsKey('state')) {
+      context.handle(
+        _stateMeta,
+        state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_stateMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {token};
+  @override
+  LocalCleanupConfirmation map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalCleanupConfirmation(
+      token: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}token'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      recordingId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recording_id'],
+      )!,
+      generation: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}generation'],
+      )!,
+      sha256: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sha256'],
+      )!,
+      cloudRevision: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cloud_revision'],
+      )!,
+      expiresAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expires_at'],
+      )!,
+      state: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}state'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  LocalCleanupConfirmations createAlias(String alias) {
+    return LocalCleanupConfirmations(attachedDatabase, alias);
+  }
+
+  @override
+  List<String> get customConstraints => const [
+    'FOREIGN KEY(user_id, recording_id)REFERENCES local_recording_files(user_id, recording_id)',
+  ];
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class LocalCleanupConfirmation extends DataClass
+    implements Insertable<LocalCleanupConfirmation> {
+  final String token;
+  final String userId;
+  final String recordingId;
+  final String generation;
+  final String sha256;
+  final int cloudRevision;
+  final int expiresAt;
+  final String state;
+  final int createdAt;
+  final int updatedAt;
+  const LocalCleanupConfirmation({
+    required this.token,
+    required this.userId,
+    required this.recordingId,
+    required this.generation,
+    required this.sha256,
+    required this.cloudRevision,
+    required this.expiresAt,
+    required this.state,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['token'] = Variable<String>(token);
+    map['user_id'] = Variable<String>(userId);
+    map['recording_id'] = Variable<String>(recordingId);
+    map['generation'] = Variable<String>(generation);
+    map['sha256'] = Variable<String>(sha256);
+    map['cloud_revision'] = Variable<int>(cloudRevision);
+    map['expires_at'] = Variable<int>(expiresAt);
+    map['state'] = Variable<String>(state);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  LocalCleanupConfirmationsCompanion toCompanion(bool nullToAbsent) {
+    return LocalCleanupConfirmationsCompanion(
+      token: Value(token),
+      userId: Value(userId),
+      recordingId: Value(recordingId),
+      generation: Value(generation),
+      sha256: Value(sha256),
+      cloudRevision: Value(cloudRevision),
+      expiresAt: Value(expiresAt),
+      state: Value(state),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LocalCleanupConfirmation.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalCleanupConfirmation(
+      token: serializer.fromJson<String>(json['token']),
+      userId: serializer.fromJson<String>(json['user_id']),
+      recordingId: serializer.fromJson<String>(json['recording_id']),
+      generation: serializer.fromJson<String>(json['generation']),
+      sha256: serializer.fromJson<String>(json['sha256']),
+      cloudRevision: serializer.fromJson<int>(json['cloud_revision']),
+      expiresAt: serializer.fromJson<int>(json['expires_at']),
+      state: serializer.fromJson<String>(json['state']),
+      createdAt: serializer.fromJson<int>(json['created_at']),
+      updatedAt: serializer.fromJson<int>(json['updated_at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'token': serializer.toJson<String>(token),
+      'user_id': serializer.toJson<String>(userId),
+      'recording_id': serializer.toJson<String>(recordingId),
+      'generation': serializer.toJson<String>(generation),
+      'sha256': serializer.toJson<String>(sha256),
+      'cloud_revision': serializer.toJson<int>(cloudRevision),
+      'expires_at': serializer.toJson<int>(expiresAt),
+      'state': serializer.toJson<String>(state),
+      'created_at': serializer.toJson<int>(createdAt),
+      'updated_at': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  LocalCleanupConfirmation copyWith({
+    String? token,
+    String? userId,
+    String? recordingId,
+    String? generation,
+    String? sha256,
+    int? cloudRevision,
+    int? expiresAt,
+    String? state,
+    int? createdAt,
+    int? updatedAt,
+  }) => LocalCleanupConfirmation(
+    token: token ?? this.token,
+    userId: userId ?? this.userId,
+    recordingId: recordingId ?? this.recordingId,
+    generation: generation ?? this.generation,
+    sha256: sha256 ?? this.sha256,
+    cloudRevision: cloudRevision ?? this.cloudRevision,
+    expiresAt: expiresAt ?? this.expiresAt,
+    state: state ?? this.state,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  LocalCleanupConfirmation copyWithCompanion(
+    LocalCleanupConfirmationsCompanion data,
+  ) {
+    return LocalCleanupConfirmation(
+      token: data.token.present ? data.token.value : this.token,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      recordingId: data.recordingId.present
+          ? data.recordingId.value
+          : this.recordingId,
+      generation: data.generation.present
+          ? data.generation.value
+          : this.generation,
+      sha256: data.sha256.present ? data.sha256.value : this.sha256,
+      cloudRevision: data.cloudRevision.present
+          ? data.cloudRevision.value
+          : this.cloudRevision,
+      expiresAt: data.expiresAt.present ? data.expiresAt.value : this.expiresAt,
+      state: data.state.present ? data.state.value : this.state,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalCleanupConfirmation(')
+          ..write('token: $token, ')
+          ..write('userId: $userId, ')
+          ..write('recordingId: $recordingId, ')
+          ..write('generation: $generation, ')
+          ..write('sha256: $sha256, ')
+          ..write('cloudRevision: $cloudRevision, ')
+          ..write('expiresAt: $expiresAt, ')
+          ..write('state: $state, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    token,
+    userId,
+    recordingId,
+    generation,
+    sha256,
+    cloudRevision,
+    expiresAt,
+    state,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalCleanupConfirmation &&
+          other.token == this.token &&
+          other.userId == this.userId &&
+          other.recordingId == this.recordingId &&
+          other.generation == this.generation &&
+          other.sha256 == this.sha256 &&
+          other.cloudRevision == this.cloudRevision &&
+          other.expiresAt == this.expiresAt &&
+          other.state == this.state &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LocalCleanupConfirmationsCompanion
+    extends UpdateCompanion<LocalCleanupConfirmation> {
+  final Value<String> token;
+  final Value<String> userId;
+  final Value<String> recordingId;
+  final Value<String> generation;
+  final Value<String> sha256;
+  final Value<int> cloudRevision;
+  final Value<int> expiresAt;
+  final Value<String> state;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const LocalCleanupConfirmationsCompanion({
+    this.token = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.recordingId = const Value.absent(),
+    this.generation = const Value.absent(),
+    this.sha256 = const Value.absent(),
+    this.cloudRevision = const Value.absent(),
+    this.expiresAt = const Value.absent(),
+    this.state = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalCleanupConfirmationsCompanion.insert({
+    required String token,
+    required String userId,
+    required String recordingId,
+    required String generation,
+    required String sha256,
+    required int cloudRevision,
+    required int expiresAt,
+    required String state,
+    required int createdAt,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : token = Value(token),
+       userId = Value(userId),
+       recordingId = Value(recordingId),
+       generation = Value(generation),
+       sha256 = Value(sha256),
+       cloudRevision = Value(cloudRevision),
+       expiresAt = Value(expiresAt),
+       state = Value(state),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<LocalCleanupConfirmation> custom({
+    Expression<String>? token,
+    Expression<String>? userId,
+    Expression<String>? recordingId,
+    Expression<String>? generation,
+    Expression<String>? sha256,
+    Expression<int>? cloudRevision,
+    Expression<int>? expiresAt,
+    Expression<String>? state,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (token != null) 'token': token,
+      if (userId != null) 'user_id': userId,
+      if (recordingId != null) 'recording_id': recordingId,
+      if (generation != null) 'generation': generation,
+      if (sha256 != null) 'sha256': sha256,
+      if (cloudRevision != null) 'cloud_revision': cloudRevision,
+      if (expiresAt != null) 'expires_at': expiresAt,
+      if (state != null) 'state': state,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalCleanupConfirmationsCompanion copyWith({
+    Value<String>? token,
+    Value<String>? userId,
+    Value<String>? recordingId,
+    Value<String>? generation,
+    Value<String>? sha256,
+    Value<int>? cloudRevision,
+    Value<int>? expiresAt,
+    Value<String>? state,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return LocalCleanupConfirmationsCompanion(
+      token: token ?? this.token,
+      userId: userId ?? this.userId,
+      recordingId: recordingId ?? this.recordingId,
+      generation: generation ?? this.generation,
+      sha256: sha256 ?? this.sha256,
+      cloudRevision: cloudRevision ?? this.cloudRevision,
+      expiresAt: expiresAt ?? this.expiresAt,
+      state: state ?? this.state,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (token.present) {
+      map['token'] = Variable<String>(token.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (recordingId.present) {
+      map['recording_id'] = Variable<String>(recordingId.value);
+    }
+    if (generation.present) {
+      map['generation'] = Variable<String>(generation.value);
+    }
+    if (sha256.present) {
+      map['sha256'] = Variable<String>(sha256.value);
+    }
+    if (cloudRevision.present) {
+      map['cloud_revision'] = Variable<int>(cloudRevision.value);
+    }
+    if (expiresAt.present) {
+      map['expires_at'] = Variable<int>(expiresAt.value);
+    }
+    if (state.present) {
+      map['state'] = Variable<String>(state.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalCleanupConfirmationsCompanion(')
+          ..write('token: $token, ')
+          ..write('userId: $userId, ')
+          ..write('recordingId: $recordingId, ')
+          ..write('generation: $generation, ')
+          ..write('sha256: $sha256, ')
+          ..write('cloudRevision: $cloudRevision, ')
+          ..write('expiresAt: $expiresAt, ')
+          ..write('state: $state, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AccountDatabase extends GeneratedDatabase {
   _$AccountDatabase(QueryExecutor e) : super(e);
   $AccountDatabaseManager get managers => $AccountDatabaseManager(this);
@@ -12142,6 +12773,12 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     'CREATE TRIGGER local_upload_identity BEFORE UPDATE ON local_upload_queue WHEN NEW.recording_id <> OLD.recording_id OR NEW.user_id <> OLD.user_id OR NEW.operation_id <> OLD.operation_id OR NEW.expected_size <> OLD.expected_size OR NEW.sha256 <> OLD.sha256 OR NEW.created_at <> OLD.created_at OR NEW.automatic_retries < OLD.automatic_retries OR NEW.attempt_count < OLD.attempt_count BEGIN SELECT RAISE (ABORT, \'Upload identity and retry budget are immutable\');END',
     'local_upload_identity',
   );
+  late final LocalCleanupConfirmations localCleanupConfirmations =
+      LocalCleanupConfirmations(this);
+  late final Index localCleanupRecording = Index(
+    'local_cleanup_recording',
+    'CREATE INDEX local_cleanup_recording ON local_cleanup_confirmations (recording_id, state)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -12225,6 +12862,8 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     localUploadQueue,
     localUploadReady,
     localUploadIdentity,
+    localCleanupConfirmations,
+    localCleanupRecording,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -24916,6 +25555,335 @@ typedef $LocalUploadQueueProcessedTableManager =
       LocalUploadQueueData,
       PrefetchHooks Function()
     >;
+typedef $LocalCleanupConfirmationsCreateCompanionBuilder =
+    LocalCleanupConfirmationsCompanion Function({
+      required String token,
+      required String userId,
+      required String recordingId,
+      required String generation,
+      required String sha256,
+      required int cloudRevision,
+      required int expiresAt,
+      required String state,
+      required int createdAt,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $LocalCleanupConfirmationsUpdateCompanionBuilder =
+    LocalCleanupConfirmationsCompanion Function({
+      Value<String> token,
+      Value<String> userId,
+      Value<String> recordingId,
+      Value<String> generation,
+      Value<String> sha256,
+      Value<int> cloudRevision,
+      Value<int> expiresAt,
+      Value<String> state,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $LocalCleanupConfirmationsFilterComposer
+    extends Composer<_$AccountDatabase, LocalCleanupConfirmations> {
+  $LocalCleanupConfirmationsFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get token => $composableBuilder(
+    column: $table.token,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recordingId => $composableBuilder(
+    column: $table.recordingId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get generation => $composableBuilder(
+    column: $table.generation,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sha256 => $composableBuilder(
+    column: $table.sha256,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get cloudRevision => $composableBuilder(
+    column: $table.cloudRevision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $LocalCleanupConfirmationsOrderingComposer
+    extends Composer<_$AccountDatabase, LocalCleanupConfirmations> {
+  $LocalCleanupConfirmationsOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get token => $composableBuilder(
+    column: $table.token,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recordingId => $composableBuilder(
+    column: $table.recordingId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get generation => $composableBuilder(
+    column: $table.generation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sha256 => $composableBuilder(
+    column: $table.sha256,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get cloudRevision => $composableBuilder(
+    column: $table.cloudRevision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expiresAt => $composableBuilder(
+    column: $table.expiresAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get state => $composableBuilder(
+    column: $table.state,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $LocalCleanupConfirmationsAnnotationComposer
+    extends Composer<_$AccountDatabase, LocalCleanupConfirmations> {
+  $LocalCleanupConfirmationsAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get token =>
+      $composableBuilder(column: $table.token, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get recordingId => $composableBuilder(
+    column: $table.recordingId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get generation => $composableBuilder(
+    column: $table.generation,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sha256 =>
+      $composableBuilder(column: $table.sha256, builder: (column) => column);
+
+  GeneratedColumn<int> get cloudRevision => $composableBuilder(
+    column: $table.cloudRevision,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expiresAt =>
+      $composableBuilder(column: $table.expiresAt, builder: (column) => column);
+
+  GeneratedColumn<String> get state =>
+      $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $LocalCleanupConfirmationsTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          LocalCleanupConfirmations,
+          LocalCleanupConfirmation,
+          $LocalCleanupConfirmationsFilterComposer,
+          $LocalCleanupConfirmationsOrderingComposer,
+          $LocalCleanupConfirmationsAnnotationComposer,
+          $LocalCleanupConfirmationsCreateCompanionBuilder,
+          $LocalCleanupConfirmationsUpdateCompanionBuilder,
+          (
+            LocalCleanupConfirmation,
+            BaseReferences<
+              _$AccountDatabase,
+              LocalCleanupConfirmations,
+              LocalCleanupConfirmation
+            >,
+          ),
+          LocalCleanupConfirmation,
+          PrefetchHooks Function()
+        > {
+  $LocalCleanupConfirmationsTableManager(
+    _$AccountDatabase db,
+    LocalCleanupConfirmations table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $LocalCleanupConfirmationsFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $LocalCleanupConfirmationsOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $LocalCleanupConfirmationsAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> token = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> recordingId = const Value.absent(),
+                Value<String> generation = const Value.absent(),
+                Value<String> sha256 = const Value.absent(),
+                Value<int> cloudRevision = const Value.absent(),
+                Value<int> expiresAt = const Value.absent(),
+                Value<String> state = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalCleanupConfirmationsCompanion(
+                token: token,
+                userId: userId,
+                recordingId: recordingId,
+                generation: generation,
+                sha256: sha256,
+                cloudRevision: cloudRevision,
+                expiresAt: expiresAt,
+                state: state,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String token,
+                required String userId,
+                required String recordingId,
+                required String generation,
+                required String sha256,
+                required int cloudRevision,
+                required int expiresAt,
+                required String state,
+                required int createdAt,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => LocalCleanupConfirmationsCompanion.insert(
+                token: token,
+                userId: userId,
+                recordingId: recordingId,
+                generation: generation,
+                sha256: sha256,
+                cloudRevision: cloudRevision,
+                expiresAt: expiresAt,
+                state: state,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    LocalCleanupConfirmations,
+                    LocalCleanupConfirmation
+                  >(table),
+                  BaseReferences<
+                    _$AccountDatabase,
+                    LocalCleanupConfirmations,
+                    LocalCleanupConfirmation
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $LocalCleanupConfirmationsProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      LocalCleanupConfirmations,
+      LocalCleanupConfirmation,
+      $LocalCleanupConfirmationsFilterComposer,
+      $LocalCleanupConfirmationsOrderingComposer,
+      $LocalCleanupConfirmationsAnnotationComposer,
+      $LocalCleanupConfirmationsCreateCompanionBuilder,
+      $LocalCleanupConfirmationsUpdateCompanionBuilder,
+      (
+        LocalCleanupConfirmation,
+        BaseReferences<
+          _$AccountDatabase,
+          LocalCleanupConfirmations,
+          LocalCleanupConfirmation
+        >,
+      ),
+      LocalCleanupConfirmation,
+      PrefetchHooks Function()
+    >;
 
 class $AccountDatabaseManager {
   final _$AccountDatabase _db;
@@ -24967,4 +25935,9 @@ class $AccountDatabaseManager {
       $PendingEditResolutionsTableManager(_db, _db.pendingEditResolutions);
   $LocalUploadQueueTableManager get localUploadQueue =>
       $LocalUploadQueueTableManager(_db, _db.localUploadQueue);
+  $LocalCleanupConfirmationsTableManager get localCleanupConfirmations =>
+      $LocalCleanupConfirmationsTableManager(
+        _db,
+        _db.localCleanupConfirmations,
+      );
 }

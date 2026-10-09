@@ -101,6 +101,96 @@ paths:
         '401': {$ref: '#/components/responses/Error401'}
         '403': {$ref: '#/components/responses/Error403'}
         '404': {$ref: '#/components/responses/Error404'}
+  /storage/cleanup-previews:
+    post:
+      operationId: previewCleanup
+      summary: 현재 정리 가능한 서버 세대별 15분 확인 토큰
+      description: 최신 자동 역할·고정·교체 보호를 대조하고 각 객체에 임의 토큰을 발급한다. 계정·generation·sha256·cloud_revision과 발급 시각에 묶이며 중복 요청은 만료를 연장하지 않는다. 전부 성공하거나 전부 롤백한다. 파일 삭제나 용량 확보를 약속하지 않는다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [recording_ids]
+              properties:
+                recording_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  uniqueItems: true
+                  items: {type: string, format: uuid}
+      responses:
+        '200':
+          description: 세대별 확인 토큰과 객체. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/CleanupPreview'}}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
+        '409': {$ref: '#/components/responses/Error409'}
+  /storage/cleanup-confirmations:
+    post:
+      operationId: confirmCleanup
+      summary: 로컬 보존 확인 또는 명시적 서버 사본 손실 확인
+      description: token 소유 계정·기기·현재 세대·체크섬·revision·15분 만료·보호를 재검사한다. LOCAL_VERIFIED 전 앱이 실제 영속 파일을 확인하고 cleanup_fence를 저장한다. USER_CONFIRMED_LOSS는 별도 손실 확인 true가 필수다. 이 응답은 CONFIRMED이며 삭제 시작·used 차감은 하지 않는다. 오래된 멱등 응답도 삭제 전 유효성 검사를 대체하지 않는다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+              - type: object
+                additionalProperties: false
+                required: [token, mode, device_id, sha256]
+                properties:
+                  token: {type: string, format: uuid}
+                  mode: {const: LOCAL_VERIFIED}
+                  device_id: {type: string, format: uuid}
+                  sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+              - type: object
+                additionalProperties: false
+                required: [token, mode, device_id, sha256, understands_loss]
+                properties:
+                  token: {type: string, format: uuid}
+                  mode: {const: USER_CONFIRMED_LOSS}
+                  device_id: {type: string, format: uuid}
+                  sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+                  understands_loss: {const: true}
+      responses:
+        '200':
+          description: 확인 상태. 만료·응답 유실 시 로컬 보호를 자동 해제하지 않는다. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [token, state, expires_at]
+                properties:
+                  token: {type: string, format: uuid}
+                  state: {const: CONFIRMED}
+                  expires_at: {type: string, format: date-time}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
+        '409': {$ref: '#/components/responses/Error409'}
   /storage:
     get:
       operationId: getStorage
@@ -1555,6 +1645,23 @@ components:
         $ref: '#/components/schemas/RequestId'
       description: 생략하거나 유효하지 않으면 서버가 새 추적 ID를 발급한다.
   schemas:
+    CleanupPreview:
+      type: object
+      additionalProperties: false
+      required: [token, user_id, recording_id, generation, sha256, size_bytes, cloud_revision, expires_at, hold_reasons]
+      properties:
+        token: {type: string, format: uuid}
+        user_id: {type: string, format: uuid}
+        recording_id: {type: string, format: uuid}
+        generation: {type: string, format: uuid}
+        sha256: {type: string, pattern: '^[0-9a-f]{64}$'}
+        size_bytes: {type: integer, format: int64, minimum: 1, maximum: 6291456}
+        cloud_revision: {type: integer, format: int64, minimum: 1}
+        expires_at: {type: string, format: date-time}
+        hold_reasons:
+          type: array
+          uniqueItems: true
+          items: {type: string, enum: [WAITING_LOCAL_CONFIRM, ORPHAN_KEEP]}
     RecordingRetention:
       type: object
       additionalProperties: false

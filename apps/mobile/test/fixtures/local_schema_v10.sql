@@ -758,19 +758,3 @@ WHEN NEW.recording_id<>OLD.recording_id OR NEW.user_id<>OLD.user_id OR NEW.opera
  OR NEW.expected_size<>OLD.expected_size OR NEW.sha256<>OLD.sha256 OR NEW.created_at<>OLD.created_at
  OR NEW.automatic_retries<OLD.automatic_retries OR NEW.attempt_count<OLD.attempt_count
 BEGIN SELECT RAISE(ABORT,'Upload identity and retry budget are immutable'); END;
-
--- P13-04: durable local fence, released only by an authenticated terminal server result.
-CREATE TABLE local_cleanup_confirmations (
- token TEXT NOT NULL PRIMARY KEY CHECK(length(token)=36),
- user_id TEXT NOT NULL,
- recording_id TEXT NOT NULL,
- generation TEXT NOT NULL CHECK(length(generation)=36),
- sha256 TEXT NOT NULL CHECK(length(sha256)=64 AND sha256 NOT GLOB '*[^0-9a-f]*'),
- cloud_revision INTEGER NOT NULL CHECK(cloud_revision>0),
- expires_at INTEGER NOT NULL,
- state TEXT NOT NULL CHECK(state IN ('PREPARING','CONFIRMED','SUCCEEDED','CANCELLED','EXPIRED')),
- created_at INTEGER NOT NULL,
- updated_at INTEGER NOT NULL,
- FOREIGN KEY(user_id,recording_id) REFERENCES local_recording_files(user_id,recording_id)
-);
-CREATE INDEX local_cleanup_recording ON local_cleanup_confirmations(recording_id,state);

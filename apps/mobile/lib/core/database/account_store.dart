@@ -377,6 +377,7 @@ final class AccountStore {
         'mutation_mapping_holds': 'op_id,mapping_source_id,reason',
         'local_recording_files': 'recording_id',
         'local_upload_queue': 'recording_id',
+        'local_cleanup_confirmations': 'token',
         'recording_journals': 'recording_id',
         'import_jobs': 'import_job_id',
         'import_items': 'import_job_id,ordinal',
@@ -1541,10 +1542,13 @@ final class AccountStore {
         }
         final old = await _database
             .customSelect(
-              'SELECT local_state,sha256,size_bytes FROM local_recording_files WHERE recording_id=?',
+              'SELECT local_state,sha256,size_bytes,cleanup_fence FROM local_recording_files WHERE recording_id=?',
               variables: [Variable(id)],
             )
             .getSingleOrNull();
+        if ((old?.read<int>('cleanup_fence') ?? 0) > 0) {
+          throw StateError('Local preservation fence is active');
+        }
         if (old?.read<String>('local_state') == 'SAVED' &&
             (old?.readNullable<String>('sha256') != checksum ||
                 old?.readNullable<int>('size_bytes') != sizeBytes)) {
@@ -1587,7 +1591,10 @@ final class AccountStore {
     });
   }
 
-  Future<Uint8List> readLocalAudio(String recordingId) => _run(() async {
+  Future<Uint8List> readLocalAudio(String recordingId) =>
+      _run(() => _readLocalAudio(recordingId));
+
+  Future<Uint8List> _readLocalAudio(String recordingId) async {
     final id = UuidValue(recordingId).value;
     final row = await _database
         .customSelect(
@@ -1613,7 +1620,7 @@ final class AccountStore {
       throw StateError('Local file checksum changed');
     }
     return bytes;
-  });
+  }
 
   /// Current disk bytes, never a historical device report, prove preservation.
   Future<bool> verifyPreservedAudio(
@@ -1708,6 +1715,148 @@ final class AccountStore {
       local_state='SAVED',verified_at=excluded.verified_at,updated_at=excluded.updated_at""",
       [id, userId, _paths.audioPath(id), checksum, size, now, now],
     );
+  });
+
+  /// Establish the durable fence before any confirmation request leaves the device.
+  Future<void> beginLocalCleanupFence({
+    required String token,
+    required String owner,
+    required String recording,
+    required String generation,
+    required String checksum,
+    required int size,
+    required int revision,
+    required DateTime expires,
+  }) => _run(() async {
+    final key = UuidValue(token).value,
+        id = UuidValue(recording).value,
+        gen = UuidValue(generation).value;
+    final now = _manager._clock().toUtc().millisecondsSinceEpoch;
+    if (UuidValue(owner).value != userId ||
+        revision < 1 ||
+        !expires.toUtc().isAfter(_manager._clock().toUtc()) ||
+        expires.toUtc().millisecondsSinceEpoch > now + 900000) {
+      throw StateError('Invalid or expired cleanup confirmation');
+    }
+    final bytes = await _readLocalAudio(id);
+    requireActive();
+    if (bytes.length != size || sha256.convert(bytes).toString() != checksum) {
+      throw StateError('No matching persistent local copy');
+    }
+    await _database.transaction(() async {
+      final rows = await _database
+          .customSelect(
+            "SELECT * FROM local_cleanup_confirmations WHERE recording_id=? AND state IN ('PREPARING','CONFIRMED')",
+            variables: [Variable(id)],
+          )
+          .get();
+      if (rows.isNotEmpty) {
+        final row = rows.single;
+        if (row.read<String>('token') == key &&
+            row.read<String>('generation') == gen &&
+            row.read<String>('sha256') == checksum &&
+            row.read<int>('cloud_revision') == revision &&
+            row.read<int>('expires_at') ==
+                expires.toUtc().millisecondsSinceEpoch) {
+          return;
+        }
+        throw StateError('A cleanup result is still unresolved');
+      }
+      await _database.customStatement(
+        "INSERT INTO local_cleanup_confirmations(token,user_id,recording_id,generation,sha256,cloud_revision,expires_at,state,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'PREPARING',?,?)",
+        [
+          key,
+          userId,
+          id,
+          gen,
+          checksum,
+          revision,
+          expires.toUtc().millisecondsSinceEpoch,
+          now,
+          now,
+        ],
+      );
+      await _database.customStatement(
+        'UPDATE local_recording_files SET cleanup_fence=cleanup_fence+1,updated_at=? WHERE recording_id=? AND user_id=?',
+        [now, id, userId],
+      );
+    });
+  });
+  Future<List<Map<String, Object?>>> pendingLocalCleanup() => _run(
+    () async =>
+        (await _database
+                .customSelect(
+                  "SELECT c.*,f.size_bytes FROM local_cleanup_confirmations c JOIN local_recording_files f ON f.user_id=c.user_id AND f.recording_id=c.recording_id WHERE c.user_id=? AND c.state IN ('PREPARING','CONFIRMED') ORDER BY c.created_at,c.token",
+                  variables: [Variable(userId)],
+                )
+                .get())
+            .map((r) => Map<String, Object?>.from(r.data))
+            .toList(growable: false),
+  );
+
+  Future<void> markLocalCleanupConfirmed(String token) => _run(() async {
+    final key = UuidValue(token).value;
+    final row = await _database
+        .customSelect(
+          'SELECT state FROM local_cleanup_confirmations WHERE token=? AND user_id=?',
+          variables: [Variable(key), Variable(userId)],
+        )
+        .getSingleOrNull();
+    if (row == null ||
+        !['PREPARING', 'CONFIRMED'].contains(row.read<String>('state'))) {
+      throw StateError('Local cleanup token is not active');
+    }
+    await _database.customStatement(
+      "UPDATE local_cleanup_confirmations SET state='CONFIRMED',updated_at=? WHERE token=? AND user_id=?",
+      [_manager._clock().toUtc().millisecondsSinceEpoch, key, userId],
+    );
+  });
+
+  /// The caller must supply the authenticated server's terminal result, never infer it from expiry.
+  Future<void> finishLocalCleanupFence(
+    String token,
+    String generation,
+    String state,
+  ) => _run(() async {
+    if (!['SUCCEEDED', 'CANCELLED', 'EXPIRED'].contains(state)) {
+      throw StateError('Cleanup result is not terminal');
+    }
+    final key = UuidValue(token).value, gen = UuidValue(generation).value;
+    await _database.transaction(() async {
+      final row = await _database
+          .customSelect(
+            'SELECT recording_id,generation,state FROM local_cleanup_confirmations WHERE token=? AND user_id=?',
+            variables: [Variable(key), Variable(userId)],
+          )
+          .getSingleOrNull();
+      if (row == null || row.read<String>('generation') != gen) {
+        throw StateError('Cleanup result identity mismatch');
+      }
+      if ([
+        'SUCCEEDED',
+        'CANCELLED',
+        'EXPIRED',
+      ].contains(row.read<String>('state'))) {
+        if (row.read<String>('state') != state) {
+          throw StateError('Terminal cleanup result changed');
+        }
+        return;
+      }
+      final now = _manager._clock().toUtc().millisecondsSinceEpoch;
+      await _database.customStatement(
+        'UPDATE local_cleanup_confirmations SET state=?,updated_at=? WHERE token=? AND user_id=?',
+        [state, now, key, userId],
+      );
+      final changed = await _database.customUpdate(
+        'UPDATE local_recording_files SET cleanup_fence=cleanup_fence-1,updated_at=? WHERE user_id=? AND recording_id=? AND cleanup_fence>0',
+        variables: [
+          Variable(now),
+          Variable(userId),
+          Variable(row.read<String>('recording_id')),
+        ],
+      );
+      if (changed != 1) throw StateError('Local cleanup fence was lost');
+    });
   });
 
   Future<String?> readJournal(String recordingId) => _run(

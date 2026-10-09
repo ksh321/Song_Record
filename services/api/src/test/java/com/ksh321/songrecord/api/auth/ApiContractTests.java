@@ -31,7 +31,7 @@ class ApiContractTests {
 
     @Test void implementedPathsExactlyMatchControllers() {
         var actual = new TreeSet<String>();
-        for (var type : List.of(SocialAuthController.class, IdentityLinkController.class, com.ksh321.songrecord.api.songs.SongController.class, com.ksh321.songrecord.api.recordings.RecordingController.class, com.ksh321.songrecord.api.classifications.TagController.class, com.ksh321.songrecord.api.classifications.ConditionController.class, com.ksh321.songrecord.api.sync.SnapshotController.class, com.ksh321.songrecord.api.sync.ChangeController.class, com.ksh321.songrecord.api.retention.PinController.class, com.ksh321.songrecord.api.retention.RetentionController.class, com.ksh321.songrecord.api.retention.PreservationDownloadController.class)) {
+        for (var type : List.of(SocialAuthController.class, IdentityLinkController.class, com.ksh321.songrecord.api.songs.SongController.class, com.ksh321.songrecord.api.recordings.RecordingController.class, com.ksh321.songrecord.api.classifications.TagController.class, com.ksh321.songrecord.api.classifications.ConditionController.class, com.ksh321.songrecord.api.sync.SnapshotController.class, com.ksh321.songrecord.api.sync.ChangeController.class, com.ksh321.songrecord.api.retention.PinController.class, com.ksh321.songrecord.api.retention.RetentionController.class, com.ksh321.songrecord.api.retention.PreservationDownloadController.class, com.ksh321.songrecord.api.retention.CleanupConfirmationController.class)) {
             var base = AnnotatedElementUtils.findMergedAnnotation(type, RequestMapping.class);
             for (var method : type.getDeclaredMethods()) {
                 var mapping = AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping.class);
