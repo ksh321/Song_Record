@@ -1721,6 +1721,11 @@ final class AccountStore {
       try {
         await temp.writeAsBytes(data, flush: true);
         requireActive();
+        if (await temp.length() != size ||
+            (await sha256.bind(temp.openRead()).first).toString() != checksum) {
+          throw StateError('Temporary download verification failed');
+        }
+        requireActive();
         final target = await _paths.checkedFile(_paths.audioPath(id));
         if (await target.exists()) {
           throw StateError('Local original appeared during download');
