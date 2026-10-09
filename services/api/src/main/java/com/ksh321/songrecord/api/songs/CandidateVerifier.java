@@ -6,6 +6,8 @@ import java.util.Objects;
 /** Implementations authenticate source_token and obtain originals from a trusted server source. */
 public interface CandidateVerifier {
     Verified verify(String sourceToken);
+    /** Bounded source refresh before a mutation transaction. */
+    default Verified prepare(String sourceToken, java.util.UUID owner) { return verify(sourceToken); }
     enum Brand { TJ, KY }
     record Verified(String provider, Brand brand, String number, String title, String artist,
                     Instant issuedAt, Instant expiresAt) {

@@ -14,7 +14,14 @@ public final class TjCandidates {
     public CandidateVerifier.Verified require(String sourceToken,Purpose purpose) {
         java.util.Objects.requireNonNull(purpose);
         if(sourceToken==null || sourceToken.isBlank() || sourceToken.length()>8192)throw invalid();
-        var candidate=verifier.verify(sourceToken);
+        return requirePrepared(verifier.verify(sourceToken),purpose);
+    }
+    public CandidateVerifier.Verified prepare(String sourceToken,Purpose purpose,java.util.UUID owner) {
+        if(sourceToken==null || sourceToken.isBlank() || sourceToken.length()>8192)throw invalid();
+        return requirePrepared(verifier.prepare(sourceToken,java.util.Objects.requireNonNull(owner)),purpose);
+    }
+    public CandidateVerifier.Verified requirePrepared(CandidateVerifier.Verified candidate,Purpose purpose) {
+        java.util.Objects.requireNonNull(purpose);
         if(candidate==null)throw new IllegalStateException("Verifier returned no candidate");
         var now=clock.instant();
         if(candidate.issuedAt().isAfter(now) || !candidate.expiresAt().isAfter(candidate.issuedAt())

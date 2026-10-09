@@ -25,9 +25,9 @@ public final class SongCreation {
     }
     public IdempotentMutations.Reply create(String auth,String device,String op,String body){
         var account=access.authenticate(auth,device);var request=parse(body);UUID owner=account.principal().userId();
-        try{return mutations.execute(account,op,"POST","/v1/songs",body,()->{
-            // Source-token verification here is local only. Network refresh belongs outside this transaction.
-            var proof=request.type.equals("TJ")?candidates.require(request.proof,TjCandidates.Purpose.SONG):null;
+        try{return mutations.executePrepared(account,op,"POST","/v1/songs",body,
+                ()->request.type.equals("TJ")?candidates.prepare(request.proof,TjCandidates.Purpose.SONG,owner):null,prepared->{
+            var proof=prepared==null?null:candidates.requirePrepared(prepared,TjCandidates.Purpose.SONG);
             var result=guard.create(account,CreationGuard.Resource.SONG,request.id,()->{
                 // Account sync lock held by guard serializes all participating song writers.
                 var duplicates=proof==null?List.<UUID>of():jdbc.query("SELECT id FROM song WHERE user_id=? AND reserved_tj_number=?",(rs,n)->uuid(rs.getBytes(1)),bytes(owner),proof.number());

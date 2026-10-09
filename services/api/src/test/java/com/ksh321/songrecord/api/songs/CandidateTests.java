@@ -62,4 +62,17 @@ class CandidateTests {
             error(()->context.getBean(TjCandidates.class).require("dev-source-tj-001",TjCandidates.Purpose.SONG),"CANDIDATE_VERIFICATION_UNAVAILABLE",503);
         }
     }
+    @Test void liveSourceIsWiredAsPrimaryWithoutEnablingDevelopmentProofs() {
+        try(var context=new AnnotationConfigApplicationContext()){
+            var reading=Clock.systemUTC();var tokens=new com.ksh321.songrecord.api.karaoke.SourceTokens(new byte[32],reading);
+            var live=new com.ksh321.songrecord.api.karaoke.LiveCandidates(tokens,(b,k,q)->{throw new AssertionError("Fresh proof needs no provider");},new com.ksh321.songrecord.api.karaoke.SearchLimit(reading),reading);
+            context.registerBean(com.ksh321.songrecord.api.karaoke.LiveCandidates.class,()->live);
+            context.register(CandidateConfiguration.class);context.refresh();
+            assertThat(context.getBean(CandidateVerifier.class)).isSameAs(live);
+            var c=new com.ksh321.songrecord.api.karaoke.MananaSearchAdapter.Candidate(CandidateVerifier.Brand.TJ,"00123","원본","가수","MANANA","manana:tj:00123");
+            assertThat(context.getBean(TjCandidates.class).require(tokens.encode(tokens.issueProof(c)),TjCandidates.Purpose.SONG).number()).isEqualTo("00123");
+            error(()->context.getBean(TjCandidates.class).require("dev-source-tj-001",TjCandidates.Purpose.SONG),"SOURCE_TOKEN_INVALID",400);
+        }
+    }
+
 }

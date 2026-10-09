@@ -15,6 +15,7 @@ public class KaraokeConfiguration {
     @Bean MananaSearchAdapter mananaSearchAdapter(){return new MananaSearchAdapter();}
     @Bean SourceTokens sourceTokens(@Value("${songrecord.karaoke.key-base64:}")String encoded){try{return new SourceTokens(encoded.isBlank()?null:Base64.getDecoder().decode(encoded),Clock.systemUTC());}catch(IllegalArgumentException e){throw new IllegalStateException("Karaoke requires a valid independent 32-byte Base64 key");}}
     @Bean SearchLimit searchLimit(){return new SearchLimit(Clock.systemUTC());}
+    @Bean LiveCandidates liveCandidates(SourceTokens tokens,MananaSearchAdapter provider,SearchLimit limit){return new LiveCandidates(tokens,provider::search,limit,Clock.systemUTC());}
     @Bean KaraokeSearch karaokeSearch(AccountAccess access,SearchLimit limit,MananaSearchAdapter provider){return new KaraokeSearch(access,limit,provider::search);}
     @Bean KaraokeResults karaokeResults(AccountAccess access,KaraokeSearch search,SourceTokens tokens,JdbcTemplate jdbc){return new KaraokeResults(access,search,tokens,(owner,numbers)->{
         var args=new ArrayList<Object>();args.add(com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(owner));args.addAll(numbers);

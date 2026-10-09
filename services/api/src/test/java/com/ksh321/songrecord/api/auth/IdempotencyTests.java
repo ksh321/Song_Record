@@ -158,4 +158,20 @@ class IdempotencyTests {
         assertThat(error.getStatus()).isEqualTo(409);assertThat(error.getContentAsString()).contains("IDEMPOTENCY_CONFLICT","request_id").doesNotContain("private",key);
         assertThat(count()).isEqualTo(1);
     }
+    @Test void preparationRunsOutsideTransactionAndReplaySkipsAnUnavailableProvider() {
+        var prepared=new AtomicInteger();
+        var first=mutations.executePrepared(account,key,"POST","/v1/songs","{}",()->{
+            assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            prepared.incrementAndGet();return "verified";
+        },proof->{assertThat(proof).isEqualTo("verified");assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive()).isTrue();return effect();});
+        assertThat(mutations.executePrepared(account,key,"POST","/v1/songs","{}",()->{throw new AssertionError("Replay must not call source");},proof->effect())).isEqualTo(first);
+        conflict(()->mutations.executePrepared(account,key,"POST","/v1/songs","{\"changed\":true}",()->{throw new AssertionError("Conflict must not call source");},proof->effect()));
+        assertThat(prepared).hasValue(1);assertThat(count()).isEqualTo(1);
+    }
+    @Test void failedPreparationLeavesNoReceiptOrEffectAndSameKeyCanRetry() {
+        assertThatThrownBy(()->mutations.executePrepared(account,key,"POST","/v1/songs","{}",()->{throw new IllegalStateException("provider unavailable");},proof->effect())).isInstanceOf(IllegalStateException.class);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isZero();assertThat(count()).isZero();
+        mutations.executePrepared(account,key,"POST","/v1/songs","{}",()->"verified",proof->effect());assertThat(count()).isEqualTo(1);
+    }
+
 }

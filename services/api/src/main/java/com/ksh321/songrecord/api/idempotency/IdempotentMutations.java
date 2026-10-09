@@ -72,6 +72,22 @@ public final class IdempotentMutations {
         }
     }
 
+    /** Source preparation is outside the transaction; committed retries skip the provider. */
+    public <T> Reply executePrepared(AccountAccess.Account account,String key,String method,String target,
+            String body,Supplier<T> preparation,java.util.function.Function<T,Reply> mutation) {
+        if(TransactionSynchronizationManager.isActualTransactionActive())
+            throw new IllegalStateException("Preparation must be outside a mutation transaction");
+        var owner=access.revalidate(account);var op=operationId(key);
+        CanonicalRequest.hash(method,target,body);
+        var exists=jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt WHERE user_id=? AND op_id=?",
+                Integer.class,bytes(owner.userId()),bytes(op));
+        if(exists!=null && exists>0)return execute(account,key,method,target,body,
+                ()->{throw new IllegalStateException("Committed receipt disappeared");});
+        var prepared=preparation.get();
+        // The unique reservation still arbitrates racing requests atomically.
+        return execute(account,key,method,target,body,()->mutation.apply(prepared));
+    }
+
     /** Successful command responses only; exceptions roll back and remain retryable with the same key. */
     public record Reply(int status, String body) {
         public Reply {
