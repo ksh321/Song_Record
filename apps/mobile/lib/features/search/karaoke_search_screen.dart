@@ -4,17 +4,22 @@ import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/content_state.dart';
 import '../auth/auth_session.dart';
 import 'karaoke_search.dart';
+import 'search_intent.dart';
 
 class KaraokeSearchScreen extends StatefulWidget {
   const KaraokeSearchScreen({
     required this.load,
     this.auth,
     this.onSelected,
+    this.intent = const SearchIntent(),
+    this.initialQuery,
     super.key,
   });
   final KaraokeLoader load;
   final AuthController? auth;
-  final ValueChanged<KaraokeCandidate>? onSelected;
+  final ValueChanged<KaraokeSelection>? onSelected;
+  final SearchIntent intent;
+  final KaraokeQuery? initialQuery;
   @override
   State<KaraokeSearchScreen> createState() => _KaraokeSearchScreenState();
 }
@@ -29,6 +34,16 @@ class _KaraokeSearchScreenState extends State<KaraokeSearchScreen> {
     controller = KaraokeSearchController((q) => widget.load(q));
     account = widget.auth?.session?.userId;
     widget.auth?.addListener(_authChanged);
+    widget.intent.validate();
+    final initial = widget.initialQuery;
+    if (initial != null) {
+      input.text = initial.text;
+      controller.change(
+        brand: initial.brand,
+        kind: initial.kind,
+        text: initial.text,
+      );
+    }
   }
 
   void _authChanged() {
@@ -58,27 +73,79 @@ class _KaraokeSearchScreenState extends State<KaraokeSearchScreen> {
     super.dispose();
   }
 
-  void _select(KaraokeCandidate c) {
-    if (widget.onSelected != null) {
-      widget.onSelected!(c);
-      return;
-    }
-    showModalBottomSheet<void>(
+  Future<void> _select(KaraokeCandidate c) async {
+    final id = controller.requestId;
+    final action = await showModalBottomSheet<String>(
       context: context,
       useSafeArea: true,
-      builder: (_) => Padding(
-        padding: AppDimensions.sheetPadding,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(c.title, style: AppTypography.detailTitle),
-            Text(c.artist),
-            Text('${c.brand == KaraokeBrand.tj ? 'TJ' : '금영'} ${c.number}'),
-          ],
+      isScrollControlled: true,
+      builder: (sheetContext) => SingleChildScrollView(
+        child: Padding(
+          padding: AppDimensions.sheetPadding,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(c.title, style: AppTypography.detailTitle),
+              Text(c.artist),
+              Text('${c.brand == KaraokeBrand.tj ? 'TJ' : '금영'} ${c.number}'),
+              const SizedBox(height: 16),
+              if (c.brand == KaraokeBrand.ky) ...[
+                const Text('금영 결과는 직접 등록할 수 없어요. TJ에서 찾아 선택해 주세요.'),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () => Navigator.pop(sheetContext, 'find-tj'),
+                  child: const Text('TJ에서 이 곡 찾기'),
+                ),
+              ] else if (widget.onSelected != null)
+                FilledButton(
+                  onPressed: () => Navigator.pop(sheetContext, 'use-tj'),
+                  child: Text(
+                    widget.intent.purpose == SearchPurpose.playlist
+                        ? '목록에 사용할 TJ 곡 선택'
+                        : '이 TJ 곡 선택',
+                  ),
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(sheetContext),
+                child: const Text('취소'),
+              ),
+            ],
+          ),
         ),
       ),
     );
+    if (!mounted || id != controller.requestId || action == null) return;
+    if (action == 'use-tj' && c.brand == KaraokeBrand.tj) {
+      widget.onSelected?.call(KaraokeSelection(c, widget.intent));
+      return;
+    }
+    if (action != 'find-tj' || c.brand != KaraokeBrand.ky) return;
+    final result = await Navigator.of(context).push<KaraokeSelection>(
+      MaterialPageRoute(
+        settings: RouteSettings(
+          name: '/karaoke/tj-from-ky',
+          arguments: widget.intent,
+        ),
+        builder: (routeContext) => Scaffold(
+          appBar: AppBar(title: const Text('TJ에서 찾기')),
+          body: KaraokeSearchScreen(
+            load: widget.load,
+            auth: widget.auth,
+            intent: widget.intent,
+            initialQuery: KaraokeQuery(
+              KaraokeBrand.tj,
+              KaraokeKind.title,
+              c.title,
+            ),
+            onSelected: (selected) => Navigator.of(routeContext).pop(selected),
+          ),
+        ),
+      ),
+    );
+    if (mounted && id == controller.requestId && result != null) {
+      widget.onSelected?.call(result);
+    }
   }
 
   @override
