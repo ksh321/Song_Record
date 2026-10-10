@@ -7,3 +7,6 @@
 - 현재 6.1 Sol/medium 직접 별도 검토: 전체 JSON 복사·동시성·재시도·지연 취소·DB 실패 원자성·실제 prod/dev 설정 게이트 확인. 제한 시간 지적 수정 후 재검증. 새 사용자 조작·폰 실기 필요 없음. 원본 내용 검증/게시가 연결되기 전 수집 fixture는 검증 중 상태로만 저장된다.
 - 변경: charts/ChartCollection.java, ChartCollectionConfiguration.java, ChartCollectionScheduling.java, ChartStaging.java, V20__chart_collection_staging_payload.sql, ChartCollectionTests.java. 저장/원자성/작업 제한 학습: 수집 성공과 게시 성공은 별개이며 부분 데이터는 사용자에게 노출하지 않는다.
 - 현재 로컬 검사·검토 PASS, 커밋/푸시·정확 SHA 필수 CI 후 완료 판정. 다음 P16-03.
+
+## CI 지적 수정
+- 실제MySQL 업그레이드 검사가 신규 V20 추가로 실행 migration 수 10→11이 된 점을 기존 기대값에 반영하지 않아 실패했다. 실행 수11·최종버전20·새 공용 payload 테이블 존재/초기0 확인을 함께 적용하며 기존 사용자 데이터 보존 검사는 유지했다. DB migration 자체 실패가 아니다. 수정 커밋의 필수 CI를 다시 확인한다. 원인 P16-02-MIGRATION-COUNT, 코드 수정 재검증1회.
