@@ -14,12 +14,14 @@ class AppShell extends StatefulWidget {
     this.tabBuilder,
     this.searchBuilder,
     this.chartBuilder,
+    this.songsBuilder,
     super.key,
   });
 
   final RecorderGateway recorderGateway;
   final WidgetBuilder? searchBuilder;
   final WidgetBuilder? chartBuilder;
+  final Widget Function(BuildContext, VoidCallback)? songsBuilder;
 
   /// Allows a separate preview/test to exercise future tab bodies.
   /// Production uses the existing placeholders and single recorder panel.
@@ -136,6 +138,9 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _buildTab(AppTab tab) {
+    if (tab == AppTab.songs && widget.songsBuilder != null) {
+      return widget.songsBuilder!(context, _findSong);
+    }
     if (tab == AppTab.charts && widget.chartBuilder != null) {
       return widget.chartBuilder!(context);
     }

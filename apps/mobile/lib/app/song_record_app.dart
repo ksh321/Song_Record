@@ -19,6 +19,8 @@ import 'package:song_record/features/search/karaoke_search.dart';
 import 'package:song_record/features/search/karaoke_search_screen.dart';
 import 'package:song_record/features/search/song_registration.dart';
 import 'package:song_record/features/settings/settings_screen.dart';
+import 'package:song_record/features/songs/my_song.dart';
+import 'package:song_record/features/songs/my_songs_screen.dart';
 import 'package:song_record/features/sync/sync_controller.dart';
 import 'package:song_record/network/health_client.dart';
 import 'package:song_record/routing/app_routes.dart';
@@ -106,6 +108,22 @@ class SongRecordApp extends StatelessWidget {
       routes: {
         AppRoutes.home: (context) => AppShell(
           recorderGateway: recorderGateway,
+          songsBuilder: (context, findSong) => MySongsScreen(
+            auth: authController,
+            onFindSong: findSong,
+            watch: () {
+              final auth = authController, repository = localRepository?.call();
+              if (auth == null ||
+                  auth.phase != AuthPhase.ready ||
+                  repository == null ||
+                  repository.userId != auth.session?.userId) {
+                throw StateError('Current account storage is unavailable');
+              }
+              return repository.watchActiveSongs().map(
+                (rows) => rows.map(MySong.new).toList(),
+              );
+            },
+          ),
           chartBuilder: (context) => PopularChartScreen(
             auth: authController,
             searchLoad: searchLoad,

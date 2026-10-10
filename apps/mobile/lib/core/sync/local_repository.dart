@@ -14,7 +14,8 @@ import 'mutation_transport.dart';
 
 /// Prepare once, retain the command, then save. A failed save is retried with
 /// the same command, never by calling prepare again. Network sending is P10-02.
-final class LocalRepository implements ConflictActions, CanonicalConflictActions {
+final class LocalRepository
+    implements ConflictActions, CanonicalConflictActions {
   LocalRepository(this._store, {String Function()? newId})
     : _newId = newId ?? _uuid;
 
@@ -22,6 +23,9 @@ final class LocalRepository implements ConflictActions, CanonicalConflictActions
   final String Function() _newId;
 
   String get userId => _store.userId;
+
+  Stream<List<Map<String, dynamic>>> watchActiveSongs() =>
+      _store.watchActiveSongs();
 
   LocalEdit prepareCreate({
     required LocalEntity entity,
@@ -94,12 +98,16 @@ final class LocalRepository implements ConflictActions, CanonicalConflictActions
   Future<List<QueuedMutation>> pendingWork() => _store.pendingWorkMutations();
 
   @override
-  Future<List<CanonicalConflictReview>> canonicalCandidates() => _store.canonicalCandidates();
+  Future<List<CanonicalConflictReview>> canonicalCandidates() =>
+      _store.canonicalCandidates();
   @override
-  Future<CanonicalConflictReview> reviewCanonical(String intentId) => _store.readCanonicalConflict(intentId);
+  Future<CanonicalConflictReview> reviewCanonical(String intentId) =>
+      _store.readCanonicalConflict(intentId);
   @override
-  Future<void> resolveCanonical(CanonicalConflictReview review, ConflictChoice choice) =>
-      _store.resolveCanonicalConflict(review, choice, _newId());
+  Future<void> resolveCanonical(
+    CanonicalConflictReview review,
+    ConflictChoice choice,
+  ) => _store.resolveCanonicalConflict(review, choice, _newId());
 
   Future<int> unlinkedOfflineRecordingCount() =>
       _store.unlinkedOfflineRecordingCount();
@@ -113,7 +121,9 @@ final class LocalRepository implements ConflictActions, CanonicalConflictActions
     Map<String, ConflictChoice> choices,
   ) {
     final plan = prepareConflictResolution(
-      review.mutation, choices: choices, serverSnapshot: review.server,
+      review.mutation,
+      choices: choices,
+      serverSnapshot: review.server,
       pendingReview: review.pendingReview,
     );
     return _store.resolveMetadataConflict(

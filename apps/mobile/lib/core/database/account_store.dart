@@ -191,6 +191,54 @@ final class AccountStore {
     _database,
     _manager._clock,
   );
+
+  /// Serialized current-account reads, including unsent local edits. Never network.
+  Future<List<Map<String, dynamic>>> readActiveSongs() => _run(() async {
+    final rows = await _database
+        .customSelect(
+          '''
+      SELECT m.entity_id, COALESCE(m.local_payload,m.server_payload) AS payload
+      FROM metadata_copies m
+      WHERE m.user_id=? AND m.entity_type='SONG' AND m.tombstone=0
+        AND NOT EXISTS(SELECT 1 FROM song_aliases a WHERE a.source_song_id=m.entity_id)
+      ORDER BY m.entity_id
+    ''',
+          variables: [Variable(userId)],
+        )
+        .get();
+    final result = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      final raw = row.readNullable<String>('payload');
+      if (raw == null) continue;
+      final payload = jsonDecode(raw);
+      if (payload is! Map<String, dynamic> ||
+          payload['id'] != row.read<String>('entity_id') ||
+          (payload.containsKey('user_id') && payload['user_id'] != userId)) {
+        throw const FormatException('Song identity mismatch');
+      }
+      if (payload['lifecycle_state'] == 'ACTIVE') result.add(payload);
+    }
+    return result;
+  });
+
+  /// Existing raw SQLite writes do not invalidate Drift table watchers.
+  /// Poll only the active local lease; UI cancels on logout/account change.
+  Stream<List<Map<String, dynamic>>> watchActiveSongs() async* {
+    String? previous;
+    final ticks = Stream<void>.periodic(const Duration(seconds: 1));
+    var rows = await readActiveSongs();
+    previous = jsonEncode(rows);
+    yield rows;
+    await for (final _ in ticks) {
+      rows = await readActiveSongs();
+      final encoded = jsonEncode(rows);
+      if (encoded != previous) {
+        previous = encoded;
+        yield rows;
+      }
+    }
+  }
+
   Future<void> discoverUploads() => _run(_uploads.discover);
   Future<UploadWork?> claimUpload() => _run(_uploads.claim);
   Future<bool> uploadCurrent(UploadWork work) =>
@@ -1855,7 +1903,8 @@ final class AccountStore {
       }
       final bytes = await _readLocalAudio(id);
       requireActive();
-      if (bytes.length != size || sha256.convert(bytes).toString() != checksum) {
+      if (bytes.length != size ||
+          sha256.convert(bytes).toString() != checksum) {
         throw StateError('Confirmed file changed');
       }
       final file = await _paths.checkedFile(_paths.audioPath(id));
