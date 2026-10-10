@@ -1,0 +1,9 @@
+# P16-02 — 브랜드·기간별 백그라운드 수집 (원수)
+
+- D12와 R087~R090에 따라 공용 차트 수집을 계정별 JobQueue·동기화와 분리한다. 사용자 조회 요청은 원본을 호출하지 않는다. 운영 저장 이용 조건 미확인으로 실데이터 저장은 차단하고 dev 전용·명시적 fixture-enabled 설정에서만 합성 원본을 수집한다. prod/bootstrap 또는 기본 설정에는 수집 빈이 없다.
+- ChartCollection은 TJ/KY×3기간 전체 응답을 2MiB 이내로 수신해 ChartStaging에 넘긴다. 작업 전체 30초 중 원본 20초·저장 트랜잭션 최대10초, 원본 실패 재시도 최대1회, 동시 원본 최대2개. 호출자 제한 시간 이후 도착한 응답은 저장하지 않으며 취소를 무시하는 원본 작업은 실제 종료까지 원본 슬롯을 유지한다. DB 트랜잭션 안 원본 호출 금지.
+- V20은 chart_collection_payload에 전체 JSON을 STAGING 스냅샷과 같은 트랜잭션으로 보관한다. 저장 실패는 둘 다 롤백하며 이전 게시 포인터를 건드리지 않는다. scope 잠금으로 revision을 발급한다. 전체 배열 내용 검증과 원자 게시 연결은 순서대로 P16-03/04에서 수행한다. 개발 5분 주기는 공급자 갱신 주기 주장과 무관하다.
+- 검사: services/api/gradlew.bat -p services/api test bootJar --console plain. 652개 중 572 성공·80 실제MySQL 로컬 제외·실패0. bootJar PASS. 검토 후 제한 시간 배분 변경은 ChartCollectionTests 7개와 bootJar 영향 검사 PASS. 실제MySQL은 원격 필수 CI에서 확인한다.
+- 현재 6.1 Sol/medium 직접 별도 검토: 전체 JSON 복사·동시성·재시도·지연 취소·DB 실패 원자성·실제 prod/dev 설정 게이트 확인. 제한 시간 지적 수정 후 재검증. 새 사용자 조작·폰 실기 필요 없음. 원본 내용 검증/게시가 연결되기 전 수집 fixture는 검증 중 상태로만 저장된다.
+- 변경: charts/ChartCollection.java, ChartCollectionConfiguration.java, ChartCollectionScheduling.java, ChartStaging.java, V20__chart_collection_staging_payload.sql, ChartCollectionTests.java. 저장/원자성/작업 제한 학습: 수집 성공과 게시 성공은 별개이며 부분 데이터는 사용자에게 노출하지 않는다.
+- 현재 로컬 검사·검토 PASS, 커밋/푸시·정확 SHA 필수 CI 후 완료 판정. 다음 P16-03.
