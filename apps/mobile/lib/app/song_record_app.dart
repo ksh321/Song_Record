@@ -7,6 +7,7 @@ import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
+import 'package:song_record/core/widgets/song_discovery_sheet.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/auth/identity_link.dart';
 import 'package:song_record/features/charts/popular_chart.dart';
@@ -18,6 +19,7 @@ import 'package:song_record/features/recorder/recording_workspace.dart';
 import 'package:song_record/features/search/karaoke_http.dart';
 import 'package:song_record/features/search/karaoke_search.dart';
 import 'package:song_record/features/search/karaoke_search_screen.dart';
+import 'package:song_record/features/search/search_intent.dart';
 import 'package:song_record/features/search/song_registration.dart';
 import 'package:song_record/features/settings/settings_screen.dart';
 import 'package:song_record/features/songs/my_song.dart';
@@ -104,6 +106,30 @@ class SongRecordApp extends StatelessWidget {
       return result;
     }
 
+    Future<PublishedChart> chartLoad(ChartScope scope) async {
+      final auth = authController;
+      if (auth == null || auth.phase != AuthPhase.ready) {
+        throw const ChartFailure('로그인이 필요해요.', code: 'LOGIN_REQUIRED');
+      }
+      final user = auth.session?.userId, device = auth.session?.deviceId;
+      final session = await auth.validSession();
+      if (auth.phase != AuthPhase.ready ||
+          session.userId != user ||
+          session.deviceId != device) {
+        throw const ChartFailure('계정이 변경됐어요.', code: 'ACCOUNT_CHANGED');
+      }
+      final chart = await HttpPopularChart(
+        config.apiBaseUrl,
+        allowLocalHttp: kDebugMode && config.environment == AppEnvironment.dev,
+      ).read(scope, session);
+      if (auth.phase != AuthPhase.ready ||
+          auth.session?.userId != session.userId ||
+          auth.session?.deviceId != session.deviceId) {
+        throw const ChartFailure('계정이 변경됐어요.', code: 'ACCOUNT_CHANGED');
+      }
+      return chart;
+    }
+
     return MaterialApp(
       title: '노래기록',
       debugShowCheckedModeBanner: config.environment != AppEnvironment.prod,
@@ -116,6 +142,29 @@ class SongRecordApp extends StatelessWidget {
               : (context) => RecordingWorkspace(
                   gateway: recorderGateway,
                   repository: localRepository!,
+                  discoveryBuilder: (context, destination, prepare) => Scaffold(
+                    appBar: AppBar(title: const Text('녹음에 사용할 새 곡 찾기')),
+                    body: SafeArea(
+                      child: destination == SongDiscoveryDestination.charts
+                          ? PopularChartScreen(
+                              auth: authController,
+                              load: chartLoad,
+                              searchLoad: searchLoad,
+                              prepareRegistration: prepare,
+                              intent: const SearchIntent(
+                                returnRoute: '/recording/input',
+                              ),
+                            )
+                          : KaraokeSearchScreen(
+                              auth: authController,
+                              load: searchLoad,
+                              prepareRegistration: prepare,
+                              intent: const SearchIntent(
+                                returnRoute: '/recording/input',
+                              ),
+                            ),
+                    ),
+                  ),
                   isCurrent: (repo) =>
                       authController?.phase == AuthPhase.ready &&
                       authController?.session?.userId == repo.userId &&
@@ -192,31 +241,7 @@ class SongRecordApp extends StatelessWidget {
             auth: authController,
             searchLoad: searchLoad,
             prepareRegistration: prepareRegistration,
-            load: (scope) async {
-              final auth = authController;
-              if (auth == null || auth.phase != AuthPhase.ready) {
-                throw const ChartFailure('로그인이 필요해요.', code: 'LOGIN_REQUIRED');
-              }
-              final user = auth.session?.userId,
-                  device = auth.session?.deviceId;
-              final session = await auth.validSession();
-              if (auth.phase != AuthPhase.ready ||
-                  session.userId != user ||
-                  session.deviceId != device) {
-                throw const ChartFailure('계정이 변경됐어요.', code: 'ACCOUNT_CHANGED');
-              }
-              final chart = await HttpPopularChart(
-                config.apiBaseUrl,
-                allowLocalHttp:
-                    kDebugMode && config.environment == AppEnvironment.dev,
-              ).read(scope, session);
-              if (auth.phase != AuthPhase.ready ||
-                  auth.session?.userId != session.userId ||
-                  auth.session?.deviceId != session.deviceId) {
-                throw const ChartFailure('계정이 변경됐어요.', code: 'ACCOUNT_CHANGED');
-              }
-              return chart;
-            },
+            load: chartLoad,
           ),
           searchBuilder: (context) => KaraokeSearchScreen(
             auth: authController,

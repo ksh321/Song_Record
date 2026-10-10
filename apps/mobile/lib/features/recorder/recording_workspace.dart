@@ -7,6 +7,7 @@ import 'package:song_record/core/theme/app_tokens.dart';
 
 import 'recorder_gateway.dart';
 import 'recorder_panel.dart';
+import 'recording_song_picker.dart';
 
 class RecordingWorkspace extends StatefulWidget {
   const RecordingWorkspace({
@@ -14,12 +15,14 @@ class RecordingWorkspace extends StatefulWidget {
     required this.repository,
     required this.isCurrent,
     this.wakeSync,
+    this.discoveryBuilder,
     super.key,
   });
   final RecorderGateway gateway;
   final LocalRepository? Function() repository;
   final bool Function(LocalRepository) isCurrent;
   final VoidCallback? wakeSync;
+  final RecordingDiscoveryBuilder? discoveryBuilder;
   @override
   State<RecordingWorkspace> createState() => _RecordingWorkspaceState();
 }
@@ -118,7 +121,27 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
                   title: Text(
                     (row['title_snapshot'] as String?) ?? '곡 정보 입력 대기',
                   ),
-                  subtitle: Text('정보 입력 대기 · ${row['recorded_at']}'),
+                  subtitle: Text(
+                    row['input_selection'] is Map
+                        ? '선택한 곡: ${row['input_selection']['title_snapshot']}'
+                        : '정보 입력 대기 · ${row['recorded_at']}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    final repo = widget.repository();
+                    if (repo == null || !widget.isCurrent(repo)) return;
+                    Navigator.of(context).push<void>(
+                      MaterialPageRoute(
+                        builder: (_) => RecordingSongPicker(
+                          recordingId: row['id'] as String,
+                          repository: repo,
+                          isCurrent: widget.isCurrent,
+                          discoveryBuilder: widget.discoveryBuilder,
+                          wakeSync: widget.wakeSync,
+                        ),
+                      ),
+                    );
+                  },
                 ),
             ],
           );

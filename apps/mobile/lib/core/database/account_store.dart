@@ -2040,6 +2040,69 @@ final class AccountStore {
     });
   });
 
+  Future<void> selectPendingRecordingSong(String recordingId, String songId) =>
+      _run(
+        () => _database.transaction(() async {
+          final recording = UuidValue(recordingId).value;
+          final song = UuidValue(songId).value;
+          final record = await _readMetadata(LocalEntity.recording, recording);
+          final chosen = await _readMetadata(LocalEntity.song, song);
+          Map<String, dynamic> effective(MetadataCopy? copy) {
+            if (copy == null || copy.tombstone) {
+              throw StateError('Target unavailable');
+            }
+            final raw = copy.localJson ?? copy.serverJson;
+            if (raw == null) throw StateError('Target unavailable');
+            _validatePayloadOwner(raw);
+            return jsonDecode(raw) as Map<String, dynamic>;
+          }
+
+          final draft = effective(record), selected = effective(chosen);
+          if (draft['id'] != recording ||
+              selected['id'] != song ||
+              draft['metadata_state'] != 'DRAFT' ||
+              draft['lifecycle_state'] != 'ACTIVE' ||
+              selected['lifecycle_state'] != 'ACTIVE' ||
+              !{'TJ', 'MANUAL'}.contains(selected['source_type']) ||
+              selected['title'] is! String ||
+              selected['artist'] is! String) {
+            throw StateError(
+              'An active registered song and pending recording are required',
+            );
+          }
+          final journal = await _database
+              .customSelect(
+                'SELECT recovery_payload FROM recording_journals WHERE recording_id=? AND user_id=?',
+                variables: [Variable(recording), Variable(userId)],
+              )
+              .getSingleOrNull();
+          if (journal == null) {
+            throw StateError('Capture input journal unavailable');
+          }
+          final recovery = jsonDecode(
+            journal.read<String>('recovery_payload'),
+          ) as Map<String, dynamic>;
+          recovery['input_selection'] = {
+            'song_id': song,
+            'title_snapshot': selected['title'],
+            'artist_snapshot': selected['artist'],
+            'version_code': selected['version_code'] ?? 'NORMAL',
+            'key_mode': selected['representative_key_mode'] ?? 'ORIGINAL',
+            'key_shift': selected['representative_key_shift'] ?? 0,
+          };
+          requireActive();
+          await _database.customStatement(
+            'UPDATE recording_journals SET recovery_payload=?,revision=revision+1,updated_at=? WHERE recording_id=? AND user_id=?',
+            [
+              jsonEncode(recovery),
+              _manager._clock().toUtc().millisecondsSinceEpoch,
+              recording,
+              userId,
+            ],
+          );
+        }),
+      );
+
   Future<List<Map<String, dynamic>>> readPendingRecordings() => _run(() async {
     final rows = await _database
         .customSelect(
@@ -2069,6 +2132,7 @@ final class AccountStore {
             journal.read<String>('recovery_payload'),
           ) as Map<String, dynamic>;
           value['file'] = recovered['file'];
+          value['input_selection'] = recovered['input_selection'];
         }
         result.add(value);
       }

@@ -45,6 +45,9 @@ final class LocalRepository
   Future<List<Map<String, dynamic>>> pendingRecordings() =>
       _store.readPendingRecordings();
 
+  Future<void> selectPendingRecordingSong(String recordingId, String songId) =>
+      _store.selectPendingRecordingSong(recordingId, songId);
+
   Stream<List<Map<String, dynamic>>> watchActiveSongs() =>
       _store.watchActiveSongs();
 
