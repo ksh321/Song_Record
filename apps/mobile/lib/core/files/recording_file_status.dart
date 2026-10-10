@@ -105,6 +105,15 @@ final class RecordingFileStatuses {
       device = DeviceAudioState.unknown;
     }
     store.requireActive();
+    return fromEvidence(id, store.userId, evidence, device);
+  }
+
+  static RecordingFileStatus fromEvidence(
+    String id,
+    String userId,
+    Map<String, Object?> evidence,
+    DeviceAudioState device,
+  ) {
     Map<String, dynamic>? decode(Object? value) {
       if (value is! String) return null;
       try {
@@ -128,7 +137,7 @@ final class RecordingFileStatuses {
     String? reason;
     if (asset != null &&
         asset['recording_id'] == id &&
-        (asset['user_id'] == null || asset['user_id'] == store.userId)) {
+        (asset['user_id'] == null || asset['user_id'] == userId)) {
       final candidate = asset['cloud_state'];
       if ({
         'NONE',

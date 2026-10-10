@@ -1,50 +1,25 @@
 import 'package:flutter/material.dart';
 
-import '../../core/domain/domain_ordering.dart';
 import '../../core/domain/song_types.dart';
 import '../../core/files/recording_file_status.dart';
 import 'recording_filter.dart';
+import 'recording_order.dart';
+import 'recording_pages.dart';
 
-enum RecordingSort {
-  newest('최신순'),
-  oldest('오래된순'),
-  title('곡명순'),
-  tier('티어순');
-
-  const RecordingSort(this.label);
-  final String label;
-}
-
-List<Map<String, dynamic>> sortRecordings(
-  List<Map<String, dynamic>> source,
-  RecordingSort sort,
-) {
-  int latest(Map<String, dynamic> a, Map<String, dynamic> b) =>
-      DateTime.parse(b['recorded_at'] as String)
-          .compareTo(DateTime.parse(a['recorded_at'] as String));
-  int tier(Object? value) =>
-      const <Object?>['S', 'A', 'B', 'C', 'D', null].indexOf(value);
-  final rows = List<Map<String, dynamic>>.of(source);
-  rows.sort((a, b) {
-    var result = switch (sort) {
-      RecordingSort.newest => latest(a, b),
-      RecordingSort.oldest => -latest(a, b),
-      RecordingSort.title => compareSortText(
-        a['title_snapshot'] as String,
-        b['title_snapshot'] as String,
-      ),
-      RecordingSort.tier => tier(a['tier']).compareTo(tier(b['tier'])),
-    };
-    if (result == 0) result = latest(a, b);
-    return result != 0
-        ? result
-        : (a['id'] as String).compareTo(b['id'] as String);
-  });
-  return rows;
-}
+export 'recording_order.dart';
 
 class RecordingList extends StatefulWidget {
-  const RecordingList({required this.rows, required this.onOpen, super.key});
+  const RecordingList({
+    required this.rows,
+    required this.onOpen,
+    this.scope = 'test',
+    this.metadataComplete = true,
+    this.lastSync,
+    super.key,
+  });
+  final String scope;
+  final bool metadataComplete;
+  final DateTime? lastSync;
   final List<Map<String, dynamic>> rows;
   final void Function(Map<String, dynamic>) onOpen;
   @override
@@ -52,9 +27,20 @@ class RecordingList extends StatefulWidget {
 }
 
 class _RecordingListState extends State<RecordingList> {
+  final pages = RecordingPages();
+  @override
+  void didUpdateWidget(RecordingList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scope != widget.scope) {
+      filter = RecordingFilter();
+      sort = RecordingSort.newest;
+    }
+  }
+
   RecordingSort sort = RecordingSort.newest;
   RecordingFilter filter = RecordingFilter();
   Future<void> chooseFilter() async {
+    final scope = widget.scope;
     final selected = await Navigator.push<RecordingFilter>(
       context,
       MaterialPageRoute(
@@ -62,10 +48,13 @@ class _RecordingListState extends State<RecordingList> {
             RecordingFilterScreen(initial: filter, rows: widget.rows),
       ),
     );
-    if (mounted && selected != null) setState(() => filter = selected);
+    if (mounted && widget.scope == scope && selected != null) {
+      setState(() => filter = selected);
+    }
   }
 
   Future<void> chooseSort() async {
+    final scope = widget.scope;
     final selected = await showModalBottomSheet<RecordingSort>(
       context: context,
       useSafeArea: true,
@@ -83,24 +72,22 @@ class _RecordingListState extends State<RecordingList> {
         ),
       ),
     );
-    if (mounted && selected != null) setState(() => sort = selected);
+    if (mounted && widget.scope == scope && selected != null) {
+      setState(() => sort = selected);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final rows = sortRecordings(
-      widget.rows.where(filter.matches).toList(),
-      sort,
+    pages.replace(
+      widget.rows,
+      widget.scope,
+      complete: widget.metadataComplete,
+      lastSync: widget.lastSync,
     );
-    final withoutFile = RecordingFilter(Map.of(filter.values)..remove('file'));
-    final unknown =
-        filter.values.containsKey('file') &&
-        widget.rows.where(withoutFile.matches).any((r) {
-          final status = r['_file_status'] as RecordingFileStatus?;
-          return status == null ||
-              status.device == DeviceAudioState.unknown ||
-              status.serverState == 'UNKNOWN';
-        });
+    pages.select(filter, sort);
+    final rows = pages.visible, unknown = pages.unknownFiles > 0;
+    final exact = widget.metadataComplete && !unknown;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -108,7 +95,7 @@ class _RecordingListState extends State<RecordingList> {
           children: [
             Expanded(
               child: Text(
-                unknown ? '현재 확인된 ${rows.length}개' : '저장 녹음 ${rows.length}개',
+                exact ? '저장 녹음 ${pages.total}개' : '현재 확인된 ${pages.total}개',
               ),
             ),
             TextButton.icon(
@@ -123,8 +110,13 @@ class _RecordingListState extends State<RecordingList> {
             ),
           ],
         ),
+        if (!widget.metadataComplete)
+          const Text('동기화 중 · 전체 개수는 아직 확정되지 않았어요.'),
+        Text(
+          '로컬 정보 기준 · 마지막 동기화: ${widget.lastSync == null ? '확인된 기록 없음' : formatSyncTime(widget.lastSync!)}',
+        ),
         if (unknown) const Text('파일 상태 확인 불가 · 결과 개수를 아직 확정할 수 없어요.'),
-        if (rows.isEmpty && !unknown)
+        if (rows.isEmpty && exact)
           Text(filter.count == 0 ? '저장된 녹음이 없습니다' : '조건에 맞는 녹음이 없습니다'),
         for (final row in rows)
           ListTile(
@@ -134,6 +126,14 @@ class _RecordingListState extends State<RecordingList> {
             isThreeLine: true,
             trailing: Text(row['tier'] as String? ?? '미정'),
             onTap: () => widget.onOpen(row),
+          ),
+        if (pages.cursor != null)
+          TextButton(
+            onPressed: () => setState(() {
+              final cursor = pages.cursor;
+              if (cursor != null) pages.next(cursor);
+            }),
+            child: Text('다음 ${pages.limit}개'),
           ),
       ],
     );
@@ -155,4 +155,10 @@ String recordingSummary(Map<String, dynamic> row) {
   );
   final status = row['_file_status'] as RecordingFileStatus?;
   return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')} · ${formatVersionCode(version)} · ${formatMusicalKey(key)}\n${status?.deviceLabel ?? '이 기기 파일: 확인 중'} · ${status?.serverLabel ?? '서버 파일: 확인 중'}';
+}
+
+String formatSyncTime(DateTime utc) {
+  final t = utc.toUtc().add(const Duration(hours: 9));
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${t.year}/${two(t.month)}/${two(t.day)} ${two(t.hour)}:${two(t.minute)}';
 }

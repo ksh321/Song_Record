@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 
+import '../../core/files/recording_catalog.dart';
 import 'recorder_gateway.dart';
 import 'recorder_panel.dart';
 import 'recording_detail_screen.dart';
@@ -32,31 +33,29 @@ class RecordingWorkspace extends StatefulWidget {
 
 class _RecordingWorkspaceState extends State<RecordingWorkspace> {
   late final Stream<List<Map<String, dynamic>>> _pending = _watch();
-  late final Stream<List<Map<String, dynamic>>> _saved = _watch(saved: true);
-  Stream<List<Map<String, dynamic>>> _watch({bool saved = false}) async* {
+  late final Stream<RecordingCatalog> _saved = _watchSaved();
+  Stream<List<Map<String, dynamic>>> _watch() async* {
     while (mounted) {
       final repo = widget.repository();
       if (repo == null || !widget.isCurrent(repo)) {
         throw StateError('Active account required');
       }
-      final records = saved
-          ? await repo.savedRecordings()
-          : await repo.pendingRecordings();
+      final records = await repo.pendingRecordings();
       if (!mounted || !widget.isCurrent(repo)) return;
-      final visible = saved
-          ? await Future.wait(
-              records.map(
-                (row) async => {
-                  ...row,
-                  '_file_status': await repo.recordingFileStatus(
-                    row['id'] as String,
-                  ),
-                },
-              ),
-            )
-          : records;
+      yield records;
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
+  }
+
+  Stream<RecordingCatalog> _watchSaved() async* {
+    while (mounted) {
+      final repo = widget.repository();
+      if (repo == null || !widget.isCurrent(repo)) {
+        throw StateError('Active account required');
+      }
+      final snapshot = await repo.recordingCatalog();
       if (!mounted || !widget.isCurrent(repo)) return;
-      yield visible;
+      yield snapshot;
       await Future<void>.delayed(const Duration(seconds: 1));
     }
   }
@@ -166,13 +165,16 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
           );
         },
       ),
-      StreamBuilder<List<Map<String, dynamic>>>(
+      StreamBuilder<RecordingCatalog>(
         stream: _saved,
         builder: (context, snapshot) {
           if (snapshot.hasError) return const Text('저장 목록을 확인하지 못했어요.');
           if (!snapshot.hasData) return const Text('저장 녹음 확인 중');
           return RecordingList(
-            rows: snapshot.data!,
+            rows: snapshot.data!.rows,
+            scope: snapshot.data!.scope,
+            metadataComplete: snapshot.data!.complete,
+            lastSync: snapshot.data!.lastSync,
             onOpen: (row) {
               final repo = widget.repository();
               if (repo == null || !widget.isCurrent(repo)) return;

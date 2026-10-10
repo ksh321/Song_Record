@@ -663,77 +663,80 @@ final class AccountStore {
   );
 
   /// One account-scoped read of effective server evidence; roles confer no file availability.
-  Future<Map<String, Object?>> recordingStorageEvidence(
+  Future<Map<String, Object?>> recordingStorageEvidence(String recordingId) =>
+      _run(
+        () =>
+            _database.transaction(() => _recordingStorageEvidence(recordingId)),
+      );
+  Future<Map<String, Object?>> _recordingStorageEvidence(
     String recordingId,
-  ) => _run(
-    () => _database.transaction(() async {
-      final id = UuidValue(recordingId).value;
-      final record = await _readMetadata(LocalEntity.recording, id);
-      final asset = await _readMetadata(LocalEntity.recordingAsset, id);
-      final recordBaseline = await _snapshots.baselineRecord('RECORDING', id);
-      // Asset relation rows are outside baselineRecord's point-entity contract.
-      final assetBaseline = await _database
-          .customSelect(
-            """SELECT p.canonical_payload FROM snapshot_download_rows p
+  ) async {
+    final id = UuidValue(recordingId).value;
+    final record = await _readMetadata(LocalEntity.recording, id);
+    final asset = await _readMetadata(LocalEntity.recordingAsset, id);
+    final recordBaseline = await _snapshots.baselineRecord('RECORDING', id);
+    // Asset relation rows are outside baselineRecord's point-entity contract.
+    final assetBaseline = await _database
+        .customSelect(
+          """SELECT p.canonical_payload FROM snapshot_download_rows p
         JOIN snapshot_baseline b ON b.snapshot_token=p.snapshot_token AND b.user_id=p.user_id
         JOIN snapshot_downloads h ON h.snapshot_token=b.snapshot_token AND h.user_id=b.user_id
         WHERE b.singleton=1 AND p.user_id=? AND h.state='APPLIED'
         AND p.entity='RECORDING_ASSET' AND p.resource_id=?""",
-            variables: [Variable(userId), Variable(id)],
-          )
-          .getSingleOrNull();
-      final pins = await _database
-          .customSelect(
-            """SELECT server_payload AS payload FROM metadata_copies
+          variables: [Variable(userId), Variable(id)],
+        )
+        .getSingleOrNull();
+    final pins = await _database
+        .customSelect(
+          """SELECT server_payload AS payload FROM metadata_copies
         WHERE entity_type='PIN_SLOT' AND user_id=? AND tombstone=0 AND server_payload IS NOT NULL
         UNION ALL SELECT p.canonical_payload AS payload FROM snapshot_download_rows p
         JOIN snapshot_baseline b ON b.snapshot_token=p.snapshot_token
         WHERE p.entity='PIN_SLOT' AND p.user_id=? AND NOT EXISTS(SELECT 1 FROM metadata_copies newer
         WHERE newer.entity_type='PIN_SLOT' AND newer.entity_id=p.resource_id)""",
-            variables: [Variable(userId), Variable(userId)],
-          )
-          .get();
-      bool current = false, pending = false;
-      for (final pin in pins) {
-        final value = jsonDecode(pin.read<String>('payload'));
-        if (value is! Map ||
-            (value['user_id'] != null && value['user_id'] != userId)) {
-          continue;
-        }
-        current |= value['current_recording_id'] == id;
-        pending |= value['pending_recording_id'] == id;
+          variables: [Variable(userId), Variable(userId)],
+        )
+        .get();
+    bool current = false, pending = false;
+    for (final pin in pins) {
+      final value = jsonDecode(pin.read<String>('payload'));
+      if (value is! Map ||
+          (value['user_id'] != null && value['user_id'] != userId)) {
+        continue;
       }
-      requireActive();
-      return {
-        'record':
-            record?.serverJson ??
-            (record == null ? recordBaseline?.entry?.canonicalPayload : null),
-        'draft':
-            (record?.localJson != null &&
-                record?.localJson != record?.serverJson) ||
-            (await _database
-                        .customSelect(
-                          "SELECT COUNT(*) AS n FROM local_mutations WHERE entity_type='RECORDING' AND entity_id=? AND queue_state<>'ACKED'",
-                          variables: [Variable(id)],
-                        )
-                        .getSingle())
-                    .read<int>('n') >
-                0,
-        'deleted': record?.tombstone ?? false,
-        'asset': asset?.tombstone == true
-            ? null
-            : asset?.serverJson ??
-                  (asset == null
-                      ? assetBaseline?.read<String>('canonical_payload')
-                      : null),
-        'asset_absent':
-            asset?.tombstone == true ||
-            (asset == null && recordBaseline != null && assetBaseline == null),
-        'pin_current': current,
-        'pin_pending': pending,
-      };
-    }),
-  );
+      current |= value['current_recording_id'] == id;
+      pending |= value['pending_recording_id'] == id;
+    }
+    requireActive();
+    return {
+      'record':
+          record?.serverJson ??
+          (record == null ? recordBaseline?.entry?.canonicalPayload : null),
+      'draft':
+          (record?.localJson != null &&
+              record?.localJson != record?.serverJson) ||
+          (await _database
+                      .customSelect(
+                        "SELECT COUNT(*) AS n FROM local_mutations WHERE entity_type='RECORDING' AND entity_id=? AND queue_state<>'ACKED'",
+                        variables: [Variable(id)],
+                      )
+                      .getSingle())
+                  .read<int>('n') >
+              0,
+      'deleted': record?.tombstone ?? false,
+      'asset': asset?.tombstone == true
+          ? null
+          : asset?.serverJson ??
+                (asset == null
+                    ? assetBaseline?.read<String>('canonical_payload')
+                    : null),
+      'asset_absent':
+          asset?.tombstone == true ||
+          (asset == null && recordBaseline != null && assetBaseline == null),
+      'pin_current': current,
+      'pin_pending': pending,
+    };
+  }
 
   Future<MetadataCopy?> _readMetadata(
     LocalEntity entity,
@@ -2111,7 +2114,96 @@ final class AccountStore {
     }),
   );
 
-  Future<List<Map<String, dynamic>>> savedRecordings() => _run(() async {
+  final Map<String, ({String stamp, String state})> _recordingFileIndex = {};
+
+  /// Frozen full-account metadata and verified current-device index from one read transaction.
+  Future<Map<String, Object?>> recordingCatalogSnapshot() => _run(
+    () => _database.transaction(() async {
+      final records = await _savedRecordings();
+      final sync = await _database
+          .customSelect(
+            'SELECT c.baseline_complete,c.snapshot_resume,c.updated_at,h.state AS baseline_state FROM sync_cursors c LEFT JOIN snapshot_baseline b ON b.singleton=c.singleton AND b.user_id=c.user_id LEFT JOIN snapshot_downloads h ON h.snapshot_token=b.snapshot_token AND h.user_id=b.user_id WHERE c.user_id=? AND c.singleton=1',
+            variables: [Variable(userId)],
+          )
+          .getSingleOrNull();
+      final rows = <Map<String, dynamic>>[];
+      for (final row in records) {
+        final id = row['id'] as String;
+        final evidence = await _recordingStorageEvidence(id);
+        final spec = await _database
+            .customSelect(
+              'SELECT relative_path,sha256,size_bytes,local_state,cleanup_fence FROM local_recording_files WHERE recording_id=? AND user_id=?',
+              variables: [Variable(id), Variable(userId)],
+            )
+            .getSingleOrNull();
+        String state = 'missing';
+        if (spec != null) {
+          try {
+            final file = await _paths.checkedFile(
+              spec.read<String>('relative_path'),
+            );
+            final stat = await file.stat();
+            final stamp = canonicalJson({
+              'spec': spec.data,
+              'type': stat.type.toString(),
+              'size': stat.size,
+              'modified': stat.modified.microsecondsSinceEpoch,
+              'changed': stat.changed.microsecondsSinceEpoch,
+            });
+            final cached = _recordingFileIndex[id];
+            state = cached?.stamp == stamp
+                ? cached!.state
+                : await _findPlayableLocalAudio(id) == null
+                ? 'missing'
+                : 'available';
+            _recordingFileIndex[id] = (stamp: stamp, state: state);
+          } on FileSystemException catch (e) {
+            state = [2, 3].contains(e.osError?.errorCode)
+                ? 'missing'
+                : 'unknown';
+            _recordingFileIndex.remove(id);
+          } on StateError {
+            requireActive();
+            state = 'unknown';
+            _recordingFileIndex.remove(id);
+          } on ArgumentError {
+            requireActive();
+            state = 'unknown';
+            _recordingFileIndex.remove(id);
+          }
+        } else {
+          _recordingFileIndex.remove(id);
+        }
+        rows.add({
+          ...row,
+          '_storage_evidence': evidence,
+          '_device_state': state,
+        });
+      }
+      final ids = records.map((r) => r['id']).toSet();
+      _recordingFileIndex.removeWhere((id, _) => !ids.contains(id));
+      requireActive();
+      return {
+        'rows': rows,
+        'complete':
+            sync?.read<int>('baseline_complete') == 1 &&
+            sync?.readNullable<String>('snapshot_resume') == null &&
+            sync?.readNullable<String>('baseline_state') == 'APPLIED',
+        'last_sync':
+            sync == null ||
+                sync.read<int>('baseline_complete') != 1 ||
+                sync.readNullable<String>('snapshot_resume') != null ||
+                sync.readNullable<String>('baseline_state') != 'APPLIED' ||
+                sync.read<int>('updated_at') <= 0
+            ? null
+            : sync.read<int>('updated_at'),
+      };
+    }),
+  );
+
+  Future<List<Map<String, dynamic>>> savedRecordings() =>
+      _run(_savedRecordings);
+  Future<List<Map<String, dynamic>>> _savedRecordings() async {
     final rows = await _database
         .customSelect(
           "SELECT entity_id,COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='RECORDING' AND tombstone=0",
@@ -2135,7 +2227,7 @@ final class AccountStore {
           (b['recorded_at'] as String).compareTo(a['recorded_at'] as String),
     );
     return result;
-  });
+  }
 
   Future<void> saveRecordingDetails(
     String id,
@@ -2661,7 +2753,10 @@ final class AccountStore {
   /// Missing/corrupt disk bytes are unavailable, never a historical device report.
   Future<({String path, int size, String checksum})?> findPlayableLocalAudio(
     String recordingId,
-  ) => _run(() async {
+  ) => _run(() => _findPlayableLocalAudio(recordingId));
+  Future<({String path, int size, String checksum})?> _findPlayableLocalAudio(
+    String recordingId,
+  ) async {
     final id = UuidValue(recordingId).value;
     try {
       final bytes = await _readLocalAudio(id);
@@ -2681,7 +2776,7 @@ final class AccountStore {
       requireActive();
       return null;
     }
-  });
+  }
 
   /// Current disk bytes, never a historical device report, prove preservation.
   Future<bool> verifyPreservedAudio(

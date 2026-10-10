@@ -6,6 +6,7 @@ import '../../features/auth/auth_session.dart';
 import '../database/account_store.dart';
 import '../database/local_models.dart';
 import '../domain/identifiers.dart';
+import '../files/recording_catalog.dart';
 import '../files/recording_file_status.dart';
 import 'canonical_conflict_plan.dart';
 import 'conflict_resolution_plan.dart';
@@ -102,6 +103,13 @@ final class LocalRepository
 
   Stream<Map<String, dynamic>> watchSongDetail(String songId) =>
       _store.watchSongDetail(songId);
+
+  Future<RecordingCatalog> recordingCatalog() async =>
+      RecordingCatalog.fromSnapshot(
+        '${_store.environment.name}:$userId:${identityHashCode(_store)}',
+        userId,
+        await _store.recordingCatalogSnapshot(),
+      );
 
   Future<RecordingFileStatus> recordingFileStatus(String id) =>
       RecordingFileStatuses(_store).read(id);
