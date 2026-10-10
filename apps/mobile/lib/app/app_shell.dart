@@ -155,7 +155,7 @@ class _AppShellState extends State<AppShell> {
         if (tab == AppTab.recording)
           // Keep this single panel mounted when navigating to another tab or
           // settings. The native service remains the recording state owner.
-          RecorderPanel(gateway: widget.recorderGateway)
+          RecorderPanel(gateway: widget.recorderGateway, diagnostics: false)
         else ...[
           ContentState(
             phase: ContentPhase.waiting,

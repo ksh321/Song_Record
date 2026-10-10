@@ -153,17 +153,17 @@ void main() {
     expect(gateway.permissionCalls, 1);
     expect(gateway.startCalls, 1);
     expect(gateway.stopCalls, 0);
-    expect(find.text('상태: 녹음 중'), findsOneWidget);
-    expect(find.text('경과 시간: 00:12'), findsOneWidget);
-    expect(find.text('녹음 ID: shell-recording'), findsOneWidget);
+    expect(find.text('녹음 중'), findsOneWidget);
+    expect(find.text('00:12'), findsOneWidget);
+    expect(find.textContaining('shell-recording'), findsNothing);
 
-    await tester.ensureVisible(find.text('녹음 종료'));
-    await tester.tap(find.text('녹음 종료'));
+    await tester.ensureVisible(find.text('녹음 완료'));
+    await tester.tap(find.text('녹음 완료'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
     expect(gateway.stopCalls, 1);
-    expect(find.text('상태: 파일 생성 완료'), findsOneWidget);
+    expect(find.text('녹음이 완료됐어요'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
     await gateway.dispose();

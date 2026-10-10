@@ -46,35 +46,22 @@ void main() {
         );
         await tester.pumpAndSettle();
         await _openRecordingTab(tester);
-        await tester.ensureVisible(find.text('녹음 시작'));
-        final start = tester.widget<FilledButton>(
-          find.ancestor(
-            of: find.text('녹음 시작'),
-            matching: find.byWidgetPredicate(
-              (widget) => widget is FilledButton,
+        final label = phase == RecorderPhase.idle ? '녹음 시작' : '녹음 완료';
+        await tester.ensureVisible(find.text(label));
+        final control = tester.widget<TextButton>(
+          find.byKey(const ValueKey('recorder-control')),
+        );
+        expect(control.onPressed, isNotNull);
+        final shape = tester.widget<Container>(
+          find.byKey(
+            ValueKey(
+              phase == RecorderPhase.idle
+                  ? 'recorder-start-circle'
+                  : 'recorder-stop-square',
             ),
           ),
         );
-        final stop = tester.widget<OutlinedButton>(
-          find.ancestor(
-            of: find.text('녹음 종료'),
-            matching: find.byWidgetPredicate(
-              (widget) => widget is OutlinedButton,
-            ),
-          ),
-        );
-        if (phase == RecorderPhase.idle) {
-          expect(start.onPressed, isNotNull);
-          expect(
-            start.style!.backgroundColor!.resolve({}),
-            AppColors.recording,
-          );
-          expect(stop.onPressed, isNull);
-        } else {
-          expect(start.onPressed, isNull);
-          expect(stop.onPressed, isNotNull);
-          expect(stop.style!.foregroundColor!.resolve({}), AppColors.recording);
-        }
+        expect((shape.decoration! as BoxDecoration).color, AppColors.recording);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
       }
@@ -211,9 +198,9 @@ void main() {
     await tester.pumpAndSettle();
 
     await _openRecordingTab(tester);
-    expect(find.text('상태: 녹음 중'), findsOneWidget);
-    expect(find.text('경과 시간: 00:05'), findsOneWidget);
-    expect(find.text('녹음 ID: test-recording'), findsOneWidget);
+    expect(find.text('녹음 중'), findsOneWidget);
+    expect(find.text('00:05'), findsOneWidget);
+    expect(find.textContaining('test-recording'), findsNothing);
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());
