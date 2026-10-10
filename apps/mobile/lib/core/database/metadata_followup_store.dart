@@ -181,8 +181,16 @@ Future<bool> materializeMetadataFollowup(
       body: wire.read<String>('body_json'),
       attempt: prior.attemptCount,
     );
+    final prepared = request.method == 'PUT'
+        ? MutationRequest.prepare(prior)
+        : null;
     if (request.hash != wire.read<String>('wire_hash') ||
-        request.body != prior.payload) {
+        (request.method == 'PUT'
+            ? prepared == null ||
+                  prepared.method != request.method ||
+                  prepared.path != request.path ||
+                  prepared.body != request.body
+            : request.body != prior.payload)) {
       continue;
     }
     MetadataFollowupPlan? plan;

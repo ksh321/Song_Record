@@ -1,3 +1,4 @@
+import '../../core/domain/domain_ordering.dart';
 import '../../core/domain/identifiers.dart';
 import '../../core/domain/recording_snapshot.dart';
 import '../../core/domain/song_types.dart';
@@ -27,6 +28,20 @@ final class MySongDetail {
     }
     return MySongDetail._(value.song, value.revision, checked);
   }
+
+  RecordingSelection get roles => selectRecordingRoles(
+    [
+      for (final r in recordings)
+        RecordingCandidate(
+          id: r.id,
+          recordedAt: r.snapshot.recordedAt,
+          tier: r.tier,
+        ),
+    ],
+    representativeId: song?.payload['representative_recording_id'] == null
+        ? null
+        : RecordingId(song!.payload['representative_recording_id'] as String),
+  );
 
   final MySong? song;
   final int revision;

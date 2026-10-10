@@ -721,6 +721,7 @@ final class AccountStore {
   Future<void> saveEdit(
     LocalEdit edit, {
     String? expectedEffectivePayload,
+    bool representativeSelection = false,
   }) => _run(() async {
     _validatePayloadOwner(edit.draftJson);
     _validatePayloadOwner(edit.changesJson);
@@ -769,6 +770,37 @@ final class AccountStore {
             canonicalJson(jsonDecode(raw) as Map<String, dynamic>) !=
                 expectedEffectivePayload) {
           throw StateError('Local edit changed while the editor was open');
+        }
+      }
+      if (representativeSelection) {
+        final changes = jsonDecode(edit.changesJson) as Map<String, dynamic>;
+        if (edit.entity != LocalEntity.song ||
+            edit.operation != LocalOperation.patch ||
+            changes.length != 2 ||
+            !changes.containsKey('representative_recording_id')) {
+          throw ArgumentError('Invalid representative command');
+        }
+        final target = changes['representative_recording_id'];
+        if (target != null) {
+          final rid = UuidValue(target as String).value;
+          final row = await _database
+              .customSelect(
+                "SELECT COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='RECORDING' AND entity_id=? AND tombstone=0",
+                variables: [Variable(userId), Variable(rid)],
+              )
+              .getSingleOrNull();
+          final raw = row?.readNullable<String>('payload');
+          final value = raw == null ? null : jsonDecode(raw);
+          if (value is! Map<String, dynamic> ||
+              value['id'] != rid ||
+              value['song_id'] != edit.entityId ||
+              value['metadata_state'] != 'SAVED' ||
+              value['lifecycle_state'] != 'ACTIVE' ||
+              (value.containsKey('user_id') && value['user_id'] != userId)) {
+            throw StateError(
+              'Representative is not an active saved recording of this song',
+            );
+          }
         }
       }
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
@@ -1623,7 +1655,7 @@ final class AccountStore {
         row.read<String>('entity_id') == request.mutation.entityId &&
         row.read<String>('operation') == request.mutation.operation.code &&
         row.read<int>('base_revision') == request.mutation.baseRevision &&
-        row.read<String>('payload') == request.body &&
+        row.read<String>('payload') == request.mutation.payload &&
         row.read<String>('contract_version') == MutationRequest.contract &&
         row.read<String>('http_method') == request.method &&
         row.read<String>('relative_path') == request.path &&

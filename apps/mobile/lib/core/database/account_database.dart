@@ -18,7 +18,7 @@ class AccountDatabase extends _$AccountDatabase {
   final AppEnvironment environment;
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -37,7 +37,7 @@ class AccountDatabase extends _$AccountDatabase {
     // No destructive fallback. Every future version needs an explicit,
     // data-preserving migration and a checked-in schema snapshot.
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 10 || to != 11) {
+      if (from < 1 || from > 11 || to != 12) {
         throw StateError('Unsupported local schema migration: $from -> $to');
       }
       if (from < 2) {
@@ -158,6 +158,37 @@ class AccountDatabase extends _$AccountDatabase {
         await migrator.createTrigger(pendingEditNoUpdate);
         await migrator.createTrigger(pendingEditNoDelete);
         await migrator.createTrigger(pendingEditOriginalNoClaim);
+      }
+      if (from >= 2 && from < 12) {
+        await transaction(() async {
+          // Copy immutable envelopes byte-for-byte; widen only the method check.
+          // A v1 upgrade creates the widened definition directly.
+          await customStatement("""CREATE TABLE mutation_wire_requests_v12 (
+            op_id TEXT NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id),
+            contract_version TEXT NOT NULL,
+            http_method TEXT NOT NULL CHECK (http_method IN ('POST','PATCH','PUT')),
+            relative_path TEXT NOT NULL,
+            body_json TEXT NOT NULL CHECK (json_valid(body_json) AND json_type(body_json)='object'),
+            wire_hash TEXT NOT NULL CHECK (length(wire_hash)=64 AND wire_hash NOT GLOB '*[^0-9a-f]*')
+          )""");
+          await customStatement(
+            'INSERT INTO mutation_wire_requests_v12 SELECT * FROM mutation_wire_requests',
+          );
+          final referringTriggers = await customSelect(
+            "SELECT name,sql FROM sqlite_master WHERE type='trigger' AND instr(sql,'mutation_wire_requests')>0",
+          ).get();
+          for (final trigger in referringTriggers) {
+            final name = trigger.read<String>('name').replaceAll('"', '""');
+            await customStatement('DROP TRIGGER "$name"');
+          }
+          await customStatement('DROP TABLE mutation_wire_requests');
+          await customStatement(
+            'ALTER TABLE mutation_wire_requests_v12 RENAME TO mutation_wire_requests',
+          );
+          for (final trigger in referringTriggers) {
+            await customStatement(trigger.read<String>('sql'));
+          }
+        });
       }
     },
     beforeOpen: (details) async {

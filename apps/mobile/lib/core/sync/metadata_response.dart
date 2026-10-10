@@ -340,6 +340,15 @@ Map<String, Object?> decodeMetadataSnapshot(
     default:
       throw const FormatException('Unsupported acknowledgement');
   }
+  if (!conflict && m.entity == LocalEntity.song && request.method == 'PUT') {
+    final sent = jsonDecode(request.body) as Map<String, dynamic>;
+    require(
+      request.path == '/v1/songs/${m.entityId}/representative' &&
+          sent.keys.toSet().containsAll({'base_revision', 'recording_id'}) &&
+          sent.length == 2 &&
+          value['representative_recording_id'] == sent['recording_id'],
+    );
+  }
   // The current server always returns these snapshot fields, including explicit null.
   // A missing field must never turn a locally selected value into an apparent omission.
   if (m.entity == LocalEntity.song) {

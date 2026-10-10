@@ -11,6 +11,7 @@ import 'my_song.dart';
 import 'my_song_pages.dart';
 import 'song_detail_screen.dart';
 import 'song_edit.dart';
+import 'song_representative.dart';
 
 typedef MySongsWatch = Stream<List<MySong>> Function();
 
@@ -21,6 +22,7 @@ class MySongsScreen extends StatefulWidget {
     this.auth,
     this.watchDetail,
     this.prepareEdit,
+    this.prepareRepresentative,
     super.key,
   });
   final MySongsWatch watch;
@@ -28,6 +30,7 @@ class MySongsScreen extends StatefulWidget {
   final AuthController? auth;
   final SongDetailWatch Function(String songId)? watchDetail;
   final SongEditPreparer? prepareEdit;
+  final RepresentativePreparer? prepareRepresentative;
   @override
   State<MySongsScreen> createState() => _MySongsScreenState();
 }
@@ -131,6 +134,7 @@ class _MySongsScreenState extends State<MySongsScreen> {
                     watch: widget.watchDetail!(song.view.id.value),
                     auth: widget.auth,
                     prepareEdit: widget.prepareEdit,
+                    prepareRepresentative: widget.prepareRepresentative,
                   ),
                 ),
               );

@@ -103,6 +103,15 @@ final class LocalRepository
     expectedEffectivePayload: canonicalJson(expected),
   );
 
+  Future<void> saveRepresentative(
+    LocalEdit command,
+    Map<String, Object?> expected,
+  ) => _store.saveEdit(
+    command,
+    expectedEffectivePayload: canonicalJson(expected),
+    representativeSelection: true,
+  );
+
   Future<MetadataCopy?> read(LocalEntity entity, String id) =>
       _store.readMetadata(entity, id);
 

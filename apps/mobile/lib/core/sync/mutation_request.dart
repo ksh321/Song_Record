@@ -47,6 +47,34 @@ final class MutationRequest {
     final decoded = jsonDecode(m.payload);
     if (decoded is! Map<String, dynamic>) return null;
     final create = m.operation == LocalOperation.create;
+    if (m.entity == LocalEntity.song &&
+        !create &&
+        decoded.containsKey('representative_recording_id')) {
+      final target = decoded['representative_recording_id'];
+      if (decoded.length != 2 ||
+          decoded['base_revision'] != m.baseRevision ||
+          m.baseRevision < 1) {
+        return null;
+      }
+      if (target != null) {
+        if (target is! String) return null;
+        try {
+          if (UuidValue(target).value != target) return null;
+        } on FormatException {
+          return null;
+        }
+      }
+      return MutationRequest(
+        mutation: m,
+        method: 'PUT',
+        path: '/v1/songs/${m.entityId}/representative',
+        body: canonicalJson({
+          'base_revision': m.baseRevision,
+          'recording_id': target,
+        }),
+        attempt: m.attemptCount + 1,
+      );
+    }
     if (m.entity == LocalEntity.recording &&
         !create &&
         decoded.containsKey('metadata_state')) {

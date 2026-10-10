@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart';
 
+import '../domain/identifiers.dart';
 import '../sync/mutation_request.dart';
 import '../sync/retry_policy.dart';
 import 'account_database.dart';
@@ -372,7 +373,38 @@ final class RetryControls {
     final method = row.read<String>('http_method');
     final path = row.read<String>('relative_path');
     final body = row.read<String>('body_json');
-    if (method != (create ? 'POST' : 'PATCH') ||
+    final representative =
+        !create && m.entity == LocalEntity.song && method == 'PUT';
+    if (representative) {
+      final Object? original;
+      try {
+        original = jsonDecode(m.payload);
+      } on FormatException {
+        return null;
+      }
+      if (original is! Map<String, dynamic> ||
+          original.length != 2 ||
+          !original.containsKey('representative_recording_id') ||
+          original['base_revision'] != m.baseRevision ||
+          m.baseRevision < 1 ||
+          path != '/v1/songs/${m.entityId}/representative' ||
+          body !=
+              canonicalJson({
+                'base_revision': m.baseRevision,
+                'recording_id': original['representative_recording_id'],
+              })) {
+        return null;
+      }
+      final target = original['representative_recording_id'];
+      if (target != null) {
+        if (target is! String) return null;
+        try {
+          if (UuidValue(target).value != target) return null;
+        } on FormatException {
+          return null;
+        }
+      }
+    } else if (method != (create ? 'POST' : 'PATCH') ||
         path != '/v1/$route${create ? '' : '/${m.entityId}'}' ||
         body != m.payload) {
       return null;

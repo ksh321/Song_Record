@@ -11,6 +11,7 @@ import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/features/songs/my_song.dart';
 import 'package:song_record/features/songs/my_song_detail.dart';
 import 'package:song_record/features/songs/my_songs_screen.dart';
+import 'package:song_record/features/songs/song_representative.dart';
 
 String id(int n) => '00000000-0000-4000-8000-${n.toString().padLeft(12, '0')}';
 Map<String, Object?> song(int n, String title, {String state = 'ACTIVE'}) => {
@@ -82,14 +83,27 @@ Future<void> main() async {
     'timezone_id': 'Asia/Seoul',
     'timezone_offset_minutes': 540,
   };
-  await repo.save(
-    repo.prepareCreate(
-      entity: LocalEntity.recording,
-      entityId: id(30),
-      draft: record,
-      changes: record,
-    ),
-  );
+  for (final n in [30, 31, 32]) {
+    final r = {
+      ...record,
+      'id': id(n),
+      'title_snapshot': '역할 녹음 $n',
+      'tier': n == 30
+          ? 'B'
+          : n == 31
+          ? 'D'
+          : 'A',
+      'recorded_at': '2026-01-0${n - 29}T00:00:00Z',
+    };
+    await repo.save(
+      repo.prepareCreate(
+        entity: LocalEntity.recording,
+        entityId: id(n),
+        draft: r,
+        changes: r,
+      ),
+    );
+  }
   runApp(
     MaterialApp(
       theme: AppTheme.dark(),
@@ -141,7 +155,7 @@ class _CheckState extends State<Check> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('P17-05 곡 수정 검증')),
+    appBar: AppBar(title: const Text('P17-06 대표 역할 검증')),
     body: SafeArea(
       child: Column(
         children: [
@@ -164,6 +178,8 @@ class _CheckState extends State<Check> {
           Expanded(
             child: MySongsScreen(
               prepareEdit: (draft) => draft.prepare(repo),
+              prepareRepresentative: (detail, recording) =>
+                  prepareRepresentative(repo, detail, recording),
               watchDetail: (id) =>
                   () => repo
                       .watchSongDetail(id)

@@ -4975,7 +4975,8 @@ class MutationWireRequests extends Table
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    $customConstraints: 'NOT NULL CHECK (http_method IN (\'POST\', \'PATCH\'))',
+    $customConstraints:
+        'NOT NULL CHECK (http_method IN (\'POST\', \'PATCH\', \'PUT\'))',
   );
   static const VerificationMeta _relativePathMeta = const VerificationMeta(
     'relativePath',

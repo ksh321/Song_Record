@@ -15,8 +15,10 @@ ThreeWayComparison? compareMetadataConflict(
   bool pendingReview = false,
 }) {
   if ((pendingReview
-          ? mutation.state != 'PENDING' || mutation.attemptCount != 0 ||
-              mutation.serverResponse != null || serverSnapshot == null
+          ? mutation.state != 'PENDING' ||
+                mutation.attemptCount != 0 ||
+                mutation.serverResponse != null ||
+                serverSnapshot == null
           : mutation.state != 'CONFLICT') ||
       mutation.operation != LocalOperation.patch ||
       !{
@@ -29,14 +31,18 @@ ThreeWayComparison? compareMetadataConflict(
     return null;
   }
   final response = pendingReview ? null : jsonDecode(mutation.serverResponse!);
-  if (!pendingReview && (response is! Map<String, dynamic> ||
-      response['code'] != 'REVISION_CONFLICT' ||
-      response['status'] != 409)) {
+  if (!pendingReview &&
+      (response is! Map<String, dynamic> ||
+          response['code'] != 'REVISION_CONFLICT' ||
+          response['status'] != 409)) {
     return null;
   }
   final base = jsonDecode(mutation.basePayload!);
-  final originalServer = pendingReview ? serverSnapshot : (response as Map<String, dynamic>)['current'];
-  if (!pendingReview && serverSnapshot != null &&
+  final originalServer = pendingReview
+      ? serverSnapshot
+      : (response as Map<String, dynamic>)['current'];
+  if (!pendingReview &&
+      serverSnapshot != null &&
       (originalServer is! Map<String, dynamic> ||
           originalServer['revision'] is! int ||
           serverSnapshot['revision'] is! int ||
@@ -75,6 +81,11 @@ ThreeWayComparison? compareMetadataConflict(
     return null;
   }
   final changes = Map<String, dynamic>.from(patch)..remove('base_revision');
+  // Representative eligibility must be revalidated explicitly; no metadata-only rebase.
+  if (mutation.entity == LocalEntity.song &&
+      changes.containsKey('representative_recording_id')) {
+    return null;
+  }
   if (mutation.entity == LocalEntity.recording) {
     // Relationship moves and DRAFT -> SAVED/file transitions need their own
     // explicit handling, not a metadata-only rebase.
