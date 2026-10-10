@@ -9,6 +9,7 @@ import 'recorder_gateway.dart';
 import 'recorder_panel.dart';
 import 'recording_detail_screen.dart';
 import 'recording_input_screen.dart';
+import 'recording_list.dart';
 import 'recording_song_picker.dart';
 
 class RecordingWorkspace extends StatefulWidget {
@@ -42,7 +43,20 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
           ? await repo.savedRecordings()
           : await repo.pendingRecordings();
       if (!mounted || !widget.isCurrent(repo)) return;
-      yield records;
+      final visible = saved
+          ? await Future.wait(
+              records.map(
+                (row) async => {
+                  ...row,
+                  '_file_status': await repo.recordingFileStatus(
+                    row['id'] as String,
+                  ),
+                },
+              ),
+            )
+          : records;
+      if (!mounted || !widget.isCurrent(repo)) return;
+      yield visible;
       await Future<void>.delayed(const Duration(seconds: 1));
     }
   }
@@ -157,32 +171,23 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
         builder: (context, snapshot) {
           if (snapshot.hasError) return const Text('저장 목록을 확인하지 못했어요.');
           if (!snapshot.hasData) return const Text('저장 녹음 확인 중');
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('저장 녹음 ${snapshot.data!.length}개'),
-              for (final row in snapshot.data!)
-                ListTile(
-                  title: Text(row['title_snapshot'] as String),
-                  subtitle: Text('녹음 티어: ${row['tier'] ?? '미정'}'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    final repo = widget.repository();
-                    if (repo == null || !widget.isCurrent(repo)) return;
-                    Navigator.push<void>(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => RecordingDetailScreen(
-                          id: row['id'] as String,
-                          repository: repo,
-                          isCurrent: widget.isCurrent,
-                          wakeSync: widget.wakeSync,
-                        ),
-                      ),
-                    );
-                  },
+          return RecordingList(
+            rows: snapshot.data!,
+            onOpen: (row) {
+              final repo = widget.repository();
+              if (repo == null || !widget.isCurrent(repo)) return;
+              Navigator.push<void>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RecordingDetailScreen(
+                    id: row['id'] as String,
+                    repository: repo,
+                    isCurrent: widget.isCurrent,
+                    wakeSync: widget.wakeSync,
+                  ),
                 ),
-            ],
+              );
+            },
           );
         },
       ),
