@@ -25,3 +25,6 @@
 ## 재개 후 최종 검토
 - 사용자 중간 설정 회신 후 실제 turn_context gpt-6.1-sol/medium 확인. 기존 수정 소스 해시 동일, 원격 main=20faa8f 확인. 최초 측정 시작값과 원인별 시도1 보존.
 - 현재 모델 별도 검토: V7의 STAGING 삽입·PUBLISHED 전체 검증·scope/포인터/revision 보호와 V22 metadata-only begin 구분 대조. 신규NULL 포인터의 begin만 허용하며 기존 게시 제거·게시 attempt 위조·revision 회귀 거절 유지. 기존 이관 파일 재작성 없음. 신규 스코프·경쟁·batch 롤백 검사 연결 확인. 검토 PASS; 실제 MySQL 결과는 수정판 정확 SHA CI 대기.
+
+## 최종 완료
+- 최종 SHA 2ec1776eeb07756870deb353a0f3117016795f04, 필수 CI 38019361295, 38019361314 PASS. 로컬·현재 모델 검토·실제 검사 근거 대조. 완료 폰 알림 서버 접수, 실제 수신 미확인. 직접 할 일 0건.
