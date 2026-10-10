@@ -5,6 +5,8 @@ import '../../core/widgets/content_state.dart';
 import '../auth/auth_session.dart';
 import 'karaoke_search.dart';
 import 'search_intent.dart';
+import 'song_registration.dart';
+import 'song_registration_screen.dart';
 
 class KaraokeSearchScreen extends StatefulWidget {
   const KaraokeSearchScreen({
@@ -13,6 +15,7 @@ class KaraokeSearchScreen extends StatefulWidget {
     this.onSelected,
     this.intent = const SearchIntent(),
     this.initialQuery,
+    this.prepareRegistration,
     super.key,
   });
   final KaraokeLoader load;
@@ -20,6 +23,7 @@ class KaraokeSearchScreen extends StatefulWidget {
   final ValueChanged<KaraokeSelection>? onSelected;
   final SearchIntent intent;
   final KaraokeQuery? initialQuery;
+  final SongRegistrationPreparer? prepareRegistration;
   @override
   State<KaraokeSearchScreen> createState() => _KaraokeSearchScreenState();
 }
@@ -97,7 +101,8 @@ class _KaraokeSearchScreenState extends State<KaraokeSearchScreen> {
                   onPressed: () => Navigator.pop(sheetContext, 'find-tj'),
                   child: const Text('TJ에서 이 곡 찾기'),
                 ),
-              ] else if (widget.onSelected != null)
+              ] else if (widget.onSelected != null ||
+                  widget.prepareRegistration != null)
                 FilledButton(
                   onPressed: () => Navigator.pop(sheetContext, 'use-tj'),
                   child: Text(
@@ -117,7 +122,7 @@ class _KaraokeSearchScreenState extends State<KaraokeSearchScreen> {
     );
     if (!mounted || id != controller.requestId || action == null) return;
     if (action == 'use-tj' && c.brand == KaraokeBrand.tj) {
-      widget.onSelected?.call(KaraokeSelection(c, widget.intent));
+      await _useSelection(KaraokeSelection(c, widget.intent));
       return;
     }
     if (action != 'find-tj' || c.brand != KaraokeBrand.ky) return;
@@ -133,6 +138,7 @@ class _KaraokeSearchScreenState extends State<KaraokeSearchScreen> {
             load: widget.load,
             auth: widget.auth,
             intent: widget.intent,
+            prepareRegistration: widget.prepareRegistration,
             initialQuery: KaraokeQuery(
               KaraokeBrand.tj,
               KaraokeKind.title,
@@ -144,7 +150,71 @@ class _KaraokeSearchScreenState extends State<KaraokeSearchScreen> {
       ),
     );
     if (mounted && id == controller.requestId && result != null) {
-      widget.onSelected?.call(result);
+      await _useSelection(result);
+    }
+  }
+
+  Future<void> _useSelection(KaraokeSelection selection) async {
+    if (widget.onSelected != null) {
+      widget.onSelected!(selection);
+      return;
+    }
+    await _openRegistration(candidate: selection.candidate);
+  }
+
+  Future<void> _manual() async {
+    final id = controller.requestId;
+    if (!controller.canOfferManual) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('TJ에서 찾는 곡이 없나요?'),
+        content: const Text('정상 TJ 검색 결과에서 원하는 곡을 찾지 못했을 때만 직접 등록합니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('찾는 곡 없음 확인'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted ||
+        confirm != true ||
+        id != controller.requestId ||
+        !controller.canOfferManual) {
+      return;
+    }
+    await _openRegistration(approval: controller.approveManual());
+  }
+
+  Future<void> _openRegistration({
+    KaraokeCandidate? candidate,
+    ManualSearchApproval? approval,
+  }) async {
+    final prepare = widget.prepareRegistration;
+    if (prepare == null) return;
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        settings: RouteSettings(
+          name: '/songs/register',
+          arguments: widget.intent,
+        ),
+        builder: (_) => SongRegistrationScreen(
+          prepare: prepare,
+          intent: widget.intent,
+          candidate: candidate,
+          manualApproval: approval,
+        ),
+      ),
+    );
+    if (mounted && saved == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('입력을 이 기기에 저장했어요. 연결되면 등록을 진행합니다.')),
+      );
     }
   }
 
@@ -206,6 +276,8 @@ class _KaraokeSearchScreenState extends State<KaraokeSearchScreen> {
               message: controller.message,
               onRetry: controller.retry,
             ),
+          if (controller.canOfferManual && widget.prepareRegistration != null)
+            TextButton(onPressed: _manual, child: const Text('찾는 곡이 없어요')),
           for (final c in controller.results)
             ListTile(
               contentPadding: const EdgeInsets.symmetric(

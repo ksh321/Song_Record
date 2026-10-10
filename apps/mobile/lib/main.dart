@@ -174,6 +174,8 @@ Future<void> main() async {
       controller: controller,
       config: config,
       syncController: () => activeSync,
+      localRepository: () =>
+          activeStore == null ? null : LocalRepository(activeStore!),
     ),
   );
 }

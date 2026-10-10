@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:song_record/app/song_record_app.dart';
 import 'package:song_record/config/app_config.dart';
+import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 
 import '../sync/sync_controller.dart';
@@ -12,11 +13,13 @@ class LoginGate extends StatefulWidget {
     required this.controller,
     required this.config,
     this.syncController,
+    this.localRepository,
     super.key,
   });
   final AuthController controller;
   final AppConfig config;
   final SyncController? Function()? syncController;
+  final LocalRepository? Function()? localRepository;
   @override
   State<LoginGate> createState() => _LoginGateState();
 }
@@ -61,6 +64,7 @@ class _LoginGateState extends State<LoginGate> with WidgetsBindingObserver {
           config: widget.config,
           authController: auth,
           syncController: widget.syncController?.call(),
+          localRepository: widget.localRepository,
           identityLink:
               auth.api is IdentityLinkApi &&
                   auth.proofs is IdentityLinkProofSource

@@ -42,6 +42,13 @@ class KaraokeFailure implements Exception {
   String toString() => message;
 }
 
+/// Local evidence of a completed, current TJ query; not a server authority.
+class ManualSearchApproval {
+  const ManualSearchApproval._(this.query, this.requestId);
+  final KaraokeQuery query;
+  final int requestId;
+}
+
 typedef KaraokeLoader = Future<List<KaraokeCandidate>> Function(
   KaraokeQuery query,
 );
@@ -62,6 +69,16 @@ class KaraokeSearchController extends ChangeNotifier {
   int _requestId = 0;
   bool _disposed = false;
   int get requestId => _requestId;
+  bool get canOfferManual =>
+      !_disposed &&
+      query.brand == KaraokeBrand.tj &&
+      (phase == SearchPhase.results || phase == SearchPhase.empty);
+  ManualSearchApproval approveManual() {
+    if (!canOfferManual) {
+      throw StateError('A completed TJ search is required');
+    }
+    return ManualSearchApproval._(query, _requestId);
+  }
 
   void change({KaraokeBrand? brand, KaraokeKind? kind, String? text}) {
     if (_disposed) return;

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:song_record/app/app_shell.dart';
 import 'package:song_record/config/app_config.dart';
+import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/features/auth/auth_session.dart';
@@ -23,6 +26,7 @@ class SongRecordApp extends StatelessWidget {
     this.identityLink,
     this.authController,
     this.syncController,
+    this.localRepository,
     this.recorderGateway = const MethodChannelRecorderGateway(),
     this.accent = AppAccent.initial,
     super.key,
@@ -32,6 +36,7 @@ class SongRecordApp extends StatelessWidget {
   final IdentityLinkFlow? identityLink;
   final AuthController? authController;
   final SyncController? syncController;
+  final LocalRepository? Function()? localRepository;
   final HealthLoader? healthLoader;
   final RecorderGateway recorderGateway;
   final AppAccent accent;
@@ -50,6 +55,23 @@ class SongRecordApp extends StatelessWidget {
           recorderGateway: recorderGateway,
           searchBuilder: (context) => KaraokeSearchScreen(
             auth: authController,
+            prepareRegistration: localRepository == null
+                ? null
+                : (draft) {
+                    final repository = localRepository!.call();
+                    final auth = authController;
+                    if (repository == null ||
+                        auth?.phase != AuthPhase.ready ||
+                        repository.userId != auth?.session?.userId) {
+                      throw StateError('The active account is required');
+                    }
+                    final command = draft.prepare(repository);
+                    return () async {
+                      await repository.save(command);
+                      final sync = syncController;
+                      if (sync != null) unawaited(sync.wake());
+                    };
+                  },
             load: (query) async {
               final auth = authController;
               if (auth == null || auth.phase != AuthPhase.ready) {
