@@ -52,7 +52,7 @@ Future<void> main() async {
             : n == 12
             ? '가벼운 산책'
             : n == 13
-            ? '미정 산책'
+            ? '긴 제목 검증 — 제목이 길어도 줄바꿈되어 끝까지 확인할 수 있는 일반 반주 곡'
             : '계정 B 전용곡',
         state: n == 11 ? 'TRASHED' : 'ACTIVE',
       );
@@ -169,7 +169,7 @@ class _CheckState extends State<Check> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('P17-07 곡 동작 진입 검증')),
+    appBar: AppBar(title: const Text('P17-08 표시·이동 검증')),
     body: SafeArea(
       child: Column(
         children: [

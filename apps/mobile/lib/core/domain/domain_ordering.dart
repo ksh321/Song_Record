@@ -1,5 +1,6 @@
 import 'package:song_record/core/domain/identifiers.dart';
 import 'package:song_record/core/domain/song_types.dart';
+import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
 const sortKeyVersion = 'SR-SORT-1';
 
@@ -52,11 +53,7 @@ final class RecordingSelection {
   final RecordingId? latest;
   final RecordingId? lowestTier;
 
-  Set<RecordingId> get uniqueIds => {
-    ?representative,
-    ?latest,
-    ?lowestTier,
-  };
+  Set<RecordingId> get uniqueIds => {?representative, ?latest, ?lowestTier};
 }
 
 RecordingSelection selectRecordingRoles(
@@ -105,7 +102,7 @@ final class _SortKey {
   final List<_SortToken> tokens;
 
   factory _SortKey.from(String raw) {
-    final value = _normalizeForSort(raw);
+    final value = normalizeSongText(raw);
     if (value.isEmpty) return const _SortKey(4, []);
     final runes = value.runes.toList();
     final tokens = <_SortToken>[];
@@ -113,7 +110,9 @@ final class _SortKey {
       final rune = runes[index];
       if (rune >= 0x30 && rune <= 0x39) {
         final buffer = StringBuffer();
-        while (index < runes.length && runes[index] >= 0x30 && runes[index] <= 0x39) {
+        while (index < runes.length &&
+            runes[index] >= 0x30 &&
+            runes[index] <= 0x39) {
           buffer.writeCharCode(runes[index]);
           index += 1;
         }
@@ -128,7 +127,11 @@ final class _SortKey {
 }
 
 final class _SortToken implements Comparable<_SortToken> {
-  const _SortToken._({required this.number, required this.text, required this.rune});
+  const _SortToken._({
+    required this.number,
+    required this.text,
+    required this.rune,
+  });
   factory _SortToken.number(String raw) {
     final trimmed = raw.replaceFirst(RegExp(r'^0+(?=\d)'), '');
     return _SortToken._(number: true, text: trimmed, rune: null);
@@ -149,62 +152,28 @@ final class _SortToken implements Comparable<_SortToken> {
   }
 }
 
-String _normalizeForSort(String raw) {
+String normalizeSongText(String raw) {
   final trimmed = trimContractWhitespace(raw);
-  final composed = _composeHangul(trimmed.runes.toList());
-  return String.fromCharCodes(composed.map((rune) {
-    if (rune >= 0x41 && rune <= 0x5a) return rune + 0x20;
-    return rune;
-  }));
-}
-
-List<int> _composeHangul(List<int> input) {
-  const sBase = 0xac00;
-  const lBase = 0x1100;
-  const vBase = 0x1161;
-  const tBase = 0x11a7;
-  const lCount = 19;
-  const vCount = 21;
-  const tCount = 28;
-  const nCount = vCount * tCount;
-  const sCount = lCount * nCount;
-  final output = <int>[];
-  for (var index = 0; index < input.length; index += 1) {
-    var current = input[index];
-    if (current >= lBase && current < lBase + lCount && index + 1 < input.length) {
-      final vowel = input[index + 1];
-      if (vowel >= vBase && vowel < vBase + vCount) {
-        current = sBase + (current - lBase) * nCount + (vowel - vBase) * tCount;
-        index += 1;
-        if (index + 1 < input.length) {
-          final tail = input[index + 1];
-          if (tail > tBase && tail < tBase + tCount) {
-            current += tail - tBase;
-            index += 1;
-          }
-        }
-      }
-    } else if (current >= sBase && current < sBase + sCount &&
-        (current - sBase) % tCount == 0 && index + 1 < input.length) {
-      final tail = input[index + 1];
-      if (tail > tBase && tail < tBase + tCount) {
-        current += tail - tBase;
-        index += 1;
-      }
-    }
-    output.add(current);
-  }
-  return output;
+  final composed = unorm.nfc(trimmed);
+  return String.fromCharCodes(
+    composed.runes.map((rune) {
+      if (rune >= 0x41 && rune <= 0x5a) return rune + 0x20;
+      return rune;
+    }),
+  );
 }
 
 int _groupOf(int rune) {
-  final hangul = (rune >= 0xac00 && rune <= 0xd7a3) ||
+  final hangul =
+      (rune >= 0xac00 && rune <= 0xd7a3) ||
       (rune >= 0x1100 && rune <= 0x11ff) ||
       (rune >= 0x3130 && rune <= 0x318f) ||
       (rune >= 0xa960 && rune <= 0xa97f) ||
       (rune >= 0xd7b0 && rune <= 0xd7ff);
   if (hangul) return 0;
-  if ((rune >= 0x41 && rune <= 0x5a) || (rune >= 0x61 && rune <= 0x7a)) return 1;
+  if ((rune >= 0x41 && rune <= 0x5a) || (rune >= 0x61 && rune <= 0x7a)) {
+    return 1;
+  }
   if (rune >= 0x30 && rune <= 0x39) return 2;
   return 3;
 }

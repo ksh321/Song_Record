@@ -40,10 +40,10 @@ final class MySong {
   }
 
   bool matches(String query) {
-    final q = query.trim().toLowerCase();
+    final q = normalizeSongText(query);
     return q.isEmpty ||
-        view.title.toLowerCase().contains(q) ||
-        view.artist.toLowerCase().contains(q);
+        normalizeSongText(view.title).contains(q) ||
+        normalizeSongText(view.artist).contains(q);
   }
 }
 
