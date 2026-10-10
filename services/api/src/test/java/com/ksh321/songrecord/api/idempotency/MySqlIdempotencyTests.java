@@ -441,10 +441,18 @@ class MySqlIdempotencyTests {
             db.update("UPDATE recording SET condition_code='GOOD' WHERE id=?",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(recordingId));
             var beforeRecording=db.queryForMap("SELECT * FROM recording");
             var before=db.queryForMap("SELECT title,artist,note,version_code,revision,updated_at FROM song");
+            UUID oldChart=UUID.randomUUID();byte[] oldChartBytes=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(oldChart);
+            db.update("INSERT INTO chart_snapshot(id,brand,period,provider,source_url,fetched_at,revision,state,item_count,published_at) VALUES(?,'TJ','MONTHLY','MANANA','https://api.manana.kr/karaoke/popular/tj/monthly.json',UTC_TIMESTAMP(3),1,'PUBLISHED',1,UTC_TIMESTAMP(3))",oldChartBytes);
+            db.update("INSERT INTO chart_item(snapshot_id,position,brand,period,number,title,artist) VALUES(?,1,'TJ','MONTHLY','00123','preserved chart','artist')",oldChartBytes);
+            db.update("UPDATE chart_publication SET snapshot_id=? WHERE brand='TJ' AND period='MONTHLY'",oldChartBytes);
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();
-            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(11);flyway.validate();
-            assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("20");
+            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(12);flyway.validate();
+            assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("21");
             assertThat(db.queryForObject("SELECT COUNT(*) FROM chart_collection_payload",Integer.class)).isZero();
+            assertThat(db.queryForObject("SELECT snapshot_id FROM chart_publication WHERE brand='TJ' AND period='MONTHLY'",byte[].class)).containsExactly(oldChartBytes);
+            assertThat(db.queryForObject("SELECT collection_attempt_id FROM chart_publication WHERE brand='TJ' AND period='MONTHLY'",byte[].class)).containsExactly(oldChartBytes);
+            assertThat(db.queryForObject("SELECT published_attempt_id FROM chart_publication WHERE brand='TJ' AND period='MONTHLY'",byte[].class)).containsExactly(oldChartBytes);
+            assertThat(db.queryForObject("SELECT number FROM chart_item WHERE snapshot_id=?",String.class,oldChartBytes)).isEqualTo("00123");
             assertThat(db.queryForObject("SELECT title_key FROM recording_query_key",byte[].class)).isEqualTo(com.ksh321.songrecord.api.domain.DomainOrdering.sortKeyBytes("곡02"));
             assertThat(db.queryForMap("SELECT * FROM recording")).usingRecursiveComparison().isEqualTo(beforeRecording);
             assertThat(db.queryForObject("SELECT title_key FROM song_query_key",byte[].class)).isEqualTo(com.ksh321.songrecord.api.domain.DomainOrdering.sortKeyBytes("노래02"));
@@ -453,6 +461,7 @@ class MySqlIdempotencyTests {
             UUID fresh=UUID.randomUUID();db.update("INSERT INTO app_user(id) VALUES(?)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(fresh));
             assertThat(db.queryForObject("SELECT COUNT(*) FROM condition_definition WHERE user_id=?",Integer.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(fresh))).isEqualTo(4);
             assertThat(db.queryForObject("SELECT condition_name_snapshot FROM recording WHERE id=?",String.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(recordingId))).isEqualTo("좋음");
+            com.ksh321.songrecord.api.charts.ChartMySqlDatabaseChecks.verify(db);
             assertThat(flyway.migrate().migrationsExecuted).isZero();
         } finally {admin.execute("DROP DATABASE "+name);}
     }

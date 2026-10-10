@@ -9,16 +9,20 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public final class ChartCollection {
     @FunctionalInterface public interface Source {byte[] fetch(ChartScope scope,Duration remaining);}
     @FunctionalInterface public interface Sink {UUID stage(ChartScope scope,byte[] payload,Instant fetchedAt);}
+    public interface Lifecycle {UUID begin(ChartScope scope);void success(ChartScope scope,UUID attempt,UUID staged);}
+    private static final Lifecycle NO_PUBLICATION=new Lifecycle(){public UUID begin(ChartScope s){return UUID.randomUUID();}public void success(ChartScope s,UUID a,UUID id){}};
     public enum Failure { TIMEOUT, NETWORK, INVALID_RESPONSE, BUSY, LIVE_STORAGE_NOT_APPROVED }
     public static final class CollectionFailure extends RuntimeException {
         private final Failure kind;public CollectionFailure(Failure kind){super(kind.name());this.kind=kind;}public Failure kind(){return kind;}
     }
     private final Source source;private final Sink staging;private final Clock clock;private final boolean fixture;
     private final Semaphore slots=new Semaphore(2), fetchSlots=new Semaphore(2);
-    private final Duration budget;
+    private final Duration budget;private final Lifecycle lifecycle;
     private final ExecutorService fetching=Executors.newVirtualThreadPerTaskExecutor();
-    public ChartCollection(Source source,Sink staging,Clock clock,boolean fixture){this(source,staging,clock,fixture,Duration.ofSeconds(30));}
-    ChartCollection(Source source,Sink staging,Clock clock,boolean fixture,Duration budget){this.source=source;this.staging=staging;this.clock=clock;this.fixture=fixture;this.budget=budget;}
+    public ChartCollection(Source source,Sink staging,Clock clock,boolean fixture){this(source,staging,clock,fixture,Duration.ofSeconds(30),NO_PUBLICATION);}
+    ChartCollection(Source source,Sink staging,Clock clock,boolean fixture,Duration budget){this(source,staging,clock,fixture,budget,NO_PUBLICATION);}
+    public ChartCollection(Source source,Sink staging,Clock clock,boolean fixture,Lifecycle lifecycle){this(source,staging,clock,fixture,Duration.ofSeconds(30),lifecycle);}
+    private ChartCollection(Source source,Sink staging,Clock clock,boolean fixture,Duration budget,Lifecycle lifecycle){this.source=source;this.staging=staging;this.clock=clock;this.fixture=fixture;this.budget=budget;this.lifecycle=Objects.requireNonNull(lifecycle);}
     public UUID run(ChartScope scope){
         Objects.requireNonNull(scope);
         // Until an approved provider-storage contract exists, no live payload is persisted.
@@ -26,19 +30,22 @@ public final class ChartCollection {
         if(TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("Provider fetch inside database transaction");
         if(!slots.tryAcquire())throw new CollectionFailure(Failure.BUSY);
         // Reserve the staging transaction limit inside the total 30-second job budget.
-        long end=System.nanoTime()+budget.toNanos()-Math.min(Duration.ofSeconds(10).toNanos(),budget.toNanos()/3);
+        long wholeEnd=System.nanoTime()+budget.toNanos();
+        long end=wholeEnd-Math.min(Duration.ofSeconds(10).toNanos(),budget.toNanos()/3);
+        Long previous=ChartJobDeadline.END.get();ChartJobDeadline.END.set(previous==null?wholeEnd:Math.min(previous,wholeEnd));
         try {
+            UUID ticket=lifecycle.begin(scope);
             for(int attempt=0;attempt<2;attempt++){
                 long left=end-System.nanoTime();if(left<=0)throw new CollectionFailure(Failure.TIMEOUT);
                 try {
                     byte[] payload=fetch(scope,left);
                     if(System.nanoTime()>=end)throw new CollectionFailure(Failure.TIMEOUT);
                     if(payload==null || payload.length==0 || payload.length>ChartStaging.MAX_BYTES)throw new CollectionFailure(Failure.INVALID_RESPONSE);
-                    return staging.stage(scope,payload.clone(),clock.instant());
+                    var id=staging.stage(scope,payload.clone(),clock.instant());lifecycle.success(scope,ticket,id);ChartJobDeadline.check();return id;
                 }catch(CollectionFailure e){if(attempt==1 || e.kind()!=Failure.NETWORK && e.kind()!=Failure.TIMEOUT)throw e;}
             }
             throw new CollectionFailure(Failure.TIMEOUT);
-        }finally{slots.release();}
+        }finally{if(previous==null)ChartJobDeadline.END.remove();else ChartJobDeadline.END.set(previous);slots.release();}
     }
     private byte[] fetch(ChartScope scope,long left){
         // A hung adapter cannot occupy the caller. Its permit remains held until it really exits.
