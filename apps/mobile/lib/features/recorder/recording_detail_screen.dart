@@ -7,6 +7,7 @@ import '../../core/domain/song_types.dart';
 import '../../core/sync/local_repository.dart';
 import '../../core/theme/app_tokens.dart';
 import 'recording_input_screen.dart';
+import 'recording_relink_screen.dart';
 
 class RecordingDetailScreen extends StatefulWidget {
   const RecordingDetailScreen({
@@ -71,6 +72,32 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
               Text('컨디션: ${row['condition_name_snapshot'] ?? '미선택'}'),
               Text(
                 '태그: ${(row['tags'] as List? ?? []).whereType<Map<String, dynamic>>().map((t) => t['name_snapshot']).join(', ')}',
+              ),
+              Text(row['song_id'] == null ? '곡 미연결 녹음' : '등록된 내 곡에 연결됨'),
+              TextButton(
+                onPressed: () async {
+                  await Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RecordingRelinkScreen(
+                        recording: row,
+                        revision: copy.revision,
+                        repository: widget.repository,
+                        isCurrent: widget.isCurrent,
+                        wakeSync: widget.wakeSync,
+                      ),
+                    ),
+                  );
+                  if (mounted && widget.isCurrent(widget.repository)) {
+                    setState(
+                      () => future = widget.repository.read(
+                        LocalEntity.recording,
+                        widget.id,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('곡 연결 변경'),
               ),
               const Text('녹음 당시 메모'),
               Text(row['note'] as String? ?? ''),

@@ -2061,6 +2061,56 @@ final class AccountStore {
     });
   });
 
+  Future<void> saveRecordingRelink(
+    LocalEdit edit,
+    Map<String, Object?> expected,
+  ) => _run(
+    () => _database.transaction(() async {
+      final changes = jsonDecode(edit.changesJson) as Map<String, dynamic>;
+      final draft = jsonDecode(edit.draftJson) as Map<String, dynamic>;
+      if (edit.entity != LocalEntity.recording ||
+          edit.operation != LocalOperation.patch ||
+          changes.keys.toSet().difference({
+            'song_id',
+            'base_revision',
+          }).isNotEmpty ||
+          changes.length != 2 ||
+          expected['id'] != edit.entityId ||
+          expected['metadata_state'] != 'SAVED' ||
+          expected['lifecycle_state'] != 'ACTIVE') {
+        throw ArgumentError('Invalid recording relink');
+      }
+      _validatePayloadOwner(canonicalJson(expected));
+      final target = changes['song_id'];
+      if (target != null) {
+        UuidValue(target as String);
+        final copy = await _readMetadata(LocalEntity.song, target);
+        final raw = copy?.localJson ?? copy?.serverJson;
+        if (copy == null || copy.tombstone || raw == null) {
+          throw StateError('Target unavailable');
+        }
+        _validatePayloadOwner(raw);
+        final song = jsonDecode(raw) as Map;
+        if (song['id'] != target ||
+            song['lifecycle_state'] != 'ACTIVE' ||
+            !{'TJ', 'MANUAL'}.contains(song['source_type'])) {
+          throw StateError('Target unavailable');
+        }
+      }
+      final expectedDraft = <String, Object?>{
+        ...expected,
+        'song_id': target,
+        'link_revision':
+            (expected['link_revision'] as int? ?? 1) +
+            (target == expected['song_id'] ? 0 : 1),
+      };
+      if (canonicalJson(draft) != canonicalJson(expectedDraft)) {
+        throw ArgumentError('Relink must preserve recording snapshots');
+      }
+      await _saveEdit(edit, expectedEffectivePayload: canonicalJson(expected));
+    }),
+  );
+
   Future<List<Map<String, dynamic>>> savedRecordings() => _run(() async {
     final rows = await _database
         .customSelect(
@@ -2175,7 +2225,9 @@ final class AccountStore {
         if (raw != null) _validatePayloadOwner(raw);
         if (prior != null) {
           snapshots.add(Map<String, Object?>.from(prior));
-        } else if (copy == null || copy.tombstone || tag?['archived_at'] != null) {
+        } else if (copy == null ||
+            copy.tombstone ||
+            tag?['archived_at'] != null) {
           throw StateError('Tag unavailable');
         } else {
           if (tag?['name'] is! String) throw StateError('Tag unavailable');

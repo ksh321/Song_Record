@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -58,6 +59,31 @@ final class LocalRepository
     Map<String, Object?> input,
     List<String> operationIds,
   ) => _store.saveRecordingInput(id, input, operationIds);
+
+  Future<void> Function() prepareRecordingRelink(
+    Map<String, Object?> expected,
+    int revision,
+    String? songId,
+  ) {
+    final snapshot =
+        jsonDecode(canonicalJson(expected)) as Map<String, dynamic>;
+    final command = LocalEdit(
+      opId: _newId(),
+      entity: LocalEntity.recording,
+      entityId: snapshot['id'] as String,
+      operation: LocalOperation.patch,
+      baseRevision: revision,
+      draft: {
+        ...snapshot,
+        'song_id': songId,
+        'link_revision':
+            (snapshot['link_revision'] as int? ?? 1) +
+            (songId == snapshot['song_id'] ? 0 : 1),
+      },
+      changes: {'song_id': songId, 'base_revision': revision},
+    );
+    return () => _store.saveRecordingRelink(command, snapshot);
+  }
 
   Future<List<Map<String, dynamic>>> savedRecordings() =>
       _store.savedRecordings();

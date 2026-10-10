@@ -50,11 +50,36 @@ Future<void> main() async {
       ),
     );
   }
+  const secondSong = '00000000-0000-4000-8000-000000001806';
+  if (await repo.read(LocalEntity.song, secondSong) == null) {
+    await repo.save(
+      repo.prepareCreate(
+        entity: LocalEntity.song,
+        entityId: secondSong,
+        draft: {
+          'source_type': 'MANUAL',
+          'title': '다른 검증 곡',
+          'artist': '다른 가수',
+          'version_code': 'MR',
+          'lifecycle_state': 'ACTIVE',
+          'tier': 'B',
+        },
+        changes: {
+          'source_type': 'MANUAL',
+          'manual_reason': 'TJ_NOT_FOUND',
+          'title': '다른 검증 곡',
+          'artist': '다른 가수',
+          'version_code': 'MR',
+          'note': '',
+        },
+      ),
+    );
+  }
   runApp(
     MaterialApp(
       theme: AppTheme.dark(),
       home: Scaffold(
-        appBar: AppBar(title: const Text('P18-05 녹음 상세 편집 검증')),
+        appBar: AppBar(title: const Text('P18-06 녹음 연결 변경 검증')),
         body: SafeArea(
           child: RecordingWorkspace(
             gateway: const MethodChannelRecorderGateway(),
