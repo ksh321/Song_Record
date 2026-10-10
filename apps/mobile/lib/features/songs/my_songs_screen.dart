@@ -9,6 +9,7 @@ import '../../core/widgets/sort_sheet.dart';
 import '../auth/auth_session.dart';
 import 'my_song.dart';
 import 'my_song_pages.dart';
+import 'song_detail_screen.dart';
 
 typedef MySongsWatch = Stream<List<MySong>> Function();
 
@@ -17,11 +18,13 @@ class MySongsScreen extends StatefulWidget {
     required this.watch,
     required this.onFindSong,
     this.auth,
+    this.watchDetail,
     super.key,
   });
   final MySongsWatch watch;
   final VoidCallback onFindSong;
   final AuthController? auth;
+  final SongDetailWatch Function(String songId)? watchDetail;
   @override
   State<MySongsScreen> createState() => _MySongsScreenState();
 }
@@ -113,7 +116,22 @@ class _MySongsScreenState extends State<MySongsScreen> {
 
   Widget songRow(MySong song) => Padding(
     padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-    child: SongRow.registered(song: song.view),
+    child: SongRow.registered(
+      song: song.view,
+      onTap: widget.watchDetail == null
+          ? null
+          : () {
+              FocusManager.instance.primaryFocus?.unfocus();
+              Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => SongDetailScreen(
+                    watch: widget.watchDetail!(song.view.id.value),
+                    auth: widget.auth,
+                  ),
+                ),
+              );
+            },
+    ),
   );
 
   @override

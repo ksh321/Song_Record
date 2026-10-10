@@ -9,6 +9,7 @@ import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/features/songs/my_song.dart';
+import 'package:song_record/features/songs/my_song_detail.dart';
 import 'package:song_record/features/songs/my_songs_screen.dart';
 
 String id(int n) => '00000000-0000-4000-8000-${n.toString().padLeft(12, '0')}';
@@ -24,7 +25,8 @@ Map<String, Object?> song(int n, String title, {String state = 'ACTIVE'}) => {
       ? 'A'
       : null,
   'created_at': n == 12 ? '2026-01-02T00:00:00Z' : '2026-01-01T00:00:00Z',
-  'note': '',
+  'note': '곡 메모 · 녹음 메모와 독립',
+  if (n == 12) 'tj_number': '00123',
 };
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,6 +66,30 @@ Future<void> main() async {
     }
   }
   final repo = LocalRepository(await manager.openAccount(id(1)));
+  final record = <String, Object?>{
+    'id': id(30),
+    'song_id': id(10),
+    'title_snapshot': '녹음 당시 제목',
+    'artist_snapshot': '녹음 당시 가수',
+    'version_code': 'LIVE',
+    'key_mode': 'FEMALE',
+    'key_shift': -1,
+    'tier': 'D',
+    'note': '녹음 당시 메모',
+    'metadata_state': 'SAVED',
+    'lifecycle_state': 'ACTIVE',
+    'recorded_at': '2026-01-01T00:00:00Z',
+    'timezone_id': 'Asia/Seoul',
+    'timezone_offset_minutes': 540,
+  };
+  await repo.save(
+    repo.prepareCreate(
+      entity: LocalEntity.recording,
+      entityId: id(30),
+      draft: record,
+      changes: record,
+    ),
+  );
   runApp(
     MaterialApp(
       theme: AppTheme.dark(),
@@ -115,7 +141,7 @@ class _CheckState extends State<Check> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('P17-03 정렬·개수 검증')),
+    appBar: AppBar(title: const Text('P17-04 곡 상세 검증')),
     body: SafeArea(
       child: Column(
         children: [
@@ -137,6 +163,15 @@ class _CheckState extends State<Check> {
           ),
           Expanded(
             child: MySongsScreen(
+              watchDetail: (id) =>
+                  () => repo
+                      .watchSongDetail(id)
+                      .asyncMap(
+                        (bundle) => MySongDetail.verified(
+                          bundle,
+                          repo.recordingFileStatus,
+                        ),
+                      ),
               watch: () => repo.watchActiveSongs().map(
                 (rows) => rows.map(MySong.new).toList(),
               ),

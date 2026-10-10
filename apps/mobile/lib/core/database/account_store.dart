@@ -290,6 +290,74 @@ final class AccountStore {
     }
   }
 
+  Future<Map<String, dynamic>> readSongDetail(String songId) => _run(() async {
+    final id = UuidValue(songId).value;
+    final rows = await _database
+        .customSelect(
+          "SELECT entity_type,entity_id,server_revision,COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND tombstone=0 AND entity_type IN ('SONG','RECORDING','RECORDING_FILE_SPEC') ORDER BY entity_type,entity_id",
+          variables: [Variable(userId)],
+        )
+        .get();
+    Map<String, dynamic>? song;
+    var revision = 0;
+    final recordings = <Map<String, dynamic>>[],
+        specs = <String, Map<String, dynamic>>{};
+    for (final row in rows) {
+      final raw = row.readNullable<String>('payload');
+      if (raw == null) continue;
+      final payload = jsonDecode(raw);
+      final kind = row.read<String>('entity_type');
+      final resource = row.read<String>('entity_id');
+      if (payload is! Map<String, dynamic> ||
+          (payload.containsKey('user_id') && payload['user_id'] != userId) ||
+          (kind != 'RECORDING_FILE_SPEC' && payload['id'] != resource) ||
+          (kind == 'RECORDING_FILE_SPEC' &&
+              payload['recording_id'] != resource)) {
+        throw const FormatException('Detail identity mismatch');
+      }
+      if (kind == 'SONG' &&
+          resource == id &&
+          payload['lifecycle_state'] == 'ACTIVE') {
+        song = payload;
+        revision = row.read<int>('server_revision');
+      } else if (kind == 'RECORDING' &&
+          payload['song_id'] == id &&
+          payload['lifecycle_state'] == 'ACTIVE' &&
+          payload['metadata_state'] == 'SAVED') {
+        recordings.add(payload);
+      } else if (kind == 'RECORDING_FILE_SPEC') {
+        final recording = payload['recording_id'];
+        if (recording is String) specs[recording] = payload;
+      }
+    }
+    if (song != null) {
+      final alias = await _database
+          .customSelect(
+            'SELECT source_song_id FROM song_aliases WHERE source_song_id=?',
+            variables: [Variable(id)],
+          )
+          .getSingleOrNull();
+      if (alias != null) song = null;
+    }
+    return {
+      'song': song,
+      'revision': revision,
+      'recordings': song == null
+          ? <Map<String, dynamic>>[]
+          : [
+              for (final r in recordings) {...r, 'file_spec': specs[r['id']]},
+            ],
+    };
+  });
+
+  /// Detail subscribers also recheck actual device file state on each tick.
+  Stream<Map<String, dynamic>> watchSongDetail(String songId) async* {
+    yield await readSongDetail(songId);
+    await for (final _ in Stream<void>.periodic(const Duration(seconds: 1))) {
+      yield await readSongDetail(songId);
+    }
+  }
+
   Future<void> discoverUploads() => _run(_uploads.discover);
   Future<UploadWork?> claimUpload() => _run(_uploads.claim);
   Future<bool> uploadCurrent(UploadWork work) =>

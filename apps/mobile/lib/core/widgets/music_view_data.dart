@@ -73,6 +73,7 @@ class RecordingViewData {
     required this.snapshot,
     required this.duration,
     required this.fileAvailability,
+    this.durationKnown = true,
     this.fileStatus,
     this.tier,
   }) {
@@ -86,6 +87,7 @@ class RecordingViewData {
 
   final RecordingSnapshot snapshot;
   final Duration duration;
+  final bool durationKnown;
   final RecordingFileAvailability fileAvailability;
   final RecordingFileStatus? fileStatus;
   final RecordingTier? tier;
@@ -94,6 +96,13 @@ class RecordingViewData {
   Future<RecordingViewData> withVerifiedFiles(AccountStore store) async {
     final status = await RecordingFileStatuses(store).read(snapshot.id.value);
     store.requireActive();
+    return withFileStatus(status);
+  }
+
+  RecordingViewData withFileStatus(RecordingFileStatus status) {
+    if (status.recording != id.value) {
+      throw ArgumentError('File status belongs to another recording');
+    }
     final local = status.device == DeviceAudioState.available;
     final availability =
         status.device == DeviceAudioState.unknown ||
@@ -110,6 +119,7 @@ class RecordingViewData {
     return RecordingViewData(
       snapshot: snapshot,
       duration: duration,
+      durationKnown: durationKnown,
       fileAvailability: availability,
       fileStatus: status,
       tier: tier,
@@ -128,7 +138,8 @@ class RecordingViewData {
         '${two(time.hour)}:${two(time.minute)}';
   }
 
-  String get durationLabel =>
-      '${duration.inMinutes.toString().padLeft(2, "0")}:'
-      '${(duration.inSeconds % 60).toString().padLeft(2, "0")}';
+  String get durationLabel => !durationKnown
+      ? '길이 정보 없음'
+      : '${duration.inMinutes.toString().padLeft(2, "0")}:'
+            '${(duration.inSeconds % 60).toString().padLeft(2, "0")}';
 }
