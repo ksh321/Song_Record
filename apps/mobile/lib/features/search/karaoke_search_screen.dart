@@ -83,39 +83,42 @@ class _KaraokeSearchScreenState extends State<KaraokeSearchScreen> {
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
-      builder: (sheetContext) => SingleChildScrollView(
-        child: Padding(
-          padding: AppDimensions.sheetPadding,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(c.title, style: AppTypography.detailTitle),
-              Text(c.artist),
-              Text('${c.brand == KaraokeBrand.tj ? 'TJ' : '금영'} ${c.number}'),
-              const SizedBox(height: 16),
-              if (c.brand == KaraokeBrand.ky) ...[
-                const Text('금영 결과는 직접 등록할 수 없어요. TJ에서 찾아 선택해 주세요.'),
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: () => Navigator.pop(sheetContext, 'find-tj'),
-                  child: const Text('TJ에서 이 곡 찾기'),
-                ),
-              ] else if (widget.onSelected != null ||
-                  widget.prepareRegistration != null)
-                FilledButton(
-                  onPressed: () => Navigator.pop(sheetContext, 'use-tj'),
-                  child: Text(
-                    widget.intent.purpose == SearchPurpose.playlist
-                        ? '목록에 사용할 TJ 곡 선택'
-                        : '이 TJ 곡 선택',
+      builder: (sheetContext) => SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: AppDimensions.sheetPadding,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(c.title, style: AppTypography.detailTitle),
+                Text(c.artist),
+                Text('${c.brand == KaraokeBrand.tj ? 'TJ' : '금영'} ${c.number}'),
+                const SizedBox(height: 16),
+                if (c.brand == KaraokeBrand.ky) ...[
+                  const Text('금영 결과는 직접 등록할 수 없어요. TJ에서 찾아 선택해 주세요.'),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(sheetContext, 'find-tj'),
+                    child: const Text('TJ에서 이 곡 찾기'),
                   ),
+                ] else if (widget.onSelected != null ||
+                    widget.prepareRegistration != null)
+                  FilledButton(
+                    onPressed: () => Navigator.pop(sheetContext, 'use-tj'),
+                    child: Text(
+                      widget.intent.purpose == SearchPurpose.playlist
+                          ? '목록에 사용할 TJ 곡 선택'
+                          : '이 TJ 곡 선택',
+                    ),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.pop(sheetContext),
+                  child: const Text('취소'),
                 ),
-              TextButton(
-                onPressed: () => Navigator.pop(sheetContext),
-                child: const Text('취소'),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -6,6 +6,10 @@ import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/song_row.dart';
 import '../auth/auth_session.dart';
 import '../search/karaoke_search.dart';
+import '../search/karaoke_search_screen.dart';
+import '../search/search_intent.dart';
+import '../search/song_registration.dart';
+import '../search/song_registration_screen.dart';
 import 'popular_chart.dart';
 
 class PopularChartScreen extends StatefulWidget {
@@ -13,11 +17,17 @@ class PopularChartScreen extends StatefulWidget {
     required this.load,
     this.auth,
     this.onSelected,
+    this.intent = const SearchIntent(),
+    this.searchLoad,
+    this.prepareRegistration,
     super.key,
   });
+  final SearchIntent intent;
+  final KaraokeLoader? searchLoad;
+  final SongRegistrationPreparer? prepareRegistration;
   final ChartLoader load;
   final AuthController? auth;
-  final void Function(PublishedChart chart, ChartItem item)? onSelected;
+  final ValueChanged<KaraokeSelection>? onSelected;
   @override
   State<PopularChartScreen> createState() => _PopularChartScreenState();
 }
@@ -31,6 +41,7 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
   @override
   void initState() {
     super.initState();
+    widget.intent.validate();
     controller = PopularChartController((s) => widget.load(s));
     _account = tag();
     widget.auth?.addListener(_authChanged);
@@ -60,6 +71,139 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
     widget.auth?.removeListener(_authChanged);
     controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _select(PublishedChart chart, ChartItem item) async {
+    final request = controller.requestId;
+    final origin = widget.intent;
+    final account = tag();
+    bool current() =>
+        mounted &&
+        request == controller.requestId &&
+        identical(controller.chart, chart) &&
+        controller.scope == chart.scope &&
+        identical(widget.intent, origin) &&
+        tag() == account &&
+        (widget.auth == null || widget.auth!.phase == AuthPhase.ready);
+    if (!current()) return;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (sheet) => SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: AppDimensions.sheetPadding,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.title, style: AppTypography.detailTitle),
+                Text(item.artist),
+                Text('${chart.scope.brandCode} ${item.number}'),
+                const SizedBox(height: 16),
+                if (chart.scope.brand == KaraokeBrand.ky) ...[
+                  const Text('금영 결과는 직접 등록할 수 없어요. TJ에서 찾아 선택해 주세요.'),
+                  if (widget.searchLoad != null)
+                    FilledButton(
+                      onPressed: () => Navigator.pop(sheet, 'find-tj'),
+                      child: const Text('TJ에서 이 곡 찾기'),
+                    ),
+                ] else
+                  FilledButton(
+                    onPressed: () => Navigator.pop(sheet, 'use-tj'),
+                    child: Text(
+                      origin.purpose == SearchPurpose.playlist
+                          ? '목록에 사용할 TJ 곡 선택'
+                          : '이 TJ 곡 선택',
+                    ),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.pop(sheet),
+                  child: const Text('취소'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (!mounted || !current() || action == null) return;
+    KaraokeSelection? selection;
+    if (action == 'use-tj' && chart.scope.brand == KaraokeBrand.tj) {
+      selection = KaraokeSelection(
+        KaraokeCandidate(
+          brand: KaraokeBrand.tj,
+          number: item.number,
+          title: item.title,
+          artist: item.artist,
+          provider: 'MANANA',
+          sourceRef: 'manana:tj:${item.number}',
+          sourceToken: item.sourceToken!,
+          expiresAt: null,
+        ),
+        origin,
+      );
+    } else if (action == 'find-tj' && chart.scope.brand == KaraokeBrand.ky) {
+      selection = await Navigator.of(context).push<KaraokeSelection>(
+        MaterialPageRoute(
+          settings: RouteSettings(
+            name: '/charts/tj-from-ky',
+            arguments: origin,
+          ),
+          builder: (route) => Scaffold(
+            appBar: AppBar(title: const Text('TJ에서 찾기')),
+            body: KaraokeSearchScreen(
+              load: widget.searchLoad!,
+              auth: widget.auth,
+              intent: origin,
+              initialQuery: KaraokeQuery(
+                KaraokeBrand.tj,
+                KaraokeKind.title,
+                item.title,
+              ),
+              onSelected: (selected) => Navigator.of(route).pop(selected),
+            ),
+          ),
+        ),
+      );
+    }
+    if (!mounted ||
+        !current() ||
+        selection == null ||
+        !identical(selection.intent, origin)) {
+      return;
+    }
+    final selected = widget.onSelected;
+    if (selected != null) {
+      selected(selection);
+      return;
+    }
+    final prepare = widget.prepareRegistration;
+    if (prepare == null) return;
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        settings: RouteSettings(name: '/songs/register', arguments: origin),
+        builder: (_) => SongRegistrationScreen(
+          intent: origin,
+          candidate: selection!.candidate,
+          prepare: (draft) {
+            if (!current()) throw StateError('Chart selection changed');
+            final save = prepare(draft);
+            return () async {
+              if (!current()) throw StateError('Chart selection changed');
+              await save();
+            };
+          },
+        ),
+      ),
+    );
+    if (mounted && current() && saved == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('입력을 이 기기에 저장했어요. 연결되면 등록을 진행합니다.')),
+      );
+    }
   }
 
   @override
@@ -132,9 +276,11 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
                   ),
                   placement: CandidatePlacement.chart,
                   rank: item.position,
-                  onTap: widget.onSelected == null
+                  onTap:
+                      widget.onSelected == null &&
+                          widget.prepareRegistration == null
                       ? null
-                      : () => widget.onSelected!(chart, item),
+                      : () => _select(chart, item),
                 ),
               ),
           ] else if (controller.phase == ChartPhase.loading)

@@ -29,7 +29,8 @@ class KaraokeCandidate {
   });
   final KaraokeBrand brand;
   final String number, title, artist, provider, sourceRef, sourceToken;
-  final DateTime expiresAt;
+  // Chart responses omit expires_at; only the server validates token expiry.
+  final DateTime? expiresAt;
   final String? matchedSongId;
   @override
   String toString() => 'KaraokeCandidate[REDACTED]';
