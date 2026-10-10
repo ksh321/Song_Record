@@ -95,6 +95,14 @@ final class LocalRepository
   /// metadata copy and immutable queue entry in one SQLite transaction.
   Future<void> save(LocalEdit command) => _store.saveEdit(command);
 
+  Future<void> saveCheckedEdit(
+    LocalEdit command,
+    Map<String, Object?> expected,
+  ) => _store.saveEdit(
+    command,
+    expectedEffectivePayload: canonicalJson(expected),
+  );
+
   Future<MetadataCopy?> read(LocalEntity entity, String id) =>
       _store.readMetadata(entity, id);
 

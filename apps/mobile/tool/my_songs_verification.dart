@@ -141,7 +141,7 @@ class _CheckState extends State<Check> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('P17-04 곡 상세 검증')),
+    appBar: AppBar(title: const Text('P17-05 곡 수정 검증')),
     body: SafeArea(
       child: Column(
         children: [
@@ -163,6 +163,7 @@ class _CheckState extends State<Check> {
           ),
           Expanded(
             child: MySongsScreen(
+              prepareEdit: (draft) => draft.prepare(repo),
               watchDetail: (id) =>
                   () => repo
                       .watchSongDetail(id)

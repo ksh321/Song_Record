@@ -718,7 +718,10 @@ final class AccountStore {
           );
   }
 
-  Future<void> saveEdit(LocalEdit edit) => _run(() async {
+  Future<void> saveEdit(
+    LocalEdit edit, {
+    String? expectedEffectivePayload,
+  }) => _run(() async {
     _validatePayloadOwner(edit.draftJson);
     _validatePayloadOwner(edit.changesJson);
     final fingerprint = sha256
@@ -750,7 +753,7 @@ final class AccountStore {
       }
       final baseline = await _database
           .customSelect(
-            'SELECT server_revision,server_payload,tombstone FROM metadata_copies WHERE entity_type=? AND entity_id=?',
+            'SELECT server_revision,server_payload,tombstone,COALESCE(local_payload,server_payload) AS effective_payload FROM metadata_copies WHERE entity_type=? AND entity_id=?',
             variables: [Variable(edit.entity.code), Variable(edit.entityId)],
           )
           .getSingleOrNull();
@@ -759,6 +762,14 @@ final class AccountStore {
         throw StateError(
           'Edit baseline changed or the resource was permanently deleted',
         );
+      }
+      if (expectedEffectivePayload != null) {
+        final raw = baseline?.readNullable<String>('effective_payload');
+        if (raw == null ||
+            canonicalJson(jsonDecode(raw) as Map<String, dynamic>) !=
+                expectedEffectivePayload) {
+          throw StateError('Local edit changed while the editor was open');
+        }
       }
       final now = DateTime.now().toUtc().millisecondsSinceEpoch;
       await _database.customStatement(

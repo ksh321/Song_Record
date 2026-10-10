@@ -10,6 +10,7 @@ import '../auth/auth_session.dart';
 import 'my_song.dart';
 import 'my_song_pages.dart';
 import 'song_detail_screen.dart';
+import 'song_edit.dart';
 
 typedef MySongsWatch = Stream<List<MySong>> Function();
 
@@ -19,12 +20,14 @@ class MySongsScreen extends StatefulWidget {
     required this.onFindSong,
     this.auth,
     this.watchDetail,
+    this.prepareEdit,
     super.key,
   });
   final MySongsWatch watch;
   final VoidCallback onFindSong;
   final AuthController? auth;
   final SongDetailWatch Function(String songId)? watchDetail;
+  final SongEditPreparer? prepareEdit;
   @override
   State<MySongsScreen> createState() => _MySongsScreenState();
 }
@@ -127,6 +130,7 @@ class _MySongsScreenState extends State<MySongsScreen> {
                   builder: (_) => SongDetailScreen(
                     watch: widget.watchDetail!(song.view.id.value),
                     auth: widget.auth,
+                    prepareEdit: widget.prepareEdit,
                   ),
                 ),
               );

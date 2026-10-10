@@ -9,6 +9,8 @@ import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/recording_row.dart';
 import '../auth/auth_session.dart';
 import 'my_song_detail.dart';
+import 'song_edit.dart';
+import 'song_edit_screen.dart';
 
 typedef SongDetailWatch = Stream<MySongDetail> Function();
 
@@ -17,11 +19,13 @@ class SongDetailScreen extends StatefulWidget {
     required this.watch,
     this.auth,
     this.recordingId,
+    this.prepareEdit,
     super.key,
   });
   final SongDetailWatch watch;
   final AuthController? auth;
   final String? recordingId;
+  final SongEditPreparer? prepareEdit;
   @override
   State<SongDetailScreen> createState() => _SongDetailScreenState();
 }
@@ -147,6 +151,22 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
         Text(view.title, style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: AppSpacing.sm),
         Text(view.artist),
+        if (widget.prepareEdit != null)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => SongEditScreen(
+                    draft: SongEditDraft(detail),
+                    prepare: widget.prepareEdit!,
+                    auth: widget.auth,
+                  ),
+                ),
+              ),
+              child: const Text('곡 수정'),
+            ),
+          ),
         const SizedBox(height: AppSpacing.md),
         Text(formatVersionCode(view.version)),
         Text(
