@@ -25,6 +25,26 @@ final class LocalRepository
 
   String get userId => _store.userId;
 
+  Future<void> importCompletedCapture({
+    required String accountScope,
+    required String recordingId,
+    required Uint8List bytes,
+    required Map<String, dynamic> fileSpec,
+    required DateTime recordedAt,
+    required String timezoneId,
+    required int timezoneOffsetMinutes,
+  }) => _store.importCompletedCapture(
+    accountScope: accountScope,
+    recordingId: recordingId,
+    bytes: bytes,
+    fileSpec: fileSpec,
+    recordedAt: recordedAt,
+    timezoneId: timezoneId,
+    timezoneOffsetMinutes: timezoneOffsetMinutes,
+  );
+  Future<List<Map<String, dynamic>>> pendingRecordings() =>
+      _store.readPendingRecordings();
+
   Stream<List<Map<String, dynamic>>> watchActiveSongs() =>
       _store.watchActiveSongs();
 

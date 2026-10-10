@@ -89,6 +89,90 @@ Future<void> _close(WidgetTester t, _Gateway g) async {
 
 void main() {
   testWidgets(
+    'persisting is single-flight; only successful handoff enables another recording',
+    (t) async {
+      final g = _Gateway()
+        ..current = const RecorderStatus(
+          phase: RecorderPhase.completed,
+          recordingId: 'private-id',
+        );
+      final done = Completer<void>();
+      int calls = 0;
+      await t.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListView(
+              children: [
+                RecorderPanel(
+                  gateway: g,
+                  diagnostics: false,
+                  onCompleted: (status) {
+                    calls++;
+                    return done.future;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await t.pump();
+      await t.pump(const Duration(seconds: 2));
+      expect(calls, 1);
+      expect(find.text('새 녹음 시작'), findsNothing);
+      done.complete();
+      await t.pump();
+      await t.pump();
+      expect(find.text('새 녹음 시작'), findsOneWidget);
+      await _close(t, g);
+    },
+  );
+  testWidgets(
+    'failed handoff preserves completed recording and retries without restarting microphone',
+    (t) async {
+      final g = _Gateway()
+        ..current = const RecorderStatus(
+          phase: RecorderPhase.completed,
+          recordingId: 'private-id',
+        );
+      int calls = 0;
+      await t.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListView(
+              children: [
+                RecorderPanel(
+                  gateway: g,
+                  diagnostics: false,
+                  onCompleted: (status) async {
+                    calls++;
+                    if (calls == 1) throw StateError('storage unavailable');
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await t.pump();
+      await t.pump();
+      await t.pump(const Duration(seconds: 2));
+      expect(calls, 1);
+      expect(g.starts, 0);
+      expect(find.text('완료 녹음 듣기'), findsOneWidget);
+      expect(find.text('새 녹음 시작'), findsNothing);
+      await t.ensureVisible(find.text('입력 대기 저장 다시 시도'));
+      await t.tap(find.text('입력 대기 저장 다시 시도'));
+      await t.pump();
+      await t.pump();
+      expect(calls, 2);
+      expect(g.starts, 0);
+      expect(find.text('새 녹음 시작'), findsOneWidget);
+      await _close(t, g);
+    },
+  );
+
+  testWidgets(
     'elapsed remains native observation; circle becomes square, complete keeps pending file private',
     (t) async {
       final g = _Gateway();

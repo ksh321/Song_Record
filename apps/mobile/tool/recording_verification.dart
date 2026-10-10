@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:song_record/config/app_config.dart';
+import 'package:song_record/core/database/account_store.dart';
+import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
-import 'package:song_record/features/recorder/recorder_panel.dart';
+import 'package:song_record/features/recorder/recording_workspace.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,22 +18,20 @@ Future<void> main() async {
     'setAccount',
     {'userId': '00000000-0000-4000-8000-000000001801', 'environment': 'dev'},
   );
+  final manager = AccountStoreManager(environment: AppEnvironment.dev);
+  final repo = LocalRepository(
+    await manager.openAccount('00000000-0000-4000-8000-000000001801'),
+  );
   runApp(
     MaterialApp(
       theme: AppTheme.dark(),
       home: Scaffold(
-        appBar: AppBar(title: const Text('P18-01 실제 녹음 검증')),
+        appBar: AppBar(title: const Text('P18-02 입력 대기 보존 검증')),
         body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: const [
-              Text('별도 검증 앱 · 실제 마이크 사용 · 시험 파일은 이 기기에 보존'),
-              SizedBox(height: 20),
-              RecorderPanel(
-                gateway: MethodChannelRecorderGateway(),
-                diagnostics: false,
-              ),
-            ],
+          child: RecordingWorkspace(
+            gateway: const MethodChannelRecorderGateway(),
+            repository: () => repo,
+            isCurrent: (current) => current.userId == repo.userId,
           ),
         ),
       ),

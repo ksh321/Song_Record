@@ -16,6 +16,8 @@ internal data class RecorderJournalEntry(
     val phase: String,
     val startedAtWallClockMs: Long,
     val elapsedMs: Long = 0L,
+    val timezoneId: String = "UTC",
+    val timezoneOffsetMinutes: Int = 0,
     val stopReason: String? = null,
     val sizeBytes: Long? = null,
     val durationMs: Long? = null,
@@ -58,6 +60,8 @@ internal class RecorderRecoveryJournal(context: Context) {
             phase = phase,
             startedAtWallClockMs = preferences.getLong(KEY_STARTED_AT_WALL_CLOCK_MS, 0L),
             elapsedMs = preferences.getLong(KEY_ELAPSED_MS, 0L),
+            timezoneId = preferences.getString("timezone_id", "UTC") ?: "UTC",
+            timezoneOffsetMinutes = preferences.getInt("timezone_offset_minutes", 0),
             stopReason = preferences.getString(KEY_STOP_REASON, null),
             sizeBytes = preferences.longOrNull(KEY_SIZE_BYTES),
             durationMs = preferences.longOrNull(KEY_DURATION_MS),
@@ -85,6 +89,8 @@ internal class RecorderRecoveryJournal(context: Context) {
             .putString(KEY_PHASE, entry.phase)
             .putLong(KEY_STARTED_AT_WALL_CLOCK_MS, entry.startedAtWallClockMs)
             .putLong(KEY_ELAPSED_MS, entry.elapsedMs)
+            .putString("timezone_id", entry.timezoneId)
+            .putInt("timezone_offset_minutes", entry.timezoneOffsetMinutes)
             .putNullableString(KEY_STOP_REASON, entry.stopReason)
             .putNullableLong(KEY_SIZE_BYTES, entry.sizeBytes)
             .putNullableLong(KEY_DURATION_MS, entry.durationMs)
@@ -304,6 +310,9 @@ internal object RecorderRecovery {
         "recovered" to recovered,
         "recoveryState" to if (recovered) "recovered" else "not_needed",
         "accountScope" to entry.accountScope,
+        "startedAtWallClockMs" to entry.startedAtWallClockMs,
+        "timezoneId" to entry.timezoneId,
+        "timezoneOffsetMinutes" to entry.timezoneOffsetMinutes,
         "container" to "M4A",
         "codec" to "AAC-LC",
         "bitRate" to 96_000,
@@ -333,5 +342,8 @@ internal object RecorderRecovery {
         "recovered" to true,
         "recoveryState" to "interrupted",
         "accountScope" to entry.accountScope,
+        "startedAtWallClockMs" to entry.startedAtWallClockMs,
+        "timezoneId" to entry.timezoneId,
+        "timezoneOffsetMinutes" to entry.timezoneOffsetMinutes,
     )
 }

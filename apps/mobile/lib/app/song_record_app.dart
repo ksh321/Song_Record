@@ -14,6 +14,7 @@ import 'package:song_record/features/charts/popular_chart_http.dart';
 import 'package:song_record/features/charts/popular_chart_screen.dart';
 import 'package:song_record/features/health/health_screen.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
+import 'package:song_record/features/recorder/recording_workspace.dart';
 import 'package:song_record/features/search/karaoke_http.dart';
 import 'package:song_record/features/search/karaoke_search.dart';
 import 'package:song_record/features/search/karaoke_search_screen.dart';
@@ -110,6 +111,20 @@ class SongRecordApp extends StatelessWidget {
       routes: {
         AppRoutes.home: (context) => AppShell(
           recorderGateway: recorderGateway,
+          recordingBuilder: localRepository == null
+              ? null
+              : (context) => RecordingWorkspace(
+                  gateway: recorderGateway,
+                  repository: localRepository!,
+                  isCurrent: (repo) =>
+                      authController?.phase == AuthPhase.ready &&
+                      authController?.session?.userId == repo.userId &&
+                      repo.userId == localRepository?.call()?.userId,
+                  wakeSync: () {
+                    final sync = syncController;
+                    if (sync != null) unawaited(sync.wake());
+                  },
+                ),
           songsBuilder: (context, findSong) => MySongsScreen(
             auth: authController,
             watchUnlinked: () {

@@ -6,7 +6,14 @@ enum RecorderPhase { idle, starting, recording, stopping, completed, error }
 
 enum RecorderLimitWarning { none, thirtySeconds, tenSeconds }
 
-enum RecorderLocalState { none, capturing, inputPending, saved, interrupted, corrupt }
+enum RecorderLocalState {
+  none,
+  capturing,
+  inputPending,
+  saved,
+  interrupted,
+  corrupt,
+}
 
 class RecorderDeviceInfo {
   const RecorderDeviceInfo({
@@ -166,22 +173,35 @@ abstract interface class RecorderGateway {
   Future<void> playLatest();
 }
 
-class MethodChannelRecorderGateway implements RecorderGateway {
+abstract interface class CompletedRecordingGateway {
+  Future<Map<Object?, Object?>> readCompleted(String recordingId);
+}
+
+class MethodChannelRecorderGateway
+    implements RecorderGateway, CompletedRecordingGateway {
   const MethodChannelRecorderGateway();
 
   static const _commands = MethodChannel(
     'com.ksh321.songrecord/recorder_commands',
   );
-  static const _events = EventChannel(
-    'com.ksh321.songrecord/recorder_events',
-  );
+  static const _events = EventChannel('com.ksh321.songrecord/recorder_events');
+
+  @override
+  Future<Map<Object?, Object?>> readCompleted(String recordingId) async {
+    final value = await _commands.invokeMapMethod<Object?, Object?>(
+      'readCompleted',
+      {'recordingId': recordingId},
+    );
+    if (value == null || value['bytes'] is! Uint8List) {
+      throw StateError('No completed recording');
+    }
+    return value;
+  }
 
   @override
   Stream<RecorderStatus> watchStatus() {
     return _events.receiveBroadcastStream().map((event) {
-      return RecorderStatus.fromMap(
-        Map<Object?, Object?>.from(event as Map),
-      );
+      return RecorderStatus.fromMap(Map<Object?, Object?>.from(event as Map));
     });
   }
 

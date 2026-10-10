@@ -50,6 +50,7 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "getStatus" -> result.success(RecorderService.currentState())
+                "readCompleted" -> readCompletedRecording(call.argument<String>("recordingId"), result)
                 "getDeviceInfo" -> result.success(deviceInfo())
                 "openAppSettings" -> openAppSettings(result)
                 "requestPermissions" -> requestRecorderPermissions(result)
@@ -157,6 +158,28 @@ class MainActivity : FlutterActivity() {
             )
         startService(intent)
         result.success(null)
+    }
+
+    private fun readCompletedRecording(expectedId: String?, result: MethodChannel.Result) {
+        try {
+            val state = RecorderService.currentState()
+            check(state["phase"] == "completed" && state["recordingId"] == expectedId)
+            val scope = com.ksh321.songrecord.recorder.RecorderAccount.requireScope()
+            check(state["accountScope"] == scope)
+            val path = requireNotNull(state["outputPath"] as? String)
+            check(com.ksh321.songrecord.recorder.RecorderAccount.contains(this, path))
+            val file = File(path)
+            val size = (state["sizeBytes"] as? Number)?.toLong()
+            check(size != null && size in 1L..6_291_456L && file.isFile && file.length() == size)
+            val bytes = file.readBytes()
+            val hash = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+                .joinToString("") { "%02x".format(it) }
+            check(bytes.size.toLong() == size && hash == state["sha256"])
+            check(scope == com.ksh321.songrecord.recorder.RecorderAccount.requireScope())
+            result.success(state + mapOf("bytes" to bytes))
+        } catch (_: Exception) {
+            result.error("RECORDING_CAPTURE_UNAVAILABLE", "완료 녹음의 계정과 파일을 다시 확인해 주세요.", null)
+        }
     }
 
     private fun playLatest(result: MethodChannel.Result) {

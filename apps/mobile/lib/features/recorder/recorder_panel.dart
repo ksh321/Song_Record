@@ -9,6 +9,7 @@ class RecorderPanel extends StatefulWidget {
   const RecorderPanel({
     required this.gateway,
     this.diagnostics = true,
+    this.onCompleted,
     super.key,
   });
 
@@ -16,6 +17,7 @@ class RecorderPanel extends StatefulWidget {
 
   /// The P02 diagnostic view is only for verification; AppShell uses the product view.
   final bool diagnostics;
+  final Future<void> Function(RecorderStatus)? onCompleted;
 
   @override
   State<RecorderPanel> createState() => _RecorderPanelState();
@@ -35,6 +37,9 @@ class _RecorderPanelState extends State<RecorderPanel>
   bool _statusRefreshInProgress = false;
   bool _commandPending = false;
   bool _statusLoaded = false;
+  bool _persisting = false;
+  String? _persistedId;
+  String? _persistError;
   String? _operationError;
 
   @override
@@ -95,6 +100,7 @@ class _RecorderPanelState extends State<RecorderPanel>
   }
 
   void _handleStatus(RecorderStatus status) {
+    if (!mounted) return;
     final deadline = _startGraceDeadline;
     final isStaleIdle =
         status.phase == RecorderPhase.idle &&
@@ -104,6 +110,35 @@ class _RecorderPanelState extends State<RecorderPanel>
     if (isStaleIdle) return;
     _startGraceDeadline = null;
     _applyStatus(status);
+    if (status.phase == RecorderPhase.completed && widget.onCompleted != null) {
+      unawaited(_persistCompleted(status));
+    }
+  }
+
+  Future<void> _persistCompleted(
+    RecorderStatus status, {
+    bool retry = false,
+  }) async {
+    if (status.recordingId == null ||
+        _persisting ||
+        status.recordingId == _persistedId ||
+        (!retry && _persistError != null)) {
+      return;
+    }
+    setState(() {
+      _persisting = true;
+      _persistError = null;
+    });
+    try {
+      await widget.onCompleted!(status);
+      if (mounted) setState(() => _persistedId = status.recordingId);
+    } on Object {
+      if (mounted) {
+        setState(() => _persistError = '녹음 파일은 보존돼 있어요. 입력 대기 저장을 다시 시도해 주세요.');
+      }
+    } finally {
+      if (mounted) setState(() => _persisting = false);
+    }
   }
 
   void _applyStatus(RecorderStatus status) {
@@ -346,8 +381,25 @@ class _RecorderPanelState extends State<RecorderPanel>
               ),
             ),
           ),
-        if (completed)
+        if (completed) ...[
           TextButton(onPressed: _playLatest, child: const Text('완료 녹음 듣기')),
+          if (_persisting)
+            const Text('입력 대기 저장 중', textAlign: TextAlign.center),
+          if (_persistError != null) ...[
+            Text(_persistError!, textAlign: TextAlign.center),
+            TextButton(
+              onPressed: () => _persistCompleted(_status, retry: true),
+              child: const Text('입력 대기 저장 다시 시도'),
+            ),
+          ],
+          if (widget.onCompleted != null &&
+              _persistedId == _status.recordingId &&
+              !_persisting)
+            TextButton(
+              onPressed: _commandPending ? null : _start,
+              child: const Text('새 녹음 시작'),
+            ),
+        ],
       ],
     );
   }

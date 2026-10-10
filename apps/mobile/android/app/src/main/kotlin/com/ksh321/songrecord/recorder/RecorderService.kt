@@ -130,13 +130,17 @@ class RecorderService : Service() {
             val candidatePendingFile = File(pendingDirectory, "$id.m4a")
             pendingFile = candidatePendingFile
             val finalFile = File(recordingsDirectory, "$id.m4a")
+            val captureTime = System.currentTimeMillis()
+            val captureZone = java.util.TimeZone.getDefault()
             val entry = RecorderJournalEntry(
                 recordingId = id,
                 accountScope = RecorderAccount.requireScope(),
                 pendingPath = candidatePendingFile.absolutePath,
                 finalPath = finalFile.absolutePath,
                 phase = RecorderRecoveryJournal.PHASE_PREPARING,
-                startedAtWallClockMs = System.currentTimeMillis(),
+                startedAtWallClockMs = captureTime,
+                timezoneId = captureZone.id,
+                timezoneOffsetMinutes = captureZone.getOffset(captureTime) / 60_000,
                 localState = RecorderRecoveryJournal.LOCAL_STATE_INPUT_PENDING,
             )
             recordingId = id

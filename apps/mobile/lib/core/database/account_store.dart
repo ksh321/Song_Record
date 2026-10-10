@@ -17,6 +17,7 @@ import '../sync/conflict_review.dart';
 import '../sync/dependency_planner.dart';
 import '../sync/metadata_response.dart';
 import '../sync/mutation_request.dart';
+import '../sync/recording_save_contract.dart';
 import 'account_database.dart' show AccountDatabase;
 import 'account_paths.dart';
 import 'asset_deletion_store.dart';
@@ -761,7 +762,19 @@ final class AccountStore {
     LocalEdit edit, {
     String? expectedEffectivePayload,
     bool representativeSelection = false,
-  }) => _run(() async {
+  }) => _run(
+    () => _saveEdit(
+      edit,
+      expectedEffectivePayload: expectedEffectivePayload,
+      representativeSelection: representativeSelection,
+    ),
+  );
+
+  Future<void> _saveEdit(
+    LocalEdit edit, {
+    String? expectedEffectivePayload,
+    bool representativeSelection = false,
+  }) async {
     _validatePayloadOwner(edit.draftJson);
     _validatePayloadOwner(edit.changesJson);
     final fingerprint = sha256
@@ -874,7 +887,7 @@ final class AccountStore {
       await materializeCanonicalReferences(_database, _retry.nowMs);
       requireActive();
     });
-  });
+  }
 
   void _validatePayloadOwner(String json) {
     final payload = jsonDecode(json) as Map<String, Object?>;
@@ -1823,96 +1836,249 @@ final class AccountStore {
     int? sizeBytes,
     required Map<String, Object?> recovery,
   }) {
+    return _run(
+      () => _recordFileAndJournal(
+        recordingId: recordingId,
+        operationId: operationId,
+        state: state,
+        phase: phase,
+        pending: pending,
+        checksum: checksum,
+        sizeBytes: sizeBytes,
+        recovery: recovery,
+      ),
+    );
+  }
+
+  Future<void> _recordFileAndJournal({
+    required String recordingId,
+    required String operationId,
+    required FilePresence state,
+    required JournalPhase phase,
+    required bool pending,
+    String? checksum,
+    int? sizeBytes,
+    required Map<String, Object?> recovery,
+  }) async {
     final id = UuidValue(recordingId).value;
     final op = UuidValue(operationId).value;
     final json = canonicalJson(recovery);
-    return _run(() async {
-      final relative = pending ? _paths.pendingPath(id) : _paths.audioPath(id);
-      if (pending &&
-          (state == FilePresence.inputPending || state == FilePresence.saved)) {
-        throw ArgumentError(
-          'Completed recordings must use the final audio path',
+
+    final relative = pending ? _paths.pendingPath(id) : _paths.audioPath(id);
+    if (pending &&
+        (state == FilePresence.inputPending || state == FilePresence.saved)) {
+      throw ArgumentError('Completed recordings must use the final audio path');
+    }
+    final file = await _paths.checkedFile(relative);
+    int? verifiedAt;
+    if (state == FilePresence.inputPending || state == FilePresence.saved) {
+      if (!await file.exists() ||
+          await file.length() != sizeBytes ||
+          sizeBytes == null ||
+          sizeBytes > 6291456 ||
+          sizeBytes < 1) {
+        throw StateError(
+          'Completed local file is missing or has a different size',
         );
       }
-      final file = await _paths.checkedFile(relative);
-      int? verifiedAt;
-      if (state == FilePresence.inputPending || state == FilePresence.saved) {
-        if (!await file.exists() ||
-            await file.length() != sizeBytes ||
-            sizeBytes == null ||
-            sizeBytes > 6291456 ||
-            sizeBytes < 1) {
-          throw StateError(
-            'Completed local file is missing or has a different size',
-          );
-        }
-        if ((await sha256.bind(file.openRead()).first).toString() != checksum) {
-          throw StateError('Completed local file checksum mismatch');
-        }
-        verifiedAt = DateTime.now().toUtc().millisecondsSinceEpoch;
+      if ((await sha256.bind(file.openRead()).first).toString() != checksum) {
+        throw StateError('Completed local file checksum mismatch');
       }
-      await _database.transaction(() async {
-        final journal = await _database
-            .customSelect(
-              'SELECT operation_id FROM recording_journals WHERE recording_id=?',
-              variables: [Variable(id)],
-            )
-            .getSingleOrNull();
-        if (journal != null && journal.read<String>('operation_id') != op) {
-          throw StateError(
-            'A recording journal belongs to its original operation',
-          );
-        }
-        final old = await _database
-            .customSelect(
-              'SELECT local_state,sha256,size_bytes,cleanup_fence FROM local_recording_files WHERE recording_id=?',
-              variables: [Variable(id)],
-            )
-            .getSingleOrNull();
-        if ((old?.read<int>('cleanup_fence') ?? 0) > 0) {
-          throw StateError('Local preservation fence is active');
-        }
-        if (old?.read<String>('local_state') == 'SAVED' &&
-            (old?.readNullable<String>('sha256') != checksum ||
-                old?.readNullable<int>('size_bytes') != sizeBytes)) {
-          throw StateError(
-            'Do not replace the content of a saved recording UUID',
-          );
-        }
-        final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-        await _database.customStatement(
-          '''INSERT INTO local_recording_files(recording_id,user_id,relative_path,sha256,size_bytes,local_state,verified_at,updated_at)
+      verifiedAt = DateTime.now().toUtc().millisecondsSinceEpoch;
+    }
+    await _database.transaction(() async {
+      final journal = await _database
+          .customSelect(
+            'SELECT operation_id FROM recording_journals WHERE recording_id=?',
+            variables: [Variable(id)],
+          )
+          .getSingleOrNull();
+      if (journal != null && journal.read<String>('operation_id') != op) {
+        throw StateError(
+          'A recording journal belongs to its original operation',
+        );
+      }
+      final old = await _database
+          .customSelect(
+            'SELECT local_state,sha256,size_bytes,cleanup_fence FROM local_recording_files WHERE recording_id=?',
+            variables: [Variable(id)],
+          )
+          .getSingleOrNull();
+      if ((old?.read<int>('cleanup_fence') ?? 0) > 0) {
+        throw StateError('Local preservation fence is active');
+      }
+      if (old?.read<String>('local_state') == 'SAVED' &&
+          (old?.readNullable<String>('sha256') != checksum ||
+              old?.readNullable<int>('size_bytes') != sizeBytes)) {
+        throw StateError(
+          'Do not replace the content of a saved recording UUID',
+        );
+      }
+      final now = DateTime.now().toUtc().millisecondsSinceEpoch;
+      await _database.customStatement(
+        '''INSERT INTO local_recording_files(recording_id,user_id,relative_path,sha256,size_bytes,local_state,verified_at,updated_at)
           VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(recording_id) DO UPDATE SET relative_path=excluded.relative_path,sha256=excluded.sha256,
           size_bytes=excluded.size_bytes,local_state=excluded.local_state,verified_at=excluded.verified_at,updated_at=excluded.updated_at''',
-          [
-            id,
-            userId,
-            relative,
-            checksum,
-            sizeBytes,
-            state.code,
-            verifiedAt,
-            now,
-          ],
-        );
-        await _database.customStatement(
-          '''INSERT INTO recording_journals(recording_id,user_id,operation_id,pending_path,final_path,phase,recovery_payload,updated_at)
+        [
+          id,
+          userId,
+          relative,
+          checksum,
+          sizeBytes,
+          state.code,
+          verifiedAt,
+          now,
+        ],
+      );
+      await _database.customStatement(
+        '''INSERT INTO recording_journals(recording_id,user_id,operation_id,pending_path,final_path,phase,recovery_payload,updated_at)
           VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(recording_id) DO UPDATE SET phase=excluded.phase,recovery_payload=excluded.recovery_payload,
           revision=recording_journals.revision+1,updated_at=excluded.updated_at''',
-          [
-            id,
-            userId,
-            op,
-            _paths.pendingPath(id),
-            _paths.audioPath(id),
-            phase.code,
-            json,
-            now,
-          ],
-        );
-      });
+        [
+          id,
+          userId,
+          op,
+          _paths.pendingPath(id),
+          _paths.audioPath(id),
+          phase.code,
+          json,
+          now,
+        ],
+      );
     });
   }
+
+  /// P18: native verified bytes stay recoverable until all local evidence commits.
+  /// CREATE wire payload is the existing metadata-only DRAFT contract.
+  Future<void> importCompletedCapture({
+    required String accountScope,
+    required String recordingId,
+    required Uint8List bytes,
+    required Map<String, dynamic> fileSpec,
+    required DateTime recordedAt,
+    required String timezoneId,
+    required int timezoneOffsetMinutes,
+  }) => _run(() async {
+    final id = UuidValue(recordingId).value;
+    if (accountScope != '${environment.name}/$userId' ||
+        !validRecordingFileSpec(fileSpec) ||
+        recordedAt.year < 1000 ||
+        recordedAt.year > 9999 ||
+        timezoneId.isEmpty ||
+        timezoneId.length > 64 ||
+        timezoneOffsetMinutes < -1080 ||
+        timezoneOffsetMinutes > 1080) {
+      throw const FormatException(
+        'Completed recording ownership/specification mismatch',
+      );
+    }
+    final checksum = fileSpec['sha256'] as String,
+        size = fileSpec['size_bytes'] as int;
+    if (bytes.length != size || sha256.convert(bytes).toString() != checksum) {
+      throw const FormatException('Completed recording bytes mismatch');
+    }
+    await _database.transaction(() async {
+      final previous = await _readMetadata(LocalEntity.recording, id);
+      if (previous != null) {
+        if (previous.tombstone) throw StateError('Recording was deleted');
+        final oldFile = await _database
+            .customSelect(
+              'SELECT sha256,size_bytes FROM local_recording_files WHERE recording_id=?',
+              variables: [Variable(id)],
+            )
+            .getSingleOrNull();
+        if (oldFile == null ||
+            oldFile.readNullable<String>('sha256') != checksum ||
+            oldFile.readNullable<int>('size_bytes') != size) {
+          throw StateError('An existing recording UUID must not be replaced');
+        }
+        // Reopening never resets an edited/SAVED record or enqueues CREATE again.
+        requireActive();
+        return;
+      }
+      await _preserveDownloadedAudio(userId, id, checksum, size, bytes);
+      final draft = <String, Object?>{
+        'id': id,
+        'song_id': null,
+        'title_snapshot': null,
+        'artist_snapshot': null,
+        'metadata_state': 'DRAFT',
+        'version_code': 'NORMAL',
+        'key_mode': 'ORIGINAL',
+        'key_shift': 0,
+        'note': '',
+        'recorded_at': recordedAt.toUtc().toIso8601String(),
+        'timezone_id': timezoneId,
+        'timezone_offset_minutes': timezoneOffsetMinutes,
+      };
+      final edit = LocalEdit(
+        opId: id,
+        entity: LocalEntity.recording,
+        entityId: id,
+        operation: LocalOperation.create,
+        baseRevision: 0,
+        draft: {
+          ...draft,
+          'user_id': userId,
+          'lifecycle_state': 'ACTIVE',
+          'file': fileSpec,
+        },
+        changes: draft,
+      );
+      await _saveEdit(edit);
+      await _recordFileAndJournal(
+        recordingId: id,
+        operationId: id,
+        state: FilePresence.inputPending,
+        phase: JournalPhase.committed,
+        pending: false,
+        checksum: checksum,
+        sizeBytes: size,
+        recovery: {'draft': draft, 'file': fileSpec},
+      );
+      requireActive();
+    });
+  });
+
+  Future<List<Map<String, dynamic>>> readPendingRecordings() => _run(() async {
+    final rows = await _database
+        .customSelect(
+          "SELECT entity_id,COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='RECORDING' AND tombstone=0",
+          variables: [Variable(userId)],
+        )
+        .get();
+    final result = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      final raw = row.readNullable<String>('payload');
+      if (raw == null) continue;
+      _validatePayloadOwner(raw);
+      final value = jsonDecode(raw) as Map<String, dynamic>;
+      if (value['id'] == row.read<String>('entity_id') &&
+          value['metadata_state'] == 'DRAFT' &&
+          value['lifecycle_state'] == 'ACTIVE') {
+        // DRAFT server acknowledgements intentionally contain no file metadata.
+        // The capture journal is the immutable local source until SAVED.
+        final journal = await _database
+            .customSelect(
+              'SELECT recovery_payload FROM recording_journals WHERE recording_id=? AND user_id=?',
+              variables: [Variable(value['id'] as String), Variable(userId)],
+            )
+            .getSingleOrNull();
+        if (journal != null) {
+          final recovered = jsonDecode(
+            journal.read<String>('recovery_payload'),
+          ) as Map<String, dynamic>;
+          value['file'] = recovered['file'];
+        }
+        result.add(value);
+      }
+    }
+    result.sort(
+      (a, b) =>
+          (b['recorded_at'] as String).compareTo(a['recorded_at'] as String),
+    );
+    return result;
+  });
 
   Future<Uint8List> readLocalAudio(String recordingId) =>
       _run(() => _readLocalAudio(recordingId));
@@ -2007,7 +2173,17 @@ final class AccountStore {
     String checksum,
     int size,
     Uint8List data,
-  ) => _run(() async {
+  ) => _run(
+    () => _preserveDownloadedAudio(owner, recordingId, checksum, size, data),
+  );
+
+  Future<void> _preserveDownloadedAudio(
+    String owner,
+    String recordingId,
+    String checksum,
+    int size,
+    Uint8List data,
+  ) async {
     final id = UuidValue(recordingId).value;
     if (UuidValue(owner).value != userId ||
         size < 1 ||
@@ -2070,7 +2246,7 @@ final class AccountStore {
       local_state='SAVED',verified_at=excluded.verified_at,updated_at=excluded.updated_at""",
       [id, userId, _paths.audioPath(id), checksum, size, now, now],
     );
-  });
+  }
 
   /// Deletes only the explicitly confirmed current-device bytes; metadata and journal remain.
   /// Serialized with fence establishment/terminal handling so a pending server cleanup cannot lose its proof.
