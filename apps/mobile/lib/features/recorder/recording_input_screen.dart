@@ -166,14 +166,21 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
   }
 
   Future<void> exit() async {
-    if (busy || !current) return;
+    if (busy || allowExit || !current) return;
+    // Repeated back gestures must not schedule two saves and pop two routes.
+    setState(() => busy = true);
     try {
       if (!widget.editing) await preserve();
       if (!mounted || !current) return;
       setState(() => allowExit = true);
       Navigator.pop(context);
     } catch (_) {
-      if (mounted) setState(() => error = '입력 보존에 실패했어요. 다시 시도해 주세요.');
+      if (mounted) {
+        setState(() {
+          busy = false;
+          error = '입력 보존에 실패했어요. 다시 시도해 주세요.';
+        });
+      }
     }
   }
 

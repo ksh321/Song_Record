@@ -79,7 +79,7 @@ Future<void> main() async {
     MaterialApp(
       theme: AppTheme.dark(),
       home: Scaffold(
-        appBar: AppBar(title: const Text('P18-09 전체 녹음 집계 검증')),
+        appBar: AppBar(title: const Text('P18-10 오프라인 복구 검증')),
         body: SafeArea(
           child: RecordingWorkspace(
             gateway: const MethodChannelRecorderGateway(),
