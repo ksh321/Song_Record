@@ -47,6 +47,12 @@ android {
             applicationIdSuffix = ".preservation"
             resValue("string", "app_name", "노래기록 보존 검증")
         }
+        // Separate identity avoids replacing older verification signatures/data.
+        create("searchVerification") {
+            dimension = "environment"
+            applicationIdSuffix = ".searchverification"
+            resValue("string", "app_name", "노래기록 검색 검증")
+        }
         create("staging") {
             dimension = "environment"
             applicationIdSuffix = ".staging"
