@@ -7,6 +7,7 @@ import 'package:song_record/core/theme/app_tokens.dart';
 
 import 'recorder_gateway.dart';
 import 'recorder_panel.dart';
+import 'recording_input_screen.dart';
 import 'recording_song_picker.dart';
 
 class RecordingWorkspace extends StatefulWidget {
@@ -132,8 +133,8 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
                     if (repo == null || !widget.isCurrent(repo)) return;
                     Navigator.of(context).push<void>(
                       MaterialPageRoute(
-                        builder: (_) => RecordingSongPicker(
-                          recordingId: row['id'] as String,
+                        builder: (_) => RecordingInputScreen(
+                          recording: row,
                           repository: repo,
                           isCurrent: widget.isCurrent,
                           discoveryBuilder: widget.discoveryBuilder,

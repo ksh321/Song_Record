@@ -774,6 +774,7 @@ final class AccountStore {
     LocalEdit edit, {
     String? expectedEffectivePayload,
     bool representativeSelection = false,
+    String? predecessorOpId,
   }) async {
     _validatePayloadOwner(edit.draftJson);
     _validatePayloadOwner(edit.changesJson);
@@ -810,7 +811,25 @@ final class AccountStore {
             variables: [Variable(edit.entity.code), Variable(edit.entityId)],
           )
           .getSingleOrNull();
-      if ((baseline?.read<int>('server_revision') ?? 0) != edit.baseRevision ||
+      if (predecessorOpId != null) {
+        final prior = await _database
+            .customSelect(
+              'SELECT entity_type,entity_id,user_id,queue_state FROM local_mutations WHERE op_id=?',
+              variables: [Variable(predecessorOpId)],
+            )
+            .getSingleOrNull();
+        if (edit.baseRevision != 0 ||
+            prior == null ||
+            prior.read<String>('entity_type') != edit.entity.code ||
+            prior.read<String>('entity_id') != edit.entityId ||
+            prior.read<String>('user_id') != userId ||
+            prior.read<String>('queue_state') != 'PENDING') {
+          throw StateError('Invalid ordered local followup');
+        }
+      }
+      if ((predecessorOpId == null &&
+              (baseline?.read<int>('server_revision') ?? 0) !=
+                  edit.baseRevision) ||
           baseline?.read<int>('tombstone') == 1) {
         throw StateError(
           'Edit baseline changed or the resource was permanently deleted',
@@ -871,7 +890,9 @@ final class AccountStore {
           edit.entityId,
           edit.operation.code,
           edit.baseRevision,
-          baseline?.readNullable<String>('server_payload'),
+          predecessorOpId == null
+              ? baseline?.readNullable<String>('server_payload')
+              : null,
           edit.changesJson,
           fingerprint,
           now,
@@ -2040,6 +2061,246 @@ final class AccountStore {
     });
   });
 
+  Future<List<Map<String, dynamic>>> selectableRecordingTags() =>
+      _run(() async {
+        final rows = await _database
+            .customSelect(
+              "SELECT entity_id,COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='TAG' AND tombstone=0",
+              variables: [Variable(userId)],
+            )
+            .get();
+        final result = <Map<String, dynamic>>[];
+        for (final row in rows) {
+          final raw = row.readNullable<String>('payload');
+          if (raw == null) continue;
+          _validatePayloadOwner(raw);
+          final tag = jsonDecode(raw) as Map<String, dynamic>;
+          if (tag['id'] == row.read<String>('entity_id') &&
+              tag['archived_at'] == null &&
+              tag['name'] is String) {
+            result.add(tag);
+          }
+        }
+        return result;
+      });
+
+  Future<void> preserveRecordingInput(String id, Map<String, Object?> input) =>
+      _run(
+        () => _database.transaction(() async {
+          UuidValue(id);
+          final copy = await _readMetadata(LocalEntity.recording, id);
+          final payload = copy?.localJson ?? copy?.serverJson;
+          if (copy == null || copy.tombstone || payload == null) {
+            throw StateError('Unavailable capture');
+          }
+          _validatePayloadOwner(payload);
+          final value = jsonDecode(payload) as Map<String, dynamic>;
+          if (value['metadata_state'] != 'DRAFT' ||
+              value['lifecycle_state'] != 'ACTIVE') {
+            throw StateError('Not pending');
+          }
+          final journal = await _database
+              .customSelect(
+                'SELECT recovery_payload FROM recording_journals WHERE recording_id=? AND user_id=?',
+                variables: [Variable(id), Variable(userId)],
+              )
+              .getSingle();
+          final recovery = jsonDecode(
+            journal.read<String>('recovery_payload'),
+          ) as Map<String, dynamic>;
+          recovery['input_form'] = input;
+          requireActive();
+          await _database.customStatement(
+            'UPDATE recording_journals SET recovery_payload=?,revision=revision+1,updated_at=? WHERE recording_id=? AND user_id=?',
+            [
+              canonicalJson(recovery),
+              _manager._clock().toUtc().millisecondsSinceEpoch,
+              id,
+              userId,
+            ],
+          );
+        }),
+      );
+
+  /// One local transaction; existing wire routes remain three ordered operations.
+  Future<void> saveRecordingInput(
+    String id,
+    Map<String, Object?> fields,
+    List<String> operationIds,
+  ) => _run(
+    () => _database.transaction(() async {
+      UuidValue(id);
+      if (operationIds.length != 3 || operationIds.toSet().length != 3) {
+        throw ArgumentError('Three unique operations required');
+      }
+      for (final op in operationIds) {
+        UuidValue(op);
+      }
+      final journal = await _database
+          .customSelect(
+            'SELECT operation_id,recovery_payload FROM recording_journals WHERE recording_id=? AND user_id=?',
+            variables: [Variable(id), Variable(userId)],
+          )
+          .getSingle();
+      final recovery = jsonDecode(
+        journal.read<String>('recovery_payload'),
+      ) as Map<String, dynamic>;
+      final fingerprint = canonicalJson({
+        'fields': fields,
+        'operation_ids': operationIds,
+      });
+      if (recovery['input_save'] == fingerprint) return;
+      final copy = await _readMetadata(LocalEntity.recording, id);
+      final raw = copy?.localJson ?? copy?.serverJson;
+      if (copy == null || copy.tombstone || raw == null) {
+        throw StateError('Capture unavailable');
+      }
+      _validatePayloadOwner(raw);
+      final old = jsonDecode(raw) as Map<String, dynamic>;
+      if (old['metadata_state'] != 'DRAFT' ||
+          old['lifecycle_state'] != 'ACTIVE') {
+        throw StateError('Capture no longer pending');
+      }
+      if (fields.keys.any(
+            (k) => !{
+              'song_id',
+              'title_snapshot',
+              'artist_snapshot',
+              'note',
+              'key_mode',
+              'key_shift',
+              'version_code',
+              'recorded_at',
+              'timezone_id',
+              'timezone_offset_minutes',
+              'condition_code',
+              'tag_ids',
+            }.contains(k),
+          ) ||
+          fields['key_mode'] == 'ORIGINAL' && fields['key_shift'] != 0) {
+        throw ArgumentError('Invalid input fields');
+      }
+      final song = fields['song_id'];
+      if (song != null) {
+        UuidValue(song as String);
+        final selected = await _readMetadata(LocalEntity.song, song);
+        final selectedRaw = selected?.localJson ?? selected?.serverJson;
+        if (selected == null || selected.tombstone || selectedRaw == null) {
+          throw StateError('Song unavailable');
+        }
+        _validatePayloadOwner(selectedRaw);
+        if ((jsonDecode(selectedRaw) as Map)['lifecycle_state'] != 'ACTIVE' ||
+            !{
+              'TJ',
+              'MANUAL',
+            }.contains((jsonDecode(selectedRaw) as Map)['source_type'])) {
+          throw StateError('Song unavailable');
+        }
+      }
+      final file = recovery['file'];
+      final metadata = {...fields}..remove('song_id');
+      final save = <String, Object?>{
+        'metadata_state': 'SAVED',
+        'file': file,
+        for (final key in [
+          'title_snapshot',
+          'artist_snapshot',
+          'version_code',
+          'key_mode',
+          'key_shift',
+          'note',
+        ])
+          key: fields[key],
+      };
+      if (!validRecordingSaveRequest({...save, 'base_revision': 1}, 1)) {
+        throw ArgumentError('Invalid required capture input');
+      }
+      final time = DateTime.tryParse(fields['recorded_at'] as String? ?? '');
+      if (time == null ||
+          (time.year < 1000 || time.year > 9999) ||
+          time.microsecond != 0 ||
+          fields['timezone_id'] != old['timezone_id'] ||
+          fields['timezone_offset_minutes'] != old['timezone_offset_minutes']) {
+        throw ArgumentError('Invalid recording time');
+      }
+      final condition = fields['condition_code'];
+      if (condition != null &&
+          !{'VERY_GOOD', 'GOOD', 'NORMAL', 'BAD'}.contains(condition)) {
+        throw ArgumentError('Invalid condition');
+      }
+      final tags = fields['tag_ids'];
+      if (tags is! List || tags.toSet().length != tags.length) {
+        throw ArgumentError('Invalid tags');
+      }
+      final snapshots = <Map<String, Object?>>[];
+      for (final tagId in tags) {
+        UuidValue(tagId as String);
+        final tag = await _readMetadata(LocalEntity.tag, tagId);
+        final tagRaw = tag?.localJson ?? tag?.serverJson;
+        if (tag == null || tag.tombstone || tagRaw == null) {
+          throw StateError('Tag unavailable');
+        }
+        _validatePayloadOwner(tagRaw);
+        final value = jsonDecode(tagRaw) as Map;
+        if (value['archived_at'] != null || value['name'] is! String) {
+          throw StateError('Tag unavailable');
+        }
+        snapshots.add({'id': tagId, 'name_snapshot': value['name']});
+      }
+      final draft = <String, Object?>{
+        ...old,
+        ...fields,
+        'metadata_state': 'SAVED',
+        'tier': null,
+        'file': file,
+        'tags': snapshots,
+        'link_revision':
+            (old['link_revision'] as int? ?? 1) +
+            (old['song_id'] == song ? 0 : 1),
+        'condition_name_snapshot': switch (condition) {
+          'VERY_GOOD' => '아주 좋음',
+          'GOOD' => '좋음',
+          'NORMAL' => '보통',
+          'BAD' => '안 좋음',
+          _ => null,
+        },
+      };
+      final requests = [
+        metadata,
+        save,
+        <String, Object?>{'song_id': song},
+      ];
+      for (var i = 0; i < 3; i++) {
+        final base = i == 0 ? copy.revision : 0;
+        await _saveEdit(
+          LocalEdit(
+            opId: operationIds[i],
+            entity: LocalEntity.recording,
+            entityId: id,
+            operation: LocalOperation.patch,
+            baseRevision: base,
+            draft: draft,
+            changes: {...requests[i], 'base_revision': base},
+          ),
+          predecessorOpId: i == 0 ? null : operationIds[i - 1],
+        );
+      }
+      recovery['input_save'] = fingerprint;
+      recovery['input_form'] = fields;
+      await _recordFileAndJournal(
+        recordingId: id,
+        operationId: journal.read<String>('operation_id'),
+        state: FilePresence.saved,
+        phase: JournalPhase.committed,
+        pending: false,
+        checksum: (file as Map)['sha256'] as String,
+        sizeBytes: file['size_bytes'] as int,
+        recovery: recovery,
+      );
+      requireActive();
+    }),
+  );
+
   Future<void> selectPendingRecordingSong(String recordingId, String songId) =>
       _run(
         () => _database.transaction(() async {
@@ -2090,6 +2351,21 @@ final class AccountStore {
             'key_mode': selected['representative_key_mode'] ?? 'ORIGINAL',
             'key_shift': selected['representative_key_shift'] ?? 0,
           };
+          final form = recovery['input_form'];
+          if (form is Map<String, dynamic>) {
+            final selection =
+                recovery['input_selection'] as Map<String, dynamic>;
+            form['song_id'] = song;
+            form['title_snapshot'] = selected['title'];
+            form['artist_snapshot'] = selected['artist'];
+            if (form['key_edited'] != true) {
+              form['key_mode'] = selection['key_mode'];
+              form['key_shift'] = selection['key_shift'];
+            }
+            if (form['version_edited'] != true) {
+              form['version_code'] = selection['version_code'];
+            }
+          }
           requireActive();
           await _database.customStatement(
             'UPDATE recording_journals SET recovery_payload=?,revision=revision+1,updated_at=? WHERE recording_id=? AND user_id=?',
@@ -2133,6 +2409,7 @@ final class AccountStore {
           ) as Map<String, dynamic>;
           value['file'] = recovered['file'];
           value['input_selection'] = recovered['input_selection'];
+          value['input_form'] = recovered['input_form'];
         }
         result.add(value);
       }

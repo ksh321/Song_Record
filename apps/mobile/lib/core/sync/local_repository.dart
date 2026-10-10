@@ -48,6 +48,17 @@ final class LocalRepository
   Future<void> selectPendingRecordingSong(String recordingId, String songId) =>
       _store.selectPendingRecordingSong(recordingId, songId);
 
+  Future<List<Map<String, dynamic>>> selectableRecordingTags() =>
+      _store.selectableRecordingTags();
+  Future<void> preserveRecordingInput(String id, Map<String, Object?> input) =>
+      _store.preserveRecordingInput(id, input);
+  List<String> recordingSaveOperationIds() => List.generate(3, (_) => _newId());
+  Future<void> saveRecordingInput(
+    String id,
+    Map<String, Object?> input,
+    List<String> operationIds,
+  ) => _store.saveRecordingInput(id, input, operationIds);
+
   Stream<List<Map<String, dynamic>>> watchActiveSongs() =>
       _store.watchActiveSongs();
 
