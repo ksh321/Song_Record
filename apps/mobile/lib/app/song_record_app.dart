@@ -112,6 +112,16 @@ class SongRecordApp extends StatelessWidget {
           recorderGateway: recorderGateway,
           songsBuilder: (context, findSong) => MySongsScreen(
             auth: authController,
+            watchUnlinked: () {
+              final auth = authController, repository = localRepository?.call();
+              if (auth == null ||
+                  auth.phase != AuthPhase.ready ||
+                  repository == null ||
+                  repository.userId != auth.session?.userId) {
+                throw StateError('Current account storage is unavailable');
+              }
+              return repository.watchUnlinkedRecordings();
+            },
             onFindSong: findSong,
             prepareRepresentative: (detail, recording) {
               final auth = authController, repository = localRepository?.call();

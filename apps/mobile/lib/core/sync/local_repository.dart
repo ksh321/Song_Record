@@ -103,6 +103,9 @@ final class LocalRepository
     expectedEffectivePayload: canonicalJson(expected),
   );
 
+  Stream<List<Map<String, dynamic>>> watchUnlinkedRecordings() =>
+      _store.watchUnlinkedRecordings();
+
   Future<void> saveRepresentative(
     LocalEdit command,
     Map<String, Object?> expected,

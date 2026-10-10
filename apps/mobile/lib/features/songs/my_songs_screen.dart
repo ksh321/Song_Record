@@ -12,6 +12,7 @@ import 'my_song_pages.dart';
 import 'song_detail_screen.dart';
 import 'song_edit.dart';
 import 'song_representative.dart';
+import 'unlinked_recordings_screen.dart';
 
 typedef MySongsWatch = Stream<List<MySong>> Function();
 
@@ -23,8 +24,10 @@ class MySongsScreen extends StatefulWidget {
     this.watchDetail,
     this.prepareEdit,
     this.prepareRepresentative,
+    this.watchUnlinked,
     super.key,
   });
+  final UnlinkedWatch? watchUnlinked;
   final MySongsWatch watch;
   final VoidCallback onFindSong;
   final AuthController? auth;
@@ -37,6 +40,8 @@ class MySongsScreen extends StatefulWidget {
 
 class _MySongsScreenState extends State<MySongsScreen> {
   StreamSubscription<List<MySong>>? subscription;
+  StreamSubscription<List<Map<String, dynamic>>>? unlinkedSubscription;
+  int? unlinkedCount;
   List<MySong> songs = [];
   String query = '', scope = '';
   bool grouped = false;
@@ -73,6 +78,24 @@ class _MySongsScreenState extends State<MySongsScreen> {
       failure = null;
       loading = true;
     });
+    unlinkedCount = null;
+    unawaited(unlinkedSubscription?.cancel());
+    if (widget.watchUnlinked != null) {
+      try {
+        unlinkedSubscription = widget.watchUnlinked!().listen(
+          (rows) {
+            if (!mounted || request != generation || tag() != scope) return;
+            setState(() => unlinkedCount = rows.length);
+          },
+          onError: (Object error) {
+            if (!mounted || request != generation || tag() != scope) return;
+            setState(() => unlinkedCount = null);
+          },
+        );
+      } catch (_) {
+        unlinkedCount = null;
+      }
+    }
     try {
       subscription = widget.watch().listen(
         (rows) {
@@ -116,6 +139,7 @@ class _MySongsScreenState extends State<MySongsScreen> {
     ++generation;
     widget.auth?.removeListener(authChanged);
     unawaited(subscription?.cancel());
+    unawaited(unlinkedSubscription?.cancel());
     scroll.dispose();
     super.dispose();
   }
@@ -239,6 +263,21 @@ class _MySongsScreenState extends State<MySongsScreen> {
           OutlinedButton(
             onPressed: () => setState(() => pages.next(pages.cursor!)),
             child: const Text('더 보기'),
+          ),
+        if (widget.watchUnlinked != null)
+          TextButton.icon(
+            icon: const Icon(Icons.chevron_right, size: 16),
+            label: Text('곡 미연결 녹음 (${unlinkedCount ?? '—'})'),
+            onPressed: unlinkedCount == null
+                ? null
+                : () => Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      builder: (_) => UnlinkedRecordingsScreen(
+                        watch: widget.watchUnlinked!,
+                        auth: widget.auth,
+                      ),
+                    ),
+                  ),
           ),
         FilledButton(onPressed: widget.onFindSong, child: const Text('새 곡 찾기')),
       ],

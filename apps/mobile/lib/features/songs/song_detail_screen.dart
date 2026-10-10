@@ -12,6 +12,7 @@ import '../../core/widgets/recording_row.dart';
 import '../../core/widgets/selection_sheet.dart';
 import '../auth/auth_session.dart';
 import 'my_song_detail.dart';
+import 'song_action_entry.dart';
 import 'song_edit.dart';
 import 'song_edit_screen.dart';
 import 'song_representative.dart';
@@ -245,6 +246,20 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
           '대표 키: ${view.musicalKey == null ? '미정' : formatMusicalKey(view.musicalKey!)}',
         ),
         Text('곡 티어: ${formatSongTier(view.tier)}'),
+        const SizedBox(height: AppSpacing.md),
+        FilledButton.icon(
+          icon: const Icon(Icons.playlist_add),
+          label: const Text('플레이리스트 추가'),
+          onPressed: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => SongActionEntry(
+                action: SongAction.playlistAdd,
+                detail: detail,
+                auth: widget.auth,
+              ),
+            ),
+          ),
+        ),
         Text(view.tjNumber == null ? 'TJ 번호 없음' : 'TJ ${view.tjNumber!.value}'),
         const SizedBox(height: AppSpacing.md),
         const Text('아쉬운 점'),
@@ -287,6 +302,19 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
               ),
             ),
           ),
+        const SizedBox(height: AppSpacing.lg),
+        TextButton(
+          onPressed: () => Navigator.of(context).push<void>(
+            MaterialPageRoute(
+              builder: (_) => SongActionEntry(
+                action: SongAction.delete,
+                detail: detail,
+                auth: widget.auth,
+              ),
+            ),
+          ),
+          child: const Text('곡 삭제'),
+        ),
       ],
     );
   }

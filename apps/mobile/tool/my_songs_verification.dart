@@ -104,6 +104,20 @@ Future<void> main() async {
       ),
     );
   }
+  final unlinked = {
+    ...record,
+    'id': id(33),
+    'song_id': null,
+    'title_snapshot': '미연결 원본 제목',
+  };
+  await repo.save(
+    repo.prepareCreate(
+      entity: LocalEntity.recording,
+      entityId: id(33),
+      draft: unlinked,
+      changes: unlinked,
+    ),
+  );
   runApp(
     MaterialApp(
       theme: AppTheme.dark(),
@@ -155,7 +169,7 @@ class _CheckState extends State<Check> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('P17-06 대표 역할 검증')),
+    appBar: AppBar(title: const Text('P17-07 곡 동작 진입 검증')),
     body: SafeArea(
       child: Column(
         children: [
@@ -180,6 +194,7 @@ class _CheckState extends State<Check> {
               prepareEdit: (draft) => draft.prepare(repo),
               prepareRepresentative: (detail, recording) =>
                   prepareRepresentative(repo, detail, recording),
+              watchUnlinked: repo.watchUnlinkedRecordings,
               watchDetail: (id) =>
                   () => repo
                       .watchSongDetail(id)

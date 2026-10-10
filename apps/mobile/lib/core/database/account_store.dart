@@ -192,6 +192,45 @@ final class AccountStore {
     _manager._clock,
   );
 
+  /// Only active saved recordings with no song; no file or queue writes.
+  Future<List<Map<String, dynamic>>> readUnlinkedRecordings() => _run(() async {
+    final rows = await _database
+        .customSelect(
+          "SELECT entity_id,COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='RECORDING' AND tombstone=0",
+          variables: [Variable(userId)],
+        )
+        .get();
+    final result = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      final raw = row.readNullable<String>('payload');
+      if (raw == null) continue;
+      _validatePayloadOwner(raw);
+      final value = jsonDecode(raw) as Map<String, dynamic>;
+      if (value['id'] == row.read<String>('entity_id') &&
+          value['lifecycle_state'] == 'ACTIVE' &&
+          value['metadata_state'] == 'SAVED' &&
+          value.containsKey('song_id') &&
+          value['song_id'] == null) {
+        result.add(value);
+      }
+    }
+    result.sort((a, b) {
+      final time = DateTime.parse(b['recorded_at'] as String)
+          .compareTo(DateTime.parse(a['recorded_at'] as String));
+      return time == 0
+          ? (a['id'] as String).compareTo(b['id'] as String)
+          : time;
+    });
+    return result;
+  });
+
+  Stream<List<Map<String, dynamic>>> watchUnlinkedRecordings() async* {
+    while (true) {
+      yield await readUnlinkedRecordings();
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
+  }
+
   /// Serialized current-account reads, including unsent local edits. Never network.
   Future<List<Map<String, dynamic>>> readActiveSongs() => _run(() async {
     final rows = await _database

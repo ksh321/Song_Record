@@ -26,6 +26,8 @@ void main() {
     await tester.pumpAndSettle();
     for (final choice in ['검색', '인기 차트']) {
       await _selectTab(tester, '내 곡');
+      await tester.ensureVisible(find.text('새 곡 찾기'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('새 곡 찾기'));
       await tester.pumpAndSettle();
       await tester.tap(
