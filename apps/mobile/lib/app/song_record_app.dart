@@ -9,6 +9,9 @@ import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/auth/identity_link.dart';
+import 'package:song_record/features/charts/popular_chart.dart';
+import 'package:song_record/features/charts/popular_chart_http.dart';
+import 'package:song_record/features/charts/popular_chart_screen.dart';
 import 'package:song_record/features/health/health_screen.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 import 'package:song_record/features/search/karaoke_http.dart';
@@ -53,6 +56,34 @@ class SongRecordApp extends StatelessWidget {
       routes: {
         AppRoutes.home: (context) => AppShell(
           recorderGateway: recorderGateway,
+          chartBuilder: (context) => PopularChartScreen(
+            auth: authController,
+            load: (scope) async {
+              final auth = authController;
+              if (auth == null || auth.phase != AuthPhase.ready) {
+                throw const ChartFailure('로그인이 필요해요.', code: 'LOGIN_REQUIRED');
+              }
+              final user = auth.session?.userId,
+                  device = auth.session?.deviceId;
+              final session = await auth.validSession();
+              if (auth.phase != AuthPhase.ready ||
+                  session.userId != user ||
+                  session.deviceId != device) {
+                throw const ChartFailure('계정이 변경됐어요.', code: 'ACCOUNT_CHANGED');
+              }
+              final chart = await HttpPopularChart(
+                config.apiBaseUrl,
+                allowLocalHttp:
+                    kDebugMode && config.environment == AppEnvironment.dev,
+              ).read(scope, session);
+              if (auth.phase != AuthPhase.ready ||
+                  auth.session?.userId != session.userId ||
+                  auth.session?.deviceId != session.deviceId) {
+                throw const ChartFailure('계정이 변경됐어요.', code: 'ACCOUNT_CHANGED');
+              }
+              return chart;
+            },
+          ),
           searchBuilder: (context) => KaraokeSearchScreen(
             auth: authController,
             prepareRegistration: localRepository == null
