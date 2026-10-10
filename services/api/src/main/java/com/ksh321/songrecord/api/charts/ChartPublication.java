@@ -20,6 +20,7 @@ public final class ChartPublication {
             if(!Arrays.equals(pointer.attempt(),ticket))return false;
             if(Arrays.equals(pointer.snapshot(),snapshot) && Arrays.equals(pointer.publishedAttempt(),ticket))return true;
             var staged=validation.validate(id);if(!scope.equals(staged.scope()))throw new IllegalArgumentException("Chart publication scope mismatch");
+            if(pointer.snapshot()!=null && staged.revision()<jdbc.queryForObject("SELECT revision FROM chart_snapshot WHERE id=?",Long.class,pointer.snapshot()))throw new IllegalStateException("Chart revision regressed");
             var published=clock.instant();if(published.isBefore(staged.fetchedAt()))throw new IllegalStateException("Chart publication before collection");
             jdbc.batchUpdate("INSERT INTO chart_item(snapshot_id,position,brand,period,number,title,artist) VALUES(?,?,?,?,?,?,?)",staged.items(),200,(ps,item)->{ps.setBytes(1,snapshot);ps.setInt(2,item.position());ps.setString(3,scope.brand().name());ps.setString(4,scope.period().name());ps.setString(5,item.number());ps.setString(6,item.title());ps.setString(7,item.artist());});
             int changed=jdbc.update("UPDATE chart_snapshot SET state='PUBLISHED',item_count=?,published_at=? WHERE id=? AND state='STAGING'",staged.items().size(),LocalDateTime.ofInstant(published,ZoneOffset.UTC),snapshot);if(changed!=1)throw new IllegalStateException("Chart staging changed");

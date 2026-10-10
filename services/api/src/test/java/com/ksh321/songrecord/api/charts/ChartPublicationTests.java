@@ -39,4 +39,8 @@ class ChartPublicationTests {
     @Test void expiredSharedJobBudgetPreventsAnotherDatabaseStage()throws Exception{
         try(var f=new ChartDatabaseFixture()){ChartJobDeadline.END.set(System.nanoTime()-1);try{assertThatThrownBy(()->stage(f,raw(""))).isInstanceOf(ChartCollection.CollectionFailure.class);assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM chart_snapshot",Integer.class)).isZero();}finally{ChartJobDeadline.END.remove();}}
     }
+    @Test void aNewAttemptCannotRepublishAnOlderStagedRevision()throws Exception{
+        try(var f=new ChartDatabaseFixture()){var p=publisher(f);var oldId=stage(f,raw(""));var newId=stage(f,raw(""));var first=p.begin(scope);assertThat(p.publish(scope,first,newId)).isTrue();var retry=p.begin(scope);assertThatThrownBy(()->p.publish(scope,retry,oldId)).isInstanceOf(IllegalStateException.class);assertThat(pointer(f)).containsExactly(ChartStaging.bytes(newId));}
+    }
+
 }
