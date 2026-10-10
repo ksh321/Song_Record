@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/content_state.dart';
 import '../../core/widgets/song_row.dart';
+import '../../core/widgets/sort_sheet.dart';
 import '../auth/auth_session.dart';
 import 'my_song.dart';
 
@@ -28,6 +29,8 @@ class _MySongsScreenState extends State<MySongsScreen> {
   StreamSubscription<List<MySong>>? subscription;
   List<MySong> songs = [];
   String query = '', scope = '';
+  bool grouped = false;
+  SongSort sort = SongSort.recentlyAdded;
   bool loading = true;
   Object? failure;
   int generation = 0;
@@ -103,9 +106,17 @@ class _MySongsScreenState extends State<MySongsScreen> {
     super.dispose();
   }
 
+  Widget songRow(MySong song) => Padding(
+    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+    child: SongRow.registered(song: song.view),
+  );
+
   @override
   Widget build(BuildContext context) {
-    final visible = songs.where((song) => song.matches(query)).toList();
+    final visible = orderMySongs(
+      songs.where((song) => song.matches(query)),
+      sort,
+    );
     return ListView(
       primary: false,
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -119,6 +130,32 @@ class _MySongsScreenState extends State<MySongsScreen> {
           onChanged: (value) => setState(() {
             query = value;
           }),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment(value: false, label: Text('전체 목록')),
+            ButtonSegment(value: true, label: Text('티어별 보기')),
+          ],
+          selected: {grouped},
+          onSelectionChanged: (selected) =>
+              setState(() => grouped = selected.single),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            icon: const Icon(Icons.sort),
+            label: Text(sort.label),
+            onPressed: () async {
+              final result = await SortSheet.songs(
+                context: context,
+                selected: sort,
+              );
+              if (mounted && result != null) {
+                setState(() => sort = result.value);
+              }
+            },
+          ),
         ),
         const SizedBox(height: AppSpacing.lg),
         if (loading)
@@ -134,12 +171,22 @@ class _MySongsScreenState extends State<MySongsScreen> {
           )
         else if (visible.isEmpty)
           const ContentState(phase: ContentPhase.empty, title: '등록된 내 곡이 없습니다')
-        else
-          for (final song in visible)
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: SongRow.registered(song: song.view),
+        else if (grouped)
+          for (final group in groupMySongs(visible, sort).entries) ...[
+            Semantics(
+              header: true,
+              child: Text(
+                '${group.key} (${group.value.length})',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
             ),
+            const SizedBox(height: AppSpacing.sm),
+            if (group.value.isEmpty) const Text('이 티어에 등록된 곡이 없습니다'),
+            for (final song in group.value) songRow(song),
+            const SizedBox(height: AppSpacing.md),
+          ]
+        else
+          for (final song in visible) songRow(song),
         FilledButton(onPressed: widget.onFindSong, child: const Text('새 곡 찾기')),
       ],
     );

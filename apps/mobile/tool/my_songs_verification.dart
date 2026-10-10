@@ -18,7 +18,12 @@ Map<String, Object?> song(int n, String title, {String state = 'ACTIVE'}) => {
   'artist': 'Singer',
   'version_code': 'NORMAL',
   'lifecycle_state': state,
-  'tier': null,
+  'tier': n == 10
+      ? 'S'
+      : n == 12
+      ? 'A'
+      : null,
+  'created_at': n == 12 ? '2026-01-02T00:00:00Z' : '2026-01-01T00:00:00Z',
   'note': '',
 };
 Future<void> main() async {
@@ -34,13 +39,17 @@ Future<void> main() async {
   );
   for (final account in [1, 2]) {
     final repo = LocalRepository(await manager.openAccount(id(account)));
-    for (final n in account == 1 ? [10, 11] : [20]) {
+    for (final n in account == 1 ? [10, 11, 12, 13] : [20]) {
       final draft = song(
         n,
         n == 10
             ? '밤 산책'
             : n == 11
             ? '휴지통 곡'
+            : n == 12
+            ? '가벼운 산책'
+            : n == 13
+            ? '미정 산책'
             : '계정 B 전용곡',
         state: n == 11 ? 'TRASHED' : 'ACTIVE',
       );
@@ -106,7 +115,7 @@ class _CheckState extends State<Check> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('P17-01 내 곡 로컬 검증')),
+    appBar: AppBar(title: const Text('P17-02 전체·티어별 검증')),
     body: SafeArea(
       child: Column(
         children: [

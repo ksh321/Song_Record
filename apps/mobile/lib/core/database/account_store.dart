@@ -197,7 +197,10 @@ final class AccountStore {
     final rows = await _database
         .customSelect(
           '''
-      SELECT m.entity_id, COALESCE(m.local_payload,m.server_payload) AS payload
+      SELECT m.entity_id, COALESCE(m.local_payload,m.server_payload) AS payload, m.server_payload AS baseline,
+        (SELECT MIN(q.created_at) FROM local_mutations q
+         WHERE q.user_id=m.user_id AND q.entity_type='SONG'
+           AND q.entity_id=m.entity_id AND q.operation='CREATE') AS local_created_at
       FROM metadata_copies m
       WHERE m.user_id=? AND m.entity_type='SONG' AND m.tombstone=0
         AND NOT EXISTS(SELECT 1 FROM song_aliases a WHERE a.source_song_id=m.entity_id)
@@ -216,7 +219,55 @@ final class AccountStore {
           (payload.containsKey('user_id') && payload['user_id'] != userId)) {
         throw const FormatException('Song identity mismatch');
       }
-      if (payload['lifecycle_state'] == 'ACTIVE') result.add(payload);
+      if (payload['lifecycle_state'] == 'ACTIVE') {
+        final localCreated = row.readNullable<int>('local_created_at');
+        final rawBaseline = row.readNullable<String>('baseline');
+        if (payload['created_at'] == null && rawBaseline != null) {
+          final baseline = jsonDecode(rawBaseline) as Map<String, dynamic>;
+          payload['created_at'] = baseline['created_at'];
+        }
+        // Unacknowledged creation has no server creation timestamp yet.
+        if (payload['created_at'] == null && localCreated != null) {
+          payload['created_at'] = DateTime.fromMillisecondsSinceEpoch(
+            localCreated,
+            isUtc: true,
+          ).toIso8601String();
+        }
+        result.add(payload);
+      }
+    }
+    // Derive recent recording order from account metadata, never file state.
+    final recordings = await _database
+        .customSelect(
+          "SELECT entity_id, COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='RECORDING' AND tombstone=0",
+          variables: [Variable(userId)],
+        )
+        .get();
+    final latest = <String, DateTime>{};
+    for (final row in recordings) {
+      final raw = row.readNullable<String>('payload');
+      if (raw == null) continue;
+      final p = jsonDecode(raw);
+      if (p is! Map<String, dynamic> ||
+          p['id'] != row.read<String>('entity_id') ||
+          (p.containsKey('user_id') && p['user_id'] != userId)) {
+        throw const FormatException('Recording identity mismatch');
+      }
+      if (p['lifecycle_state'] != 'ACTIVE' || p['metadata_state'] != 'SAVED') {
+        continue;
+      }
+      final song = p['song_id'];
+      final time = DateTime.tryParse(p['recorded_at'] as String? ?? '');
+      if (song is String &&
+          time != null &&
+          (latest[song] == null || time.isAfter(latest[song]!))) {
+        latest[song] = time;
+      }
+    }
+    for (final song in result) {
+      song['latest_recorded_at'] = latest[song['id']]
+          ?.toUtc()
+          .toIso8601String();
     }
     return result;
   });
