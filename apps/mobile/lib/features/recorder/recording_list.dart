@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/domain/domain_ordering.dart';
 import '../../core/domain/song_types.dart';
 import '../../core/files/recording_file_status.dart';
+import 'recording_filter.dart';
 
 enum RecordingSort {
   newest('최신순'),
@@ -27,7 +29,8 @@ List<Map<String, dynamic>> sortRecordings(
     var result = switch (sort) {
       RecordingSort.newest => latest(a, b),
       RecordingSort.oldest => -latest(a, b),
-      RecordingSort.title => (a['title_snapshot'] as String).compareTo(
+      RecordingSort.title => compareSortText(
+        a['title_snapshot'] as String,
         b['title_snapshot'] as String,
       ),
       RecordingSort.tier => tier(a['tier']).compareTo(tier(b['tier'])),
@@ -50,6 +53,18 @@ class RecordingList extends StatefulWidget {
 
 class _RecordingListState extends State<RecordingList> {
   RecordingSort sort = RecordingSort.newest;
+  RecordingFilter filter = RecordingFilter();
+  Future<void> chooseFilter() async {
+    final selected = await Navigator.push<RecordingFilter>(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            RecordingFilterScreen(initial: filter, rows: widget.rows),
+      ),
+    );
+    if (mounted && selected != null) setState(() => filter = selected);
+  }
+
   Future<void> chooseSort() async {
     final selected = await showModalBottomSheet<RecordingSort>(
       context: context,
@@ -73,13 +88,34 @@ class _RecordingListState extends State<RecordingList> {
 
   @override
   Widget build(BuildContext context) {
-    final rows = sortRecordings(widget.rows, sort);
+    final rows = sortRecordings(
+      widget.rows.where(filter.matches).toList(),
+      sort,
+    );
+    final withoutFile = RecordingFilter(Map.of(filter.values)..remove('file'));
+    final unknown =
+        filter.values.containsKey('file') &&
+        widget.rows.where(withoutFile.matches).any((r) {
+          final status = r['_file_status'] as RecordingFileStatus?;
+          return status == null ||
+              status.device == DeviceAudioState.unknown ||
+              status.serverState == 'UNKNOWN';
+        });
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
-            Expanded(child: Text('저장 녹음 ${rows.length}개')),
+            Expanded(
+              child: Text(
+                unknown ? '현재 확인된 ${rows.length}개' : '저장 녹음 ${rows.length}개',
+              ),
+            ),
+            TextButton.icon(
+              onPressed: chooseFilter,
+              icon: const Icon(Icons.filter_list),
+              label: Text('필터 ${filter.count}'),
+            ),
             TextButton.icon(
               onPressed: chooseSort,
               icon: const Icon(Icons.sort),
@@ -87,7 +123,9 @@ class _RecordingListState extends State<RecordingList> {
             ),
           ],
         ),
-        if (rows.isEmpty) const Text('저장된 녹음이 없습니다'),
+        if (unknown) const Text('파일 상태 확인 불가 · 결과 개수를 아직 확정할 수 없어요.'),
+        if (rows.isEmpty && !unknown)
+          Text(filter.count == 0 ? '저장된 녹음이 없습니다' : '조건에 맞는 녹음이 없습니다'),
         for (final row in rows)
           ListTile(
             key: ValueKey(row['id']),
@@ -105,7 +143,7 @@ class _RecordingListState extends State<RecordingList> {
 String recordingSummary(Map<String, dynamic> row) {
   final date = DateTime.parse(row['recorded_at'] as String)
       .toUtc()
-      .add(Duration(minutes: row['timezone_offset_minutes'] as int? ?? 0));
+      .add(const Duration(hours: 9));
   final key = MusicalKey(
     mode: KeyMode.values.firstWhere(
       (v) => v.name.toUpperCase() == row['key_mode'],

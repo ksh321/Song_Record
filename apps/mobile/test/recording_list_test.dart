@@ -27,7 +27,7 @@ Map<String, dynamic> row(
   'key_mode': 'ORIGINAL',
   'key_shift': 0,
   'version_code': version,
-  'timezone_offset_minutes': 540,
+  'timezone_offset_minutes': -300,
 };
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -65,7 +65,7 @@ void main() {
     expect(rows.first['id'], 'b');
   });
   test(
-    'summary uses recorded timezone, all versions and common key display',
+    'summary uses fixed Korea timezone, all versions and common key display',
     () {
       final r = row('a', '곡', '2026-10-09T20:00:00Z', null);
       expect(recordingSummary(r), contains('2026/10/10 · 일반 반주 · 원키'));
