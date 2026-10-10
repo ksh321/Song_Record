@@ -21,9 +21,13 @@ class RecordingInputScreen extends StatefulWidget {
     this.discoveryBuilder,
     this.wakeSync,
     this.tagLoader,
+    this.editing = false,
+    this.revision = 0,
     super.key,
   });
   final Map<String, dynamic> recording;
+  final bool editing;
+  final int revision;
   final LocalRepository repository;
   final bool Function(LocalRepository) isCurrent;
   final RecordingDiscoveryBuilder? discoveryBuilder;
@@ -39,7 +43,7 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
       note = TextEditingController();
   late RecordingDefaultState defaults;
   late DateTime time;
-  String? condition, songId, error;
+  String? condition, songId, error, tier;
   List<String> tags = [];
   List<Map<String, dynamic>> availableTags = [];
   Timer? timer;
@@ -54,7 +58,7 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
   void initState() {
     super.initState();
     final row = widget.recording;
-    final saved = row['input_form'] as Map? ?? {};
+    final saved = widget.editing ? row : row['input_form'] as Map? ?? {};
     final selection = row['input_selection'] as Map? ?? {};
     title.text =
         saved['title_snapshot'] as String? ??
@@ -68,6 +72,7 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
         '';
     note.text = saved['note'] as String? ?? row['note'] as String? ?? '';
     songId = selection['song_id'] as String? ?? saved['song_id'] as String?;
+    tier = widget.editing ? row['tier'] as String? : null;
     defaults = RecordingDefaultState(
       songId: songId == null ? null : SongId(songId!),
       key: MusicalKey(
@@ -100,6 +105,19 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
       final rows =
           await (widget.tagLoader?.call() ??
               widget.repository.selectableRecordingTags());
+      if (widget.editing) {
+        for (final old
+            in (widget.recording['tags'] as List? ?? [])
+                .whereType<Map<String, dynamic>>()) {
+          if (!rows.any((t) => t['id'] == old['id'])) {
+            rows.add({
+              'id': old['id'],
+              'name': old['name_snapshot'],
+              'historical': true,
+            });
+          }
+        }
+      }
       if (current) setState(() => availableTags = rows);
     } catch (_) {
       if (mounted) setState(() => error = '태그를 확인하지 못했어요. 녹음은 보존돼 있어요.');
@@ -133,6 +151,7 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
   }
 
   void changed() {
+    if (widget.editing) return;
     timer?.cancel();
     timer = Timer(
       const Duration(milliseconds: 250),
@@ -149,7 +168,7 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
   Future<void> exit() async {
     if (busy || !current) return;
     try {
-      await preserve();
+      if (!widget.editing) await preserve();
       if (!mounted || !current) return;
       setState(() => allowExit = true);
       Navigator.pop(context);
@@ -302,7 +321,7 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
       error = null;
     });
     try {
-      if (prepared == null) await preserve();
+      if (prepared == null && !widget.editing) await preserve();
       prepared ??=
           {
               ...input(),
@@ -312,9 +331,30 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
             }
             ..remove('key_edited')
             ..remove('version_edited');
-      operationIds ??= widget.repository.recordingSaveOperationIds();
+      if (widget.editing) {
+        prepared!
+          ..remove('song_id')
+          ..['tier'] = tier;
+      }
+      operationIds ??= widget.editing
+          ? widget.repository.recordingEditOperationIds()
+          : widget.repository.recordingSaveOperationIds();
       if (!current) throw StateError('Account changed');
-      await widget.repository.saveRecordingInput(id, prepared!, operationIds!);
+      if (widget.editing) {
+        await widget.repository.saveRecordingDetails(
+          id,
+          prepared!,
+          operationIds!,
+          widget.recording,
+          widget.revision,
+        );
+      } else {
+        await widget.repository.saveRecordingInput(
+          id,
+          prepared!,
+          operationIds!,
+        );
+      }
       if (!mounted || !current) return;
       widget.wakeSync?.call();
       setState(() => allowExit = true);
@@ -349,7 +389,7 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('녹음 정보 입력'),
+          title: Text(widget.editing ? '녹음 정보 수정' : '녹음 정보 입력'),
           leading: IconButton(
             onPressed: busy ? null : exit,
             icon: const Icon(Icons.arrow_back),
@@ -366,13 +406,18 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text('필수 정보를 입력하면 녹음을 저장해요. 입력 중 나가도 녹음 파일은 남아요.'),
-                  OutlinedButton(
-                    onPressed: chooseSong,
-                    child: Text(
-                      songId == null ? '내 곡 선택 / 새 곡 찾기' : '연결할 곡 변경',
-                    ),
+                  Text(
+                    widget.editing
+                        ? '저장하면 녹음 정보만 바뀌어요. 취소하면 원래 정보를 유지해요.'
+                        : '필수 정보를 입력하면 녹음을 저장해요. 입력 중 나가도 녹음 파일은 남아요.',
                   ),
+                  if (!widget.editing)
+                    OutlinedButton(
+                      onPressed: chooseSong,
+                      child: Text(
+                        songId == null ? '내 곡 선택 / 새 곡 찾기' : '연결할 곡 변경',
+                      ),
+                    ),
                   TextField(
                     key: const ValueKey('recording-title'),
                     controller: title,
@@ -399,7 +444,7 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
                       '녹음 시각: ${wall.toIso8601String().replaceFirst('T', ' ').replaceFirst('Z', '')} (${widget.recording['timezone_id']})',
                     ),
                   ),
-                  if (songId != null)
+                  if (!widget.editing && songId != null)
                     TextButton(
                       onPressed: applyDefaults,
                       child: const Text('선택 곡의 키·버전 기본값 적용'),
@@ -422,6 +467,18 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
                       changed();
                     },
                   ),
+                  if (widget.editing)
+                    DropdownButtonFormField<String>(
+                      key: const ValueKey('recording-tier'),
+                      initialValue: tier,
+                      decoration: const InputDecoration(labelText: '녹음 티어'),
+                      items: [
+                        const DropdownMenuItem(value: null, child: Text('미정')),
+                        for (final value in ['S', 'A', 'B', 'C', 'D'])
+                          DropdownMenuItem(value: value, child: Text(value)),
+                      ],
+                      onChanged: (v) => setState(() => tier = v),
+                    ),
                   const Text('태그 (선택)'),
                   if (availableTags.isEmpty) const Text('선택할 태그가 없어요.'),
                   Wrap(
@@ -429,18 +486,24 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
                     children: [
                       for (final tag in availableTags)
                         FilterChip(
-                          label: Text(tag['name'] as String),
+                          label: Text(
+                            '${tag['name']}${tag['historical'] == true ? ' (보관됨)' : ''}',
+                          ),
                           selected: tags.contains(tag['id']),
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                tags.add(tag['id'] as String);
-                              } else {
-                                tags.remove(tag['id']);
-                              }
-                            });
-                            changed();
-                          },
+                          onSelected:
+                              tag['historical'] == true &&
+                                  !tags.contains(tag['id'])
+                              ? null
+                              : (selected) {
+                                  setState(() {
+                                    if (selected) {
+                                      tags.add(tag['id'] as String);
+                                    } else {
+                                      tags.remove(tag['id']);
+                                    }
+                                  });
+                                  changed();
+                                },
                         ),
                     ],
                   ),
@@ -469,11 +532,22 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (error != null) Text(error!),
+                if (widget.editing)
+                  TextButton(
+                    onPressed: busy ? null : exit,
+                    child: const Text('취소'),
+                  ),
                 FilledButton(
                   onPressed: busy || !widget.isCurrent(widget.repository)
                       ? null
                       : save,
-                  child: Text(busy ? '저장 중' : '녹음 저장'),
+                  child: Text(
+                    busy
+                        ? '저장 중'
+                        : widget.editing
+                        ? '변경 저장'
+                        : '녹음 저장',
+                  ),
                 ),
               ],
             ),

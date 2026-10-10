@@ -2061,6 +2061,158 @@ final class AccountStore {
     });
   });
 
+  Future<List<Map<String, dynamic>>> savedRecordings() => _run(() async {
+    final rows = await _database
+        .customSelect(
+          "SELECT entity_id,COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='RECORDING' AND tombstone=0",
+          variables: [Variable(userId)],
+        )
+        .get();
+    final result = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      final raw = row.readNullable<String>('payload');
+      if (raw == null) continue;
+      _validatePayloadOwner(raw);
+      final value = jsonDecode(raw) as Map<String, dynamic>;
+      if (value['id'] == row.read<String>('entity_id') &&
+          value['metadata_state'] == 'SAVED' &&
+          value['lifecycle_state'] == 'ACTIVE') {
+        result.add(value);
+      }
+    }
+    result.sort(
+      (a, b) =>
+          (b['recorded_at'] as String).compareTo(a['recorded_at'] as String),
+    );
+    return result;
+  });
+
+  Future<void> saveRecordingDetails(
+    String id,
+    Map<String, Object?> fields,
+    List<String> operationIds,
+    Map<String, Object?> expected,
+    int revision,
+  ) => _run(
+    () => _database.transaction(() async {
+      UuidValue(id);
+      if (operationIds.length != 2 || operationIds.toSet().length != 2) {
+        throw ArgumentError('Two distinct operations required');
+      }
+      const allowed = {
+        'title_snapshot',
+        'artist_snapshot',
+        'note',
+        'key_mode',
+        'key_shift',
+        'version_code',
+        'recorded_at',
+        'timezone_id',
+        'timezone_offset_minutes',
+        'condition_code',
+        'tag_ids',
+        'tier',
+      };
+      if (fields.keys.toSet().difference(allowed).isNotEmpty ||
+          expected['metadata_state'] != 'SAVED' ||
+          expected['lifecycle_state'] != 'ACTIVE' ||
+          expected['id'] != id) {
+        throw ArgumentError('Saved recording required');
+      }
+      _validatePayloadOwner(canonicalJson(expected));
+      final draft = <String, Object?>{...expected, ...fields};
+      for (final key in ['title_snapshot', 'artist_snapshot']) {
+        final value = draft[key];
+        if (value is! String ||
+            value.trim().isEmpty ||
+            value.runes.length > 200) {
+          throw ArgumentError('Required snapshot');
+        }
+      }
+      if (!{'ORIGINAL', 'MALE', 'FEMALE'}.contains(draft['key_mode']) ||
+          draft['key_shift'] is! int ||
+          (draft['key_shift'] as int).abs() > 12 ||
+          draft['key_mode'] == 'ORIGINAL' && draft['key_shift'] != 0 ||
+          !{'NORMAL', 'MR', 'LIVE'}.contains(draft['version_code']) ||
+          draft['tier'] != null &&
+              !{'S', 'A', 'B', 'C', 'D'}.contains(draft['tier'])) {
+        throw ArgumentError('Invalid key/version/tier');
+      }
+      final note = draft['note'];
+      if (note is! String || note.runes.length > 2000) {
+        throw ArgumentError('Invalid note');
+      }
+      final time = DateTime.tryParse(draft['recorded_at'] as String);
+      if (time == null ||
+          time.year < 1000 ||
+          time.year > 9999 ||
+          time.microsecond != 0 ||
+          draft['timezone_id'] != expected['timezone_id'] ||
+          draft['timezone_offset_minutes'] !=
+              expected['timezone_offset_minutes']) {
+        throw ArgumentError('Invalid capture time');
+      }
+      final condition = draft['condition_code'];
+      if (condition != null &&
+          !{'VERY_GOOD', 'GOOD', 'NORMAL', 'BAD'}.contains(condition)) {
+        throw ArgumentError('Invalid condition');
+      }
+      final tags = draft['tag_ids'];
+      if (tags is! List || tags.toSet().length != tags.length) {
+        throw ArgumentError('Invalid tags');
+      }
+      final oldTags = expected['tags'] as List? ?? [];
+      final snapshots = <Map<String, Object?>>[];
+      for (final tid in tags) {
+        UuidValue(tid as String);
+        final prior = oldTags
+            .whereType<Map<String, dynamic>>()
+            .where((t) => t['id'] == tid)
+            .firstOrNull;
+        final copy = await _readMetadata(LocalEntity.tag, tid);
+        final raw = copy?.localJson ?? copy?.serverJson;
+        final tag = raw == null ? null : jsonDecode(raw) as Map;
+        if (raw != null) _validatePayloadOwner(raw);
+        if (prior != null) {
+          snapshots.add(Map<String, Object?>.from(prior));
+        } else if (copy == null || copy.tombstone || tag?['archived_at'] != null) {
+          throw StateError('Tag unavailable');
+        } else {
+          if (tag?['name'] is! String) throw StateError('Tag unavailable');
+          snapshots.add({'id': tid, 'name_snapshot': tag!['name']});
+        }
+      }
+      draft['tags'] = snapshots;
+      draft['condition_name_snapshot'] = switch (condition) {
+        'VERY_GOOD' => '아주 좋음',
+        'GOOD' => '좋음',
+        'NORMAL' => '보통',
+        'BAD' => '안 좋음',
+        _ => null,
+      };
+      final metadata = Map<String, Object?>.from(fields)..remove('tier');
+      for (var i = 0; i < 2; i++) {
+        final base = i == 0 ? revision : 0;
+        await _saveEdit(
+          LocalEdit(
+            opId: operationIds[i],
+            entity: LocalEntity.recording,
+            entityId: id,
+            operation: LocalOperation.patch,
+            baseRevision: base,
+            draft: draft,
+            changes: {
+              ...(i == 0 ? metadata : <String, Object?>{'tier': draft['tier']}),
+              'base_revision': base,
+            },
+          ),
+          expectedEffectivePayload: i == 0 ? canonicalJson(expected) : null,
+          predecessorOpId: i == 0 ? null : operationIds[0],
+        );
+      }
+    }),
+  );
+
   Future<List<Map<String, dynamic>>> selectableRecordingTags() =>
       _run(() async {
         final rows = await _database

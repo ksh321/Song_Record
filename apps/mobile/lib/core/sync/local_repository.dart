@@ -59,6 +59,18 @@ final class LocalRepository
     List<String> operationIds,
   ) => _store.saveRecordingInput(id, input, operationIds);
 
+  Future<List<Map<String, dynamic>>> savedRecordings() =>
+      _store.savedRecordings();
+  List<String> recordingEditOperationIds() => List.generate(2, (_) => _newId());
+  Future<void> saveRecordingDetails(
+    String id,
+    Map<String, Object?> fields,
+    List<String> operationIds,
+    Map<String, Object?> expected,
+    int revision,
+  ) =>
+      _store.saveRecordingDetails(id, fields, operationIds, expected, revision);
+
   Stream<List<Map<String, dynamic>>> watchActiveSongs() =>
       _store.watchActiveSongs();
 

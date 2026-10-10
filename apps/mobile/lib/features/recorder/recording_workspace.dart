@@ -7,6 +7,7 @@ import 'package:song_record/core/theme/app_tokens.dart';
 
 import 'recorder_gateway.dart';
 import 'recorder_panel.dart';
+import 'recording_detail_screen.dart';
 import 'recording_input_screen.dart';
 import 'recording_song_picker.dart';
 
@@ -30,13 +31,16 @@ class RecordingWorkspace extends StatefulWidget {
 
 class _RecordingWorkspaceState extends State<RecordingWorkspace> {
   late final Stream<List<Map<String, dynamic>>> _pending = _watch();
-  Stream<List<Map<String, dynamic>>> _watch() async* {
+  late final Stream<List<Map<String, dynamic>>> _saved = _watch(saved: true);
+  Stream<List<Map<String, dynamic>>> _watch({bool saved = false}) async* {
     while (mounted) {
       final repo = widget.repository();
       if (repo == null || !widget.isCurrent(repo)) {
         throw StateError('Active account required');
       }
-      final records = await repo.pendingRecordings();
+      final records = saved
+          ? await repo.savedRecordings()
+          : await repo.pendingRecordings();
       if (!mounted || !widget.isCurrent(repo)) return;
       yield records;
       await Future<void>.delayed(const Duration(seconds: 1));
@@ -138,6 +142,40 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
                           repository: repo,
                           isCurrent: widget.isCurrent,
                           discoveryBuilder: widget.discoveryBuilder,
+                          wakeSync: widget.wakeSync,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+            ],
+          );
+        },
+      ),
+      StreamBuilder<List<Map<String, dynamic>>>(
+        stream: _saved,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) return const Text('저장 목록을 확인하지 못했어요.');
+          if (!snapshot.hasData) return const Text('저장 녹음 확인 중');
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('저장 녹음 ${snapshot.data!.length}개'),
+              for (final row in snapshot.data!)
+                ListTile(
+                  title: Text(row['title_snapshot'] as String),
+                  subtitle: Text('녹음 티어: ${row['tier'] ?? '미정'}'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    final repo = widget.repository();
+                    if (repo == null || !widget.isCurrent(repo)) return;
+                    Navigator.push<void>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RecordingDetailScreen(
+                          id: row['id'] as String,
+                          repository: repo,
+                          isCurrent: widget.isCurrent,
                           wakeSync: widget.wakeSync,
                         ),
                       ),
