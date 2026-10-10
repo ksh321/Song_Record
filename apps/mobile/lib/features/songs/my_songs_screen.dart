@@ -8,6 +8,7 @@ import '../../core/widgets/song_row.dart';
 import '../../core/widgets/sort_sheet.dart';
 import '../auth/auth_session.dart';
 import 'my_song.dart';
+import 'my_song_pages.dart';
 
 typedef MySongsWatch = Stream<List<MySong>> Function();
 
@@ -34,6 +35,9 @@ class _MySongsScreenState extends State<MySongsScreen> {
   bool loading = true;
   Object? failure;
   int generation = 0;
+  final pages = MySongPages();
+  final scroll = ScrollController();
+  int pageGeneration = -1;
   String tag() =>
       '${widget.auth?.phase}:${widget.auth?.session?.userId}:${widget.auth?.session?.deviceId}';
   @override
@@ -103,6 +107,7 @@ class _MySongsScreenState extends State<MySongsScreen> {
     ++generation;
     widget.auth?.removeListener(authChanged);
     unawaited(subscription?.cancel());
+    scroll.dispose();
     super.dispose();
   }
 
@@ -113,11 +118,18 @@ class _MySongsScreenState extends State<MySongsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final visible = orderMySongs(
-      songs.where((song) => song.matches(query)),
-      sort,
-    );
+    pages.select(search: query, selectedSort: sort, tierView: grouped);
+    pages.replace(songs, scope);
+    final visible = pages.visible;
+    final groups = groupMySongs(pages.ordered, sort);
+    if (pageGeneration != pages.generation) {
+      pageGeneration = pages.generation;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && scroll.hasClients) scroll.jumpTo(0);
+      });
+    }
     return ListView(
+      controller: scroll,
       primary: false,
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
@@ -141,21 +153,27 @@ class _MySongsScreenState extends State<MySongsScreen> {
           onSelectionChanged: (selected) =>
               setState(() => grouped = selected.single),
         ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            icon: const Icon(Icons.sort),
-            label: Text(sort.label),
-            onPressed: () async {
-              final result = await SortSheet.songs(
-                context: context,
-                selected: sort,
-              );
-              if (mounted && result != null) {
-                setState(() => sort = result.value);
-              }
-            },
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              loading || failure != null ? '—곡' : '${pages.total}곡',
+              key: const ValueKey('my-song-count'),
+            ),
+            TextButton.icon(
+              icon: const Icon(Icons.sort),
+              label: Text(sort.label),
+              onPressed: () async {
+                final result = await SortSheet.songs(
+                  context: context,
+                  selected: sort,
+                );
+                if (mounted && result != null) {
+                  setState(() => sort = result.value);
+                }
+              },
+            ),
+          ],
         ),
         const SizedBox(height: AppSpacing.lg),
         if (loading)
@@ -172,7 +190,7 @@ class _MySongsScreenState extends State<MySongsScreen> {
         else if (visible.isEmpty)
           const ContentState(phase: ContentPhase.empty, title: '등록된 내 곡이 없습니다')
         else if (grouped)
-          for (final group in groupMySongs(visible, sort).entries) ...[
+          for (final group in groups.entries) ...[
             Semantics(
               header: true,
               child: Text(
@@ -182,11 +200,20 @@ class _MySongsScreenState extends State<MySongsScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
             if (group.value.isEmpty) const Text('이 티어에 등록된 곡이 없습니다'),
-            for (final song in group.value) songRow(song),
+            if (group.value.isNotEmpty &&
+                !visible.any((s) => s.view.tier == group.value.first.view.tier))
+              const Text('다음 목록에서 볼 수 있어요'),
+            for (final song in group.value.where((s) => visible.contains(s)))
+              songRow(song),
             const SizedBox(height: AppSpacing.md),
           ]
         else
           for (final song in visible) songRow(song),
+        if (!loading && failure == null && pages.cursor != null)
+          OutlinedButton(
+            onPressed: () => setState(() => pages.next(pages.cursor!)),
+            child: const Text('더 보기'),
+          ),
         FilledButton(onPressed: widget.onFindSong, child: const Text('새 곡 찾기')),
       ],
     );
