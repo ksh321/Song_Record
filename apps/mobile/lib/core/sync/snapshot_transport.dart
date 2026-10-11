@@ -26,20 +26,23 @@ final class SnapshotHttpRequest {
       path = '/v1/sync/snapshots',
       operationId = UuidValue(operationId).value,
       query = const {},
-      includeTrash = null;
+      includeTrash = null,
+      sourceUserId = null;
 
   SnapshotHttpRequest.status(String token)
     : method = 'GET',
       path = '/v1/sync/snapshots/${UuidValue(token).value}',
       operationId = null,
       query = const {},
-      includeTrash = null;
+      includeTrash = null,
+      sourceUserId = null;
 
   SnapshotHttpRequest.page(String token, String entity, {String? cursor})
     : method = 'GET',
       path = '/v1/sync/snapshots/${UuidValue(token).value}',
       operationId = null,
       includeTrash = null,
+      sourceUserId = null,
       query = Map.unmodifiable({
         'entity': entity,
         'limit': '50',
@@ -58,7 +61,8 @@ final class SnapshotHttpRequest {
       path = '/v1/exports',
       operationId = UuidValue(operationId).value,
       query = const {},
-      includeTrash = trash;
+      includeTrash = trash,
+      sourceUserId = null;
   SnapshotHttpRequest.exportManifest(
     String id, {
     String? entity,
@@ -67,6 +71,7 @@ final class SnapshotHttpRequest {
        path = '/v1/exports/${UuidValue(id).value}/manifest',
        operationId = null,
        includeTrash = null,
+       sourceUserId = null,
        query = Map.unmodifiable({
          'entity': ?entity,
          if (entity != null) 'limit': '50',
@@ -80,6 +85,14 @@ final class SnapshotHttpRequest {
       throw ArgumentError('Invalid export page request');
     }
   }
+  SnapshotHttpRequest.importPreflight(String operationId, String sourceUserId)
+    : method = 'POST',
+      path = '/v1/imports/preflight',
+      operationId = UuidValue(operationId).value,
+      query = const {},
+      includeTrash = null,
+      sourceUserId = UuidValue(sourceUserId).value;
+  final String? sourceUserId;
   final bool? includeTrash;
   final String? operationId;
   final Map<String, String> query;
@@ -147,7 +160,10 @@ final class HttpSnapshotTransport implements SnapshotTransport {
             utf8.encode(
               jsonEncode(
                 request.includeTrash == null
-                    ? {'schema_version': 1}
+                    ? {
+                        'schema_version': 1,
+                        'source_user_id': ?request.sourceUserId,
+                      }
                     : {'include_trash': request.includeTrash},
               ),
             ),

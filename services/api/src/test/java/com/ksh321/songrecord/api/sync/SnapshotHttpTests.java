@@ -26,7 +26,7 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 class SnapshotHttpTests {
     AnnotationConfigWebApplicationContext context;MockMvc mvc;
     @Configuration @EnableWebMvc @EnableWebSecurity
-    @Import({SnapshotConfiguration.class,SnapshotController.class,com.ksh321.songrecord.api.exports.ExportController.class,SecurityConfig.class,GlobalExceptionHandler.class})
+    @Import({SnapshotConfiguration.class,SnapshotController.class,com.ksh321.songrecord.api.exports.ExportController.class,com.ksh321.songrecord.api.imports.ImportController.class,SecurityConfig.class,GlobalExceptionHandler.class})
     static class Config {
         @Bean AccountAccess access(){return mock(AccountAccess.class);}
         @Bean JdbcTemplate jdbc(){return mock(JdbcTemplate.class);}
@@ -81,6 +81,28 @@ class SnapshotHttpTests {
         for(String body:List.of("{}","{\"include_trash\":1}","{\"include_trash\":false,\"user_id\":\"other\"}"))
             assertThat(mvc.perform(post("/v1/exports").contentType("application/json").content(body)).andReturn().getResponse().getStatus()).isEqualTo(400);
         verifyNoInteractions(context.getBean(JdbcTemplate.class),context.getBean(IdempotentMutations.class));
+    }
+
+    @Test void importPreflightUsesLiveSessionAndRejectsWrongOwnerBeforeMutation() throws Exception {
+        var access=context.getBean(AccountAccess.class);var receipts=context.getBean(IdempotentMutations.class);
+        String owner=UUID.randomUUID().toString(),other=UUID.randomUUID().toString(),op=UUID.randomUUID().toString();
+        String body="{\"schema_version\":1,\"source_user_id\":\""+owner+"\"}";
+        when(access.authenticate(null,null)).thenThrow(new ApiException(HttpStatus.UNAUTHORIZED,"AUTH_INVALID_SESSION","Login",false,Map.of()));
+        assertThat(mvc.perform(post("/v1/imports/preflight").contentType("application/json").content(body)).andReturn().getResponse().getStatus()).isEqualTo(401);
+        assertThat(mvc.perform(get("/v1/imports/preflight")).andReturn().getResponse().getStatus()).isEqualTo(403);
+        var account=mock(AccountAccess.Account.class);
+        when(access.authenticate("Bearer fixture","device")).thenReturn(account);
+        when(access.revalidate(account)).thenReturn(new com.ksh321.songrecord.api.auth.SessionService.Principal(UUID.fromString(owner),UUID.randomUUID(),UUID.randomUUID()));
+        for(String invalid:List.of(body.replace(owner,other),body.replace("1,","2,"),body.replace("}",",\"user_id\":\""+owner+"\"}"))) {
+            int code=mvc.perform(post("/v1/imports/preflight").header("Authorization","Bearer fixture").header("X-Device-Id","device").contentType("application/json").content(invalid)).andReturn().getResponse().getStatus();
+            assertThat(code).isIn(400,403);
+        }
+        verifyNoInteractions(receipts,context.getBean(JobQueue.class));
+        when(receipts.execute(eq(account),eq(op),eq("POST"),eq("/v1/imports/preflight"),eq(body),any())).thenReturn(new IdempotentMutations.Reply(202,"{\"status\":\"BUILDING\"}"));
+        var result=mvc.perform(post("/v1/imports/preflight").header("Authorization","Bearer fixture").header("X-Device-Id","device").header("Idempotency-Key",op).contentType("application/json").content(body)).andReturn();
+        assertThat(result.getResponse().getStatus()).isEqualTo(202);
+        assertThat(result.getResponse().getHeader("Cache-Control")).isEqualTo("no-store");
+        assertThat(result.getRequest().getSession(false)).isNull();
     }
 
 }

@@ -52,7 +52,7 @@ public final class SnapshotBuildStore {
         return begin(account,opId,schemaVersion,transaction,"SYNC");
     }
     /** Receipt, header and durable job must commit in the caller's single request transaction. */
-    Attempt beginJoined(AccountAccess.Account account,UUID opId,int schemaVersion) {
+    public Attempt beginJoined(AccountAccess.Account account,UUID opId,int schemaVersion) {
         if(!org.springframework.transaction.support.TransactionSynchronizationManager.hasResource(Objects.requireNonNull(jdbc.getDataSource())))
             throw new IllegalStateException("Snapshot submission requires its database transaction");
         return begin(account,opId,schemaVersion,joined,"SYNC");

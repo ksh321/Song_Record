@@ -912,6 +912,37 @@ paths:
           $ref: '#/components/responses/Error403'
         '409':
           $ref: '#/components/responses/Error409'
+  /imports/preflight:
+    post:
+      operationId: preflightImport
+      x-implementation-status: implemented
+      summary: 로그인 계정과 백업 계정 대조 후 최신 서버·삭제 표식 스냅샷 준비
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImportPreflight'
+      responses:
+        '202':
+          description: 서버 대조 기준 준비 중. 기존 snapshot 상태·페이지 경로로 전체 검증한다.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotAccepted'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '403':
+          description: IMPORT_ACCOUNT_MISMATCH. 백업 계정은 인증으로 사용하지 않는다.
+        '409':
+          $ref: '#/components/responses/Error409'
   /exports:
     post:
       operationId: createExport
@@ -2505,6 +2536,16 @@ components:
             포함된 user_id는 인증된 계정과 같아야 한다. 동일 버전의 상충 내용은 거절한다.
             목록·자산 형태는 수신 계약이며 후속 업무 writer/API 구현 완료를 의미하지 않는다.
           x-wire-fixture: fixtures/contracts/change-feed-wire.json
+    ImportPreflight:
+      type: object
+      additionalProperties: false
+      required: [schema_version, source_user_id]
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        source_user_id:
+          $ref: '#/components/schemas/Uuid'
     ExportCreate:
       type: object
       additionalProperties: false
