@@ -96,7 +96,7 @@ class MySqlIdempotencyTests {
             db.update("UPDATE recording SET lifecycle_state='TRASHED',deleted_at=? WHERE id=?",oldDeleted,bytes(oldTrash));
             db.update("INSERT INTO storage_usage(user_id,used_bytes) VALUES(?,6291456)",bytes(owner));db.update("UPDATE global_storage_usage SET used_bytes=6291456 WHERE id=1");
             var reserved=new com.ksh321.songrecord.api.uploads.UploadReservations(db,a,manager,clock).reserve(authority,new com.ksh321.songrecord.api.uploads.UploadReservations.Request(nextRecording,6291456,"a".repeat(64),1));
-            db.update("INSERT INTO pin_slot(user_id,slot_no,current_recording_id,operation_id,requested_at) VALUES(?,2,?,?,CURRENT_TIMESTAMP)",bytes(owner),bytes(nextRecording),bytes(UUID.randomUUID()));
+            db.update("INSERT INTO pin_slot(user_id,slot_no,pending_recording_id,operation_id,requested_at) VALUES(?,2,?,?,CURRENT_TIMESTAMP)",bytes(owner),bytes(nextRecording),bytes(UUID.randomUUID()));
             String allVersion=(String)preview.get("Bearer synthetic",device.toString(),nextSong.toString()).get("preview_version");
             String allBody=new tools.jackson.databind.json.JsonMapper().writeValueAsString(java.util.Map.of("mode","SONG_AND_RECORDINGS","preview_version",allVersion));String allOp=UUID.randomUUID().toString();
             var allReply=trash.trash("Bearer synthetic",device.toString(),allOp,nextSong.toString(),allBody);assertThat(allReply.status()).isEqualTo(200);
