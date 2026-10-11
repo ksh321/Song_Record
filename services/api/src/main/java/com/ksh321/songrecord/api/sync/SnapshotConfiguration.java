@@ -36,10 +36,10 @@ public class SnapshotConfiguration {
     }
     @Bean @Order(7) SecurityFilterChain snapshotSecurity(HttpSecurity http) throws Exception {
         // AccountAccess authenticates and revalidates both permitted request handlers.
-        http.securityMatcher("/v1/sync/snapshots","/v1/sync/snapshots/**").csrf(c->c.disable())
+        http.securityMatcher("/v1/sync/snapshots","/v1/sync/snapshots/**","/v1/exports","/v1/exports/**").csrf(c->c.disable())
                 .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).requestCache(c->c.disable())
-                .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.POST,"/v1/sync/snapshots").permitAll()
-                        .requestMatchers(HttpMethod.GET,"/v1/sync/snapshots/*").permitAll().anyRequest().denyAll());
+                .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.POST,"/v1/sync/snapshots","/v1/exports").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/v1/sync/snapshots/*","/v1/exports/*/manifest").permitAll().anyRequest().denyAll());
         return http.build();
     }
 }

@@ -22,14 +22,18 @@ public final class SnapshotQueries {
     private final Clock clock;
     private final JsonMapper json=new JsonMapper();
     public SnapshotQueries(JdbcTemplate jdbc,AccountAccess access,SnapshotPages pages,Clock clock){this.jdbc=jdbc;this.access=access;this.pages=pages;this.clock=clock;}
-    public Reply get(String authorization,String device,String token,MultiValueMap<String,String> query) {
+    public Reply get(String authorization,String device,String token,MultiValueMap<String,String> query) {return get(authorization,device,token,query,"SYNC");}
+    public Reply getExport(String authorization,String device,String token,MultiValueMap<String,String> query) {
+        return get(authorization,device,token,query,"EXPORT");
+    }
+    private Reply get(String authorization,String device,String token,MultiValueMap<String,String> query,String purpose) {
         var account=access.authenticate(authorization,device);UUID id;
         if(token==null)throw invalid();
         try{id=UUID.fromString(token);if(!id.toString().equals(token))throw invalid();}catch(IllegalArgumentException e){throw invalid();}
         if(query.keySet().stream().anyMatch(k->!Set.of("entity","cursor","limit").contains(k))
                 ||query.values().stream().anyMatch(v->v==null||v.size()!=1||v.getFirst()==null))throw invalid();
         if(!query.containsKey("entity")){
-            if(!query.isEmpty())throw invalid();return status(account,id);
+            if(!query.isEmpty())throw invalid();return status(account,id,purpose);
         }
         SnapshotPages.Entity entity;Integer limit=null;
         try{
@@ -39,8 +43,8 @@ public final class SnapshotQueries {
             }
         }catch(IllegalArgumentException e){throw invalid();}
         // Distinguish a cleaned, previously issued token from an unknown/foreign one.
-        header(access.revalidate(account).userId(),id);
-        var page=pages.read(account,id,entity,query.getFirst("cursor"),limit);
+        header(access.revalidate(account).userId(),id,purpose);
+        var page=purpose.equals("EXPORT")?pages.readExport(account,id,entity,query.getFirst("cursor"),limit):pages.read(account,id,entity,query.getFirst("cursor"),limit);
         var body=new LinkedHashMap<String,Object>();
         body.put("snapshot_token",id.toString());body.put("snapshot_cursor",page.snapshotCursor());
         body.put("expires_at",page.expiresAt().toString());body.put("entity",entity.name());
@@ -49,8 +53,8 @@ public final class SnapshotQueries {
         body.put("next_cursor",page.nextCursor());
         return new Reply(200,Collections.unmodifiableMap(body));
     }
-    private Reply status(AccountAccess.Account account,UUID token) {
-        UUID owner=access.revalidate(account).userId();var header=header(owner,token);
+    private Reply status(AccountAccess.Account account,UUID token,String purpose) {
+        UUID owner=access.revalidate(account).userId();var header=header(owner,token,purpose);
         var body=new LinkedHashMap<String,Object>();body.put("snapshot_token",token.toString());body.put("status",header.status);body.put("schema_version",header.schema);
         if(header.status.equals("READY")) {
             var counts=new TreeMap<String,Long>();for(var entity:SnapshotPages.Entity.values())counts.put(entity.name(),0L);
@@ -60,15 +64,16 @@ public final class SnapshotQueries {
             body.put("expires_at",header.expires.toString());body.put("manifest_hash",header.hash);body.put("entity_counts",Collections.unmodifiableMap(counts));
         }
         if(!access.revalidate(account).userId().equals(owner))throw failure(HttpStatus.UNAUTHORIZED,"AUTH_INVALID_SESSION");
-        if(!header.equals(header(owner,token)))throw failure(HttpStatus.CONFLICT,"SNAPSHOT_STATE_CHANGED");
+        if(!header.equals(header(owner,token,purpose)))throw failure(HttpStatus.CONFLICT,"SNAPSHOT_STATE_CHANGED");
         return new Reply(header.status.equals("READY")?200:202,Collections.unmodifiableMap(body));
     }
-    private Header header(UUID owner,UUID token) {
-        var rows=jdbc.query("SELECT status,schema_version,snapshot_cursor,captured_at,ready_at,expires_at,manifest_hash FROM snapshot_header WHERE user_id=? AND id=? AND purpose='SYNC'",
-                (rs,n)->new Header(rs.getString(1),rs.getInt(2),rs.getObject(3,Long.class),instant(rs.getTimestamp(4)),instant(rs.getTimestamp(5)),instant(rs.getTimestamp(6)),rs.getString(7)),bytes(owner),bytes(token));
+    private Header header(UUID owner,UUID token,String purpose) {
+        var rows=jdbc.query("SELECT status,schema_version,snapshot_cursor,captured_at,ready_at,expires_at,manifest_hash FROM snapshot_header WHERE user_id=? AND id=? AND purpose=?",
+                (rs,n)->new Header(rs.getString(1),rs.getInt(2),rs.getObject(3,Long.class),instant(rs.getTimestamp(4)),instant(rs.getTimestamp(5)),instant(rs.getTimestamp(6)),rs.getString(7)),bytes(owner),bytes(token),purpose);
         if(rows.isEmpty()) {
-            var issued=jdbc.query("SELECT 1 FROM mutation_receipt WHERE user_id=? AND response_status=202 AND JSON_UNQUOTE(JSON_EXTRACT(response_body,'$.snapshot_token'))=? LIMIT 1",
-                    (rs,n)->1,bytes(owner),token.toString());
+            if(!jdbc.queryForList("SELECT id FROM snapshot_header WHERE user_id=? AND id=?",bytes(owner),bytes(token)).isEmpty())throw failure(HttpStatus.NOT_FOUND,"SNAPSHOT_NOT_FOUND");
+            var issued=jdbc.query("SELECT 1 FROM mutation_receipt WHERE user_id=? AND response_status=202 AND JSON_UNQUOTE(JSON_EXTRACT(response_body,?))=? LIMIT 1",
+                    (rs,n)->1,bytes(owner),purpose.equals("EXPORT")?"$.export_id":"$.snapshot_token",token.toString());
             throw failure(issued.isEmpty()?HttpStatus.NOT_FOUND:HttpStatus.GONE,issued.isEmpty()?"SNAPSHOT_NOT_FOUND":"SNAPSHOT_EXPIRED");
         }
         var header=rows.getFirst();

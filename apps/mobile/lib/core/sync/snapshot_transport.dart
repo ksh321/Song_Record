@@ -25,18 +25,21 @@ final class SnapshotHttpRequest {
     : method = 'POST',
       path = '/v1/sync/snapshots',
       operationId = UuidValue(operationId).value,
-      query = const {};
+      query = const {},
+      includeTrash = null;
 
   SnapshotHttpRequest.status(String token)
     : method = 'GET',
       path = '/v1/sync/snapshots/${UuidValue(token).value}',
       operationId = null,
-      query = const {};
+      query = const {},
+      includeTrash = null;
 
   SnapshotHttpRequest.page(String token, String entity, {String? cursor})
     : method = 'GET',
       path = '/v1/sync/snapshots/${UuidValue(token).value}',
       operationId = null,
+      includeTrash = null,
       query = Map.unmodifiable({
         'entity': entity,
         'limit': '50',
@@ -50,6 +53,34 @@ final class SnapshotHttpRequest {
   }
 
   final String method, path;
+  SnapshotHttpRequest.exportCreate(String operationId, bool trash)
+    : method = 'POST',
+      path = '/v1/exports',
+      operationId = UuidValue(operationId).value,
+      query = const {},
+      includeTrash = trash;
+  SnapshotHttpRequest.exportManifest(
+    String id, {
+    String? entity,
+    String? cursor,
+  }) : method = 'GET',
+       path = '/v1/exports/${UuidValue(id).value}/manifest',
+       operationId = null,
+       includeTrash = null,
+       query = Map.unmodifiable({
+         'entity': ?entity,
+         if (entity != null) 'limit': '50',
+         'cursor': ?cursor,
+       }) {
+    if ((entity != null && !snapshotEntities.contains(entity)) ||
+        (cursor != null &&
+            (entity == null ||
+                !cursor.startsWith('sp1.') ||
+                cursor.length > 4096))) {
+      throw ArgumentError('Invalid export page request');
+    }
+  }
+  final bool? includeTrash;
   final String? operationId;
   final Map<String, String> query;
   @override
@@ -112,7 +143,15 @@ final class HttpSnapshotTransport implements SnapshotTransport {
         if (request.operationId != null) {
           outgoing.headers.contentType = ContentType.json;
           outgoing.headers.set('Idempotency-Key', request.operationId!);
-          outgoing.add(utf8.encode('{"schema_version":1}'));
+          outgoing.add(
+            utf8.encode(
+              jsonEncode(
+                request.includeTrash == null
+                    ? {'schema_version': 1}
+                    : {'include_trash': request.includeTrash},
+              ),
+            ),
+          );
         }
         final response = await outgoing.close();
         status = response.statusCode;

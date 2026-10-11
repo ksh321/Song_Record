@@ -36,7 +36,7 @@ class MySqlSnapshotBuildStoreTests {
         jdbc.execute("CREATE TABLE app_user(id BINARY(16) PRIMARY KEY) ENGINE=InnoDB");
         jdbc.update("INSERT INTO app_user VALUES(?)",bytes(owner));
         String migration=Files.readString(Path.of("src/main/resources/db/migration/V7__charts_and_materialized_snapshots.sql"));
-        for(String table:List.of("snapshot_capacity","snapshot_header","snapshot_entry")) {
+        for(String table:List.of("snapshot_capacity","snapshot_header","snapshot_entry","export_session")) {
             int start=migration.indexOf("CREATE TABLE "+table+" (");
             jdbc.execute(migration.substring(start,migration.indexOf(';',start)));
         }
@@ -167,4 +167,26 @@ class MySqlSnapshotBuildStoreTests {
         code("SNAPSHOT_ATTEMPT_STALE",()->later.restartExpired(account,next));
     }
     static byte[] bytes(UUID id){return ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();}
+    @Test void exportUsesSharedLimitsImmutableSnapshotAndPurposeIsolatedPages() {
+        var tx=new org.springframework.transaction.support.TransactionTemplate(new DataSourceTransactionManager(source));
+        UUID op=UUID.randomUUID();
+        var attempt=tx.execute(status->store.beginExportJoined(account,op,true));
+        var repeated=tx.execute(status->store.beginExportJoined(account,op,true));
+        assertThat(repeated).isEqualTo(attempt);
+        code("IDEMPOTENCY_CONFLICT",()->tx.execute(status->store.beginExportJoined(account,op,false)));
+        code("IDEMPOTENCY_CONFLICT",()->store.begin(account,op,1));
+        store.capture(account,attempt,7,now);store.append(account,attempt,List.of(entry(1),entry(2)));
+        var published=store.publish(account,attempt,counts(2));
+        var pages=new SnapshotPages(jdbc,access,new SnapshotPageCursor(new byte[32],Clock.fixed(now,ZoneOffset.UTC)),Clock.fixed(now,ZoneOffset.UTC));
+        code("SNAPSHOT_NOT_FOUND",()->pages.read(account,attempt.id(),SnapshotPages.Entity.SONG,null,1));
+        var first=pages.readExport(account,attempt.id(),SnapshotPages.Entity.SONG,null,1);
+        assertThat(first.snapshotCursor()).isEqualTo(7);assertThat(first.entries()).hasSize(1);
+        assertThat(pages.readExport(account,attempt.id(),SnapshotPages.Entity.SONG,first.nextCursor(),1).entries()).hasSize(1);
+        var expired=new SnapshotPages(jdbc,access,new SnapshotPageCursor(new byte[32],Clock.fixed(published.expiresAt(),ZoneOffset.UTC)),Clock.fixed(published.expiresAt(),ZoneOffset.UTC));
+        code("SNAPSHOT_EXPIRED",()->expired.readExport(account,attempt.id(),SnapshotPages.Entity.SONG,null,1));
+        var sync=store.begin(account,UUID.randomUUID(),1);
+        code("SNAPSHOT_CAPACITY_EXCEEDED",()->tx.execute(status->store.beginExportJoined(account,UUID.randomUUID(),false)));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM export_session",Integer.class)).isEqualTo(1);
+    }
+
 }

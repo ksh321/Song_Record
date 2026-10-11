@@ -180,6 +180,31 @@ final class AccountStoreManager {
 /// Scoped lease, not a global database singleton. No raw database or File escapes
 /// this API. Login/logout integration belongs to P06; recorder bridging to P18.
 final class AccountStore {
+  /// One account-scoped read view. No queue acknowledgement or baseline replace.
+  Future<Map<String, Object?>> captureExportLocal() => _run(
+    () => _database.transaction(() async {
+      final cutoff = DateTime.now().toUtc().toIso8601String();
+      Future<List<Map<String, Object?>>> rows(String query) async =>
+          (await _database
+                  .customSelect(query, variables: [Variable(userId)])
+                  .get())
+              .map((row) => Map<String, Object?>.from(row.data))
+              .toList();
+      return {
+        'source_user_id': userId,
+        'local_cutoff_at': cutoff,
+        'baseline': await rows(
+          'SELECT last_change_seq,baseline_complete,updated_at FROM sync_cursors WHERE user_id=?',
+        ),
+        'copies': await rows(
+          'SELECT entity_type,entity_id,server_revision,server_payload,local_payload,tombstone FROM metadata_copies WHERE user_id=? ORDER BY entity_type,entity_id',
+        ),
+        'changes': await rows(
+          "SELECT op_id,entity_type,entity_id,operation,base_revision,base_payload,payload,queue_state,server_response,created_at FROM local_mutations WHERE user_id=? AND queue_state<>'ACKED' ORDER BY created_at,op_id",
+        ),
+      };
+    }),
+  );
   AccountStore._(this._manager, this._database, this._paths, this._generation);
   final AccountStoreManager _manager;
   final AccountDatabase _database;

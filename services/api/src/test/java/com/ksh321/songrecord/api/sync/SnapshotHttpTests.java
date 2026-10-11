@@ -26,7 +26,7 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
 class SnapshotHttpTests {
     AnnotationConfigWebApplicationContext context;MockMvc mvc;
     @Configuration @EnableWebMvc @EnableWebSecurity
-    @Import({SnapshotConfiguration.class,SnapshotController.class,SecurityConfig.class,GlobalExceptionHandler.class})
+    @Import({SnapshotConfiguration.class,SnapshotController.class,com.ksh321.songrecord.api.exports.ExportController.class,SecurityConfig.class,GlobalExceptionHandler.class})
     static class Config {
         @Bean AccountAccess access(){return mock(AccountAccess.class);}
         @Bean JdbcTemplate jdbc(){return mock(JdbcTemplate.class);}
@@ -67,9 +67,20 @@ class SnapshotHttpTests {
         assertThat(context.getBean(SnapshotWorker.class)).isNotNull();
     }
     @Test void malformedAndRepeatedParametersAreRejectedBeforeReadingData() throws Exception {
-        when(context.getBean(AccountAccess.class).authenticate(null,null)).thenReturn(mock(AccountAccess.Account.class));
+        doReturn(mock(AccountAccess.Account.class)).when(context.getBean(AccountAccess.class)).authenticate(null,null);
         assertThat(mvc.perform(get("/v1/sync/snapshots/invalid")).andReturn().getResponse().getStatus()).isEqualTo(400);
         assertThat(mvc.perform(get("/v1/sync/snapshots/"+UUID.randomUUID()).param("entity","SONG","TAG")).andReturn().getResponse().getStatus()).isEqualTo(400);
         verifyNoInteractions(context.getBean(JdbcTemplate.class));
     }
+    @Test void exportsRequireLiveAuthAndExactBooleanChoiceBeforeReceipts() throws Exception {
+        when(context.getBean(AccountAccess.class).authenticate(null,null)).thenThrow(new ApiException(HttpStatus.UNAUTHORIZED,"AUTH_INVALID_SESSION","Authentication required",false,Map.of()));
+        assertThat(mvc.perform(post("/v1/exports").contentType("application/json").content("{\"include_trash\":false}")).andReturn().getResponse().getStatus()).isEqualTo(401);
+        assertThat(mvc.perform(get("/v1/exports/"+UUID.randomUUID()+"/manifest")).andReturn().getResponse().getStatus()).isEqualTo(401);
+        assertThat(mvc.perform(delete("/v1/exports/"+UUID.randomUUID()+"/manifest")).andReturn().getResponse().getStatus()).isEqualTo(403);
+        doReturn(mock(AccountAccess.Account.class)).when(context.getBean(AccountAccess.class)).authenticate(null,null);
+        for(String body:List.of("{}","{\"include_trash\":1}","{\"include_trash\":false,\"user_id\":\"other\"}"))
+            assertThat(mvc.perform(post("/v1/exports").contentType("application/json").content(body)).andReturn().getResponse().getStatus()).isEqualTo(400);
+        verifyNoInteractions(context.getBean(JdbcTemplate.class),context.getBean(IdempotentMutations.class));
+    }
+
 }

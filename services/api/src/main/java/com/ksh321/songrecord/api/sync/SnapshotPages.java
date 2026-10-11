@@ -34,12 +34,16 @@ public final class SnapshotPages {
         this.jdbc=Objects.requireNonNull(jdbc);this.access=Objects.requireNonNull(access);
         this.cursors=Objects.requireNonNull(cursors);this.clock=Objects.requireNonNull(clock);
     }
-    public Page read(AccountAccess.Account account, UUID token, Entity entity, String cursor, Integer requestedLimit) {
+    public Page read(AccountAccess.Account account, UUID token, Entity entity, String cursor, Integer requestedLimit) {return read(account,token,entity,cursor,requestedLimit,"SYNC");}
+    public Page readExport(AccountAccess.Account account,UUID token,Entity entity,String cursor,Integer requestedLimit) {
+        return read(account,token,entity,cursor,requestedLimit,"EXPORT");
+    }
+    private Page read(AccountAccess.Account account,UUID token,Entity entity,String cursor,Integer requestedLimit,String purpose) {
         Objects.requireNonNull(token);Objects.requireNonNull(entity);
         int limit = requestedLimit == null ? 50 : requestedLimit;
         if (limit < 1 || limit > 100) throw failure(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR");
         var owner = access.revalidate(account).userId();
-        var header = ready(owner, token);
+        var header = ready(owner, token,purpose);
         long after = cursor == null ? 0 : cursors.read(cursor, owner, token, entity.name(), header.expiry);
         var rows = jdbc.query("SELECT ordinal,resource_id,payload FROM snapshot_entry WHERE snapshot_id=? AND entity=? AND ordinal>? ORDER BY ordinal LIMIT ?",
                 (rs,n) -> new Entry(rs.getLong(1), uuid(rs.getBytes(2)), rs.getString(3)),
@@ -48,16 +52,16 @@ public final class SnapshotPages {
         var entries = List.copyOf(rows.subList(0, Math.min(limit, rows.size())));
         // Session revocation and expiry while reading must not release a page.
         if (!access.revalidate(account).userId().equals(owner)) throw failure(HttpStatus.UNAUTHORIZED,"AUTH_INVALID_SESSION");
-        var current = ready(owner, token);
+        var current = ready(owner, token,purpose);
         if (!current.equals(header)) throw failure(HttpStatus.CONFLICT,"SNAPSHOT_NOT_READY");
         String next = more ? cursors.issue(owner, token, entity.name(), entries.getLast().ordinal(), header.expiry) : null;
         return new Page(token, header.cursor, header.expiry, entity, entries, next);
     }
-    private Header ready(UUID owner, UUID token) {
-        var rows = jdbc.query("SELECT status,snapshot_cursor,expires_at FROM snapshot_header WHERE user_id=? AND id=? AND purpose='SYNC'",
+    private Header ready(UUID owner, UUID token,String purpose) {
+        var rows = jdbc.query("SELECT status,snapshot_cursor,expires_at FROM snapshot_header WHERE user_id=? AND id=? AND purpose=?",
                 (rs,n) -> new Header(rs.getString(1), rs.getObject(2,Long.class),
                         rs.getTimestamp(3) == null ? null : rs.getTimestamp(3).toLocalDateTime().toInstant(ZoneOffset.UTC)),
-                bytes(owner), bytes(token));
+                bytes(owner), bytes(token),purpose);
         if (rows.isEmpty()) throw failure(HttpStatus.NOT_FOUND,"SNAPSHOT_NOT_FOUND");
         var header = rows.getFirst();
         if (header.status.equals("EXPIRED") || header.expiry != null && !clock.instant().isBefore(header.expiry))

@@ -49,22 +49,34 @@ public final class SnapshotBuildStore {
         joined.setPropagationBehavior(TransactionDefinition.PROPAGATION_MANDATORY);
     }
     public Attempt begin(AccountAccess.Account account,UUID opId,int schemaVersion) {
-        return begin(account,opId,schemaVersion,transaction);
+        return begin(account,opId,schemaVersion,transaction,"SYNC");
     }
     /** Receipt, header and durable job must commit in the caller's single request transaction. */
     Attempt beginJoined(AccountAccess.Account account,UUID opId,int schemaVersion) {
         if(!org.springframework.transaction.support.TransactionSynchronizationManager.hasResource(Objects.requireNonNull(jdbc.getDataSource())))
             throw new IllegalStateException("Snapshot submission requires its database transaction");
-        return begin(account,opId,schemaVersion,joined);
+        return begin(account,opId,schemaVersion,joined,"SYNC");
     }
-    private Attempt begin(AccountAccess.Account account,UUID opId,int schemaVersion,TransactionTemplate boundary) {
+    public Attempt beginExportJoined(AccountAccess.Account account,UUID opId,boolean includeTrash) {
+        if(!org.springframework.transaction.support.TransactionSynchronizationManager.hasResource(Objects.requireNonNull(jdbc.getDataSource())))
+            throw new IllegalStateException("Export submission requires its database transaction");
+        var attempt=begin(account,opId,1,joined,"EXPORT");
+        var existing=jdbc.queryForList("SELECT include_trash FROM export_session WHERE export_id=? AND user_id=?",bytes(attempt.id()),bytes(access.revalidate(account).userId()));
+        if(existing.isEmpty())jdbc.update("INSERT INTO export_session(export_id,user_id,snapshot_id,include_trash) VALUES(?,?,?,?)",bytes(attempt.id()),bytes(access.revalidate(account).userId()),bytes(attempt.id()),includeTrash);
+        else {
+            Object choice=existing.getFirst().get("include_trash");boolean old=choice instanceof Boolean b?b:((Number)choice).intValue()!=0;
+            if(old!=includeTrash)throw error(HttpStatus.CONFLICT,"IDEMPOTENCY_CONFLICT");
+        }
+        return attempt;
+    }
+    private Attempt begin(AccountAccess.Account account,UUID opId,int schemaVersion,TransactionTemplate boundary,String purpose) {
         Objects.requireNonNull(opId);
         if(schemaVersion!=1)throw error(HttpStatus.BAD_REQUEST,"SNAPSHOT_SCHEMA_UNSUPPORTED");
         return boundary.execute(tx->{
             UUID owner=access.revalidate(account).userId();capacity();
             var existing=jdbc.query("SELECT id,attempt_id,build_started_at,status,purpose,schema_version FROM snapshot_header WHERE user_id=? AND op_id=? FOR UPDATE",
                     (rs,n)->{
-                        if(!rs.getString(5).equals("SYNC")||rs.getInt(6)!=schemaVersion)
+                        if(!rs.getString(5).equals(purpose)||rs.getInt(6)!=schemaVersion)
                             throw error(HttpStatus.CONFLICT,"IDEMPOTENCY_CONFLICT");
                         return new Attempt(uuid(rs.getBytes(1)),uuid(rs.getBytes(2)),rs.getTimestamp(3).toLocalDateTime().toInstant(ZoneOffset.UTC),rs.getString(4));
                     },bytes(owner),bytes(opId));
@@ -74,8 +86,8 @@ public final class SnapshotBuildStore {
             if(slots.size()>=2)throw capacityExceeded();
             int slot=slots.contains(0)?1:0;
             UUID id=UUID.randomUUID(),attempt=UUID.randomUUID();Instant now=now();
-            jdbc.update("INSERT INTO snapshot_header(id,user_id,op_id,purpose,schema_version,active_slot,reserved_bytes,attempt_id,build_started_at,lease_until,created_at) VALUES(?,?,?,'SYNC',?,?,0,?,?,?,?)",
-                    bytes(id),bytes(owner),bytes(opId),schemaVersion,slot,bytes(attempt),utc(now),utc(now.plusSeconds(600)),utc(now));
+            jdbc.update("INSERT INTO snapshot_header(id,user_id,op_id,purpose,schema_version,active_slot,reserved_bytes,attempt_id,build_started_at,lease_until,created_at) VALUES(?,?,?,?,?,?,0,?,?,?,?)",
+                    bytes(id),bytes(owner),bytes(opId),purpose,schemaVersion,slot,bytes(attempt),utc(now),utc(now.plusSeconds(600)),utc(now));
             return new Attempt(id,attempt,now,"BUILDING");
         });
     }
@@ -111,7 +123,7 @@ public final class SnapshotBuildStore {
         Objects.requireNonNull(old);
         return transaction.execute(tx->{
             UUID owner=authority.requireActive();capacity();
-            var rows=jdbc.query("SELECT attempt_id,status,lease_until,attempt_count FROM snapshot_header WHERE user_id=? AND id=? AND purpose='SYNC' FOR UPDATE",
+            var rows=jdbc.query("SELECT attempt_id,status,lease_until,attempt_count FROM snapshot_header WHERE user_id=? AND id=? AND purpose IN ('SYNC','EXPORT') FOR UPDATE",
                     (rs,n)->{
                         var lease=rs.getTimestamp(3);
                         if(!uuid(rs.getBytes(1)).equals(old.attemptId)||!rs.getString(2).equals("BUILDING")||lease==null
@@ -132,7 +144,7 @@ public final class SnapshotBuildStore {
     }
     BuildState current(SnapshotAuthority authority,UUID snapshot) {
         authority.requireSnapshot(snapshot);UUID owner=authority.requireActive();
-        var rows=jdbc.query("SELECT attempt_id,build_started_at,status,snapshot_cursor,lease_until FROM snapshot_header WHERE user_id=? AND id=? AND purpose='SYNC'",
+        var rows=jdbc.query("SELECT attempt_id,build_started_at,status,snapshot_cursor,lease_until FROM snapshot_header WHERE user_id=? AND id=? AND purpose IN ('SYNC','EXPORT')",
                 (rs,n)->new BuildState(new Attempt(snapshot,uuid(rs.getBytes(1)),rs.getTimestamp(2).toLocalDateTime().toInstant(ZoneOffset.UTC),rs.getString(3)),
                         rs.getObject(4)!=null,rs.getTimestamp(5)==null?null:rs.getTimestamp(5).toLocalDateTime().toInstant(ZoneOffset.UTC)),bytes(owner),bytes(snapshot));
         if(rows.isEmpty())throw error(HttpStatus.NOT_FOUND,"SNAPSHOT_NOT_FOUND");
@@ -211,7 +223,7 @@ public final class SnapshotBuildStore {
     }
     private long building(UUID owner,Attempt attempt) {
         Objects.requireNonNull(attempt);
-        var rows=jdbc.query("SELECT attempt_id,status,reserved_bytes,build_started_at,lease_until FROM snapshot_header WHERE user_id=? AND id=? AND purpose='SYNC' FOR UPDATE",
+        var rows=jdbc.query("SELECT attempt_id,status,reserved_bytes,build_started_at,lease_until FROM snapshot_header WHERE user_id=? AND id=? AND purpose IN ('SYNC','EXPORT') FOR UPDATE",
                 (rs,n)->{
                     Instant start=rs.getTimestamp(4).toLocalDateTime().toInstant(ZoneOffset.UTC);
                     var lease=rs.getTimestamp(5);

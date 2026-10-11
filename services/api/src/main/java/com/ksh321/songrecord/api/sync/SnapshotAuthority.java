@@ -24,7 +24,7 @@ final class SnapshotAuthority {
         Objects.requireNonNull(jdbc);Objects.requireNonNull(lease);Objects.requireNonNull(clock);
         if(lease.type()!=JobQueue.Type.SNAPSHOT_BUILD||lease.userId()==null)throw denied();
         Supplier<UUID> validate=()->{
-            var rows=jdbc.query("SELECT j.user_id FROM job j JOIN app_user u ON u.id=j.user_id JOIN snapshot_header h ON h.id=j.aggregate_id AND h.user_id=j.user_id WHERE j.id=? AND j.lease_token=? AND j.state='RUNNING' AND j.type='SNAPSHOT_BUILD' AND j.lease_until>? AND u.status='ACTIVE' AND h.purpose='SYNC' AND j.user_id=? AND j.aggregate_id=?",
+            var rows=jdbc.query("SELECT j.user_id FROM job j JOIN app_user u ON u.id=j.user_id JOIN snapshot_header h ON h.id=j.aggregate_id AND h.user_id=j.user_id WHERE j.id=? AND j.lease_token=? AND j.state='RUNNING' AND j.type='SNAPSHOT_BUILD' AND j.lease_until>? AND u.status='ACTIVE' AND h.purpose IN ('SYNC','EXPORT') AND j.user_id=? AND j.aggregate_id=?",
                     (rs,n)->uuid(rs.getBytes(1)),bytes(lease.id()),bytes(lease.token()),utc(clock.instant()),bytes(lease.userId()),bytes(lease.aggregateId()));
             if(rows.size()!=1)throw denied();return rows.getFirst();
         };
