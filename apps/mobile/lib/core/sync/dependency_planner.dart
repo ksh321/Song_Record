@@ -221,6 +221,15 @@ final class DependencyPlanner {
         add('playlist_id', LocalEntity.playlist, mandatory: true);
         add('song_id', LocalEntity.song, mandatory: true);
       case LocalEntity.playlist:
+        if (body.containsKey('song_ids')) {
+          final ids = body['song_ids'];
+          if (ids is! List || ids.any((id) => id is! String)) {
+            throw const FormatException('Invalid song references');
+          }
+          for (final id in ids) {
+            result.add(LocalTarget(LocalEntity.song, id as String));
+          }
+        }
         if (body.containsKey('song_id')) {
           add('song_id', LocalEntity.song, mandatory: true);
         }

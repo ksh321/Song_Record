@@ -111,6 +111,12 @@ class MySqlIdempotencyTests {
         String item=json.readTree(first.body()).get("item_id").asText();
         var relink=listsService.linkSong("Bearer test","device",UUID.randomUUID().toString(),list.toString(),item,json.writeValueAsString(java.util.Map.of("song_id",song.toString(),"base_revision",3)));
         assertThat(json.readTree(relink.body()).get("changed").asBoolean()).isFalse();assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(3);
+        UUID manual=UUID.randomUUID();
+        jdbc.update("INSERT INTO song(id,user_id,source_type,title,artist,version_code,note,lifecycle_state) VALUES(?,?,'MANUAL','manual','artist','NORMAL','','ACTIVE')",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(manual),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()));
+        var batch=listsService.addItem("Bearer test","device",UUID.randomUUID().toString(),list.toString(),json.writeValueAsString(java.util.Map.of("song_ids",java.util.List.of(song.toString(),manual.toString()),"base_revision",3)));
+        assertThat(batch.status()).isEqualTo(201);var multi=json.readTree(batch.body());assertThat(multi.get("item_ids").get(0).asText()).isEqualTo(item);assertThat(multi.get("items").get(1).get("position").asLong()).isEqualTo(1);assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(4);
+        var allExisting=listsService.addItem("Bearer test","device",UUID.randomUUID().toString(),list.toString(),json.writeValueAsString(java.util.Map.of("song_ids",java.util.List.of(song.toString(),manual.toString()),"base_revision",4)));
+        assertThat(allExisting.status()).isEqualTo(200);assertThat(json.readTree(allExisting.body()).get("item_ids")).isEqualTo(multi.get("item_ids"));assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(4);assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM playlist_item",Integer.class)).isEqualTo(2);
     }
     @Test void rollbackLeavesNoReceiptAndRetrySucceeds() {
         assertThatThrownBy(()->service.execute(account,key,"POST","/v1/songs","{}",()->{effect();throw new IllegalStateException();})).isInstanceOf(IllegalStateException.class);

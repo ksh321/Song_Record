@@ -10,6 +10,51 @@ final class PlaylistLibrary {
       repository.playlistItems(id);
   Future<List<Map<String, dynamic>>> songs() =>
       repository.watchActiveSongs().first;
+
+  Future<void> addRegisteredMany(
+    String playlistId,
+    Iterable<String> selected, {
+    Future<void> Function()? afterEach,
+  }) async {
+    final ids = <String>[];
+    final entries = await items(playlistId);
+    if ((await repository.pendingWork()).any(
+      (m) =>
+          m.entity == LocalEntity.playlist &&
+          m.entityId == playlistId &&
+          m.operation != LocalOperation.create,
+    )) {
+      throw StateError('이 목록의 이전 변경을 먼저 동기화해 주세요.');
+    }
+    final available = {for (final song in await songs()) song['id']: song};
+    for (final id in selected.toSet()) {
+      final song = available[id];
+      if (song == null) throw StateError('선택한 내 곡 상태가 바뀌었어요.');
+      final key = song['source_type'] == 'TJ'
+          ? 'tj:${song['tj_number']}'
+          : 'manual:$id';
+      if (entries.any(
+        (item) => item['song_id'] == id || item['entry_key'] == key,
+      )) {
+        continue;
+      }
+      ids.add(id);
+    }
+    if (ids.isEmpty) return;
+    if (ids.length > 100) throw ArgumentError('한 번에 100곡까지 선택해 주세요.');
+    final row = (await load()).singleWhere((p) => p['id'] == playlistId);
+    final value = _payload(row);
+    final command = repository.preparePatch(
+      entity: LocalEntity.playlist,
+      entityId: playlistId,
+      baseRevision: row['local_base_revision'] as int,
+      draft: value,
+      changes: {'song_ids': ids},
+    );
+    await repository.saveCheckedEdit(command, value);
+    await afterEach?.call();
+  }
+
   Future<void> Function() addCandidate(
     Map<String, dynamic> row,
     String sourceToken,

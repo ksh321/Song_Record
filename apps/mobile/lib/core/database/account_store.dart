@@ -1730,6 +1730,27 @@ final class AccountStore {
           throw const FormatException('Addition returned another song');
         }
       }
+      if (body['song_ids'] case final List<Object?> ids) {
+        final itemIds = result['batch_item_ids'] as List;
+        for (var i = 0; i < ids.length; i++) {
+          final song = await _database
+              .customSelect(
+                "SELECT server_payload FROM metadata_copies WHERE user_id=? AND entity_type='SONG' AND entity_id=? AND tombstone=0",
+                variables: [Variable(userId), Variable(ids[i] as String)],
+              )
+              .getSingle();
+          final target = jsonDecode(song.read<String>('server_payload')) as Map;
+          final key = target['source_type'] == 'TJ'
+              ? 'tj:${target['tj_number']}'
+              : 'manual:${ids[i]}';
+          final item = (result['items'] as List).singleWhere(
+            (x) => (x as Map)['id'] == itemIds[i],
+          ) as Map;
+          if (item['entry_key'] != key) {
+            throw const FormatException('Batch addition returned another song');
+          }
+        }
+      }
       final business = SnapshotBusinessStore(
         _database,
         requireActive: requireActive,

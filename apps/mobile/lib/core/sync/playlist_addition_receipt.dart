@@ -34,6 +34,28 @@ Map<String, dynamic> decodePlaylistAddition(
   final raw = decodeWireJson(response.body);
   require(raw is Map<String, dynamic>);
   final value = raw as Map<String, dynamic>;
+  final sent = jsonDecode(request.body) as Map;
+  final batch = sent['song_ids'];
+  List<dynamic>? batchIds;
+  if (batch is List) {
+    require(
+      value.length == 4 &&
+          value.keys.every(
+            {'playlist', 'items', 'item_ids', 'created'}.contains,
+          ),
+    );
+    require(value['item_ids'] is List);
+    batchIds = value.remove('item_ids') as List;
+    require(
+      batchIds.length == batch.length &&
+          batchIds.isNotEmpty &&
+          batchIds.toSet().length == batchIds.length,
+    );
+    for (final id in batchIds) {
+      require(id is String && UuidValue(id).value == id);
+    }
+    value['item_id'] = batchIds.first;
+  }
   final link = isPlaylistLink(request);
   if (link) {
     require(
@@ -73,7 +95,6 @@ Map<String, dynamic> decodePlaylistAddition(
       .where((x) => x is Map && x['id'] == itemId)
       .toList();
   require(selected.length == 1);
-  final sent = jsonDecode(request.body) as Map;
   final item = selected.single as Map;
   if (link) {
     require(
@@ -81,7 +102,7 @@ Map<String, dynamic> decodePlaylistAddition(
           item['song_id'] == sent['song_id'],
     );
   }
-  if (value['created'] == true) {
+  if (batchIds == null && value['created'] == true) {
     require(item['song_id'] == sent['song_id']);
   }
   if (sent.containsKey('source_token')) {
@@ -103,6 +124,17 @@ Map<String, dynamic> decodePlaylistAddition(
             (original['artist'] as String).trim().isNotEmpty,
       );
     }
+  }
+  if (batchIds != null) {
+    for (final id in batchIds) {
+      require(
+        (value['items'] as List)
+                .where((x) => x is Map && x['id'] == id)
+                .length ==
+            1,
+      );
+    }
+    value['batch_item_ids'] = batchIds;
   }
   return value;
 }

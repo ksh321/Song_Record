@@ -117,13 +117,21 @@ paths:
               oneOf:
               - {required: [song_id]}
               - {required: [source_token]}
+              - {required: [song_ids]}
               properties:
                 song_id: {type: string, format: uuid}
+                song_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  uniqueItems: true
+                  items: {type: string, format: uuid}
+                  description: 다중 선택은 한 트랜잭션·한 부모 버전 변경. 응답 item_ids는 요청 순서의 항목 ID이며 기존 중복 항목도 포함. 전부 기존이면 revision 불변·created false.
                 source_token: {type: string, minLength: 1, maxLength: 8192}
                 base_revision: {type: integer, minimum: 1}
       responses:
-        '201': {description: 'created true·item_id·playlist·items, 부모 revision 1 증가'}
-        '200': {description: '같은 키의 기존 item_id·position 반환, created false·부모 revision/변경 순서 불변'}
+        '201': {description: 'created true·playlist·items와 단일 item_id 또는 다중 item_ids, 한 요청당 부모 revision 1 증가'}
+        '200': {description: '같은 키의 기존 item_id 또는 다중 item_ids·position 반환, created false·부모 revision/변경 순서 불변'}
         '400': {$ref: '#/components/responses/Error400'}
         '404': {$ref: '#/components/responses/Error404'}
         '409': {$ref: '#/components/responses/Error409'}

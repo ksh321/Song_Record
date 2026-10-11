@@ -23,6 +23,7 @@ class PlaylistAdditionFixture implements MutationTransport {
   final List<MutationRequest> requests = [];
   bool loseNextAddition = false;
   bool corruptNextAdditionOwner = false;
+  bool reverseNextBatchIds = false;
   Future<AuthSession> session() async => AuthSession(
     userId: repository.userId,
     deviceId: playlistFixtureId(1990),
@@ -143,6 +144,52 @@ class PlaylistAdditionFixture implements MutationTransport {
               }),
             )
           : MutationResponse(201, jsonEncode(header));
+    } else if (body['song_ids'] case final List<Object?> ids) {
+      if (body['base_revision'] != header['revision']) {
+        throw StateError('Fixture batch revision mismatch');
+      }
+      final selected = <String>[];
+      var created = false;
+      for (final id in ids) {
+        final song = songs[id]!;
+        final key = song['source_type'] == 'TJ'
+            ? 'tj:${song['tj_number']}'
+            : 'manual:$id';
+        var existing = items
+            .where((item) => item['entry_key'] == key)
+            .firstOrNull;
+        if (existing == null) {
+          created = true;
+          existing = {
+            'id': playlistFixtureId(2000 + items.length),
+            'user_id': repository.userId,
+            'playlist_id': playlistId,
+            'song_id': id,
+            'candidate_brand': null,
+            'candidate_number': null,
+            'candidate_snapshot': null,
+            'entry_key': key,
+            'position': items.length,
+            'hidden_by_batch_id': null,
+            'created_at': playlistFixtureTime,
+            'updated_at': playlistFixtureTime,
+          };
+          items.add(existing);
+        }
+        selected.add(existing['id'] as String);
+      }
+      if (created) {
+        header = {...header, 'revision': (header['revision'] as int) + 1};
+      }
+      response = MutationResponse(
+        created ? 201 : 200,
+        jsonEncode({
+          'playlist': header,
+          'items': items,
+          'item_ids': selected,
+          'created': created,
+        }),
+      );
     } else if (request.mutation.entity == LocalEntity.song &&
         request.method == 'PATCH') {
       final id = request.mutation.entityId;
@@ -255,6 +302,12 @@ class PlaylistAdditionFixture implements MutationTransport {
       );
     }
     receipts[request.mutation.opId] = (request.hash, response);
+    if (reverseNextBatchIds && body.containsKey('song_ids')) {
+      reverseNextBatchIds = false;
+      final corrupted = jsonDecode(response.body) as Map<String, dynamic>;
+      corrupted['item_ids'] = (corrupted['item_ids'] as List).reversed.toList();
+      return MutationResponse(response.status, jsonEncode(corrupted));
+    }
     if (request.mutation.operation != LocalOperation.create &&
         corruptNextAdditionOwner) {
       corruptNextAdditionOwner = false;

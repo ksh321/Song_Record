@@ -25,6 +25,21 @@ class PlaylistTests {
  }
  MockHttpServletResponse create(UUID id,String name)throws Exception{return write("POST",id,json.writeValueAsString(Map.of("id",id.toString(),"name",name)),UUID.randomUUID().toString());}
  long count(String table){return s.f.jdbc.queryForObject("SELECT COUNT(*) FROM "+table,Long.class);}
+ MockHttpServletResponse multi(UUID p,List<UUID> songs,long base,String op)throws Exception{return s.mvc.perform(post("/v1/playlists/"+p+"/items").header("Authorization","Bearer "+s.f.tokens.accessToken()).header("X-Device-Id",s.f.registration.deviceId()).header("Idempotency-Key",op).contentType("application/json").content(json.writeValueAsString(Map.of("song_ids",songs.stream().map(UUID::toString).toList(),"base_revision",base)))).andReturn().getResponse();}
+ @Test void multiSelectionIsAtomicIdempotentAndScopedToEachPlaylist()throws Exception{
+  s.postBody(s.f.key,s.body(""));UUID a=UUID.randomUUID(),b=UUID.randomUUID(),manual=UUID.randomUUID();create(a,"첫 목록");create(b,"다른 목록");
+  s.f.jdbc.update("INSERT INTO song(id,user_id,source_type,title,artist,version_code,note,lifecycle_state,revision) VALUES(?,?,'MANUAL','직접 곡','직접 가수','NORMAL','','ACTIVE',1)",bytes(manual),bytes(s.f.registration.userId()));
+  assertThat(multi(a,List.of(s.id,UUID.randomUUID()),1,UUID.randomUUID().toString()).getStatus()).isEqualTo(404);assertThat(count("playlist_item")).isZero();
+  assertThat(multi(a,List.of(s.id,s.id),1,UUID.randomUUID().toString()).getStatus()).isEqualTo(400);assertThat(count("playlist_item")).isZero();
+  String op=UUID.randomUUID().toString();var first=multi(a,List.of(s.id,manual),1,op);assertThat(first.getStatus()).isEqualTo(201);
+  var r=json.readTree(first.getContentAsString());assertThat(r.get("playlist").get("revision").asLong()).isEqualTo(2);assertThat(r.get("item_ids").size()).isEqualTo(2);assertThat(r.get("items").get(1).get("position").asLong()).isEqualTo(1);
+  assertThat(multi(a,List.of(s.id,manual),1,op).getContentAsString()).isEqualTo(first.getContentAsString());
+  long seq=s.f.jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state WHERE user_id=?",Long.class,bytes(s.f.registration.userId()));
+  var duplicate=multi(a,List.of(s.id,manual),2,UUID.randomUUID().toString());assertThat(duplicate.getStatus()).isEqualTo(200);var d=json.readTree(duplicate.getContentAsString());assertThat(d.get("created").asBoolean()).isFalse();assertThat(d.get("item_ids")).isEqualTo(r.get("item_ids"));assertThat(d.get("playlist").get("revision").asLong()).isEqualTo(2);
+  assertThat(s.f.jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state WHERE user_id=?",Long.class,bytes(s.f.registration.userId()))).isEqualTo(seq);
+  assertThat(multi(a,List.of(s.id,manual),1,UUID.randomUUID().toString()).getStatus()).isEqualTo(409);assertThat(count("playlist_item")).isEqualTo(2);
+  assertThat(multi(b,List.of(s.id,manual),1,UUID.randomUUID().toString()).getStatus()).isEqualTo(201);assertThat(count("playlist_item")).isEqualTo(4);
+ }
  @Test void duplicateNamesTodayPersistenceRevisionAndPaging()throws Exception{
   UUID a=UUID.randomUUID(),b=UUID.randomUUID();assertThat(create(a," 오늘 ").getStatus()).isEqualTo(201);assertThat(create(b,"오늘").getStatus()).isEqualTo(201);
   assertThat(create(a,"overwrite").getContentAsString()).contains("오늘").doesNotContain("overwrite");

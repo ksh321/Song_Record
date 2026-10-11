@@ -8,6 +8,7 @@ import '../../core/widgets/song_row.dart';
 import '../songs/my_song.dart';
 
 import 'playlist_library.dart';
+import 'playlist_song_picker.dart';
 
 class PlaylistDetailScreen extends StatefulWidget {
   const PlaylistDetailScreen({
@@ -104,26 +105,15 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   }
 
   Future<void> add() async {
-    final selected = await showDialog<String>(
+    final selected = await showModalBottomSheet<List<String>>(
       context: context,
-      builder: (context) => SimpleDialog(
-        title: const Text('내 곡 추가'),
-        children: [
-          for (final song in songs)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, song['id'] as String),
-              child: Text('${song['title']} · ${song['artist']}'),
-            ),
-          if (songs.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text('추가할 내 곡이 없어요.'),
-            ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-        ],
+      isScrollControlled: true,
+      builder: (context) => FractionallySizedBox(
+        heightFactor: .85,
+        child: PlaylistSongPicker(
+          songs: songs.map(MySong.new).toList(),
+          items: items,
+        ),
       ),
     );
     if (selected == null || !mounted || parent == null) return;
@@ -132,8 +122,11 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       error = null;
     });
     try {
-      await widget.library.addRegistered(parent!, selected)();
-      await widget.afterSave?.call();
+      await widget.library.addRegisteredMany(
+        widget.id,
+        selected,
+        afterEach: widget.afterSave,
+      );
       await reload();
       if (mounted) {
         ScaffoldMessenger.of(context)
