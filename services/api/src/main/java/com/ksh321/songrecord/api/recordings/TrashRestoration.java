@@ -32,7 +32,7 @@ public final class TrashRestoration {
         Set<UUID> selection=requested;
         return mutations.execute(account,operation,"POST","/v1/trash/"+batch+"/restore",body,()->changes.write(account,()->{
             var batches=db.queryForList("SELECT mode,deleted_at,purge_after FROM deletion_batch WHERE user_id=? AND id=?",bytes(owner),bytes(batch));if(batches.isEmpty())throw error(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND");
-            var history=batches.getFirst();var deleted=((java.sql.Timestamp)history.get("deleted_at")).toLocalDateTime();var expires=((java.sql.Timestamp)history.get("purge_after")).toLocalDateTime();
+            var history=batches.getFirst();var deleted=time(history.get("deleted_at"));var expires=time(history.get("purge_after"));
             if(!LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC).isBefore(expires))throw error(HttpStatus.CONFLICT,"TRASH_EXPIRED");
             db.update("INSERT INTO deletion_batch_work(user_id,batch_id,revision) SELECT ?,?,1 WHERE NOT EXISTS(SELECT 1 FROM deletion_batch_work WHERE user_id=? AND batch_id=?)",bytes(owner),bytes(batch),bytes(owner),bytes(batch));
             long version=db.queryForObject("SELECT revision FROM deletion_batch_work WHERE user_id=? AND batch_id=? FOR UPDATE",Long.class,bytes(owner),bytes(batch));
@@ -77,6 +77,7 @@ public final class TrashRestoration {
             return new AccountChanges.Batch<>(new IdempotentMutations.Reply(200,json.writeValueAsString(Map.of("batch_id",batch.toString(),"revision",version+1,"restored",restored,"skipped",skipped,"pin_reselection_required",true))),events);
         }).value());
     }
+    static LocalDateTime time(Object value){if(value instanceof java.sql.Timestamp t)return t.toLocalDateTime();if(value instanceof LocalDateTime t)return t;throw new IllegalStateException("TRASH_TIME_INVALID");}
     private static boolean eligible(Map<String,Object> current,LocalDateTime date){return current!=null && "TRASHED".equals(current.get("lifecycle_state")) && Objects.equals(current.get("deleted_at"),date.toInstant(ZoneOffset.UTC).toString());}
     private static Map<String,Object> result(String type,UUID id,String reason){return Map.of("entity_type",type,"id",id.toString(),"reason",reason);}
     private static UUID id(String value){try{var id=UUID.fromString(value);if(!id.toString().equals(value))throw new IllegalArgumentException();return id;}catch(IllegalArgumentException|NullPointerException e){throw error(HttpStatus.BAD_REQUEST,"VALIDATION_FAILED");}}

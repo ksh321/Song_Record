@@ -120,6 +120,8 @@ class MySqlIdempotencyTests {
             assertThat(db.queryForObject("SELECT used_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(owner))).isEqualTo(6291456);
 
             String restoreBatch=new tools.jackson.databind.json.JsonMapper().readTree(single.body()).get("batch_id").asText();
+            var trashPage=new com.ksh321.songrecord.api.recordings.TrashListing(db,a).list("Bearer synthetic",device.toString(),null,50);
+            assertThat((java.util.List<?>)trashPage.get("items")).hasSize(3);
             var restoring=new com.ksh321.songrecord.api.recordings.TrashRestoration(db,a,mutations,changes,revisions,editing,clock);
             String restoreOp=UUID.randomUUID().toString();var restored=restoring.restore("Bearer synthetic",device.toString(),restoreOp,restoreBatch,"{\"base_revision\":1}");
             assertThat(restored.status()).isEqualTo(200);assertThat(restoring.restore("Bearer synthetic",device.toString(),restoreOp,restoreBatch,"{\"base_revision\":1}")).isEqualTo(restored);
