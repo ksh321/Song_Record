@@ -213,6 +213,9 @@ final class AccountStore {
           '''SELECT recording_id,phase,revision,recovery_payload
           FROM recording_journals WHERE user_id=? ORDER BY recording_id''',
         ),
+        'file_states': await rows(
+          'SELECT recording_id,local_state,sha256,size_bytes,updated_at FROM local_recording_files WHERE user_id=? ORDER BY recording_id',
+        ),
       };
     }),
   );
@@ -3174,6 +3177,70 @@ final class AccountStore {
 
   Future<Uint8List> readLocalAudio(String recordingId) =>
       _run(() => _readLocalAudio(recordingId));
+
+  /// Fresh deletion/presence evidence for export. Does not expose device paths.
+  Future<Map<String, Object?>> exportAudioState(String recordingId) => _run(
+    () => _database.transaction(() async {
+      final id = UuidValue(recordingId).value;
+      final copy = await _readMetadata(LocalEntity.recording, id);
+      final raw = copy?.localJson ?? copy?.serverJson;
+      final payload = raw == null
+          ? null
+          : jsonDecode(raw) as Map<String, dynamic>;
+      final file = await _database
+          .customSelect(
+            'SELECT local_state,sha256,size_bytes,updated_at FROM local_recording_files WHERE user_id=? AND recording_id=?',
+            variables: [Variable(userId), Variable(id)],
+          )
+          .getSingleOrNull();
+      return {
+        'deleted':
+            copy?.tombstone == true ||
+            {'PURGE_PENDING', 'PURGED'}.contains(payload?['lifecycle_state']),
+        'lifecycle_state': payload?['lifecycle_state'],
+        'local_state': file?.read<String>('local_state'),
+        'sha256': file?.readNullable<String>('sha256'),
+        'size_bytes': file?.readNullable<int>('size_bytes'),
+        'updated_at': file?.read<int>('updated_at'),
+      };
+    }),
+  );
+
+  /// One bounded file at a time; never installs a download over the original.
+  Future<void> stageExportAudio(
+    String jobId,
+    String recordingId,
+    String checksum,
+    int size,
+    Uint8List bytes,
+  ) => _run(() async {
+    final id = UuidValue(recordingId).value;
+    if (size < 1 ||
+        size > 6291456 ||
+        bytes.length != size ||
+        sha256.convert(bytes).toString() != checksum) {
+      throw const FormatException('Invalid staged export audio');
+    }
+    final destination = await _paths.exportFile(jobId, 'audio/$id.m4a');
+    if (await destination.exists()) {
+      if (await destination.length() != size ||
+          (await sha256.bind(destination.openRead()).first).toString() !=
+              checksum) {
+        throw const FormatException('Existing export staging changed');
+      }
+      return;
+    }
+    final part = await _paths.exportFile(jobId, 'audio/$id.m4a.part');
+    await part.writeAsBytes(bytes, flush: true);
+    requireActive();
+    if (await part.length() != size ||
+        (await sha256.bind(part.openRead()).first).toString() != checksum) {
+      throw const FormatException('Export write verification failed');
+    }
+    await _paths.exportFile(jobId, 'audio/$id.m4a');
+    await part.rename(destination.path);
+    requireActive();
+  });
 
   Future<Uint8List> _readLocalAudio(String recordingId) async {
     final id = UuidValue(recordingId).value;

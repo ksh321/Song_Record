@@ -35,7 +35,7 @@ final class AccountPaths {
       await _ensureDirectory(current);
     }
     final result = AccountPaths._(Directory(current), userId, environment);
-    for (final folder in ['audio', 'pending', 'imports']) {
+    for (final folder in ['audio', 'pending', 'imports', 'exports']) {
       await _ensureDirectory(p.join(current, folder));
     }
     return result;
@@ -60,6 +60,23 @@ final class AccountPaths {
       'pending/${UuidValue(recordingId).value}.m4a.part';
   String importPath(String jobId) => 'imports/${UuidValue(jobId).value}.zip';
 
+  /// Private export staging, never an original audio path or external output.
+  Future<File> exportFile(String jobId, String name) async {
+    final id = UuidValue(jobId).value;
+    if (!RegExp(
+      r'^(?:audio/[0-9a-f-]{36}\.m4a(?:\.part)?|manifest\.json|data\.json|recordings\.csv|checkpoint\.json|export\.zip(?:\.part)?)$',
+    ).hasMatch(name)) {
+      throw ArgumentError('Invalid private export filename');
+    }
+    if (!p.equals(await directory.resolveSymbolicLinks(), directory.path)) {
+      throw StateError('Account storage was redirected');
+    }
+    for (final path in ['exports', 'exports/$id', 'exports/$id/audio']) {
+      await _ensureDirectory(p.join(directory.path, path));
+    }
+    return checkedFile('exports/$id/$name');
+  }
+
   Future<File> databaseFile() async {
     for (final suffix in ['', '-wal', '-shm', '-journal']) {
       await checkedFile('account.sqlite$suffix', database: true);
@@ -73,7 +90,7 @@ final class AccountPaths {
         ? RegExp(r'^account\.sqlite(?:-wal|-shm|-journal)?$')
               .hasMatch(relativePath)
         : RegExp(
-            r'^(?:audio/[0-9a-f-]{36}\.m4a|pending/[0-9a-f-]{36}\.m4a\.part|imports/[0-9a-f-]{36}\.zip)$',
+            r'^(?:audio/[0-9a-f-]{36}\.m4a|pending/[0-9a-f-]{36}\.m4a\.part|imports/[0-9a-f-]{36}\.zip|exports/[0-9a-f-]{36}/(?:audio/[0-9a-f-]{36}\.m4a(?:\.part)?|manifest\.json|data\.json|recordings\.csv|checkpoint\.json|export\.zip(?:\.part)?))$',
           ).hasMatch(relativePath);
     if (!valid || relativePath.contains('..') || relativePath.contains('\\')) {
       throw ArgumentError('Not an account-relative storage path');
