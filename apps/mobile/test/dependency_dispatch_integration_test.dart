@@ -501,9 +501,9 @@ void main() {
       final held = <LocalEdit>[];
       for (final item in [
         (
-          entity: LocalEntity.playlist,
+          entity: LocalEntity.recordingTag,
           target: id(60),
-          body: <String, Object?>{'name': 'preserved playlist'},
+          body: <String, Object?>{'recording_id': rec, 'tag_id': id(40)},
         ),
         (
           entity: LocalEntity.playlistItem,

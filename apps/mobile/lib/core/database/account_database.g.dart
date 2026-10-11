@@ -4975,8 +4975,7 @@ class MutationWireRequests extends Table
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
-    $customConstraints:
-        'NOT NULL CHECK (http_method IN (\'POST\', \'PATCH\', \'PUT\'))',
+    $customConstraints: 'NOT NULL CHECK (http_method IN (\'POST\', \'PATCH\', \'PUT\', \'DELETE\'))',
   );
   static const VerificationMeta _relativePathMeta = const VerificationMeta(
     'relativePath',
@@ -12549,7 +12548,7 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
   );
   late final RecordingFollowups recordingFollowups = RecordingFollowups(this);
   late final Trigger recordingFollowupValidInsert = Trigger(
-    'CREATE TRIGGER recording_followup_valid_insert BEFORE INSERT ON recording_followups BEGIN SELECT RAISE (ABORT, \'Invalid metadata followup\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS o JOIN local_mutations AS r ON r.op_id = NEW.replacement_op_id JOIN local_mutations AS p ON p.op_id = NEW.predecessor_op_id WHERE o.op_id = NEW.original_op_id AND o.user_id = NEW.user_id AND r.user_id = o.user_id AND p.user_id = o.user_id AND o.entity_type IN (\'RECORDING\', \'SONG\', \'TAG\') AND r.entity_type = o.entity_type AND p.entity_type = o.entity_type AND r.entity_id = o.entity_id AND p.entity_id = o.entity_id AND o.operation = \'PATCH\' AND r.operation = \'PATCH\' AND o.base_revision = 0 AND o.attempt_count = 0 AND o.queue_state = \'PENDING\' AND r.base_revision > 0 AND r.attempt_count = 0 AND r.queue_state = \'PENDING\' AND p.queue_state = \'ACKED\' AND p.attempt_count > 0 AND NEW.logical_order = o."rowid" AND r."rowid" > o."rowid" AND json_extract(p.server_response, \'\$.revision\') = r.base_revision);END',
+    'CREATE TRIGGER recording_followup_valid_insert BEFORE INSERT ON recording_followups BEGIN SELECT RAISE (ABORT, \'Invalid metadata followup\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS o JOIN local_mutations AS r ON r.op_id = NEW.replacement_op_id JOIN local_mutations AS p ON p.op_id = NEW.predecessor_op_id WHERE o.op_id = NEW.original_op_id AND o.user_id = NEW.user_id AND r.user_id = o.user_id AND p.user_id = o.user_id AND o.entity_type IN (\'RECORDING\', \'SONG\', \'TAG\', \'PLAYLIST\') AND r.entity_type = o.entity_type AND p.entity_type = o.entity_type AND r.entity_id = o.entity_id AND p.entity_id = o.entity_id AND(o.operation = \'PATCH\' OR(o.entity_type = \'PLAYLIST\' AND o.operation = \'PURGE\'))AND r.operation = o.operation AND o.base_revision = 0 AND o.attempt_count = 0 AND o.queue_state = \'PENDING\' AND r.base_revision > 0 AND r.attempt_count = 0 AND r.queue_state = \'PENDING\' AND p.queue_state = \'ACKED\' AND p.attempt_count > 0 AND NEW.logical_order = o."rowid" AND r."rowid" > o."rowid" AND json_extract(p.server_response, \'\$.revision\') = r.base_revision);END',
     'recording_followup_valid_insert',
   );
   late final Trigger recordingFollowupNoUpdate = Trigger(

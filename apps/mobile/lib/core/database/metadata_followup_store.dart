@@ -72,13 +72,16 @@ Future<MappingEligibility> metadataFollowupEligibility(
             LocalEntity.recording,
             LocalEntity.song,
             LocalEntity.tag,
+            LocalEntity.playlist,
           }.contains(original.entity) &&
           next.entity == original.entity &&
           prior.entity == original.entity &&
           original.entityId == next.entityId &&
           prior.entityId == original.entityId &&
-          original.operation == LocalOperation.patch &&
-          next.operation == LocalOperation.patch &&
+          (original.operation == LocalOperation.patch ||
+              original.entity == LocalEntity.playlist &&
+                  original.operation == LocalOperation.purge) &&
+          next.operation == original.operation &&
           original.state == 'PENDING' &&
           original.attemptCount == 0 &&
           original.baseRevision == 0 &&
@@ -131,8 +134,11 @@ Future<bool> materializeMetadataFollowup(
           LocalEntity.recording,
           LocalEntity.song,
           LocalEntity.tag,
+          LocalEntity.playlist,
         }.contains(original.entity) ||
-        original.operation != LocalOperation.patch ||
+        !(original.operation == LocalOperation.patch ||
+            original.entity == LocalEntity.playlist &&
+                original.operation == LocalOperation.purge) ||
         original.baseRevision != 0 ||
         original.state != 'PENDING' ||
         original.attemptCount != 0 ||
@@ -251,12 +257,13 @@ Future<bool> materializeMetadataFollowup(
         .toString();
     await db.customStatement(
       '''INSERT INTO local_mutations(op_id,user_id,entity_type,entity_id,operation,base_revision,base_payload,payload,request_hash,created_at,updated_at)
-      VALUES(?,?,?,?,'PATCH',?,?,?,?,?,?)''',
+      VALUES(?,?,?,?,?,?,?,?,?,?,?)''',
       [
         id,
         db.userId,
         original.entity.code,
         original.entityId,
+        original.operation.code,
         plan.revision,
         plan.baselineJson,
         plan.payloadJson,

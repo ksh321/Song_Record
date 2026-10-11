@@ -42,11 +42,23 @@ final class PlaylistChangeStore {
     } else {
       validateChangePayload(LocalEntity.playlist, payload);
     }
-    if (entry.entity != LocalEntity.playlist || payload['id'] != entry.id ||
-        payload['revision'] != entry.revision || payload['deleted_at'] == null) {
+    if (entry.entity != LocalEntity.playlist ||
+        payload['id'] != entry.id ||
+        payload['revision'] != entry.revision ||
+        payload['deleted_at'] == null) {
       throw const FormatException('Invalid playlist deletion identity');
     }
     await _applyParentDeletion(entry.id, entry.revision, payload);
+  }
+
+  Future<void> applyDeletionReceipt(Map<String, dynamic> payload) async {
+    requireActive();
+    validatePlaylistDeletion(payload);
+    await _applyParentDeletion(
+      payload['id'] as String,
+      payload['revision'] as int,
+      payload,
+    );
   }
 
   Future<void> _applyParentDeletion(
@@ -54,10 +66,12 @@ final class PlaylistChangeStore {
     int incomingRevision,
     Map<String, dynamic> payload,
   ) async {
-    final parent = await db.customSelect(
-      "SELECT server_revision,tombstone FROM metadata_copies WHERE entity_type='PLAYLIST' AND entity_id=?",
-      variables: [Variable(playlistId)],
-    ).getSingleOrNull();
+    final parent = await db
+        .customSelect(
+          "SELECT server_revision,tombstone FROM metadata_copies WHERE entity_type='PLAYLIST' AND entity_id=?",
+          variables: [Variable(playlistId)],
+        )
+        .getSingleOrNull();
     final revision = parent?.read<int>('server_revision') ?? 0;
     if (revision > incomingRevision) {
       return;
@@ -65,10 +79,12 @@ final class PlaylistChangeStore {
     if (revision == incomingRevision && parent?.read<int>('tombstone') == 0) {
       throw StateError('Deletion did not advance playlist revision');
     }
-    final children = await db.customSelect(
-      "SELECT * FROM metadata_copies WHERE entity_type='PLAYLIST_ITEM' AND user_id=?",
-      variables: [Variable(db.userId)],
-    ).get();
+    final children = await db
+        .customSelect(
+          "SELECT * FROM metadata_copies WHERE entity_type='PLAYLIST_ITEM' AND user_id=?",
+          variables: [Variable(db.userId)],
+        )
+        .get();
     for (final row in children) {
       requireActive();
       final encoded = row.readNullable<String>('server_payload');
@@ -86,14 +102,28 @@ final class PlaylistChangeStore {
         continue;
       }
       final id = row.read<String>('entity_id');
-      await writeCopy('PLAYLIST_ITEM', id, incomingRevision, canonicalJson({
-        'id': id, 'playlist_id': playlistId, 'revision': incomingRevision,
-        'playlist_revision': incomingRevision, 'status': 'DELETED',
-      }), true);
+      await writeCopy(
+        'PLAYLIST_ITEM',
+        id,
+        incomingRevision,
+        canonicalJson({
+          'id': id,
+          'playlist_id': playlistId,
+          'revision': incomingRevision,
+          'playlist_revision': incomingRevision,
+          'status': 'DELETED',
+        }),
+        true,
+      );
     }
     if (parent?.read<int>('tombstone') != 1) {
-      await writeCopy('PLAYLIST', playlistId, incomingRevision,
-          canonicalJson(payload), true);
+      await writeCopy(
+        'PLAYLIST',
+        playlistId,
+        incomingRevision,
+        canonicalJson(payload),
+        true,
+      );
     }
     requireActive();
   }

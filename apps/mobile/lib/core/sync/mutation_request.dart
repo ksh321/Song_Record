@@ -34,10 +34,28 @@ final class MutationRequest {
 
   /// Only implemented server routes. Unsupported legacy queues remain intact.
   static MutationRequest? prepare(QueuedMutation m) {
+    if (m.entity == LocalEntity.playlist &&
+        m.operation == LocalOperation.purge) {
+      final value = jsonDecode(m.payload);
+      if (value is! Map<String, dynamic> ||
+          value.length != 1 ||
+          value['base_revision'] != m.baseRevision ||
+          m.baseRevision < 1) {
+        return null;
+      }
+      return MutationRequest(
+        mutation: m,
+        method: 'DELETE',
+        path: '/v1/playlists/${m.entityId}',
+        body: m.payload,
+        attempt: m.attemptCount + 1,
+      );
+    }
     final route = switch (m.entity) {
       LocalEntity.song => 'songs',
       LocalEntity.recording => 'recordings',
       LocalEntity.tag => 'tags',
+      LocalEntity.playlist => 'playlists',
       _ => null,
     };
     if (route == null ||
@@ -181,6 +199,8 @@ final class MutationRequest {
         'condition_code',
         'tag_ids',
       },
+      (LocalEntity.playlist, true) => {'id', 'name'},
+      (LocalEntity.playlist, false) => {'base_revision', 'name'},
       (LocalEntity.tag, true) => {'id', 'name'},
       (LocalEntity.tag, false) => {'base_revision', 'name'},
       _ => <String>{},

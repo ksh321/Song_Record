@@ -74,6 +74,34 @@ Map<String, Object?> decodeMetadataSnapshot(
     require(DateTime.tryParse(value[key] as String) != null);
   }
 
+  if (m.entity == LocalEntity.playlist) {
+    if (!conflict && m.operation == LocalOperation.purge) {
+      validatePlaylistDeletion(decoded);
+      require(
+        response.status == 200 &&
+            value['id'] == m.entityId &&
+            (value['revision'] as int) > m.baseRevision,
+      );
+    } else {
+      validateChangePayload(LocalEntity.playlist, decoded);
+      require(value['id'] == m.entityId);
+      if (!conflict) {
+        require(value['deleted_at'] == null);
+        // The dispatcher preserves an existing UUID response as a conflict.
+        if (m.operation == LocalOperation.create && response.status == 200) {
+          return value;
+        }
+        require(
+          value['revision'] ==
+              (m.operation == LocalOperation.create ? 1 : m.baseRevision + 1),
+        );
+        final sent = jsonDecode(request.body) as Map<String, dynamic>;
+        require(value['name'] == sent['name']);
+      }
+    }
+    return value;
+  }
+
   if (!conflict &&
       m.entity == LocalEntity.recording &&
       m.operation == LocalOperation.patch) {

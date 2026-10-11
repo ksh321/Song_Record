@@ -16,12 +16,14 @@ class AppShell extends StatefulWidget {
     this.chartBuilder,
     this.songsBuilder,
     this.recordingBuilder,
+    this.playlistsBuilder,
     super.key,
   });
 
   final RecorderGateway recorderGateway;
   final WidgetBuilder? searchBuilder;
   final WidgetBuilder? recordingBuilder;
+  final WidgetBuilder? playlistsBuilder;
   final WidgetBuilder? chartBuilder;
   final Widget Function(BuildContext, VoidCallback)? songsBuilder;
 
@@ -151,6 +153,9 @@ class _AppShellState extends State<AppShell> {
     }
     if (tab == AppTab.recording && widget.recordingBuilder != null) {
       return widget.recordingBuilder!(context);
+    }
+    if (tab == AppTab.playlists && widget.playlistsBuilder != null) {
+      return widget.playlistsBuilder!(context);
     }
     return ListView(
       key: PageStorageKey('page-${tab.name}'),

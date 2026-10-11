@@ -98,6 +98,9 @@ final class LocalRepository
   ) =>
       _store.saveRecordingDetails(id, fields, operationIds, expected, revision);
 
+  Future<List<Map<String, dynamic>>> activePlaylists() =>
+      _store.activePlaylists();
+
   Stream<List<Map<String, dynamic>>> watchActiveSongs() =>
       _store.watchActiveSongs();
 

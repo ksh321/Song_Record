@@ -104,17 +104,19 @@ final class DependencyPlanner {
       return null;
     }
     if (_phase(mutation.entity) < 0 ||
-        !{
-          LocalOperation.create,
-          LocalOperation.patch,
-        }.contains(mutation.operation)) {
+        !({
+              LocalOperation.create,
+              LocalOperation.patch,
+            }.contains(mutation.operation) ||
+            mutation.entity == LocalEntity.playlist &&
+                mutation.operation == LocalOperation.purge)) {
       return const DispatchWait(DispatchWaitReason.unsupported);
     }
     final baseline = snapshot.baselines[target];
     if (baseline?.tombstone == true) {
       return DispatchWait(DispatchWaitReason.deletedTarget, dependency: target);
     }
-    if (mutation.operation == LocalOperation.patch) {
+    if (mutation.operation != LocalOperation.create) {
       if (mutation.baseRevision == 0 ||
           baseline == null ||
           baseline.revision == 0) {
@@ -141,7 +143,7 @@ final class DependencyPlanner {
       if (decoded is! Map<String, Object?>) {
         return const DispatchWait(DispatchWaitReason.invalidPayload);
       }
-      if (mutation.operation == LocalOperation.patch &&
+      if (mutation.operation != LocalOperation.create &&
           decoded['base_revision'] != mutation.baseRevision) {
         return const DispatchWait(DispatchWaitReason.invalidPayload);
       }

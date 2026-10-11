@@ -30,6 +30,9 @@ import 'package:song_record/features/sync/sync_controller.dart';
 import 'package:song_record/network/health_client.dart';
 import 'package:song_record/routing/app_routes.dart';
 
+import '../features/playlists/playlist_library.dart';
+import '../features/playlists/playlist_library_screen.dart';
+
 class SongRecordApp extends StatelessWidget {
   const SongRecordApp({
     required this.config,
@@ -137,6 +140,25 @@ class SongRecordApp extends StatelessWidget {
       routes: {
         AppRoutes.home: (context) => AppShell(
           recorderGateway: recorderGateway,
+          playlistsBuilder: (context) {
+            final auth = authController;
+            if (auth == null) return const Center(child: Text('로그인이 필요해요.'));
+            return AnimatedBuilder(
+              animation: auth,
+              builder: (context, _) {
+                final repository = localRepository?.call();
+                if (auth.phase != AuthPhase.ready ||
+                    repository == null ||
+                    repository.userId != auth.session?.userId) {
+                  return const Center(child: Text('로그인이 필요해요.'));
+                }
+                return PlaylistLibraryScreen(
+                  key: ValueKey(repository.userId),
+                  library: PlaylistLibrary(repository),
+                );
+              },
+            );
+          },
           recordingBuilder: localRepository == null
               ? null
               : (context) => RecordingWorkspace(

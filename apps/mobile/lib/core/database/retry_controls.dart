@@ -362,10 +362,13 @@ final class RetryControls {
       LocalEntity.song => 'songs',
       LocalEntity.recording => 'recordings',
       LocalEntity.tag => 'tags',
+      LocalEntity.playlist => 'playlists',
       _ => null,
     };
     if (route == null ||
-        !{LocalOperation.create, LocalOperation.patch}.contains(m.operation)) {
+        !({LocalOperation.create, LocalOperation.patch}.contains(m.operation) ||
+            m.entity == LocalEntity.playlist &&
+                m.operation == LocalOperation.purge)) {
       return null;
     }
 
@@ -404,7 +407,12 @@ final class RetryControls {
           return null;
         }
       }
-    } else if (method != (create ? 'POST' : 'PATCH') ||
+    } else if (method !=
+            (create
+                ? 'POST'
+                : m.operation == LocalOperation.purge
+                ? 'DELETE'
+                : 'PATCH') ||
         path != '/v1/$route${create ? '' : '/${m.entityId}'}' ||
         body != m.payload) {
       return null;

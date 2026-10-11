@@ -28,6 +28,7 @@ import 'conflict_resolution_store.dart';
 import 'local_models.dart';
 import 'mapping_eligibility.dart';
 import 'metadata_followup_store.dart';
+import 'playlist_change_store.dart';
 import 'retry_controls.dart';
 import 'snapshot_business_store.dart';
 import 'snapshot_download_store.dart';
@@ -42,7 +43,6 @@ export 'snapshot_download_store.dart'
         SnapshotBaselinePage,
         SnapshotBaselineRecord,
         SnapshotRecordingBaseline;
-
 export 'upload_queue_store.dart' show UploadWork;
 
 typedef SupportDirectory = Future<Directory> Function();
@@ -192,6 +192,32 @@ final class AccountStore {
     _database,
     _manager._clock,
   );
+
+  Future<List<Map<String, dynamic>>> activePlaylists() => _run(() async {
+    final rows = await _database
+        .customSelect(
+          "SELECT entity_id,server_revision,COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='PLAYLIST' AND tombstone=0",
+          variables: [Variable(userId)],
+        )
+        .get();
+    final result = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      final raw = row.readNullable<String>('payload');
+      if (raw == null) continue;
+      _validatePayloadOwner(raw);
+      final value = jsonDecode(raw) as Map<String, dynamic>;
+      if (value['id'] != row.read<String>('entity_id')) {
+        throw StateError('Playlist identity mismatch');
+      }
+      if (value['deleted_at'] != null || value['status'] == 'DELETED') continue;
+      result.add({
+        ...value,
+        'local_base_revision': row.read<int>('server_revision'),
+      });
+    }
+    result.sort((a, b) => (a['id'] as String).compareTo(b['id'] as String));
+    return result;
+  });
 
   /// Only active saved recordings with no song; no file or queue writes.
   Future<List<Map<String, dynamic>>> readUnlinkedRecordings() => _run(() async {
@@ -1661,6 +1687,24 @@ final class AccountStore {
           request.attempt,
         ],
       );
+      if (m.entity == LocalEntity.playlist &&
+          m.operation == LocalOperation.purge &&
+          !preserveCurrent) {
+        await _database.customStatement(
+          "UPDATE metadata_copies SET tombstone=1 WHERE entity_type='PLAYLIST' AND entity_id=?",
+          [m.entityId],
+        );
+        final business = SnapshotBusinessStore(
+          _database,
+          requireActive: requireActive,
+          clock: _manager._clock,
+        );
+        await PlaylistChangeStore(
+          _database,
+          requireActive,
+          business.writeCopy,
+        ).applyDeletionReceipt(Map<String, dynamic>.from(snapshot));
+      }
       await _retry.finish(m.opId);
       await finishCanonicalChoices(
         _database,

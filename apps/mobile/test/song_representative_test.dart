@@ -263,7 +263,7 @@ void main() {
       repo = LocalRepository(store);
       final check = sqlite.sqlite3.open(file.path);
       try {
-        expect(check.select('PRAGMA user_version').single.values.single, 12);
+        expect(check.select('PRAGMA user_version').single.values.single, 13);
         expect(
           check
               .select('SELECT * FROM mutation_wire_requests')

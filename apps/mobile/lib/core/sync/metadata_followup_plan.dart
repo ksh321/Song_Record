@@ -33,8 +33,11 @@ final class MetadataFollowupPlan {
           LocalEntity.recording,
           LocalEntity.song,
           LocalEntity.tag,
+          LocalEntity.playlist,
         }.contains(original.entity) ||
-        original.operation != LocalOperation.patch ||
+        !(original.operation == LocalOperation.patch ||
+            original.entity == LocalEntity.playlist &&
+                original.operation == LocalOperation.purge) ||
         original.baseRevision != 0 ||
         original.basePayload != null ||
         original.state != 'PENDING' ||

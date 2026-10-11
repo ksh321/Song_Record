@@ -154,9 +154,9 @@ CREATE TRIGGER recording_followup_valid_insert BEFORE INSERT ON recording_follow
     JOIN local_mutations p ON p.op_id=NEW.predecessor_op_id
     WHERE o.op_id=NEW.original_op_id AND o.user_id=NEW.user_id
       AND r.user_id=o.user_id AND p.user_id=o.user_id
-      AND o.entity_type IN ('RECORDING','SONG','TAG') AND r.entity_type=o.entity_type AND p.entity_type=o.entity_type
+      AND o.entity_type IN ('RECORDING','SONG','TAG','PLAYLIST') AND r.entity_type=o.entity_type AND p.entity_type=o.entity_type
       AND r.entity_id=o.entity_id AND p.entity_id=o.entity_id
-      AND o.operation='PATCH' AND r.operation='PATCH'
+      AND (o.operation='PATCH' OR (o.entity_type='PLAYLIST' AND o.operation='PURGE')) AND r.operation=o.operation
       AND o.base_revision=0 AND o.attempt_count=0 AND o.queue_state='PENDING'
       AND r.base_revision>0 AND r.attempt_count=0 AND r.queue_state='PENDING'
       AND p.queue_state='ACKED' AND p.attempt_count>0
@@ -185,7 +185,7 @@ END;
 CREATE TABLE mutation_wire_requests (
   op_id TEXT NOT NULL PRIMARY KEY REFERENCES local_mutations(op_id),
   contract_version TEXT NOT NULL,
-  http_method TEXT NOT NULL CHECK (http_method IN ('POST','PATCH','PUT')),
+  http_method TEXT NOT NULL CHECK (http_method IN ('POST','PATCH','PUT','DELETE')),
   relative_path TEXT NOT NULL,
   body_json TEXT NOT NULL CHECK (json_valid(body_json) AND json_type(body_json)='object'),
   wire_hash TEXT NOT NULL CHECK (length(wire_hash)=64 AND wire_hash NOT GLOB '*[^0-9a-f]*')

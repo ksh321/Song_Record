@@ -30,14 +30,17 @@ def main():
     operation_ids = set()
     for path, methods in spec['paths'].items():
         for method, operation in methods.items():
+            if method not in {'get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace'}:
+                continue  # Path-level parameters are validated by validate_spec above.
+            parameters = methods.get('parameters', []) + operation.get('parameters', [])
             identifier = operation['operationId']
             assert identifier not in operation_ids, identifier
             operation_ids.add(identifier)
             assert operation['x-implementation-status'] in ('implemented', 'planned')
             if operation.get('security', spec['security']):
-                assert {'$ref': '#/components/parameters/DeviceId'} in operation['parameters'], path
+                assert {'$ref': '#/components/parameters/DeviceId'} in parameters, path
             if operation['x-implementation-status'] == 'planned' and method != 'get':
-                assert {'$ref': '#/components/parameters/IdempotencyKey'} in operation['parameters'], path
+                assert {'$ref': '#/components/parameters/IdempotencyKey'} in parameters, path
     def validator(name):
         schema = {'$ref': '#/components/schemas/' + name, 'components': spec['components']}
         Draft202012Validator.check_schema(schema)

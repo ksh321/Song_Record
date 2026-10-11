@@ -7517,6 +7517,1665 @@ i1.GeneratedColumn<String> _column_121(String aliasedName) =>
       type: i1.DriftSqlType.string,
       $customConstraints: 'NOT NULL CHECK (state IN (\'PREPARING\', \'CONFIRMED\', \'SUCCEEDED\', \'CANCELLED\', \'EXPIRED\'))',
     );
+
+final class Schema12 extends i0.VersionedSchema {
+  Schema12({required super.database}) : super(version: 12);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    localAccount,
+    metadataCopies,
+    localMutations,
+    mutationQueue,
+    mutationTarget,
+    localRecordingFiles,
+    recordingJournals,
+    importJobs,
+    importItems,
+    syncCursors,
+    localAccountNoUpdate,
+    localAccountNoDelete,
+    mutationRequestImmutable,
+    cursorNoRewind,
+    recordingFollowups,
+    recordingFollowupValidInsert,
+    recordingFollowupNoUpdate,
+    recordingFollowupNoDelete,
+    recordingFollowupNoReplace,
+    recordingFollowupOriginalNoClaim,
+    mutationWireRequests,
+    mutationWireRequestImmutable,
+    mutationRetryControls,
+    mutationRetryBudgetMonotonic,
+    songAliases,
+    songAliasDestination,
+    mutationSupersessions,
+    canonicalEditIntents,
+    canonicalIntentTarget,
+    mutationMappingHolds,
+    mutationMappingActiveHolds,
+    songAliasValidInsert,
+    songAliasNoUpdate,
+    songAliasNoDelete,
+    mutationSupersessionValidInsert,
+    mutationSupersessionNoUpdate,
+    mutationSupersessionNoDelete,
+    supersededMutationNoClaim,
+    canonicalIntentEvidenceImmutable,
+    canonicalIntentNoDelete,
+    mappingHoldReleaseOnly,
+    mappingHoldNoDelete,
+    songAliasNoReplace,
+    mutationSupersessionNoReplace,
+    canonicalIntentNoReplace,
+    mappingHoldNoReplace,
+    mutationRowidImmutable,
+    mutationHistoryNoReplace,
+    mutationOrderPositive,
+    mutationHistoryNoDelete,
+    snapshotDownloads,
+    snapshotDownloadRows,
+    snapshotDownloadProgress,
+    snapshotBaseline,
+    snapshotDownloadIdentity,
+    snapshotDownloadNoReplace,
+    snapshotRowInsert,
+    snapshotRowNoUpdate,
+    snapshotRowDelete,
+    snapshotProgressInsert,
+    snapshotProgressUpdate,
+    snapshotBaselineInsert,
+    snapshotBaselineUpdate,
+    mutationConflictResolutions,
+    conflictResolutionValidInsert,
+    conflictResolutionNoReplace,
+    conflictResolutionNoUpdate,
+    conflictResolutionNoDelete,
+    resolvedMutationNoClaim,
+    pendingEditResolutions,
+    pendingEditValidInsert,
+    pendingEditNoReplace,
+    pendingEditNoUpdate,
+    pendingEditNoDelete,
+    pendingEditOriginalNoClaim,
+    localUploadQueue,
+    localUploadReady,
+    localUploadIdentity,
+    localCleanupConfirmations,
+    localCleanupRecording,
+  ];
+  late final Shape0 localAccount = Shape0(
+    source: i0.VersionedTable(
+      entityName: 'local_account',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [_column_0, _column_1, _column_2, _column_3],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape1 metadataCopies = Shape1(
+    source: i0.VersionedTable(
+      entityName: 'metadata_copies',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(entity_type, entity_id)',
+        'CHECK((server_revision = 0 AND server_payload IS NULL)OR(server_revision > 0 AND server_payload IS NOT NULL))',
+        'CHECK(tombstone = 0 OR server_revision > 0)',
+      ],
+      columns: [
+        _column_4,
+        _column_5,
+        _column_6,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape2 localMutations = Shape2(
+    source: i0.VersionedTable(
+      entityName: 'local_mutations',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(entity_type, entity_id)REFERENCES metadata_copies(entity_type, entity_id)',
+        'CHECK((base_revision = 0 AND base_payload IS NULL)OR(base_revision > 0 AND base_payload IS NOT NULL))',
+      ],
+      columns: [
+        _column_12,
+        _column_4,
+        _column_13,
+        _column_14,
+        _column_15,
+        _column_16,
+        _column_17,
+        _column_18,
+        _column_19,
+        _column_20,
+        _column_21,
+        _column_22,
+        _column_23,
+        _column_3,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index mutationQueue = i1.Index(
+    'mutation_queue',
+    'CREATE INDEX mutation_queue ON local_mutations (queue_state, next_attempt_at, created_at, op_id)',
+  );
+  final i1.Index mutationTarget = i1.Index(
+    'mutation_target',
+    'CREATE INDEX mutation_target ON local_mutations (entity_type, entity_id, created_at)',
+  );
+  late final Shape3 localRecordingFiles = Shape3(
+    source: i0.VersionedTable(
+      entityName: 'local_recording_files',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'UNIQUE(user_id, recording_id)',
+        'CHECK(relative_path = \'audio/\' || recording_id || \'.m4a\' OR relative_path = \'pending/\' || recording_id || \'.m4a.part\')',
+        'CHECK(local_state NOT IN (\'INPUT_PENDING\', \'SAVED\') OR(sha256 IS NOT NULL AND size_bytes IS NOT NULL AND verified_at IS NOT NULL AND relative_path = \'audio/\' || recording_id || \'.m4a\'))',
+      ],
+      columns: [
+        _column_24,
+        _column_4,
+        _column_25,
+        _column_26,
+        _column_27,
+        _column_28,
+        _column_29,
+        _column_30,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape4 recordingJournals = Shape4(
+    source: i0.VersionedTable(
+      entityName: 'recording_journals',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(user_id, recording_id)REFERENCES local_recording_files(user_id, recording_id)',
+        'CHECK(pending_path = \'pending/\' || recording_id || \'.m4a.part\')',
+        'CHECK(final_path = \'audio/\' || recording_id || \'.m4a\')',
+      ],
+      columns: [
+        _column_31,
+        _column_32,
+        _column_33,
+        _column_34,
+        _column_35,
+        _column_36,
+        _column_37,
+        _column_38,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape5 importJobs = Shape5(
+    source: i0.VersionedTable(
+      entityName: 'import_jobs',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(archive_path = \'imports/\' || import_job_id || \'.zip\')',
+        'CHECK(status <> \'COMPLETED\' OR completed_items = total_items)',
+      ],
+      columns: [
+        _column_39,
+        _column_4,
+        _column_40,
+        _column_41,
+        _column_42,
+        _column_43,
+        _column_44,
+        _column_45,
+        _column_46,
+        _column_3,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape6 importItems = Shape6(
+    source: i0.VersionedTable(
+      entityName: 'import_items',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(import_job_id, ordinal)'],
+      columns: [
+        _column_47,
+        _column_48,
+        _column_49,
+        _column_50,
+        _column_51,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape7 syncCursors = Shape7(
+    source: i0.VersionedTable(
+      entityName: 'sync_cursors',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(baseline_complete = 0 OR last_change_seq IS NOT NULL)',
+      ],
+      columns: [
+        _column_0,
+        _column_4,
+        _column_52,
+        _column_53,
+        _column_54,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger localAccountNoUpdate = i1.Trigger(
+    'CREATE TRIGGER local_account_no_update BEFORE UPDATE ON local_account BEGIN SELECT RAISE (ABORT, \'Local database ownership is immutable\');END',
+    'local_account_no_update',
+  );
+  final i1.Trigger localAccountNoDelete = i1.Trigger(
+    'CREATE TRIGGER local_account_no_delete BEFORE DELETE ON local_account BEGIN SELECT RAISE (ABORT, \'Local database ownership cannot be removed\');END',
+    'local_account_no_delete',
+  );
+  final i1.Trigger mutationRequestImmutable = i1.Trigger(
+    'CREATE TRIGGER mutation_request_immutable BEFORE UPDATE ON local_mutations WHEN NEW.op_id <> OLD.op_id OR NEW.user_id <> OLD.user_id OR NEW.entity_type <> OLD.entity_type OR NEW.entity_id <> OLD.entity_id OR NEW.operation <> OLD.operation OR NEW.base_revision <> OLD.base_revision OR NEW.base_payload IS NOT OLD.base_payload OR NEW.payload <> OLD.payload OR NEW.request_hash <> OLD.request_hash OR NEW.created_at <> OLD.created_at OR NEW.attempt_count < OLD.attempt_count BEGIN SELECT RAISE (ABORT, \'Mutation identity and request must survive retries unchanged\');END',
+    'mutation_request_immutable',
+  );
+  final i1.Trigger cursorNoRewind = i1.Trigger(
+    'CREATE TRIGGER cursor_no_rewind BEFORE UPDATE ON sync_cursors WHEN NEW.user_id <> OLD.user_id OR(OLD.last_change_seq IS NOT NULL AND(NEW.last_change_seq IS NULL OR NEW.last_change_seq < OLD.last_change_seq))BEGIN SELECT RAISE (ABORT, \'Do not discard an acknowledged cursor\');END',
+    'cursor_no_rewind',
+  );
+  late final Shape19 recordingFollowups = Shape19(
+    source: i0.VersionedTable(
+      entityName: 'recording_followups',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(original_op_id <> replacement_op_id)',
+        'CHECK(original_op_id <> predecessor_op_id)',
+        'CHECK(replacement_op_id <> predecessor_op_id)',
+      ],
+      columns: [
+        _column_70,
+        _column_71,
+        _column_107,
+        _column_4,
+        _column_74,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger recordingFollowupValidInsert = i1.Trigger(
+    'CREATE TRIGGER recording_followup_valid_insert BEFORE INSERT ON recording_followups BEGIN SELECT RAISE (ABORT, \'Invalid metadata followup\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS o JOIN local_mutations AS r ON r.op_id = NEW.replacement_op_id JOIN local_mutations AS p ON p.op_id = NEW.predecessor_op_id WHERE o.op_id = NEW.original_op_id AND o.user_id = NEW.user_id AND r.user_id = o.user_id AND p.user_id = o.user_id AND o.entity_type IN (\'RECORDING\', \'SONG\', \'TAG\') AND r.entity_type = o.entity_type AND p.entity_type = o.entity_type AND r.entity_id = o.entity_id AND p.entity_id = o.entity_id AND o.operation = \'PATCH\' AND r.operation = \'PATCH\' AND o.base_revision = 0 AND o.attempt_count = 0 AND o.queue_state = \'PENDING\' AND r.base_revision > 0 AND r.attempt_count = 0 AND r.queue_state = \'PENDING\' AND p.queue_state = \'ACKED\' AND p.attempt_count > 0 AND NEW.logical_order = o."rowid" AND r."rowid" > o."rowid" AND json_extract(p.server_response, \'\$.revision\') = r.base_revision);END',
+    'recording_followup_valid_insert',
+  );
+  final i1.Trigger recordingFollowupNoUpdate = i1.Trigger(
+    'CREATE TRIGGER recording_followup_no_update BEFORE UPDATE ON recording_followups BEGIN SELECT RAISE (ABORT, \'Recording followup evidence is immutable\');END',
+    'recording_followup_no_update',
+  );
+  final i1.Trigger recordingFollowupNoDelete = i1.Trigger(
+    'CREATE TRIGGER recording_followup_no_delete BEFORE DELETE ON recording_followups BEGIN SELECT RAISE (ABORT, \'Recording followup evidence must be retained\');END',
+    'recording_followup_no_delete',
+  );
+  final i1.Trigger recordingFollowupNoReplace = i1.Trigger(
+    'CREATE TRIGGER recording_followup_no_replace BEFORE INSERT ON recording_followups BEGIN SELECT RAISE (ABORT, \'Recording followup evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM recording_followups WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.replacement_op_id);END',
+    'recording_followup_no_replace',
+  );
+  final i1.Trigger recordingFollowupOriginalNoClaim = i1.Trigger(
+    'CREATE TRIGGER recording_followup_original_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM recording_followups WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Original offline intent cannot be sent after materialization\');END',
+    'recording_followup_original_no_claim',
+  );
+  late final Shape8 mutationWireRequests = Shape8(
+    source: i0.VersionedTable(
+      entityName: 'mutation_wire_requests',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [
+        _column_55,
+        _column_56,
+        _column_122,
+        _column_58,
+        _column_59,
+        _column_60,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger mutationWireRequestImmutable = i1.Trigger(
+    'CREATE TRIGGER mutation_wire_request_immutable BEFORE UPDATE ON mutation_wire_requests BEGIN SELECT RAISE (ABORT, \'Frozen HTTP requests must survive retries unchanged\');END',
+    'mutation_wire_request_immutable',
+  );
+  late final Shape9 mutationRetryControls = Shape9(
+    source: i0.VersionedTable(
+      entityName: 'mutation_retry_controls',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [_column_55, _column_61, _column_62, _column_63],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger mutationRetryBudgetMonotonic = i1.Trigger(
+    'CREATE TRIGGER mutation_retry_budget_monotonic BEFORE UPDATE ON mutation_retry_controls WHEN NEW.op_id <> OLD.op_id OR(OLD.automatic_retries_claimed IS NULL AND NEW.automatic_retries_claimed IS NOT NULL)OR(OLD.automatic_retries_claimed IS NOT NULL AND NEW.automatic_retries_claimed IS NULL)OR NEW.automatic_retries_claimed < OLD.automatic_retries_claimed OR NEW.automatic_retries_claimed > OLD.automatic_retries_claimed + 1 BEGIN SELECT RAISE (ABORT, \'Automatic retry budget cannot be replenished\');END',
+    'mutation_retry_budget_monotonic',
+  );
+  late final Shape10 songAliases = Shape10(
+    source: i0.VersionedTable(
+      entityName: 'song_aliases',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(entity_type, source_song_id)REFERENCES metadata_copies(entity_type, entity_id)',
+        'FOREIGN KEY(entity_type, canonical_song_id)REFERENCES metadata_copies(entity_type, entity_id)',
+        'CHECK(source_song_id <> canonical_song_id)',
+        'CHECK(json_type(receipt_body, \'\$.created\') IS \'false\')',
+        'CHECK(json_type(receipt_body, \'\$.song\') IS \'object\')',
+        'CHECK(json_extract(receipt_body, \'\$.canonical_song_id\') IS canonical_song_id)',
+        'CHECK(json_extract(receipt_body, \'\$.song.id\') IS canonical_song_id)',
+        'CHECK(json_type(receipt_body, \'\$.song.revision\') IS \'integer\' AND json_extract(receipt_body, \'\$.song.revision\') > 0)',
+        'CHECK(json_extract(receipt_body, \'\$.song.lifecycle_state\') IS \'ACTIVE\')',
+      ],
+      columns: [
+        _column_64,
+        _column_65,
+        _column_4,
+        _column_66,
+        _column_67,
+        _column_68,
+        _column_69,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index songAliasDestination = i1.Index(
+    'song_alias_destination',
+    'CREATE INDEX song_alias_destination ON song_aliases (canonical_song_id)',
+  );
+  late final Shape11 mutationSupersessions = Shape11(
+    source: i0.VersionedTable(
+      entityName: 'mutation_supersessions',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['CHECK(original_op_id <> replacement_op_id)'],
+      columns: [
+        _column_70,
+        _column_71,
+        _column_72,
+        _column_4,
+        _column_73,
+        _column_74,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape12 canonicalEditIntents = Shape12(
+    source: i0.VersionedTable(
+      entityName: 'canonical_edit_intents',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(entity_type, entity_id)REFERENCES metadata_copies(entity_type, entity_id)',
+        'UNIQUE(mapping_source_id, intent_key)',
+        'CHECK((state = \'OPEN\' AND resolution_json IS NULL AND resolution_op_id IS NULL AND resolved_at IS NULL)OR(state = \'QUEUED\' AND resolution_json IS NOT NULL AND resolution_op_id IS NOT NULL AND resolved_at IS NULL)OR(state = \'RESOLVED\' AND resolution_json IS NOT NULL AND resolved_at IS NOT NULL))',
+      ],
+      columns: [
+        _column_75,
+        _column_4,
+        _column_72,
+        _column_76,
+        _column_77,
+        _column_13,
+        _column_14,
+        _column_78,
+        _column_79,
+        _column_80,
+        _column_81,
+        _column_82,
+        _column_83,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index canonicalIntentTarget = i1.Index(
+    'canonical_intent_target',
+    'CREATE INDEX canonical_intent_target ON canonical_edit_intents (entity_type, entity_id, state)',
+  );
+  late final Shape13 mutationMappingHolds = Shape13(
+    source: i0.VersionedTable(
+      entityName: 'mutation_mapping_holds',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(op_id, mapping_source_id, reason)',
+        'CHECK((released_at IS NULL AND release_evidence IS NULL)OR(released_at IS NOT NULL AND release_evidence IS NOT NULL))',
+      ],
+      columns: [
+        _column_84,
+        _column_72,
+        _column_4,
+        _column_85,
+        _column_86,
+        _column_87,
+        _column_3,
+        _column_88,
+        _column_89,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index mutationMappingActiveHolds = i1.Index(
+    'mutation_mapping_active_holds',
+    'CREATE INDEX mutation_mapping_active_holds ON mutation_mapping_holds (op_id, released_at)',
+  );
+  final i1.Trigger songAliasValidInsert = i1.Trigger(
+    'CREATE TRIGGER song_alias_valid_insert BEFORE INSERT ON song_aliases BEGIN SELECT RAISE (ABORT, \'Alias requires its original song CREATE\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.mapping_op_id AND m.user_id = NEW.user_id AND m.entity_type = \'SONG\' AND m.entity_id = NEW.source_song_id AND m.operation = \'CREATE\');SELECT RAISE (ABORT, \'Song alias cycle\') WHERE EXISTS (WITH RECURSIVE destinations (id) AS (SELECT NEW.canonical_song_id UNION SELECT a.canonical_song_id FROM song_aliases AS a JOIN destinations AS d ON a.source_song_id = d.id) SELECT 1 FROM destinations WHERE id = NEW.source_song_id);END',
+    'song_alias_valid_insert',
+  );
+  final i1.Trigger songAliasNoUpdate = i1.Trigger(
+    'CREATE TRIGGER song_alias_no_update BEFORE UPDATE ON song_aliases BEGIN SELECT RAISE (ABORT, \'Song aliases and receipts are immutable\');END',
+    'song_alias_no_update',
+  );
+  final i1.Trigger songAliasNoDelete = i1.Trigger(
+    'CREATE TRIGGER song_alias_no_delete BEFORE DELETE ON song_aliases BEGIN SELECT RAISE (ABORT, \'Song alias evidence must be retained\');END',
+    'song_alias_no_delete',
+  );
+  final i1.Trigger mutationSupersessionValidInsert = i1.Trigger(
+    'CREATE TRIGGER mutation_supersession_valid_insert BEFORE INSERT ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Cannot prepend a frozen replacement chain\') WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.replacement_op_id);SELECT RAISE (ABORT, \'Invalid replacement order\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS original JOIN local_mutations AS replacement ON replacement.op_id = NEW.replacement_op_id WHERE original.op_id = NEW.original_op_id AND replacement."rowid" > original."rowid");SELECT RAISE (ABORT, \'Replacement must inherit original logical order\') WHERE NEW.order_root_op_id IS NOT COALESCE((SELECT order_root_op_id FROM mutation_supersessions WHERE replacement_op_id = NEW.original_op_id), NEW.original_op_id) OR NEW.logical_order IS NOT COALESCE((SELECT logical_order FROM mutation_supersessions WHERE replacement_op_id = NEW.original_op_id), (SELECT "rowid" FROM local_mutations WHERE op_id = NEW.original_op_id));END',
+    'mutation_supersession_valid_insert',
+  );
+  final i1.Trigger mutationSupersessionNoUpdate = i1.Trigger(
+    'CREATE TRIGGER mutation_supersession_no_update BEFORE UPDATE ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Mutation supersessions are immutable\');END',
+    'mutation_supersession_no_update',
+  );
+  final i1.Trigger mutationSupersessionNoDelete = i1.Trigger(
+    'CREATE TRIGGER mutation_supersession_no_delete BEFORE DELETE ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Mutation supersession history must be retained\');END',
+    'mutation_supersession_no_delete',
+  );
+  final i1.Trigger supersededMutationNoClaim = i1.Trigger(
+    'CREATE TRIGGER superseded_mutation_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Superseded mutation cannot be claimed\');END',
+    'superseded_mutation_no_claim',
+  );
+  final i1.Trigger canonicalIntentEvidenceImmutable = i1.Trigger(
+    'CREATE TRIGGER canonical_intent_evidence_immutable BEFORE UPDATE ON canonical_edit_intents WHEN NEW.intent_id IS NOT OLD.intent_id OR NEW.user_id IS NOT OLD.user_id OR NEW.mapping_source_id IS NOT OLD.mapping_source_id OR NEW.intent_key IS NOT OLD.intent_key OR NEW.kind IS NOT OLD.kind OR NEW.entity_type IS NOT OLD.entity_type OR NEW.entity_id IS NOT OLD.entity_id OR NEW.origin_op_id IS NOT OLD.origin_op_id OR NEW.evidence_json IS NOT OLD.evidence_json OR NEW.created_at IS NOT OLD.created_at OR OLD.state = \'RESOLVED\' OR(OLD.state = \'QUEUED\' AND NEW.state <> \'RESOLVED\')BEGIN SELECT RAISE (ABORT, \'Canonical intent evidence cannot be rewritten\');END',
+    'canonical_intent_evidence_immutable',
+  );
+  final i1.Trigger canonicalIntentNoDelete = i1.Trigger(
+    'CREATE TRIGGER canonical_intent_no_delete BEFORE DELETE ON canonical_edit_intents BEGIN SELECT RAISE (ABORT, \'Canonical edit evidence must be retained\');END',
+    'canonical_intent_no_delete',
+  );
+  final i1.Trigger mappingHoldReleaseOnly = i1.Trigger(
+    'CREATE TRIGGER mapping_hold_release_only BEFORE UPDATE ON mutation_mapping_holds WHEN NEW.op_id IS NOT OLD.op_id OR NEW.mapping_source_id IS NOT OLD.mapping_source_id OR NEW.user_id IS NOT OLD.user_id OR NEW.reason IS NOT OLD.reason OR NEW.disposition IS NOT OLD.disposition OR NEW.intent_id IS NOT OLD.intent_id OR NEW.created_at IS NOT OLD.created_at OR OLD.released_at IS NOT NULL OR NEW.released_at IS NULL BEGIN SELECT RAISE (ABORT, \'Mapping hold permits one evidenced release only\');END',
+    'mapping_hold_release_only',
+  );
+  final i1.Trigger mappingHoldNoDelete = i1.Trigger(
+    'CREATE TRIGGER mapping_hold_no_delete BEFORE DELETE ON mutation_mapping_holds BEGIN SELECT RAISE (ABORT, \'Mapping hold history must be retained\');END',
+    'mapping_hold_no_delete',
+  );
+  final i1.Trigger songAliasNoReplace = i1.Trigger(
+    'CREATE TRIGGER song_alias_no_replace BEFORE INSERT ON song_aliases BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM song_aliases WHERE source_song_id = NEW.source_song_id OR mapping_op_id = NEW.mapping_op_id);END',
+    'song_alias_no_replace',
+  );
+  final i1.Trigger mutationSupersessionNoReplace = i1.Trigger(
+    'CREATE TRIGGER mutation_supersession_no_replace BEFORE INSERT ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.replacement_op_id);END',
+    'mutation_supersession_no_replace',
+  );
+  final i1.Trigger canonicalIntentNoReplace = i1.Trigger(
+    'CREATE TRIGGER canonical_intent_no_replace BEFORE INSERT ON canonical_edit_intents BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM canonical_edit_intents WHERE intent_id = NEW.intent_id OR(mapping_source_id = NEW.mapping_source_id AND intent_key = NEW.intent_key));END',
+    'canonical_intent_no_replace',
+  );
+  final i1.Trigger mappingHoldNoReplace = i1.Trigger(
+    'CREATE TRIGGER mapping_hold_no_replace BEFORE INSERT ON mutation_mapping_holds BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = NEW.op_id AND mapping_source_id = NEW.mapping_source_id AND reason = NEW.reason);END',
+    'mapping_hold_no_replace',
+  );
+  final i1.Trigger mutationRowidImmutable = i1.Trigger(
+    'CREATE TRIGGER mutation_rowid_immutable BEFORE UPDATE ON local_mutations WHEN NEW."rowid" IS NOT OLD."rowid" BEGIN SELECT RAISE (ABORT, \'Mutation rowid must remain immutable\');END',
+    'mutation_rowid_immutable',
+  );
+  final i1.Trigger mutationHistoryNoReplace = i1.Trigger(
+    'CREATE TRIGGER mutation_history_no_replace BEFORE INSERT ON local_mutations WHEN EXISTS (SELECT 1 FROM local_mutations WHERE op_id = NEW.op_id OR(NEW."rowid" <> -1 AND "rowid" = NEW."rowid")) BEGIN SELECT RAISE (ABORT, \'Mutation history cannot be replaced\');END',
+    'mutation_history_no_replace',
+  );
+  final i1.Trigger mutationOrderPositive = i1.Trigger(
+    'CREATE TRIGGER mutation_order_positive AFTER INSERT ON local_mutations WHEN NEW."rowid" <= 0 BEGIN SELECT RAISE (ABORT, \'New mutation order must be positive\');END',
+    'mutation_order_positive',
+  );
+  final i1.Trigger mutationHistoryNoDelete = i1.Trigger(
+    'CREATE TRIGGER mutation_history_no_delete BEFORE DELETE ON local_mutations BEGIN SELECT RAISE (ABORT, \'Mutation ordering history must be retained\');END',
+    'mutation_history_no_delete',
+  );
+  late final Shape14 snapshotDownloads = Shape14(
+    source: i0.VersionedTable(
+      entityName: 'snapshot_downloads',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'UNIQUE(snapshot_token, user_id)',
+        'CHECK(json_extract(manifest_json, \'\$.snapshot_token\') IS snapshot_token)',
+        'CHECK(json_extract(manifest_json, \'\$.snapshot_cursor\') IS snapshot_cursor)',
+      ],
+      columns: [
+        _column_90,
+        _column_4,
+        _column_91,
+        _column_92,
+        _column_93,
+        _column_94,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape15 snapshotDownloadRows = Shape15(
+    source: i0.VersionedTable(
+      entityName: 'snapshot_download_rows',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(snapshot_token, entity, ordinal)',
+        'FOREIGN KEY(snapshot_token, user_id)REFERENCES snapshot_downloads(snapshot_token, user_id)ON DELETE CASCADE',
+        'CHECK(json_extract(canonical_payload, \'\$.user_id\') IS user_id)',
+      ],
+      columns: [
+        _column_95,
+        _column_4,
+        _column_96,
+        _column_48,
+        _column_49,
+        _column_97,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape16 snapshotDownloadProgress = Shape16(
+    source: i0.VersionedTable(
+      entityName: 'snapshot_download_progress',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(snapshot_token, entity)',
+        'CHECK((finished = 1 AND next_cursor IS NULL)OR(finished = 0 AND next_cursor IS NOT NULL AND next_cursor LIKE \'sp1.%\' AND last_ordinal > 0))',
+      ],
+      columns: [_column_98, _column_96, _column_99, _column_100, _column_101],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape17 snapshotBaseline = Shape17(
+    source: i0.VersionedTable(
+      entityName: 'snapshot_baseline',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(snapshot_token, user_id)REFERENCES snapshot_downloads(snapshot_token, user_id)',
+      ],
+      columns: [_column_0, _column_95, _column_4],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger snapshotDownloadIdentity = i1.Trigger(
+    'CREATE TRIGGER snapshot_download_identity BEFORE UPDATE ON snapshot_downloads WHEN NEW.snapshot_token IS NOT OLD.snapshot_token OR NEW.user_id IS NOT OLD.user_id OR NEW.manifest_json IS NOT OLD.manifest_json OR NEW.snapshot_cursor IS NOT OLD.snapshot_cursor OR NEW.expires_at IS NOT OLD.expires_at OR NEW.created_at IS NOT OLD.created_at OR NOT((OLD.state = \'RECEIVING\' AND NEW.state = \'VERIFIED\')OR(OLD.state = \'VERIFIED\' AND NEW.state = \'APPLIED\'))BEGIN SELECT RAISE (ABORT, \'Snapshot manifest and forward state are immutable\');END',
+    'snapshot_download_identity',
+  );
+  final i1.Trigger snapshotDownloadNoReplace = i1.Trigger(
+    'CREATE TRIGGER snapshot_download_no_replace BEFORE INSERT ON snapshot_downloads WHEN NEW.state <> \'RECEIVING\' OR EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token) BEGIN SELECT RAISE (ABORT, \'Snapshot manifest cannot be replaced\');END',
+    'snapshot_download_no_replace',
+  );
+  final i1.Trigger snapshotRowInsert = i1.Trigger(
+    'CREATE TRIGGER snapshot_row_insert BEFORE INSERT ON snapshot_download_rows WHEN NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND user_id = NEW.user_id AND state = \'RECEIVING\') OR EXISTS (SELECT 1 FROM snapshot_download_rows WHERE snapshot_token = NEW.snapshot_token AND entity = NEW.entity AND ordinal = NEW.ordinal) BEGIN SELECT RAISE (ABORT, \'Only new receiving snapshot rows may be inserted\');END',
+    'snapshot_row_insert',
+  );
+  final i1.Trigger snapshotRowNoUpdate = i1.Trigger(
+    'CREATE TRIGGER snapshot_row_no_update BEFORE UPDATE ON snapshot_download_rows BEGIN SELECT RAISE (ABORT, \'Snapshot rows are immutable\');END',
+    'snapshot_row_no_update',
+  );
+  final i1.Trigger snapshotRowDelete = i1.Trigger(
+    'CREATE TRIGGER snapshot_row_delete BEFORE DELETE ON snapshot_download_rows WHEN EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = OLD.snapshot_token AND state <> \'RECEIVING\') BEGIN SELECT RAISE (ABORT, \'Verified snapshot rows must remain intact\');END',
+    'snapshot_row_delete',
+  );
+  final i1.Trigger snapshotProgressInsert = i1.Trigger(
+    'CREATE TRIGGER snapshot_progress_insert BEFORE INSERT ON snapshot_download_progress WHEN NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND state = \'RECEIVING\') OR EXISTS (SELECT 1 FROM snapshot_download_progress WHERE snapshot_token = NEW.snapshot_token AND entity = NEW.entity) BEGIN SELECT RAISE (ABORT, \'Snapshot progress cannot be replaced\');END',
+    'snapshot_progress_insert',
+  );
+  final i1.Trigger snapshotProgressUpdate = i1.Trigger(
+    'CREATE TRIGGER snapshot_progress_update BEFORE UPDATE ON snapshot_download_progress WHEN NEW.snapshot_token IS NOT OLD.snapshot_token OR NEW.entity IS NOT OLD.entity OR OLD.finished = 1 OR NEW.last_ordinal <= OLD.last_ordinal OR NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND state = \'RECEIVING\') BEGIN SELECT RAISE (ABORT, \'Snapshot progress must advance while receiving\');END',
+    'snapshot_progress_update',
+  );
+  final i1.Trigger snapshotBaselineInsert = i1.Trigger(
+    'CREATE TRIGGER snapshot_baseline_insert BEFORE INSERT ON snapshot_baseline WHEN NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND user_id = NEW.user_id AND state = \'APPLIED\') BEGIN SELECT RAISE (ABORT, \'Only an applied snapshot may become baseline\');END',
+    'snapshot_baseline_insert',
+  );
+  final i1.Trigger snapshotBaselineUpdate = i1.Trigger(
+    'CREATE TRIGGER snapshot_baseline_update BEFORE UPDATE ON snapshot_baseline WHEN NEW.singleton IS NOT OLD.singleton OR NEW.user_id IS NOT OLD.user_id OR NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND user_id = NEW.user_id AND state = \'APPLIED\') BEGIN SELECT RAISE (ABORT, \'Only an applied snapshot may become baseline\');END',
+    'snapshot_baseline_update',
+  );
+  late final Shape18 mutationConflictResolutions = Shape18(
+    source: i0.VersionedTable(
+      entityName: 'mutation_conflict_resolutions',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(replacement_op_id IS NULL OR replacement_op_id <> original_op_id)',
+        'CHECK(json_type(server_snapshot, \'\$.revision\') IS \'integer\' AND json_extract(server_snapshot, \'\$.revision\') = resolved_revision)',
+      ],
+      columns: [
+        _column_70,
+        _column_4,
+        _column_102,
+        _column_103,
+        _column_104,
+        _column_105,
+        _column_106,
+        _column_73,
+        _column_74,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger conflictResolutionValidInsert = i1.Trigger(
+    'CREATE TRIGGER conflict_resolution_valid_insert BEFORE INSERT ON mutation_conflict_resolutions BEGIN SELECT RAISE (ABORT, \'Resolution requires the current revision conflict\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.original_op_id AND m.user_id = NEW.user_id AND m.operation = \'PATCH\' AND m.entity_type IN (\'SONG\', \'RECORDING\', \'TAG\') AND m.queue_state = \'CONFLICT\' AND m.attempt_count = NEW.original_attempt_count AND json_extract(m.server_response, \'\$.status\') = 409 AND json_extract(m.server_response, \'\$.code\') = \'REVISION_CONFLICT\' AND json_type(m.server_response, \'\$.current.revision\') = \'integer\' AND NEW.resolved_revision >= json_extract(m.server_response, \'\$.current.revision\') AND NEW.resolved_revision > m.base_revision AND json_extract(NEW.server_snapshot, \'\$.id\') = m.entity_id AND(json_type(NEW.server_snapshot, \'\$.user_id\') IS NULL OR json_extract(NEW.server_snapshot, \'\$.user_id\') = NEW.user_id));SELECT RAISE (ABORT, \'Resolution choice must be explicit\') WHERE EXISTS (SELECT 1 FROM json_each(NEW.choices)AS choice WHERE choice.type <> \'text\' OR choice.value NOT IN (\'LOCAL\', \'SERVER\'));SELECT RAISE (ABORT, \'Mapping evidence must be resolved separately\') WHERE EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = NEW.original_op_id AND released_at IS NULL) OR EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.original_op_id);SELECT RAISE (ABORT, \'Invalid conflict replacement\') WHERE NEW.replacement_op_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM local_mutations AS original JOIN local_mutations AS replacement ON replacement.op_id = NEW.replacement_op_id WHERE original.op_id = NEW.original_op_id AND replacement.user_id = NEW.user_id AND replacement.entity_type = original.entity_type AND replacement.entity_id = original.entity_id AND replacement.operation = \'PATCH\' AND replacement.queue_state = \'PENDING\' AND replacement.attempt_count = 0 AND replacement."rowid" > original."rowid" AND replacement.base_revision = NEW.resolved_revision AND replacement.base_payload = NEW.server_snapshot AND json_type(replacement.payload, \'\$.base_revision\') = \'integer\' AND json_extract(replacement.payload, \'\$.base_revision\') = NEW.resolved_revision AND NOT EXISTS (SELECT 1 FROM mutation_wire_requests WHERE op_id = replacement.op_id));SELECT RAISE (ABORT, \'Conflict resolution order must be inherited\') WHERE NEW.order_root_op_id IS NOT COALESCE((SELECT order_root_op_id FROM mutation_conflict_resolutions WHERE replacement_op_id = NEW.original_op_id), NEW.original_op_id) OR NEW.logical_order IS NOT COALESCE((SELECT logical_order FROM mutation_conflict_resolutions WHERE replacement_op_id = NEW.original_op_id), (SELECT logical_order FROM recording_followups WHERE replacement_op_id = NEW.original_op_id), (SELECT "rowid" FROM local_mutations WHERE op_id = NEW.original_op_id));SELECT RAISE (ABORT, \'Cannot prepend a resolution chain\') WHERE EXISTS (SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id = NEW.replacement_op_id);END',
+    'conflict_resolution_valid_insert',
+  );
+  final i1.Trigger conflictResolutionNoReplace = i1.Trigger(
+    'CREATE TRIGGER conflict_resolution_no_replace BEFORE INSERT ON mutation_conflict_resolutions WHEN EXISTS (SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id = NEW.original_op_id OR(NEW.replacement_op_id IS NOT NULL AND replacement_op_id = NEW.replacement_op_id)) BEGIN SELECT RAISE (ABORT, \'Conflict resolution evidence cannot be replaced\');END',
+    'conflict_resolution_no_replace',
+  );
+  final i1.Trigger conflictResolutionNoUpdate = i1.Trigger(
+    'CREATE TRIGGER conflict_resolution_no_update BEFORE UPDATE ON mutation_conflict_resolutions BEGIN SELECT RAISE (ABORT, \'Conflict resolution evidence is immutable\');END',
+    'conflict_resolution_no_update',
+  );
+  final i1.Trigger conflictResolutionNoDelete = i1.Trigger(
+    'CREATE TRIGGER conflict_resolution_no_delete BEFORE DELETE ON mutation_conflict_resolutions BEGIN SELECT RAISE (ABORT, \'Conflict resolution evidence must be retained\');END',
+    'conflict_resolution_no_delete',
+  );
+  final i1.Trigger resolvedMutationNoClaim = i1.Trigger(
+    'CREATE TRIGGER resolved_mutation_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Resolved original operation cannot be retried\');END',
+    'resolved_mutation_no_claim',
+  );
+  late final Shape20 pendingEditResolutions = Shape20(
+    source: i0.VersionedTable(
+      entityName: 'pending_edit_resolutions',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(replacement_op_id IS NULL OR replacement_op_id <> original_op_id)',
+      ],
+      columns: [
+        _column_70,
+        _column_4,
+        _column_102,
+        _column_105,
+        _column_106,
+        _column_108,
+        _column_74,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger pendingEditValidInsert = i1.Trigger(
+    'CREATE TRIGGER pending_edit_valid_insert BEFORE INSERT ON pending_edit_resolutions BEGIN SELECT RAISE (ABORT, \'Pending review requires an unsent original\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.original_op_id AND m.user_id = NEW.user_id AND m.operation = \'PATCH\' AND m.entity_type IN (\'SONG\', \'RECORDING\', \'TAG\') AND m.queue_state = \'PENDING\' AND m.attempt_count = 0 AND m.server_response IS NULL AND m.base_revision > 0 AND NEW.logical_order = m."rowid" AND json_extract(NEW.server_snapshot, \'\$.id\') = m.entity_id AND json_type(NEW.server_snapshot, \'\$.revision\') = \'integer\' AND json_extract(NEW.server_snapshot, \'\$.revision\') > m.base_revision AND(json_type(NEW.server_snapshot, \'\$.user_id\') IS NULL OR json_extract(NEW.server_snapshot, \'\$.user_id\') = NEW.user_id)AND NOT EXISTS (SELECT 1 FROM mutation_wire_requests WHERE op_id = m.op_id) AND NOT EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = m.op_id AND released_at IS NULL));SELECT RAISE (ABORT, \'Invalid pending review choice\') WHERE EXISTS (SELECT 1 FROM json_each(NEW.choices)AS choice WHERE choice.type <> \'text\' OR choice.value NOT IN (\'LOCAL\', \'SERVER\'));SELECT RAISE (ABORT, \'Invalid pending review replacement\') WHERE NEW.replacement_op_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM local_mutations AS o JOIN local_mutations AS n ON n.op_id = NEW.replacement_op_id WHERE o.op_id = NEW.original_op_id AND n.user_id = NEW.user_id AND n.entity_type = o.entity_type AND n.entity_id = o.entity_id AND n.operation = \'PATCH\' AND n.queue_state = \'PENDING\' AND n.attempt_count = 0 AND n."rowid" > o."rowid" AND n.base_revision = json_extract(NEW.server_snapshot, \'\$.revision\') AND n.base_payload = NEW.server_snapshot AND json_extract(n.payload, \'\$.base_revision\') = n.base_revision AND NOT EXISTS (SELECT 1 FROM mutation_wire_requests WHERE op_id = n.op_id));END',
+    'pending_edit_valid_insert',
+  );
+  final i1.Trigger pendingEditNoReplace = i1.Trigger(
+    'CREATE TRIGGER pending_edit_no_replace BEFORE INSERT ON pending_edit_resolutions WHEN EXISTS (SELECT 1 FROM pending_edit_resolutions WHERE original_op_id = NEW.original_op_id OR(NEW.replacement_op_id IS NOT NULL AND replacement_op_id = NEW.replacement_op_id)) BEGIN SELECT RAISE (ABORT, \'Pending review evidence cannot be replaced\');END',
+    'pending_edit_no_replace',
+  );
+  final i1.Trigger pendingEditNoUpdate = i1.Trigger(
+    'CREATE TRIGGER pending_edit_no_update BEFORE UPDATE ON pending_edit_resolutions BEGIN SELECT RAISE (ABORT, \'Pending review evidence is immutable\');END',
+    'pending_edit_no_update',
+  );
+  final i1.Trigger pendingEditNoDelete = i1.Trigger(
+    'CREATE TRIGGER pending_edit_no_delete BEFORE DELETE ON pending_edit_resolutions BEGIN SELECT RAISE (ABORT, \'Pending review evidence must be retained\');END',
+    'pending_edit_no_delete',
+  );
+  final i1.Trigger pendingEditOriginalNoClaim = i1.Trigger(
+    'CREATE TRIGGER pending_edit_original_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM pending_edit_resolutions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Reviewed pending original cannot be retried\');END',
+    'pending_edit_original_no_claim',
+  );
+  late final Shape21 localUploadQueue = Shape21(
+    source: i0.VersionedTable(
+      entityName: 'local_upload_queue',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(user_id, recording_id)REFERENCES local_recording_files(user_id, recording_id)',
+      ],
+      columns: [
+        _column_31,
+        _column_32,
+        _column_33,
+        _column_109,
+        _column_110,
+        _column_111,
+        _column_112,
+        _column_113,
+        _column_114,
+        _column_115,
+        _column_21,
+        _column_22,
+        _column_116,
+        _column_3,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index localUploadReady = i1.Index(
+    'local_upload_ready',
+    'CREATE INDEX local_upload_ready ON local_upload_queue (phase, next_attempt_at, created_at)',
+  );
+  final i1.Trigger localUploadIdentity = i1.Trigger(
+    'CREATE TRIGGER local_upload_identity BEFORE UPDATE ON local_upload_queue WHEN NEW.recording_id <> OLD.recording_id OR NEW.user_id <> OLD.user_id OR NEW.operation_id <> OLD.operation_id OR NEW.expected_size <> OLD.expected_size OR NEW.sha256 <> OLD.sha256 OR NEW.created_at <> OLD.created_at OR NEW.automatic_retries < OLD.automatic_retries OR NEW.attempt_count < OLD.attempt_count BEGIN SELECT RAISE (ABORT, \'Upload identity and retry budget are immutable\');END',
+    'local_upload_identity',
+  );
+  late final Shape22 localCleanupConfirmations = Shape22(
+    source: i0.VersionedTable(
+      entityName: 'local_cleanup_confirmations',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(user_id, recording_id)REFERENCES local_recording_files(user_id, recording_id)',
+      ],
+      columns: [
+        _column_117,
+        _column_32,
+        _column_118,
+        _column_119,
+        _column_114,
+        _column_120,
+        _column_93,
+        _column_121,
+        _column_3,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index localCleanupRecording = i1.Index(
+    'local_cleanup_recording',
+    'CREATE INDEX local_cleanup_recording ON local_cleanup_confirmations (recording_id, state)',
+  );
+}
+
+i1.GeneratedColumn<String> _column_122(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'http_method',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints:
+          'NOT NULL CHECK (http_method IN (\'POST\', \'PATCH\', \'PUT\'))',
+    );
+
+final class Schema13 extends i0.VersionedSchema {
+  Schema13({required super.database}) : super(version: 13);
+  @override
+  late final List<i1.DatabaseSchemaEntity> entities = [
+    localAccount,
+    metadataCopies,
+    localMutations,
+    mutationQueue,
+    mutationTarget,
+    localRecordingFiles,
+    recordingJournals,
+    importJobs,
+    importItems,
+    syncCursors,
+    localAccountNoUpdate,
+    localAccountNoDelete,
+    mutationRequestImmutable,
+    cursorNoRewind,
+    recordingFollowups,
+    recordingFollowupValidInsert,
+    recordingFollowupNoUpdate,
+    recordingFollowupNoDelete,
+    recordingFollowupNoReplace,
+    recordingFollowupOriginalNoClaim,
+    mutationWireRequests,
+    mutationWireRequestImmutable,
+    mutationRetryControls,
+    mutationRetryBudgetMonotonic,
+    songAliases,
+    songAliasDestination,
+    mutationSupersessions,
+    canonicalEditIntents,
+    canonicalIntentTarget,
+    mutationMappingHolds,
+    mutationMappingActiveHolds,
+    songAliasValidInsert,
+    songAliasNoUpdate,
+    songAliasNoDelete,
+    mutationSupersessionValidInsert,
+    mutationSupersessionNoUpdate,
+    mutationSupersessionNoDelete,
+    supersededMutationNoClaim,
+    canonicalIntentEvidenceImmutable,
+    canonicalIntentNoDelete,
+    mappingHoldReleaseOnly,
+    mappingHoldNoDelete,
+    songAliasNoReplace,
+    mutationSupersessionNoReplace,
+    canonicalIntentNoReplace,
+    mappingHoldNoReplace,
+    mutationRowidImmutable,
+    mutationHistoryNoReplace,
+    mutationOrderPositive,
+    mutationHistoryNoDelete,
+    snapshotDownloads,
+    snapshotDownloadRows,
+    snapshotDownloadProgress,
+    snapshotBaseline,
+    snapshotDownloadIdentity,
+    snapshotDownloadNoReplace,
+    snapshotRowInsert,
+    snapshotRowNoUpdate,
+    snapshotRowDelete,
+    snapshotProgressInsert,
+    snapshotProgressUpdate,
+    snapshotBaselineInsert,
+    snapshotBaselineUpdate,
+    mutationConflictResolutions,
+    conflictResolutionValidInsert,
+    conflictResolutionNoReplace,
+    conflictResolutionNoUpdate,
+    conflictResolutionNoDelete,
+    resolvedMutationNoClaim,
+    pendingEditResolutions,
+    pendingEditValidInsert,
+    pendingEditNoReplace,
+    pendingEditNoUpdate,
+    pendingEditNoDelete,
+    pendingEditOriginalNoClaim,
+    localUploadQueue,
+    localUploadReady,
+    localUploadIdentity,
+    localCleanupConfirmations,
+    localCleanupRecording,
+  ];
+  late final Shape0 localAccount = Shape0(
+    source: i0.VersionedTable(
+      entityName: 'local_account',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [_column_0, _column_1, _column_2, _column_3],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape1 metadataCopies = Shape1(
+    source: i0.VersionedTable(
+      entityName: 'metadata_copies',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(entity_type, entity_id)',
+        'CHECK((server_revision = 0 AND server_payload IS NULL)OR(server_revision > 0 AND server_payload IS NOT NULL))',
+        'CHECK(tombstone = 0 OR server_revision > 0)',
+      ],
+      columns: [
+        _column_4,
+        _column_5,
+        _column_6,
+        _column_7,
+        _column_8,
+        _column_9,
+        _column_10,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape2 localMutations = Shape2(
+    source: i0.VersionedTable(
+      entityName: 'local_mutations',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(entity_type, entity_id)REFERENCES metadata_copies(entity_type, entity_id)',
+        'CHECK((base_revision = 0 AND base_payload IS NULL)OR(base_revision > 0 AND base_payload IS NOT NULL))',
+      ],
+      columns: [
+        _column_12,
+        _column_4,
+        _column_13,
+        _column_14,
+        _column_15,
+        _column_16,
+        _column_17,
+        _column_18,
+        _column_19,
+        _column_20,
+        _column_21,
+        _column_22,
+        _column_23,
+        _column_3,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index mutationQueue = i1.Index(
+    'mutation_queue',
+    'CREATE INDEX mutation_queue ON local_mutations (queue_state, next_attempt_at, created_at, op_id)',
+  );
+  final i1.Index mutationTarget = i1.Index(
+    'mutation_target',
+    'CREATE INDEX mutation_target ON local_mutations (entity_type, entity_id, created_at)',
+  );
+  late final Shape3 localRecordingFiles = Shape3(
+    source: i0.VersionedTable(
+      entityName: 'local_recording_files',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'UNIQUE(user_id, recording_id)',
+        'CHECK(relative_path = \'audio/\' || recording_id || \'.m4a\' OR relative_path = \'pending/\' || recording_id || \'.m4a.part\')',
+        'CHECK(local_state NOT IN (\'INPUT_PENDING\', \'SAVED\') OR(sha256 IS NOT NULL AND size_bytes IS NOT NULL AND verified_at IS NOT NULL AND relative_path = \'audio/\' || recording_id || \'.m4a\'))',
+      ],
+      columns: [
+        _column_24,
+        _column_4,
+        _column_25,
+        _column_26,
+        _column_27,
+        _column_28,
+        _column_29,
+        _column_30,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape4 recordingJournals = Shape4(
+    source: i0.VersionedTable(
+      entityName: 'recording_journals',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(user_id, recording_id)REFERENCES local_recording_files(user_id, recording_id)',
+        'CHECK(pending_path = \'pending/\' || recording_id || \'.m4a.part\')',
+        'CHECK(final_path = \'audio/\' || recording_id || \'.m4a\')',
+      ],
+      columns: [
+        _column_31,
+        _column_32,
+        _column_33,
+        _column_34,
+        _column_35,
+        _column_36,
+        _column_37,
+        _column_38,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape5 importJobs = Shape5(
+    source: i0.VersionedTable(
+      entityName: 'import_jobs',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(archive_path = \'imports/\' || import_job_id || \'.zip\')',
+        'CHECK(status <> \'COMPLETED\' OR completed_items = total_items)',
+      ],
+      columns: [
+        _column_39,
+        _column_4,
+        _column_40,
+        _column_41,
+        _column_42,
+        _column_43,
+        _column_44,
+        _column_45,
+        _column_46,
+        _column_3,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape6 importItems = Shape6(
+    source: i0.VersionedTable(
+      entityName: 'import_items',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: ['PRIMARY KEY(import_job_id, ordinal)'],
+      columns: [
+        _column_47,
+        _column_48,
+        _column_49,
+        _column_50,
+        _column_51,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape7 syncCursors = Shape7(
+    source: i0.VersionedTable(
+      entityName: 'sync_cursors',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(baseline_complete = 0 OR last_change_seq IS NOT NULL)',
+      ],
+      columns: [
+        _column_0,
+        _column_4,
+        _column_52,
+        _column_53,
+        _column_54,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger localAccountNoUpdate = i1.Trigger(
+    'CREATE TRIGGER local_account_no_update BEFORE UPDATE ON local_account BEGIN SELECT RAISE (ABORT, \'Local database ownership is immutable\');END',
+    'local_account_no_update',
+  );
+  final i1.Trigger localAccountNoDelete = i1.Trigger(
+    'CREATE TRIGGER local_account_no_delete BEFORE DELETE ON local_account BEGIN SELECT RAISE (ABORT, \'Local database ownership cannot be removed\');END',
+    'local_account_no_delete',
+  );
+  final i1.Trigger mutationRequestImmutable = i1.Trigger(
+    'CREATE TRIGGER mutation_request_immutable BEFORE UPDATE ON local_mutations WHEN NEW.op_id <> OLD.op_id OR NEW.user_id <> OLD.user_id OR NEW.entity_type <> OLD.entity_type OR NEW.entity_id <> OLD.entity_id OR NEW.operation <> OLD.operation OR NEW.base_revision <> OLD.base_revision OR NEW.base_payload IS NOT OLD.base_payload OR NEW.payload <> OLD.payload OR NEW.request_hash <> OLD.request_hash OR NEW.created_at <> OLD.created_at OR NEW.attempt_count < OLD.attempt_count BEGIN SELECT RAISE (ABORT, \'Mutation identity and request must survive retries unchanged\');END',
+    'mutation_request_immutable',
+  );
+  final i1.Trigger cursorNoRewind = i1.Trigger(
+    'CREATE TRIGGER cursor_no_rewind BEFORE UPDATE ON sync_cursors WHEN NEW.user_id <> OLD.user_id OR(OLD.last_change_seq IS NOT NULL AND(NEW.last_change_seq IS NULL OR NEW.last_change_seq < OLD.last_change_seq))BEGIN SELECT RAISE (ABORT, \'Do not discard an acknowledged cursor\');END',
+    'cursor_no_rewind',
+  );
+  late final Shape19 recordingFollowups = Shape19(
+    source: i0.VersionedTable(
+      entityName: 'recording_followups',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(original_op_id <> replacement_op_id)',
+        'CHECK(original_op_id <> predecessor_op_id)',
+        'CHECK(replacement_op_id <> predecessor_op_id)',
+      ],
+      columns: [
+        _column_70,
+        _column_71,
+        _column_107,
+        _column_4,
+        _column_74,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger recordingFollowupValidInsert = i1.Trigger(
+    'CREATE TRIGGER recording_followup_valid_insert BEFORE INSERT ON recording_followups BEGIN SELECT RAISE (ABORT, \'Invalid metadata followup\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS o JOIN local_mutations AS r ON r.op_id = NEW.replacement_op_id JOIN local_mutations AS p ON p.op_id = NEW.predecessor_op_id WHERE o.op_id = NEW.original_op_id AND o.user_id = NEW.user_id AND r.user_id = o.user_id AND p.user_id = o.user_id AND o.entity_type IN (\'RECORDING\', \'SONG\', \'TAG\', \'PLAYLIST\') AND r.entity_type = o.entity_type AND p.entity_type = o.entity_type AND r.entity_id = o.entity_id AND p.entity_id = o.entity_id AND(o.operation = \'PATCH\' OR(o.entity_type = \'PLAYLIST\' AND o.operation = \'PURGE\'))AND r.operation = o.operation AND o.base_revision = 0 AND o.attempt_count = 0 AND o.queue_state = \'PENDING\' AND r.base_revision > 0 AND r.attempt_count = 0 AND r.queue_state = \'PENDING\' AND p.queue_state = \'ACKED\' AND p.attempt_count > 0 AND NEW.logical_order = o."rowid" AND r."rowid" > o."rowid" AND json_extract(p.server_response, \'\$.revision\') = r.base_revision);END',
+    'recording_followup_valid_insert',
+  );
+  final i1.Trigger recordingFollowupNoUpdate = i1.Trigger(
+    'CREATE TRIGGER recording_followup_no_update BEFORE UPDATE ON recording_followups BEGIN SELECT RAISE (ABORT, \'Recording followup evidence is immutable\');END',
+    'recording_followup_no_update',
+  );
+  final i1.Trigger recordingFollowupNoDelete = i1.Trigger(
+    'CREATE TRIGGER recording_followup_no_delete BEFORE DELETE ON recording_followups BEGIN SELECT RAISE (ABORT, \'Recording followup evidence must be retained\');END',
+    'recording_followup_no_delete',
+  );
+  final i1.Trigger recordingFollowupNoReplace = i1.Trigger(
+    'CREATE TRIGGER recording_followup_no_replace BEFORE INSERT ON recording_followups BEGIN SELECT RAISE (ABORT, \'Recording followup evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM recording_followups WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.replacement_op_id);END',
+    'recording_followup_no_replace',
+  );
+  final i1.Trigger recordingFollowupOriginalNoClaim = i1.Trigger(
+    'CREATE TRIGGER recording_followup_original_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM recording_followups WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Original offline intent cannot be sent after materialization\');END',
+    'recording_followup_original_no_claim',
+  );
+  late final Shape8 mutationWireRequests = Shape8(
+    source: i0.VersionedTable(
+      entityName: 'mutation_wire_requests',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [
+        _column_55,
+        _column_56,
+        _column_123,
+        _column_58,
+        _column_59,
+        _column_60,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger mutationWireRequestImmutable = i1.Trigger(
+    'CREATE TRIGGER mutation_wire_request_immutable BEFORE UPDATE ON mutation_wire_requests BEGIN SELECT RAISE (ABORT, \'Frozen HTTP requests must survive retries unchanged\');END',
+    'mutation_wire_request_immutable',
+  );
+  late final Shape9 mutationRetryControls = Shape9(
+    source: i0.VersionedTable(
+      entityName: 'mutation_retry_controls',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [],
+      columns: [_column_55, _column_61, _column_62, _column_63],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger mutationRetryBudgetMonotonic = i1.Trigger(
+    'CREATE TRIGGER mutation_retry_budget_monotonic BEFORE UPDATE ON mutation_retry_controls WHEN NEW.op_id <> OLD.op_id OR(OLD.automatic_retries_claimed IS NULL AND NEW.automatic_retries_claimed IS NOT NULL)OR(OLD.automatic_retries_claimed IS NOT NULL AND NEW.automatic_retries_claimed IS NULL)OR NEW.automatic_retries_claimed < OLD.automatic_retries_claimed OR NEW.automatic_retries_claimed > OLD.automatic_retries_claimed + 1 BEGIN SELECT RAISE (ABORT, \'Automatic retry budget cannot be replenished\');END',
+    'mutation_retry_budget_monotonic',
+  );
+  late final Shape10 songAliases = Shape10(
+    source: i0.VersionedTable(
+      entityName: 'song_aliases',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(entity_type, source_song_id)REFERENCES metadata_copies(entity_type, entity_id)',
+        'FOREIGN KEY(entity_type, canonical_song_id)REFERENCES metadata_copies(entity_type, entity_id)',
+        'CHECK(source_song_id <> canonical_song_id)',
+        'CHECK(json_type(receipt_body, \'\$.created\') IS \'false\')',
+        'CHECK(json_type(receipt_body, \'\$.song\') IS \'object\')',
+        'CHECK(json_extract(receipt_body, \'\$.canonical_song_id\') IS canonical_song_id)',
+        'CHECK(json_extract(receipt_body, \'\$.song.id\') IS canonical_song_id)',
+        'CHECK(json_type(receipt_body, \'\$.song.revision\') IS \'integer\' AND json_extract(receipt_body, \'\$.song.revision\') > 0)',
+        'CHECK(json_extract(receipt_body, \'\$.song.lifecycle_state\') IS \'ACTIVE\')',
+      ],
+      columns: [
+        _column_64,
+        _column_65,
+        _column_4,
+        _column_66,
+        _column_67,
+        _column_68,
+        _column_69,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index songAliasDestination = i1.Index(
+    'song_alias_destination',
+    'CREATE INDEX song_alias_destination ON song_aliases (canonical_song_id)',
+  );
+  late final Shape11 mutationSupersessions = Shape11(
+    source: i0.VersionedTable(
+      entityName: 'mutation_supersessions',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: ['CHECK(original_op_id <> replacement_op_id)'],
+      columns: [
+        _column_70,
+        _column_71,
+        _column_72,
+        _column_4,
+        _column_73,
+        _column_74,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape12 canonicalEditIntents = Shape12(
+    source: i0.VersionedTable(
+      entityName: 'canonical_edit_intents',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(entity_type, entity_id)REFERENCES metadata_copies(entity_type, entity_id)',
+        'UNIQUE(mapping_source_id, intent_key)',
+        'CHECK((state = \'OPEN\' AND resolution_json IS NULL AND resolution_op_id IS NULL AND resolved_at IS NULL)OR(state = \'QUEUED\' AND resolution_json IS NOT NULL AND resolution_op_id IS NOT NULL AND resolved_at IS NULL)OR(state = \'RESOLVED\' AND resolution_json IS NOT NULL AND resolved_at IS NOT NULL))',
+      ],
+      columns: [
+        _column_75,
+        _column_4,
+        _column_72,
+        _column_76,
+        _column_77,
+        _column_13,
+        _column_14,
+        _column_78,
+        _column_79,
+        _column_80,
+        _column_81,
+        _column_82,
+        _column_83,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index canonicalIntentTarget = i1.Index(
+    'canonical_intent_target',
+    'CREATE INDEX canonical_intent_target ON canonical_edit_intents (entity_type, entity_id, state)',
+  );
+  late final Shape13 mutationMappingHolds = Shape13(
+    source: i0.VersionedTable(
+      entityName: 'mutation_mapping_holds',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(op_id, mapping_source_id, reason)',
+        'CHECK((released_at IS NULL AND release_evidence IS NULL)OR(released_at IS NOT NULL AND release_evidence IS NOT NULL))',
+      ],
+      columns: [
+        _column_84,
+        _column_72,
+        _column_4,
+        _column_85,
+        _column_86,
+        _column_87,
+        _column_3,
+        _column_88,
+        _column_89,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index mutationMappingActiveHolds = i1.Index(
+    'mutation_mapping_active_holds',
+    'CREATE INDEX mutation_mapping_active_holds ON mutation_mapping_holds (op_id, released_at)',
+  );
+  final i1.Trigger songAliasValidInsert = i1.Trigger(
+    'CREATE TRIGGER song_alias_valid_insert BEFORE INSERT ON song_aliases BEGIN SELECT RAISE (ABORT, \'Alias requires its original song CREATE\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.mapping_op_id AND m.user_id = NEW.user_id AND m.entity_type = \'SONG\' AND m.entity_id = NEW.source_song_id AND m.operation = \'CREATE\');SELECT RAISE (ABORT, \'Song alias cycle\') WHERE EXISTS (WITH RECURSIVE destinations (id) AS (SELECT NEW.canonical_song_id UNION SELECT a.canonical_song_id FROM song_aliases AS a JOIN destinations AS d ON a.source_song_id = d.id) SELECT 1 FROM destinations WHERE id = NEW.source_song_id);END',
+    'song_alias_valid_insert',
+  );
+  final i1.Trigger songAliasNoUpdate = i1.Trigger(
+    'CREATE TRIGGER song_alias_no_update BEFORE UPDATE ON song_aliases BEGIN SELECT RAISE (ABORT, \'Song aliases and receipts are immutable\');END',
+    'song_alias_no_update',
+  );
+  final i1.Trigger songAliasNoDelete = i1.Trigger(
+    'CREATE TRIGGER song_alias_no_delete BEFORE DELETE ON song_aliases BEGIN SELECT RAISE (ABORT, \'Song alias evidence must be retained\');END',
+    'song_alias_no_delete',
+  );
+  final i1.Trigger mutationSupersessionValidInsert = i1.Trigger(
+    'CREATE TRIGGER mutation_supersession_valid_insert BEFORE INSERT ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Cannot prepend a frozen replacement chain\') WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.replacement_op_id);SELECT RAISE (ABORT, \'Invalid replacement order\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS original JOIN local_mutations AS replacement ON replacement.op_id = NEW.replacement_op_id WHERE original.op_id = NEW.original_op_id AND replacement."rowid" > original."rowid");SELECT RAISE (ABORT, \'Replacement must inherit original logical order\') WHERE NEW.order_root_op_id IS NOT COALESCE((SELECT order_root_op_id FROM mutation_supersessions WHERE replacement_op_id = NEW.original_op_id), NEW.original_op_id) OR NEW.logical_order IS NOT COALESCE((SELECT logical_order FROM mutation_supersessions WHERE replacement_op_id = NEW.original_op_id), (SELECT "rowid" FROM local_mutations WHERE op_id = NEW.original_op_id));END',
+    'mutation_supersession_valid_insert',
+  );
+  final i1.Trigger mutationSupersessionNoUpdate = i1.Trigger(
+    'CREATE TRIGGER mutation_supersession_no_update BEFORE UPDATE ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Mutation supersessions are immutable\');END',
+    'mutation_supersession_no_update',
+  );
+  final i1.Trigger mutationSupersessionNoDelete = i1.Trigger(
+    'CREATE TRIGGER mutation_supersession_no_delete BEFORE DELETE ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Mutation supersession history must be retained\');END',
+    'mutation_supersession_no_delete',
+  );
+  final i1.Trigger supersededMutationNoClaim = i1.Trigger(
+    'CREATE TRIGGER superseded_mutation_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Superseded mutation cannot be claimed\');END',
+    'superseded_mutation_no_claim',
+  );
+  final i1.Trigger canonicalIntentEvidenceImmutable = i1.Trigger(
+    'CREATE TRIGGER canonical_intent_evidence_immutable BEFORE UPDATE ON canonical_edit_intents WHEN NEW.intent_id IS NOT OLD.intent_id OR NEW.user_id IS NOT OLD.user_id OR NEW.mapping_source_id IS NOT OLD.mapping_source_id OR NEW.intent_key IS NOT OLD.intent_key OR NEW.kind IS NOT OLD.kind OR NEW.entity_type IS NOT OLD.entity_type OR NEW.entity_id IS NOT OLD.entity_id OR NEW.origin_op_id IS NOT OLD.origin_op_id OR NEW.evidence_json IS NOT OLD.evidence_json OR NEW.created_at IS NOT OLD.created_at OR OLD.state = \'RESOLVED\' OR(OLD.state = \'QUEUED\' AND NEW.state <> \'RESOLVED\')BEGIN SELECT RAISE (ABORT, \'Canonical intent evidence cannot be rewritten\');END',
+    'canonical_intent_evidence_immutable',
+  );
+  final i1.Trigger canonicalIntentNoDelete = i1.Trigger(
+    'CREATE TRIGGER canonical_intent_no_delete BEFORE DELETE ON canonical_edit_intents BEGIN SELECT RAISE (ABORT, \'Canonical edit evidence must be retained\');END',
+    'canonical_intent_no_delete',
+  );
+  final i1.Trigger mappingHoldReleaseOnly = i1.Trigger(
+    'CREATE TRIGGER mapping_hold_release_only BEFORE UPDATE ON mutation_mapping_holds WHEN NEW.op_id IS NOT OLD.op_id OR NEW.mapping_source_id IS NOT OLD.mapping_source_id OR NEW.user_id IS NOT OLD.user_id OR NEW.reason IS NOT OLD.reason OR NEW.disposition IS NOT OLD.disposition OR NEW.intent_id IS NOT OLD.intent_id OR NEW.created_at IS NOT OLD.created_at OR OLD.released_at IS NOT NULL OR NEW.released_at IS NULL BEGIN SELECT RAISE (ABORT, \'Mapping hold permits one evidenced release only\');END',
+    'mapping_hold_release_only',
+  );
+  final i1.Trigger mappingHoldNoDelete = i1.Trigger(
+    'CREATE TRIGGER mapping_hold_no_delete BEFORE DELETE ON mutation_mapping_holds BEGIN SELECT RAISE (ABORT, \'Mapping hold history must be retained\');END',
+    'mapping_hold_no_delete',
+  );
+  final i1.Trigger songAliasNoReplace = i1.Trigger(
+    'CREATE TRIGGER song_alias_no_replace BEFORE INSERT ON song_aliases BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM song_aliases WHERE source_song_id = NEW.source_song_id OR mapping_op_id = NEW.mapping_op_id);END',
+    'song_alias_no_replace',
+  );
+  final i1.Trigger mutationSupersessionNoReplace = i1.Trigger(
+    'CREATE TRIGGER mutation_supersession_no_replace BEFORE INSERT ON mutation_supersessions BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.replacement_op_id);END',
+    'mutation_supersession_no_replace',
+  );
+  final i1.Trigger canonicalIntentNoReplace = i1.Trigger(
+    'CREATE TRIGGER canonical_intent_no_replace BEFORE INSERT ON canonical_edit_intents BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM canonical_edit_intents WHERE intent_id = NEW.intent_id OR(mapping_source_id = NEW.mapping_source_id AND intent_key = NEW.intent_key));END',
+    'canonical_intent_no_replace',
+  );
+  final i1.Trigger mappingHoldNoReplace = i1.Trigger(
+    'CREATE TRIGGER mapping_hold_no_replace BEFORE INSERT ON mutation_mapping_holds BEGIN SELECT RAISE (ABORT, \'Preserved evidence cannot be replaced\') WHERE EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = NEW.op_id AND mapping_source_id = NEW.mapping_source_id AND reason = NEW.reason);END',
+    'mapping_hold_no_replace',
+  );
+  final i1.Trigger mutationRowidImmutable = i1.Trigger(
+    'CREATE TRIGGER mutation_rowid_immutable BEFORE UPDATE ON local_mutations WHEN NEW."rowid" IS NOT OLD."rowid" BEGIN SELECT RAISE (ABORT, \'Mutation rowid must remain immutable\');END',
+    'mutation_rowid_immutable',
+  );
+  final i1.Trigger mutationHistoryNoReplace = i1.Trigger(
+    'CREATE TRIGGER mutation_history_no_replace BEFORE INSERT ON local_mutations WHEN EXISTS (SELECT 1 FROM local_mutations WHERE op_id = NEW.op_id OR(NEW."rowid" <> -1 AND "rowid" = NEW."rowid")) BEGIN SELECT RAISE (ABORT, \'Mutation history cannot be replaced\');END',
+    'mutation_history_no_replace',
+  );
+  final i1.Trigger mutationOrderPositive = i1.Trigger(
+    'CREATE TRIGGER mutation_order_positive AFTER INSERT ON local_mutations WHEN NEW."rowid" <= 0 BEGIN SELECT RAISE (ABORT, \'New mutation order must be positive\');END',
+    'mutation_order_positive',
+  );
+  final i1.Trigger mutationHistoryNoDelete = i1.Trigger(
+    'CREATE TRIGGER mutation_history_no_delete BEFORE DELETE ON local_mutations BEGIN SELECT RAISE (ABORT, \'Mutation ordering history must be retained\');END',
+    'mutation_history_no_delete',
+  );
+  late final Shape14 snapshotDownloads = Shape14(
+    source: i0.VersionedTable(
+      entityName: 'snapshot_downloads',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'UNIQUE(snapshot_token, user_id)',
+        'CHECK(json_extract(manifest_json, \'\$.snapshot_token\') IS snapshot_token)',
+        'CHECK(json_extract(manifest_json, \'\$.snapshot_cursor\') IS snapshot_cursor)',
+      ],
+      columns: [
+        _column_90,
+        _column_4,
+        _column_91,
+        _column_92,
+        _column_93,
+        _column_94,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape15 snapshotDownloadRows = Shape15(
+    source: i0.VersionedTable(
+      entityName: 'snapshot_download_rows',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(snapshot_token, entity, ordinal)',
+        'FOREIGN KEY(snapshot_token, user_id)REFERENCES snapshot_downloads(snapshot_token, user_id)ON DELETE CASCADE',
+        'CHECK(json_extract(canonical_payload, \'\$.user_id\') IS user_id)',
+      ],
+      columns: [
+        _column_95,
+        _column_4,
+        _column_96,
+        _column_48,
+        _column_49,
+        _column_97,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape16 snapshotDownloadProgress = Shape16(
+    source: i0.VersionedTable(
+      entityName: 'snapshot_download_progress',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'PRIMARY KEY(snapshot_token, entity)',
+        'CHECK((finished = 1 AND next_cursor IS NULL)OR(finished = 0 AND next_cursor IS NOT NULL AND next_cursor LIKE \'sp1.%\' AND last_ordinal > 0))',
+      ],
+      columns: [_column_98, _column_96, _column_99, _column_100, _column_101],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  late final Shape17 snapshotBaseline = Shape17(
+    source: i0.VersionedTable(
+      entityName: 'snapshot_baseline',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(snapshot_token, user_id)REFERENCES snapshot_downloads(snapshot_token, user_id)',
+      ],
+      columns: [_column_0, _column_95, _column_4],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger snapshotDownloadIdentity = i1.Trigger(
+    'CREATE TRIGGER snapshot_download_identity BEFORE UPDATE ON snapshot_downloads WHEN NEW.snapshot_token IS NOT OLD.snapshot_token OR NEW.user_id IS NOT OLD.user_id OR NEW.manifest_json IS NOT OLD.manifest_json OR NEW.snapshot_cursor IS NOT OLD.snapshot_cursor OR NEW.expires_at IS NOT OLD.expires_at OR NEW.created_at IS NOT OLD.created_at OR NOT((OLD.state = \'RECEIVING\' AND NEW.state = \'VERIFIED\')OR(OLD.state = \'VERIFIED\' AND NEW.state = \'APPLIED\'))BEGIN SELECT RAISE (ABORT, \'Snapshot manifest and forward state are immutable\');END',
+    'snapshot_download_identity',
+  );
+  final i1.Trigger snapshotDownloadNoReplace = i1.Trigger(
+    'CREATE TRIGGER snapshot_download_no_replace BEFORE INSERT ON snapshot_downloads WHEN NEW.state <> \'RECEIVING\' OR EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token) BEGIN SELECT RAISE (ABORT, \'Snapshot manifest cannot be replaced\');END',
+    'snapshot_download_no_replace',
+  );
+  final i1.Trigger snapshotRowInsert = i1.Trigger(
+    'CREATE TRIGGER snapshot_row_insert BEFORE INSERT ON snapshot_download_rows WHEN NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND user_id = NEW.user_id AND state = \'RECEIVING\') OR EXISTS (SELECT 1 FROM snapshot_download_rows WHERE snapshot_token = NEW.snapshot_token AND entity = NEW.entity AND ordinal = NEW.ordinal) BEGIN SELECT RAISE (ABORT, \'Only new receiving snapshot rows may be inserted\');END',
+    'snapshot_row_insert',
+  );
+  final i1.Trigger snapshotRowNoUpdate = i1.Trigger(
+    'CREATE TRIGGER snapshot_row_no_update BEFORE UPDATE ON snapshot_download_rows BEGIN SELECT RAISE (ABORT, \'Snapshot rows are immutable\');END',
+    'snapshot_row_no_update',
+  );
+  final i1.Trigger snapshotRowDelete = i1.Trigger(
+    'CREATE TRIGGER snapshot_row_delete BEFORE DELETE ON snapshot_download_rows WHEN EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = OLD.snapshot_token AND state <> \'RECEIVING\') BEGIN SELECT RAISE (ABORT, \'Verified snapshot rows must remain intact\');END',
+    'snapshot_row_delete',
+  );
+  final i1.Trigger snapshotProgressInsert = i1.Trigger(
+    'CREATE TRIGGER snapshot_progress_insert BEFORE INSERT ON snapshot_download_progress WHEN NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND state = \'RECEIVING\') OR EXISTS (SELECT 1 FROM snapshot_download_progress WHERE snapshot_token = NEW.snapshot_token AND entity = NEW.entity) BEGIN SELECT RAISE (ABORT, \'Snapshot progress cannot be replaced\');END',
+    'snapshot_progress_insert',
+  );
+  final i1.Trigger snapshotProgressUpdate = i1.Trigger(
+    'CREATE TRIGGER snapshot_progress_update BEFORE UPDATE ON snapshot_download_progress WHEN NEW.snapshot_token IS NOT OLD.snapshot_token OR NEW.entity IS NOT OLD.entity OR OLD.finished = 1 OR NEW.last_ordinal <= OLD.last_ordinal OR NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND state = \'RECEIVING\') BEGIN SELECT RAISE (ABORT, \'Snapshot progress must advance while receiving\');END',
+    'snapshot_progress_update',
+  );
+  final i1.Trigger snapshotBaselineInsert = i1.Trigger(
+    'CREATE TRIGGER snapshot_baseline_insert BEFORE INSERT ON snapshot_baseline WHEN NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND user_id = NEW.user_id AND state = \'APPLIED\') BEGIN SELECT RAISE (ABORT, \'Only an applied snapshot may become baseline\');END',
+    'snapshot_baseline_insert',
+  );
+  final i1.Trigger snapshotBaselineUpdate = i1.Trigger(
+    'CREATE TRIGGER snapshot_baseline_update BEFORE UPDATE ON snapshot_baseline WHEN NEW.singleton IS NOT OLD.singleton OR NEW.user_id IS NOT OLD.user_id OR NOT EXISTS (SELECT 1 FROM snapshot_downloads WHERE snapshot_token = NEW.snapshot_token AND user_id = NEW.user_id AND state = \'APPLIED\') BEGIN SELECT RAISE (ABORT, \'Only an applied snapshot may become baseline\');END',
+    'snapshot_baseline_update',
+  );
+  late final Shape18 mutationConflictResolutions = Shape18(
+    source: i0.VersionedTable(
+      entityName: 'mutation_conflict_resolutions',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(replacement_op_id IS NULL OR replacement_op_id <> original_op_id)',
+        'CHECK(json_type(server_snapshot, \'\$.revision\') IS \'integer\' AND json_extract(server_snapshot, \'\$.revision\') = resolved_revision)',
+      ],
+      columns: [
+        _column_70,
+        _column_4,
+        _column_102,
+        _column_103,
+        _column_104,
+        _column_105,
+        _column_106,
+        _column_73,
+        _column_74,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger conflictResolutionValidInsert = i1.Trigger(
+    'CREATE TRIGGER conflict_resolution_valid_insert BEFORE INSERT ON mutation_conflict_resolutions BEGIN SELECT RAISE (ABORT, \'Resolution requires the current revision conflict\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.original_op_id AND m.user_id = NEW.user_id AND m.operation = \'PATCH\' AND m.entity_type IN (\'SONG\', \'RECORDING\', \'TAG\') AND m.queue_state = \'CONFLICT\' AND m.attempt_count = NEW.original_attempt_count AND json_extract(m.server_response, \'\$.status\') = 409 AND json_extract(m.server_response, \'\$.code\') = \'REVISION_CONFLICT\' AND json_type(m.server_response, \'\$.current.revision\') = \'integer\' AND NEW.resolved_revision >= json_extract(m.server_response, \'\$.current.revision\') AND NEW.resolved_revision > m.base_revision AND json_extract(NEW.server_snapshot, \'\$.id\') = m.entity_id AND(json_type(NEW.server_snapshot, \'\$.user_id\') IS NULL OR json_extract(NEW.server_snapshot, \'\$.user_id\') = NEW.user_id));SELECT RAISE (ABORT, \'Resolution choice must be explicit\') WHERE EXISTS (SELECT 1 FROM json_each(NEW.choices)AS choice WHERE choice.type <> \'text\' OR choice.value NOT IN (\'LOCAL\', \'SERVER\'));SELECT RAISE (ABORT, \'Mapping evidence must be resolved separately\') WHERE EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = NEW.original_op_id AND released_at IS NULL) OR EXISTS (SELECT 1 FROM mutation_supersessions WHERE original_op_id = NEW.original_op_id OR replacement_op_id = NEW.original_op_id);SELECT RAISE (ABORT, \'Invalid conflict replacement\') WHERE NEW.replacement_op_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM local_mutations AS original JOIN local_mutations AS replacement ON replacement.op_id = NEW.replacement_op_id WHERE original.op_id = NEW.original_op_id AND replacement.user_id = NEW.user_id AND replacement.entity_type = original.entity_type AND replacement.entity_id = original.entity_id AND replacement.operation = \'PATCH\' AND replacement.queue_state = \'PENDING\' AND replacement.attempt_count = 0 AND replacement."rowid" > original."rowid" AND replacement.base_revision = NEW.resolved_revision AND replacement.base_payload = NEW.server_snapshot AND json_type(replacement.payload, \'\$.base_revision\') = \'integer\' AND json_extract(replacement.payload, \'\$.base_revision\') = NEW.resolved_revision AND NOT EXISTS (SELECT 1 FROM mutation_wire_requests WHERE op_id = replacement.op_id));SELECT RAISE (ABORT, \'Conflict resolution order must be inherited\') WHERE NEW.order_root_op_id IS NOT COALESCE((SELECT order_root_op_id FROM mutation_conflict_resolutions WHERE replacement_op_id = NEW.original_op_id), NEW.original_op_id) OR NEW.logical_order IS NOT COALESCE((SELECT logical_order FROM mutation_conflict_resolutions WHERE replacement_op_id = NEW.original_op_id), (SELECT logical_order FROM recording_followups WHERE replacement_op_id = NEW.original_op_id), (SELECT "rowid" FROM local_mutations WHERE op_id = NEW.original_op_id));SELECT RAISE (ABORT, \'Cannot prepend a resolution chain\') WHERE EXISTS (SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id = NEW.replacement_op_id);END',
+    'conflict_resolution_valid_insert',
+  );
+  final i1.Trigger conflictResolutionNoReplace = i1.Trigger(
+    'CREATE TRIGGER conflict_resolution_no_replace BEFORE INSERT ON mutation_conflict_resolutions WHEN EXISTS (SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id = NEW.original_op_id OR(NEW.replacement_op_id IS NOT NULL AND replacement_op_id = NEW.replacement_op_id)) BEGIN SELECT RAISE (ABORT, \'Conflict resolution evidence cannot be replaced\');END',
+    'conflict_resolution_no_replace',
+  );
+  final i1.Trigger conflictResolutionNoUpdate = i1.Trigger(
+    'CREATE TRIGGER conflict_resolution_no_update BEFORE UPDATE ON mutation_conflict_resolutions BEGIN SELECT RAISE (ABORT, \'Conflict resolution evidence is immutable\');END',
+    'conflict_resolution_no_update',
+  );
+  final i1.Trigger conflictResolutionNoDelete = i1.Trigger(
+    'CREATE TRIGGER conflict_resolution_no_delete BEFORE DELETE ON mutation_conflict_resolutions BEGIN SELECT RAISE (ABORT, \'Conflict resolution evidence must be retained\');END',
+    'conflict_resolution_no_delete',
+  );
+  final i1.Trigger resolvedMutationNoClaim = i1.Trigger(
+    'CREATE TRIGGER resolved_mutation_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM mutation_conflict_resolutions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Resolved original operation cannot be retried\');END',
+    'resolved_mutation_no_claim',
+  );
+  late final Shape20 pendingEditResolutions = Shape20(
+    source: i0.VersionedTable(
+      entityName: 'pending_edit_resolutions',
+      withoutRowId: true,
+      isStrict: false,
+      tableConstraints: [
+        'CHECK(replacement_op_id IS NULL OR replacement_op_id <> original_op_id)',
+      ],
+      columns: [
+        _column_70,
+        _column_4,
+        _column_102,
+        _column_105,
+        _column_106,
+        _column_108,
+        _column_74,
+        _column_3,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Trigger pendingEditValidInsert = i1.Trigger(
+    'CREATE TRIGGER pending_edit_valid_insert BEFORE INSERT ON pending_edit_resolutions BEGIN SELECT RAISE (ABORT, \'Pending review requires an unsent original\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.original_op_id AND m.user_id = NEW.user_id AND m.operation = \'PATCH\' AND m.entity_type IN (\'SONG\', \'RECORDING\', \'TAG\') AND m.queue_state = \'PENDING\' AND m.attempt_count = 0 AND m.server_response IS NULL AND m.base_revision > 0 AND NEW.logical_order = m."rowid" AND json_extract(NEW.server_snapshot, \'\$.id\') = m.entity_id AND json_type(NEW.server_snapshot, \'\$.revision\') = \'integer\' AND json_extract(NEW.server_snapshot, \'\$.revision\') > m.base_revision AND(json_type(NEW.server_snapshot, \'\$.user_id\') IS NULL OR json_extract(NEW.server_snapshot, \'\$.user_id\') = NEW.user_id)AND NOT EXISTS (SELECT 1 FROM mutation_wire_requests WHERE op_id = m.op_id) AND NOT EXISTS (SELECT 1 FROM mutation_mapping_holds WHERE op_id = m.op_id AND released_at IS NULL));SELECT RAISE (ABORT, \'Invalid pending review choice\') WHERE EXISTS (SELECT 1 FROM json_each(NEW.choices)AS choice WHERE choice.type <> \'text\' OR choice.value NOT IN (\'LOCAL\', \'SERVER\'));SELECT RAISE (ABORT, \'Invalid pending review replacement\') WHERE NEW.replacement_op_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM local_mutations AS o JOIN local_mutations AS n ON n.op_id = NEW.replacement_op_id WHERE o.op_id = NEW.original_op_id AND n.user_id = NEW.user_id AND n.entity_type = o.entity_type AND n.entity_id = o.entity_id AND n.operation = \'PATCH\' AND n.queue_state = \'PENDING\' AND n.attempt_count = 0 AND n."rowid" > o."rowid" AND n.base_revision = json_extract(NEW.server_snapshot, \'\$.revision\') AND n.base_payload = NEW.server_snapshot AND json_extract(n.payload, \'\$.base_revision\') = n.base_revision AND NOT EXISTS (SELECT 1 FROM mutation_wire_requests WHERE op_id = n.op_id));END',
+    'pending_edit_valid_insert',
+  );
+  final i1.Trigger pendingEditNoReplace = i1.Trigger(
+    'CREATE TRIGGER pending_edit_no_replace BEFORE INSERT ON pending_edit_resolutions WHEN EXISTS (SELECT 1 FROM pending_edit_resolutions WHERE original_op_id = NEW.original_op_id OR(NEW.replacement_op_id IS NOT NULL AND replacement_op_id = NEW.replacement_op_id)) BEGIN SELECT RAISE (ABORT, \'Pending review evidence cannot be replaced\');END',
+    'pending_edit_no_replace',
+  );
+  final i1.Trigger pendingEditNoUpdate = i1.Trigger(
+    'CREATE TRIGGER pending_edit_no_update BEFORE UPDATE ON pending_edit_resolutions BEGIN SELECT RAISE (ABORT, \'Pending review evidence is immutable\');END',
+    'pending_edit_no_update',
+  );
+  final i1.Trigger pendingEditNoDelete = i1.Trigger(
+    'CREATE TRIGGER pending_edit_no_delete BEFORE DELETE ON pending_edit_resolutions BEGIN SELECT RAISE (ABORT, \'Pending review evidence must be retained\');END',
+    'pending_edit_no_delete',
+  );
+  final i1.Trigger pendingEditOriginalNoClaim = i1.Trigger(
+    'CREATE TRIGGER pending_edit_original_no_claim BEFORE UPDATE OF attempt_count ON local_mutations WHEN NEW.attempt_count > OLD.attempt_count AND EXISTS (SELECT 1 FROM pending_edit_resolutions WHERE original_op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Reviewed pending original cannot be retried\');END',
+    'pending_edit_original_no_claim',
+  );
+  late final Shape21 localUploadQueue = Shape21(
+    source: i0.VersionedTable(
+      entityName: 'local_upload_queue',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(user_id, recording_id)REFERENCES local_recording_files(user_id, recording_id)',
+      ],
+      columns: [
+        _column_31,
+        _column_32,
+        _column_33,
+        _column_109,
+        _column_110,
+        _column_111,
+        _column_112,
+        _column_113,
+        _column_114,
+        _column_115,
+        _column_21,
+        _column_22,
+        _column_116,
+        _column_3,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index localUploadReady = i1.Index(
+    'local_upload_ready',
+    'CREATE INDEX local_upload_ready ON local_upload_queue (phase, next_attempt_at, created_at)',
+  );
+  final i1.Trigger localUploadIdentity = i1.Trigger(
+    'CREATE TRIGGER local_upload_identity BEFORE UPDATE ON local_upload_queue WHEN NEW.recording_id <> OLD.recording_id OR NEW.user_id <> OLD.user_id OR NEW.operation_id <> OLD.operation_id OR NEW.expected_size <> OLD.expected_size OR NEW.sha256 <> OLD.sha256 OR NEW.created_at <> OLD.created_at OR NEW.automatic_retries < OLD.automatic_retries OR NEW.attempt_count < OLD.attempt_count BEGIN SELECT RAISE (ABORT, \'Upload identity and retry budget are immutable\');END',
+    'local_upload_identity',
+  );
+  late final Shape22 localCleanupConfirmations = Shape22(
+    source: i0.VersionedTable(
+      entityName: 'local_cleanup_confirmations',
+      withoutRowId: false,
+      isStrict: false,
+      tableConstraints: [
+        'FOREIGN KEY(user_id, recording_id)REFERENCES local_recording_files(user_id, recording_id)',
+      ],
+      columns: [
+        _column_117,
+        _column_32,
+        _column_118,
+        _column_119,
+        _column_114,
+        _column_120,
+        _column_93,
+        _column_121,
+        _column_3,
+        _column_11,
+      ],
+      attachedDatabase: database,
+    ),
+    alias: null,
+  );
+  final i1.Index localCleanupRecording = i1.Index(
+    'local_cleanup_recording',
+    'CREATE INDEX local_cleanup_recording ON local_cleanup_confirmations (recording_id, state)',
+  );
+}
+
+i1.GeneratedColumn<String> _column_123(String aliasedName) =>
+    i1.GeneratedColumn<String>(
+      'http_method',
+      aliasedName,
+      false,
+      type: i1.DriftSqlType.string,
+      $customConstraints: 'NOT NULL CHECK (http_method IN (\'POST\', \'PATCH\', \'PUT\', \'DELETE\'))',
+    );
 i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema2 schema) from1To2,
   required Future<void> Function(i1.Migrator m, Schema3 schema) from2To3,
@@ -7528,6 +9187,8 @@ i0.MigrationStepWithVersion migrationSteps({
   required Future<void> Function(i1.Migrator m, Schema9 schema) from8To9,
   required Future<void> Function(i1.Migrator m, Schema10 schema) from9To10,
   required Future<void> Function(i1.Migrator m, Schema11 schema) from10To11,
+  required Future<void> Function(i1.Migrator m, Schema12 schema) from11To12,
+  required Future<void> Function(i1.Migrator m, Schema13 schema) from12To13,
 }) {
   return (currentVersion, database) async {
     switch (currentVersion) {
@@ -7581,6 +9242,16 @@ i0.MigrationStepWithVersion migrationSteps({
         final migrator = i1.Migrator(database, schema);
         await from10To11(migrator, schema);
         return 11;
+      case 11:
+        final schema = Schema12(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from11To12(migrator, schema);
+        return 12;
+      case 12:
+        final schema = Schema13(database: database);
+        final migrator = i1.Migrator(database, schema);
+        await from12To13(migrator, schema);
+        return 13;
       default:
         throw ArgumentError.value('Unknown migration from $currentVersion');
     }
@@ -7598,6 +9269,8 @@ i1.OnUpgrade stepByStep({
   required Future<void> Function(i1.Migrator m, Schema9 schema) from8To9,
   required Future<void> Function(i1.Migrator m, Schema10 schema) from9To10,
   required Future<void> Function(i1.Migrator m, Schema11 schema) from10To11,
+  required Future<void> Function(i1.Migrator m, Schema12 schema) from11To12,
+  required Future<void> Function(i1.Migrator m, Schema13 schema) from12To13,
 }) => i0.VersionedSchema.stepByStepHelper(
   step: migrationSteps(
     from1To2: from1To2,
@@ -7610,5 +9283,7 @@ i1.OnUpgrade stepByStep({
     from8To9: from8To9,
     from9To10: from9To10,
     from10To11: from10To11,
+    from11To12: from11To12,
+    from12To13: from12To13,
   ),
 );

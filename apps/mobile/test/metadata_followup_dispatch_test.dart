@@ -152,12 +152,12 @@ void main() {
               changes: {'name': 'before'},
             ),
           );
-          // P19's unimplemented wire adapter cannot consume or discard its queue.
+          // The not-yet-implemented item adapter must retain its queue.
           final playlist = repository.prepareCreate(
-            entity: LocalEntity.playlist,
+            entity: LocalEntity.playlistItem,
             entityId: id(50),
-            draft: {'name': 'retained'},
-            changes: {'name': 'retained'},
+            draft: {'playlist_id': id(51), 'song_id': id(52)},
+            changes: {'playlist_id': id(51), 'song_id': id(52)},
           );
           await repository.save(playlist);
           final originalPayload = (await repository.pending())
@@ -233,7 +233,7 @@ void main() {
           );
           expect(
             transport.requests.where(
-              (r) => r.mutation.entity == LocalEntity.playlist,
+              (r) => r.mutation.entity == LocalEntity.playlistItem,
             ),
             isEmpty,
           );

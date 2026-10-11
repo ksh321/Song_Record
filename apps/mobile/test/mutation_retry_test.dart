@@ -190,10 +190,10 @@ void main() {
 
   test('dispatch deadline excludes unsupported and dependency-blocked initial work', () async {
     final playlist = repo.prepareCreate(
-      entity: LocalEntity.playlist,
+      entity: LocalEntity.playlistItem,
       entityId: id(80),
-      draft: {'name': 'list'},
-      changes: {'name': 'list'},
+      draft: {'playlist_id': id(79), 'song_id': id(78)},
+      changes: {'playlist_id': id(79), 'song_id': id(78)},
     );
     await repo.save(playlist);
     final recording = repo.prepareCreate(

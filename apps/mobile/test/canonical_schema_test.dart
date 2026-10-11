@@ -124,7 +124,7 @@ void main() {
     }
   });
   for (final version in [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
-    test('v$version to v12 preserves old rows, wire, budget, cursor and synthetic file', () async {
+    test('v$version to v13 preserves old rows, wire, budget, cursor and synthetic file', () async {
       final directory = await Directory.systemTemp.createTemp(
         'sr-canonical-migration-',
       );
@@ -314,7 +314,7 @@ void main() {
               .data
               .values
               .single,
-          12,
+          13,
         );
         for (final entry in before.entries) {
           expect(
@@ -632,7 +632,7 @@ void main() {
       }
       expect(exported['format'], 'song-record-local-recovery');
       expect(exported['version'], 2);
-      expect(exported['schema_version'], 12);
+      expect(exported['schema_version'], 13);
       expect(tables['local_mutations'], mutationsBefore);
 
       final mutations = (tables['local_mutations'] as List)

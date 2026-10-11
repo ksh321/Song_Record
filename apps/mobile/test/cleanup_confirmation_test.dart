@@ -178,7 +178,7 @@ void main() {
         final store = await manager.openAccount(owner);
         expect(await store.readLocalAudio(id), data);
         final exported = jsonDecode(await store.recoveryData()) as Map;
-        expect(exported['schema_version'], 12);
+        expect(exported['schema_version'], 13);
         final tables = exported['tables'] as Map;
         expect(
           (tables['metadata_copies'] as List).single['local_payload'],
