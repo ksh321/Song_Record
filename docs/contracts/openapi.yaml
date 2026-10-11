@@ -10,6 +10,33 @@ servers:
 security:
 - BearerAuth: []
 paths:
+  /playlists/{id}/order:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    - $ref: '#/components/parameters/DeviceId'
+    - $ref: '#/components/parameters/IdempotencyKey'
+    put:
+      operationId: reorderPlaylist
+      summary: 전체 활성 항목의 순서를 한 트랜잭션으로 교체
+      x-implementation-status: implemented
+      description: 같은 계정·목록의 활성 항목 전체 ID를 정확히 한 번씩 받아 0부터 위치를 부여한다. 숨김 항목은 제외한다. 부모 revision을 한 번 증가시키고 같은 요청 재시도는 저장된 응답을 반환한다. 중복·누락·다른 목록 ID는 400, stale revision은 409이며 일부 위치 변경은 없다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [item_ids, base_revision]
+              properties:
+                item_ids: {type: array, uniqueItems: true, items: {type: string, format: uuid}}
+                base_revision: {type: integer, minimum: 1}
+      responses:
+        '200': {description: '확정된 전체 playlist·items — 부모 revision +1, 연속된 position'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '404': {$ref: '#/components/responses/Error404'}
+        '409': {$ref: '#/components/responses/Error409'}
   /playlists:
     get:
       operationId: listPlaylists

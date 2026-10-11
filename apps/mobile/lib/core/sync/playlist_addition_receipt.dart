@@ -12,7 +12,12 @@ bool isPlaylistAddition(MutationRequest request) =>
     ((request.method == 'POST' &&
             request.path ==
                 '/v1/playlists/${request.mutation.entityId}/items') ||
-        isPlaylistLink(request));
+        isPlaylistLink(request) ||
+        isPlaylistOrder(request));
+
+bool isPlaylistOrder(MutationRequest request) =>
+    request.method == 'PUT' &&
+    request.path == '/v1/playlists/${request.mutation.entityId}/order';
 
 bool isPlaylistLink(MutationRequest request) =>
     request.method == 'PATCH' &&
@@ -35,6 +40,35 @@ Map<String, dynamic> decodePlaylistAddition(
   require(raw is Map<String, dynamic>);
   final value = raw as Map<String, dynamic>;
   final sent = jsonDecode(request.body) as Map;
+  if (isPlaylistOrder(request)) {
+    require(
+      response.status == 200 &&
+          value.length == 2 &&
+          value.keys.every({'playlist', 'items'}.contains),
+    );
+    require(
+      value['playlist'] is Map<String, dynamic> && value['items'] is List,
+    );
+    final parent = value['playlist'] as Map<String, dynamic>;
+    validateChangePayload(LocalEntity.playlist, parent);
+    require(
+      parent['id'] == request.mutation.entityId &&
+          parent['deleted_at'] == null &&
+          parent['revision'] == request.mutation.baseRevision + 1,
+    );
+    final ids = sent['item_ids'] as List, items = value['items'] as List;
+    require(items.length == ids.length);
+    for (var i = 0; i < ids.length; i++) {
+      require(
+        items[i] is Map &&
+            items[i]['id'] == ids[i] &&
+            items[i]['playlist_id'] == request.mutation.entityId &&
+            items[i]['position'] == i &&
+            items[i]['hidden_by_batch_id'] == null,
+      );
+    }
+    return {...value, 'created': true};
+  }
   final batch = sent['song_ids'];
   List<dynamic>? batchIds;
   if (batch is List) {

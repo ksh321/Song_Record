@@ -37,6 +37,27 @@ final class MutationRequest {
     if (m.entity == LocalEntity.playlist &&
         m.operation == LocalOperation.patch) {
       final decoded = jsonDecode(m.payload);
+      if (decoded is Map<String, dynamic> && decoded.containsKey('item_ids')) {
+        final ids = decoded['item_ids'];
+        if (decoded.length != 2 ||
+            decoded['base_revision'] != m.baseRevision ||
+            m.baseRevision < 1 ||
+            ids is! List ||
+            ids.any((id) => id is! String) ||
+            ids.toSet().length != ids.length) {
+          return null;
+        }
+        for (final id in ids) {
+          UuidValue(id as String);
+        }
+        return MutationRequest(
+          mutation: m,
+          method: 'PUT',
+          path: '/v1/playlists/${m.entityId}/order',
+          body: m.payload,
+          attempt: m.attemptCount + 1,
+        );
+      }
       if (decoded is Map<String, dynamic> && decoded.containsKey('song_ids')) {
         final ids = decoded['song_ids'];
         if (decoded.length != 2 ||

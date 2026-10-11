@@ -127,6 +127,28 @@ public final class PlaylistService {
         });
     }
     private static IdempotentMutations.Reply multiReply(Map<String,Object> full,List<UUID> ids,boolean created){var wire=new LinkedHashMap<>(full);wire.put("item_ids",ids.stream().map(UUID::toString).toList());wire.put("created",created);return new IdempotentMutations.Reply(created?201:200,JSON.writeValueAsString(wire));}
+    public IdempotentMutations.Reply reorder(String auth,String device,String op,String rawId,String body){
+        var account=access.authenticate(auth,device);UUID owner=account.principal().userId(),id=uuid(rawId,true);
+        var root=parse(body,Set.of("item_ids","base_revision"));long base=revision(root.get("base_revision"));
+        var raw=root.get("item_ids");if(raw==null || !raw.isArray())throw invalid();
+        var ids=new ArrayList<UUID>();for(var item:raw){UUID value=uuid(text(item),false);if(ids.contains(value))throw invalid();ids.add(value);}
+        return mutations.execute(account,op,"PUT","/v1/playlists/"+id+"/order",body,()->{
+            if(revisionsReadDeleted(account,id)!=null)throw conflict("PLAYLIST_DELETED","영구 삭제된 목록입니다.");
+            var parent=activeParent(owner,id);requireRevision(parent,base);var full=aggregate(owner,id,parent);
+            @SuppressWarnings("unchecked") var active=(List<Map<String,Object>>)full.get("items");
+            var expected=active.stream().map(x->UUID.fromString((String)x.get("id"))).collect(java.util.stream.Collectors.toSet());
+            if(ids.size()!=expected.size() || !expected.equals(new HashSet<>(ids)))throw invalid();
+            return changes.write(account,()->{
+                var updated=revisions.change(account,RevisionChanges.Resource.PLAYLIST,id.toString(),base,current->{
+                    for(int position=0;position<ids.size();position++)jdbc.update("UPDATE playlist_item SET position=?,updated_at=? WHERE user_id=? AND playlist_id=? AND id=?",position,now(),bytes(owner),bytes(id),bytes(ids.get(position)));
+                });
+                var result=aggregate(owner,id,updated);var events=new ArrayList<AccountChanges.Change>();
+                if(ids.isEmpty())events.add(new AccountChanges.Change(AccountChanges.Entity.PLAYLIST,id,((Number)updated.get("revision")).longValue(),AccountChanges.Operation.UPSERT,JSON.writeValueAsString(updated)));
+                else for(UUID item:ids)events.add(new AccountChanges.Change(AccountChanges.Entity.PLAYLIST_ITEM,item,((Number)updated.get("revision")).longValue(),AccountChanges.Operation.UPSERT,JSON.writeValueAsString(result)));
+                return new AccountChanges.Batch<>(new IdempotentMutations.Reply(200,JSON.writeValueAsString(result)),events);
+            }).value();
+        });
+    }
     private Map<String,Object> activeParent(UUID owner,UUID id){
         var rows=jdbc.query("SELECT id,name,revision,deleted_at,updated_at FROM playlist WHERE user_id=? AND id=?",(rs,n)->wire(rs),bytes(owner),bytes(id));
         if(rows.isEmpty())throw notFound();var parent=rows.getFirst();if(parent.get("deleted_at")!=null)throw conflict("PLAYLIST_DELETED","영구 삭제된 목록입니다.");return parent;

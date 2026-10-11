@@ -24,6 +24,7 @@ class PlaylistAdditionFixture implements MutationTransport {
   bool loseNextAddition = false;
   bool corruptNextAdditionOwner = false;
   bool reverseNextBatchIds = false;
+  bool corruptNextOrder = false;
   Future<AuthSession> session() async => AuthSession(
     userId: repository.userId,
     deviceId: playlistFixtureId(1990),
@@ -190,6 +191,26 @@ class PlaylistAdditionFixture implements MutationTransport {
           'created': created,
         }),
       );
+    } else if (request.method == 'PUT' &&
+        request.path == '/v1/playlists/$playlistId/order') {
+      final ids = (body['item_ids'] as List).cast<String>();
+      if (body['base_revision'] != header['revision'] ||
+          ids.length != items.length ||
+          ids.toSet().length != ids.length ||
+          !ids.toSet().containsAll(items.map((i) => i['id']))) {
+        throw StateError('Fixture order mismatch');
+      }
+      for (var i = 0; i < ids.length; i++) {
+        items.singleWhere((x) => x['id'] == ids[i])['position'] = i;
+      }
+      items.sort(
+        (a, b) => (a['position'] as int).compareTo(b['position'] as int),
+      );
+      header = {...header, 'revision': (header['revision'] as int) + 1};
+      response = MutationResponse(
+        200,
+        jsonEncode({'playlist': header, 'items': items}),
+      );
     } else if (request.mutation.entity == LocalEntity.song &&
         request.method == 'PATCH') {
       final id = request.mutation.entityId;
@@ -302,6 +323,12 @@ class PlaylistAdditionFixture implements MutationTransport {
       );
     }
     receipts[request.mutation.opId] = (request.hash, response);
+    if (corruptNextOrder && request.path.endsWith('/order')) {
+      corruptNextOrder = false;
+      final raw = jsonDecode(response.body) as Map<String, dynamic>;
+      (raw['items'] as List).first['position'] = 99;
+      return MutationResponse(200, jsonEncode(raw));
+    }
     if (reverseNextBatchIds && body.containsKey('song_ids')) {
       reverseNextBatchIds = false;
       final corrupted = jsonDecode(response.body) as Map<String, dynamic>;

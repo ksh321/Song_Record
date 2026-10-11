@@ -13,6 +13,7 @@ import '../songs/my_song.dart';
 
 import 'playlist_discovery_screen.dart';
 import 'playlist_library.dart';
+import 'playlist_order_picker.dart';
 import 'playlist_song_picker.dart';
 
 class PlaylistDetailScreen extends StatefulWidget {
@@ -169,6 +170,12 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                 onPressed: busy || parent == null ? null : discover,
                 child: const Text('검색·차트에서 추가'),
               ),
+            OutlinedButton(
+              onPressed: busy || parent == null || items.length < 2
+                  ? null
+                  : reorder,
+              child: const Text('순서 변경'),
+            ),
             if (items.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(24),
@@ -225,6 +232,47 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       await reload();
     } catch (_) {
       if (mounted) setState(() => error = '추가 요청을 저장하지 못했어요. 최신 목록을 확인해 주세요.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> reorder() async {
+    final library = widget.library, playlistId = widget.id;
+    final original = Map<String, dynamic>.from(parent!);
+    final titles = <String, String>{};
+    for (final item in items) {
+      final song = songs.where((s) => s['id'] == item['song_id']).firstOrNull;
+      titles[item['id'] as String] =
+          (song?['title'] ??
+                  (item['candidate_snapshot'] as Map?)?['title'] ??
+                  '목록 항목')
+              as String;
+    }
+    final ids = await showModalBottomSheet<List<String>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => FractionallySizedBox(
+        heightFactor: .8,
+        child: PlaylistOrderPicker(items: items, titles: titles),
+      ),
+    );
+    if (!mounted ||
+        ids == null ||
+        !identical(library, widget.library) ||
+        playlistId != widget.id) {
+      return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await widget.library.reorder(original, ids);
+      await widget.afterSave?.call();
+      await reload();
+    } catch (_) {
+      if (mounted) setState(() => error = '순서를 저장하지 못했어요. 최신 목록을 확인해 주세요.');
     } finally {
       if (mounted) setState(() => busy = false);
     }

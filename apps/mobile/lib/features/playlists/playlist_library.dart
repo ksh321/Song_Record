@@ -6,6 +6,32 @@ import '../search/search_intent.dart';
 final class PlaylistLibrary {
   PlaylistLibrary(this.repository);
   final LocalRepository repository;
+  Future<void> reorder(Map<String, dynamic> row, List<String> ids) async {
+    final id = row['id'] as String;
+    if ((await repository.pendingWork()).any(
+      (m) => m.entity == LocalEntity.playlist && m.entityId == id,
+    )) {
+      throw StateError('이 목록의 이전 변경을 먼저 동기화해 주세요.');
+    }
+    final current = (await items(id)).map((i) => i['id']).toSet();
+    if (ids.toSet().length != ids.length ||
+        ids.length != current.length ||
+        !current.containsAll(ids)) {
+      throw StateError('목록 항목이 변경됐어요.');
+    }
+    final value = _payload(row);
+    await repository.saveCheckedEdit(
+      repository.preparePatch(
+        entity: LocalEntity.playlist,
+        entityId: id,
+        baseRevision: row['local_base_revision'] as int,
+        draft: value,
+        changes: {'item_ids': ids},
+      ),
+      value,
+    );
+  }
+
   Future<void> addSelection(String id, KaraokeSelection selection) async {
     if (selection.intent.purpose != SearchPurpose.playlist ||
         selection.intent.playlistId != id ||

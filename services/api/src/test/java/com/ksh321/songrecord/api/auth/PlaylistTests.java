@@ -40,6 +40,20 @@ class PlaylistTests {
   assertThat(multi(a,List.of(s.id,manual),1,UUID.randomUUID().toString()).getStatus()).isEqualTo(409);assertThat(count("playlist_item")).isEqualTo(2);
   assertThat(multi(b,List.of(s.id,manual),1,UUID.randomUUID().toString()).getStatus()).isEqualTo(201);assertThat(count("playlist_item")).isEqualTo(4);
  }
+ MockHttpServletResponse order(UUID p,List<String> ids,long base,String op)throws Exception{return s.mvc.perform(put("/v1/playlists/"+p+"/order").header("Authorization","Bearer "+s.f.tokens.accessToken()).header("X-Device-Id",s.f.registration.deviceId()).header("Idempotency-Key",op).contentType("application/json").content(json.writeValueAsString(Map.of("item_ids",ids,"base_revision",base)))).andReturn().getResponse();}
+ @Test void wholeOrderRejectsDuplicateMissingForeignAndStaleAtomically()throws Exception{
+  s.postBody(s.f.key,s.body(""));UUID p=UUID.randomUUID(),other=UUID.randomUUID(),manual=UUID.randomUUID();create(p,"정렬");create(other,"다른 목록");
+  s.f.jdbc.update("INSERT INTO song(id,user_id,source_type,title,artist,version_code,note,lifecycle_state,revision) VALUES(?,?,'MANUAL','직접 곡','가수','NORMAL','','ACTIVE',1)",bytes(manual),bytes(s.f.registration.userId()));
+  var full=json.readTree(multi(p,List.of(s.id,manual),1,UUID.randomUUID().toString()).getContentAsString());String a=full.get("item_ids").get(0).asText(),b=full.get("item_ids").get(1).asText();
+  var foreign=json.readTree(multi(other,List.of(s.id),1,UUID.randomUUID().toString()).getContentAsString()).get("item_ids").get(0).asText();
+  var before=s.f.jdbc.queryForList("SELECT * FROM playlist_item WHERE playlist_id=? ORDER BY position",bytes(p));
+  for(var ids:List.of(List.of(a,a),List.of(a),List.of(a,foreign)))assertThat(order(p,ids,2,UUID.randomUUID().toString()).getStatus()).isEqualTo(400);
+  assertThat(s.f.jdbc.queryForList("SELECT * FROM playlist_item WHERE playlist_id=? ORDER BY position",bytes(p))).usingRecursiveComparison().isEqualTo(before);
+  String op=UUID.randomUUID().toString();var success=order(p,List.of(b,a),2,op);assertThat(success.getStatus()).isEqualTo(200);var sorted=json.readTree(success.getContentAsString());assertThat(sorted.get("items").get(0).get("id").asText()).isEqualTo(b);assertThat(sorted.get("items").get(1).get("position").asLong()).isEqualTo(1);assertThat(sorted.get("playlist").get("revision").asLong()).isEqualTo(3);
+  assertThat(order(p,List.of(b,a),2,op).getContentAsString()).isEqualTo(success.getContentAsString());assertThat(order(p,List.of(a,b),2,UUID.randomUUID().toString()).getStatus()).isEqualTo(409);
+  assertThat(s.f.jdbc.queryForObject("SELECT revision FROM playlist WHERE id=?",Long.class,bytes(p))).isEqualTo(3);
+  UUID empty=UUID.randomUUID();create(empty,"빈 목록");assertThat(order(empty,List.of(),1,UUID.randomUUID().toString()).getStatus()).isEqualTo(200);
+ }
  @Test void duplicateNamesTodayPersistenceRevisionAndPaging()throws Exception{
   UUID a=UUID.randomUUID(),b=UUID.randomUUID();assertThat(create(a," 오늘 ").getStatus()).isEqualTo(201);assertThat(create(b,"오늘").getStatus()).isEqualTo(201);
   assertThat(create(a,"overwrite").getContentAsString()).contains("오늘").doesNotContain("overwrite");

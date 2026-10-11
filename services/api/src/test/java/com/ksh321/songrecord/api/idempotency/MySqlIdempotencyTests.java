@@ -117,6 +117,16 @@ class MySqlIdempotencyTests {
         assertThat(batch.status()).isEqualTo(201);var multi=json.readTree(batch.body());assertThat(multi.get("item_ids").get(0).asText()).isEqualTo(item);assertThat(multi.get("items").get(1).get("position").asLong()).isEqualTo(1);assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(4);
         var allExisting=listsService.addItem("Bearer test","device",UUID.randomUUID().toString(),list.toString(),json.writeValueAsString(java.util.Map.of("song_ids",java.util.List.of(song.toString(),manual.toString()),"base_revision",4)));
         assertThat(allExisting.status()).isEqualTo(200);assertThat(json.readTree(allExisting.body()).get("item_ids")).isEqualTo(multi.get("item_ids"));assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(4);assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM playlist_item",Integer.class)).isEqualTo(2);
+        String second=multi.get("item_ids").get(1).asText();
+        String orderBody=json.writeValueAsString(java.util.Map.of("item_ids",java.util.List.of(second,item),"base_revision",4));
+        String orderOp=UUID.randomUUID().toString();var ordered=listsService.reorder("Bearer test","device",orderOp,list.toString(),orderBody);
+        assertThat(ordered.status()).isEqualTo(200);assertThat(json.readTree(ordered.body()).get("items").get(0).get("id").asText()).isEqualTo(second);
+        assertThat(listsService.reorder("Bearer test","device",orderOp,list.toString(),orderBody)).isEqualTo(ordered);
+        String nextOrder=json.writeValueAsString(java.util.Map.of("item_ids",java.util.List.of(item,second),"base_revision",5));
+        var pool=Executors.newFixedThreadPool(2);var gate=new CountDownLatch(1);
+        java.util.concurrent.Callable<String> edit=()->{gate.await();try{listsService.reorder("Bearer test","device",UUID.randomUUID().toString(),list.toString(),nextOrder);return "OK";}catch(ApiException e){return e.code();}};
+        try{var left=pool.submit(edit);var right=pool.submit(edit);gate.countDown();assertThat(java.util.List.of(left.get(20,TimeUnit.SECONDS),right.get(20,TimeUnit.SECONDS))).containsExactlyInAnyOrder("OK","REVISION_CONFLICT");}finally{pool.shutdownNow();}
+        assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(6);
     }
     @Test void rollbackLeavesNoReceiptAndRetrySucceeds() {
         assertThatThrownBy(()->service.execute(account,key,"POST","/v1/songs","{}",()->{effect();throw new IllegalStateException();})).isInstanceOf(IllegalStateException.class);

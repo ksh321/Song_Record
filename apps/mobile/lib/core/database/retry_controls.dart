@@ -409,7 +409,9 @@ final class RetryControls {
       }
     } else if (!create &&
         m.entity == LocalEntity.playlist &&
-        (method == 'POST' || path.endsWith('/song'))) {
+        (method == 'POST' ||
+            path.endsWith('/song') ||
+            (method == 'PUT' && path == '/v1/playlists/${m.entityId}/order'))) {
       final expected = MutationRequest.prepare(m);
       if (expected == null ||
           expected.path != path ||
