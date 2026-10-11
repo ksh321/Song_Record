@@ -192,6 +192,20 @@ void main() {
     expect(asset.read<int>('tombstone'), 0);
     expect(jsonDecode(asset.read<String>('server_payload'))['cloud_state'], 'NONE');
   });
+  test('song trash keeps its source and server deletion time without permanent deletion', () async {
+    final incoming = entry(8, id);
+    incoming['payload'] = songChange(id, 2)
+      ..['lifecycle_state'] = 'TRASHED'
+      ..['deleted_at'] = '2026-10-11T05:00:00.123Z';
+    await store.apply(page([incoming]), snapshotToken: token);
+    final row = await db.customSelect("SELECT * FROM metadata_copies WHERE entity_type='SONG' AND entity_id=?", variables: [Variable(id)]).getSingle();
+    expect(row.read<int>('tombstone'), 0);
+    final source = jsonDecode(row.read<String>('server_payload')) as Map<String, dynamic>;
+    expect(source['lifecycle_state'], 'TRASHED');
+    expect(source['deleted_at'], '2026-10-11T05:00:00.123Z');
+    expect(source['title'], 'server');
+    expect(await cursor(), 8);
+  });
   for (final kind in ['SONG', 'TAG', 'RECORDING_CONDITION', 'PLAYLIST']) {
     test('equal baseline $kind compares content and rolls back earlier writes', () async {
       final source = <String, dynamic>{

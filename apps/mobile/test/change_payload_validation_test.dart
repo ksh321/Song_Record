@@ -39,6 +39,18 @@ Map<String, dynamic> recordingWire(String schema) {
 }
 
 void main() {
+  test('trash change preserves a server UTC deletion date without a tombstone', () {
+    final value = songChange(payloadId, 2)
+      ..['lifecycle_state'] = 'TRASHED'
+      ..['deleted_at'] = '2026-10-11T05:00:00.123Z';
+    validateChangePayload(LocalEntity.song, value);
+    expect(value['deleted_at'], '2026-10-11T05:00:00.123Z');
+    value['deleted_at'] = '2026-02-30T00:00:00Z';
+    expect(() => validateChangePayload(LocalEntity.song, value), throwsFormatException);
+    value['deleted_at'] = null;
+    value['lifecycle_state'] = 'ACTIVE';
+    validateChangePayload(LocalEntity.song, value);
+  });
   test('D07 deletion receipt requires identity, revision and a real UTC date', () {
     final valid = <String, dynamic>{'id': payloadId, 'status': 'DELETED',
       'revision': 2, 'deleted_at': '2026-10-01T00:00:00Z'};

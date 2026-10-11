@@ -16,6 +16,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration(proxyBeanMethods=false)
 @Profile("!bootstrap")
 public class SongConfiguration {
+    @Bean SongTrash songTrash(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,AccountChanges changes,com.ksh321.songrecord.api.revision.RevisionChanges revisions,SongDeletionPreview preview,com.ksh321.songrecord.api.recordings.RecordingEditing editing){return new SongTrash(jdbc,access,mutations,changes,revisions,preview,editing,Clock.systemUTC());}
     @Bean SongDeletionPreview songDeletionPreview(JdbcTemplate jdbc,AccountAccess access,org.springframework.transaction.PlatformTransactionManager manager){return new SongDeletionPreview(jdbc,access,manager);}
     @Bean SongRepresentative songRepresentative(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,com.ksh321.songrecord.api.revision.RevisionChanges revisions,AccountChanges changes){return new SongRepresentative(jdbc,access,mutations,revisions,changes);}
     @Bean SongEditing songEditing(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,com.ksh321.songrecord.api.revision.RevisionChanges revisions,AccountChanges changes){return new SongEditing(jdbc,access,mutations,revisions,changes);}
@@ -25,7 +26,7 @@ public class SongConfiguration {
         http.securityMatcher("/v1/songs","/v1/songs/**").csrf(c->c.disable())
             .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).requestCache(c->c.disable())
             // Controller always authenticates bearer + device through AccountAccess before parsing input.
-            .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.POST,"/v1/songs").permitAll().requestMatchers(HttpMethod.GET,"/v1/songs","/v1/songs/*/delete-preview").permitAll().requestMatchers(HttpMethod.PATCH,"/v1/songs/*").permitAll().requestMatchers(HttpMethod.PUT,"/v1/songs/*/representative").permitAll().anyRequest().denyAll());
+            .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.POST,"/v1/songs","/v1/songs/*/trash").permitAll().requestMatchers(HttpMethod.GET,"/v1/songs","/v1/songs/*/delete-preview").permitAll().requestMatchers(HttpMethod.PATCH,"/v1/songs/*").permitAll().requestMatchers(HttpMethod.PUT,"/v1/songs/*/representative").permitAll().anyRequest().denyAll());
         return http.build();
     }
 }

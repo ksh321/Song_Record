@@ -96,7 +96,7 @@ void validateChangePayload(LocalEntity entity, Map<String, dynamic> value) {
           'representative_key_mode',
           'representative_key_shift',
         },
-        {'created_at', 'latest_recorded_at'},
+        {'created_at', 'latest_recorded_at', 'deleted_at'},
       );
       choice('source_type', {'TJ', 'MANUAL'});
       final tj = value['tj_number'];
@@ -119,6 +119,7 @@ void validateChangePayload(LocalEntity entity, Map<String, dynamic> value) {
       uuid('representative_recording_id', nullable: true);
       key('representative_key_mode', 'representative_key_shift');
       if (value.containsKey('created_at')) time('created_at');
+      if (value.containsKey('deleted_at')) time('deleted_at', nullable: true);
       if (value.containsKey('latest_recorded_at')) {
         time('latest_recorded_at', nullable: true);
       }

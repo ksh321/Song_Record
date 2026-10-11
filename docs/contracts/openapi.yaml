@@ -10,6 +10,53 @@ servers:
 security:
 - BearerAuth: []
 paths:
+  /songs/{id}/trash:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    - $ref: '#/components/parameters/DeviceId'
+    - $ref: '#/components/parameters/IdempotencyKey'
+    post:
+      operationId: trashSong
+      summary: 곡만 휴지통으로 이동하고 녹음 보존
+      description: P20-02. 서버 preview_version을 같은 계정 잠금에서 다시 확인한다. 곡은 서버 시각 기준 7일 휴지통, 목록 항목은 숨김, 연결 ACTIVE 녹음은 미연결 ACTIVE로 보존한다. 대표/자동 선정만 해제하고 파일·고정·녹음 정보를 유지한다. 동일 멱등 요청은 최초 묶음/응답을 재사용한다. 이미 파일 정리가 DELETING이면 FILE_CLEANUP_IN_PROGRESS로 보존 불가능한 경쟁을 막는다. SONG_AND_RECORDINGS 모드는 P20-04에서 연결한다.
+      x-implementation-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [mode, preview_version]
+              properties:
+                mode: {type: string, enum: [SONG_ONLY]}
+                preview_version: {type: string, pattern: '^[0-9a-f]{64}$'}
+      responses:
+        '200':
+          description: 서버 확정한 휴지통 묶음과 보존한 녹음. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [batch_id, mode, deleted_at, purge_after, song, recordings]
+                properties:
+                  batch_id: {$ref: '#/components/schemas/Uuid'}
+                  mode: {type: string, enum: [SONG_ONLY]}
+                  deleted_at: {$ref: '#/components/schemas/UtcInstant'}
+                  purge_after: {$ref: '#/components/schemas/UtcInstant'}
+                  song: {$ref: '#/components/schemas/Song'}
+                  recordings: {type: array, items: {$ref: '#/components/schemas/RecordingEdited'}}
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '500':
+          $ref: '#/components/responses/Error500'
   /songs/{id}/delete-preview:
     parameters:
     - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
@@ -2726,6 +2773,10 @@ components:
       type: object
       additionalProperties: false
       properties:
+        deleted_at:
+          anyOf:
+          - $ref: '#/components/schemas/UtcInstant'
+          - type: 'null'
         id:
           $ref: '#/components/schemas/Uuid'
         revision:

@@ -67,6 +67,28 @@ class MySqlIdempotencyTests {
             db.update("UPDATE recording_asset SET cloud_revision=cloud_revision+1 WHERE recording_id=?",bytes(recording));
             assertThatThrownBy(()->new org.springframework.transaction.support.TransactionTemplate(manager).execute(status->{preview.requireUnchanged(authority,song,version);return null;}))
                     .isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo("DELETE_PREVIEW_CHANGED"));
+            var principal=new SessionService.Principal(owner,device,UUID.randomUUID());when(authority.principal()).thenReturn(principal);when(a.revalidate(authority)).thenReturn(principal);
+            var clock=Clock.systemUTC();var revisions=new com.ksh321.songrecord.api.revision.RevisionChanges(db,a,manager,clock);
+            var mutations=new IdempotentMutations(db,a,manager,clock);var changes=new com.ksh321.songrecord.api.sync.AccountChanges(db,a,manager,clock);
+            var guard=new com.ksh321.songrecord.api.revision.CreationGuard(db,a,manager);
+            var drafts=new com.ksh321.songrecord.api.recordings.RecordingDrafts(db,a,mutations,guard,changes,clock);
+            var saving=new com.ksh321.songrecord.api.recordings.RecordingSaving(db,a,mutations,revisions,changes,drafts);
+            var jobs=new com.ksh321.songrecord.api.jobs.JobQueue(db,a,manager,clock,java.time.Duration.ofMinutes(2),5);
+            var editing=new com.ksh321.songrecord.api.recordings.RecordingEditing(db,a,mutations,revisions,changes,drafts,saving,jobs);
+            var trash=new com.ksh321.songrecord.api.songs.SongTrash(db,a,mutations,changes,revisions,preview,editing,clock);
+            UUID list=UUID.randomUUID(),item=UUID.randomUUID();db.update("INSERT INTO playlist(id,user_id,name) VALUES(?,?,'trash-list')",bytes(list),bytes(owner));
+            db.update("INSERT INTO playlist_item(id,user_id,playlist_id,song_id,entry_key,position) VALUES(?,?,?,?,?,9)",bytes(item),bytes(owner),bytes(list),bytes(song),"MANUAL:"+song);
+            db.update("INSERT INTO song_cloud_selection(song_id,user_id,representative_id,latest_id,lowest_tier_id) VALUES(?,?,?,?,?)",bytes(song),bytes(owner),bytes(recording),bytes(recording),bytes(recording));
+            db.update("UPDATE song SET representative_recording_id=? WHERE id=?",bytes(recording),bytes(song));
+            var assetBefore=db.queryForMap("SELECT object_key,generation,verified_size,sha256,cloud_state FROM recording_asset WHERE recording_id=?",bytes(recording));var pinsBefore=db.queryForList("SELECT * FROM pin_slot WHERE user_id=?",bytes(owner));
+            String request=new tools.jackson.databind.json.JsonMapper().writeValueAsString(java.util.Map.of("mode","SONG_ONLY","preview_version",preview.get("Bearer synthetic",device.toString(),song.toString()).get("preview_version")));
+            String operation=UUID.randomUUID().toString();var deleted=trash.trash("Bearer synthetic",device.toString(),operation,song.toString(),request);
+            assertThat(deleted.status()).isEqualTo(200);assertThat(trash.trash("Bearer synthetic",device.toString(),operation,song.toString(),request)).isEqualTo(deleted);
+            assertThat(db.queryForObject("SELECT lifecycle_state FROM recording WHERE id=?",String.class,bytes(recording))).isEqualTo("ACTIVE");assertThat(db.queryForObject("SELECT song_id FROM recording WHERE id=?",byte[].class,bytes(recording))).isNull();
+            assertThat(db.queryForMap("SELECT object_key,generation,verified_size,sha256,cloud_state FROM recording_asset WHERE recording_id=?",bytes(recording))).usingRecursiveComparison().isEqualTo(assetBefore);
+            assertThat(db.queryForList("SELECT * FROM pin_slot WHERE user_id=?",bytes(owner))).usingRecursiveComparison().isEqualTo(pinsBefore);
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM deletion_item WHERE user_id=?",Integer.class,bytes(owner))).isEqualTo(3);
+            assertThat(db.queryForObject("SELECT hidden_by_batch_id FROM playlist_item WHERE id=?",byte[].class,bytes(item))).isNotNull();assertThat(db.queryForObject("SELECT reason FROM cloud_hold WHERE recording_id=?",String.class,bytes(recording))).isEqualTo("ORPHAN_KEEP");
         } finally {admin.execute("DROP DATABASE "+name);}
     }
     IdempotentMutations.Reply effect() {

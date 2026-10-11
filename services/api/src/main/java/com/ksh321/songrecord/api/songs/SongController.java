@@ -13,7 +13,13 @@ public class SongController {
     private final SongEditing editing;
     private final SongRepresentative representative;
     private final SongDeletionPreview deletionPreview;
-    public SongController(SongCreation creation,SongListing listing,SongEditing editing,SongRepresentative representative,SongDeletionPreview deletionPreview){this.creation=creation;this.listing=listing;this.editing=editing;this.representative=representative;this.deletionPreview=deletionPreview;}
+    private final SongTrash trash;
+    public SongController(SongCreation creation,SongListing listing,SongEditing editing,SongRepresentative representative,SongDeletionPreview deletionPreview,SongTrash trash){this.creation=creation;this.listing=listing;this.editing=editing;this.representative=representative;this.deletionPreview=deletionPreview;this.trash=trash;}
+    @PostMapping(path="/{id}/trash",consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> trash(@RequestHeader(value="Authorization",required=false) String auth,@RequestHeader(value="X-Device-Id",required=false) String device,@RequestHeader(value="Idempotency-Key",required=false) String op,@PathVariable("id") String id,@RequestBody String body){
+        var result=trash.trash(auth,device,op,id,body);
+        return ResponseEntity.status(result.status()).header("Cache-Control","no-store").contentType(MediaType.APPLICATION_JSON).body(result.body());
+    }
     @GetMapping(path="/{id}/delete-preview",produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<java.util.Map<String,Object>> deletePreview(@RequestHeader(value="Authorization",required=false) String auth,@RequestHeader(value="X-Device-Id",required=false) String device,@PathVariable("id") String id){
         return ResponseEntity.ok().header("Cache-Control","no-store").body(deletionPreview.get(auth,device,id));
