@@ -5,8 +5,13 @@ import 'package:flutter/material.dart';
 
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/song_row.dart';
+import '../auth/auth_session.dart';
+import '../charts/popular_chart.dart';
+import '../search/karaoke_search.dart';
+import '../search/search_intent.dart';
 import '../songs/my_song.dart';
 
+import 'playlist_discovery_screen.dart';
 import 'playlist_library.dart';
 import 'playlist_song_picker.dart';
 
@@ -16,10 +21,16 @@ class PlaylistDetailScreen extends StatefulWidget {
     required this.library,
     required this.id,
     this.afterSave,
+    this.searchLoad,
+    this.chartLoad,
+    this.auth,
   });
   final PlaylistLibrary library;
   final String id;
   final Future<void> Function()? afterSave;
+  final KaraokeLoader? searchLoad;
+  final ChartLoader? chartLoad;
+  final AuthController? auth;
   @override
   State<PlaylistDetailScreen> createState() => _PlaylistDetailScreenState();
 }
@@ -153,6 +164,11 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
               onPressed: busy || parent == null ? null : add,
               child: const Text('내 곡 추가'),
             ),
+            if (widget.searchLoad != null)
+              OutlinedButton(
+                onPressed: busy || parent == null ? null : discover,
+                child: const Text('검색·차트에서 추가'),
+              ),
             if (items.isEmpty)
               const Padding(
                 padding: EdgeInsets.all(24),
@@ -170,4 +186,47 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       ),
     ),
   );
+
+  Future<void> discover() async {
+    final library = widget.library, id = widget.id;
+    final intent = SearchIntent(
+      purpose: SearchPurpose.playlist,
+      playlistId: id,
+      returnRoute: '/playlists/$id',
+    );
+    final selected = await Navigator.of(context).push<KaraokeSelection>(
+      MaterialPageRoute(
+        settings: RouteSettings(
+          name: '/playlists/$id/discovery',
+          arguments: intent,
+        ),
+        builder: (_) => PlaylistDiscoveryScreen(
+          intent: intent,
+          searchLoad: widget.searchLoad!,
+          chartLoad: widget.chartLoad,
+          auth: widget.auth,
+        ),
+      ),
+    );
+    if (!mounted ||
+        selected == null ||
+        !identical(selected.intent, intent) ||
+        widget.library != library ||
+        widget.id != id) {
+      return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await library.addSelection(id, selected);
+      await widget.afterSave?.call();
+      await reload();
+    } catch (_) {
+      if (mounted) setState(() => error = '추가 요청을 저장하지 못했어요. 최신 목록을 확인해 주세요.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
 }

@@ -155,6 +155,13 @@ class SongRecordApp extends StatelessWidget {
                 return PlaylistLibraryScreen(
                   key: ValueKey(repository.userId),
                   library: PlaylistLibrary(repository),
+                  searchLoad: searchLoad,
+                  chartLoad: chartLoad,
+                  auth: auth,
+                  afterSave: () async {
+                    final sync = syncController;
+                    if (sync != null) unawaited(sync.wake());
+                  },
                 );
               },
             );

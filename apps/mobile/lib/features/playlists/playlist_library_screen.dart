@@ -1,10 +1,26 @@
 import 'package:flutter/material.dart';
 
+import '../auth/auth_session.dart';
+import '../charts/popular_chart.dart';
+import '../search/karaoke_search.dart';
+
 import 'playlist_detail_screen.dart';
 import 'playlist_library.dart';
 
 class PlaylistLibraryScreen extends StatefulWidget {
-  const PlaylistLibraryScreen({super.key, required this.library, this.onOpen});
+  const PlaylistLibraryScreen({
+    super.key,
+    required this.library,
+    this.onOpen,
+    this.searchLoad,
+    this.chartLoad,
+    this.auth,
+    this.afterSave,
+  });
+  final KaraokeLoader? searchLoad;
+  final ChartLoader? chartLoad;
+  final AuthController? auth;
+  final Future<void> Function()? afterSave;
   final PlaylistLibrary library;
   final void Function(Map<String, dynamic>)? onOpen;
   @override
@@ -153,6 +169,10 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
                             builder: (_) => PlaylistDetailScreen(
                               library: widget.library,
                               id: row['id'] as String,
+                              searchLoad: widget.searchLoad,
+                              chartLoad: widget.chartLoad,
+                              auth: widget.auth,
+                              afterSave: widget.afterSave,
                             ),
                           ),
                         );

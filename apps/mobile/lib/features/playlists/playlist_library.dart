@@ -1,10 +1,29 @@
 import '../../core/database/local_models.dart';
 import '../../core/domain/input_validation.dart';
 import '../../core/sync/local_repository.dart';
+import '../search/search_intent.dart';
 
 final class PlaylistLibrary {
   PlaylistLibrary(this.repository);
   final LocalRepository repository;
+  Future<void> addSelection(String id, KaraokeSelection selection) async {
+    if (selection.intent.purpose != SearchPurpose.playlist ||
+        selection.intent.playlistId != id ||
+        selection.intent.returnRoute != '/playlists/$id') {
+      throw StateError('선택한 목록이 변경됐어요.');
+    }
+    if ((await repository.pendingWork()).any(
+      (m) =>
+          m.entity == LocalEntity.playlist &&
+          m.entityId == id &&
+          m.operation != LocalOperation.create,
+    )) {
+      throw StateError('이 목록의 이전 변경을 먼저 동기화해 주세요.');
+    }
+    final row = (await load()).singleWhere((p) => p['id'] == id);
+    await addCandidate(row, selection.candidate.sourceToken)();
+  }
+
   Future<List<Map<String, dynamic>>> load() => repository.activePlaylists();
   Future<List<Map<String, dynamic>>> items(String id) =>
       repository.playlistItems(id);
