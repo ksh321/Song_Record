@@ -19,6 +19,7 @@ class SongTrashTests {
         f.jdbc.execute("ALTER TABLE song_cloud_selection ADD selection_revision BIGINT DEFAULT 1");f.jdbc.execute("ALTER TABLE song_cloud_selection ADD updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP");
         f.jdbc.execute("ALTER TABLE pin_slot ADD revision BIGINT DEFAULT 1");
         f.jdbc.execute("CREATE TABLE deletion_batch(id BINARY(16) PRIMARY KEY,user_id BINARY(16),op_id BINARY(16),mode VARCHAR(32),deleted_at TIMESTAMP(3),purge_after TIMESTAMP(3),preview_version VARCHAR(128),UNIQUE(user_id,op_id))");
+        f.jdbc.execute("CREATE TABLE deletion_batch_work(user_id BINARY(16),batch_id BINARY(16),revision BIGINT DEFAULT 1,updated_at TIMESTAMP(3),PRIMARY KEY(user_id,batch_id))");
         f.jdbc.execute("CREATE TABLE deletion_item(batch_id BINARY(16),user_id BINARY(16),entity_type VARCHAR(32),entity_id BINARY(16),previous_song_id BINARY(16),previous_list_id BINARY(16),detached_link_revision BIGINT,original_deleted_at TIMESTAMP(3),PRIMARY KEY(batch_id,entity_type,entity_id))");
         f.jdbc.execute("CREATE TABLE cloud_hold(id BINARY(16) PRIMARY KEY,user_id BINARY(16),recording_id BINARY(16),reason VARCHAR(32))");
         f.jdbc.execute("CREATE TABLE recording_upload(id BINARY(16) PRIMARY KEY,user_id BINARY(16),recording_id BINARY(16),state VARCHAR(32),policy_revision BIGINT,expires_at TIMESTAMP(3),updated_at TIMESTAMP(3),expected_size BIGINT,active_slot INT,reservation_released_at TIMESTAMP(3),error_code VARCHAR(64),pin_operation_id BINARY(16))");

@@ -10,6 +10,108 @@ servers:
 security:
 - BearerAuth: []
 paths:
+  /trash:
+    parameters:
+    - $ref: '#/components/parameters/DeviceId'
+    get:
+      operationId: listTrash
+      summary: 계정 휴지통 묶음과 서버 보관 기간 조회
+      x-implementation-status: implemented
+      parameters:
+      - {name: cursor, in: query, schema: {type: string, format: uuid}}
+      - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100, default: 50}}
+      responses:
+        '200':
+          description: 현재 휴지통 항목이 있는 묶음. 서버 deleted_at 내림차순, 동일 시각 UUID 내림차순. no-store.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, next_cursor]
+                additionalProperties: false
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [batch_id, mode, revision, deleted_at, purge_after, items]
+                      properties:
+                        batch_id: {$ref: '#/components/schemas/Uuid'}
+                        mode: {type: string, enum: [SONG_ONLY, SONG_AND_RECORDINGS, RECORDING]}
+                        revision: {type: integer, format: int64, minimum: 1}
+                        deleted_at: {$ref: '#/components/schemas/UtcInstant'}
+                        purge_after: {$ref: '#/components/schemas/UtcInstant'}
+                        items:
+                          type: array
+                          items:
+                            type: object
+                            additionalProperties: false
+                            required: [entity_type, id]
+                            properties:
+                              entity_type: {type: string, enum: [SONG, RECORDING, PLAYLIST_ITEM]}
+                              id: {$ref: '#/components/schemas/Uuid'}
+                  next_cursor: {type: [string, 'null'], format: uuid}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+  /trash/{batchId}/restore:
+    parameters:
+    - {name: batchId, in: path, required: true, schema: {type: string, format: uuid}}
+    - $ref: '#/components/parameters/DeviceId'
+    - $ref: '#/components/parameters/IdempotencyKey'
+    post:
+      operationId: restoreTrash
+      summary: 같은 삭제 묶음의 선택 항목 복원
+      x-implementation-status: implemented
+      description: 서버 보관 기간 안의 항목만 복원한다. 원래 삭제 이력·만료는 불변이며 별도 작업 revision을 비교한다. 변경된 곡 연결은 덮어쓰지 않고 대표·고정을 자동 재지정하지 않는다. P20-08에서 목록 복원을 연결한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [base_revision]
+              properties:
+                base_revision: {type: integer, format: int64, minimum: 1}
+                item_ids: {type: array, minItems: 1, maxItems: 100, uniqueItems: true, items: {$ref: '#/components/schemas/Uuid'}}
+      responses:
+        '200':
+          description: 복원 결과와 건너뛴 항목. 해제된 고정은 사용자 재선택. no-store.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [batch_id, revision, restored, skipped, pin_reselection_required]
+                properties:
+                  batch_id: {$ref: '#/components/schemas/Uuid'}
+                  revision: {type: integer, format: int64, minimum: 1}
+                  pin_reselection_required: {type: boolean}
+                  restored:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [entity_type, value]
+                      properties:
+                        entity_type: {type: string, enum: [SONG, RECORDING]}
+                        value: {type: object}
+                  skipped:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [entity_type, id, reason]
+                      properties:
+                        entity_type: {type: string, enum: [SONG, RECORDING]}
+                        id: {$ref: '#/components/schemas/Uuid'}
+                        reason: {type: string, enum: [PURGED, STATE_CHANGED, LINK_CHANGED, PARENT_UNAVAILABLE]}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '404': {$ref: '#/components/responses/Error404'}
+        '409': {$ref: '#/components/responses/Error409'}
+        '500': {$ref: '#/components/responses/Error500'}
   /recordings/{id}/trash:
     parameters:
     - {name: id, in: path, required: true, schema: {type: string, format: uuid}}

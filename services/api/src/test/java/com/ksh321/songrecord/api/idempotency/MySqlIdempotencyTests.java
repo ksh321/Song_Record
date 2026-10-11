@@ -119,6 +119,16 @@ class MySqlIdempotencyTests {
             assertThat(db.queryForObject("SELECT lifecycle_state FROM recording WHERE id=?",String.class,bytes(recording))).isEqualTo("TRASHED");
             assertThat(db.queryForObject("SELECT used_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(owner))).isEqualTo(6291456);
 
+            String restoreBatch=new tools.jackson.databind.json.JsonMapper().readTree(single.body()).get("batch_id").asText();
+            var restoring=new com.ksh321.songrecord.api.recordings.TrashRestoration(db,a,mutations,changes,revisions,editing,clock);
+            String restoreOp=UUID.randomUUID().toString();var restored=restoring.restore("Bearer synthetic",device.toString(),restoreOp,restoreBatch,"{\"base_revision\":1}");
+            assertThat(restored.status()).isEqualTo(200);assertThat(restoring.restore("Bearer synthetic",device.toString(),restoreOp,restoreBatch,"{\"base_revision\":1}")).isEqualTo(restored);
+            assertThat(db.queryForObject("SELECT lifecycle_state FROM recording WHERE id=?",String.class,bytes(recording))).isEqualTo("ACTIVE");
+            assertThat(db.queryForObject("SELECT song_id FROM recording WHERE id=?",byte[].class,bytes(recording))).isNull();
+            assertThat(db.queryForObject("SELECT revision FROM deletion_batch_work WHERE batch_id=?",Long.class,bytes(UUID.fromString(restoreBatch)))).isEqualTo(2);
+            assertThat(db.queryForObject("SELECT used_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(owner))).isEqualTo(6291456);
+            assertThatThrownBy(()->db.update("UPDATE deletion_batch SET purge_after=DATE_ADD(purge_after,INTERVAL 1 DAY) WHERE id=?",bytes(UUID.fromString(restoreBatch)))).isInstanceOf(org.springframework.dao.DataAccessException.class);
+
         } finally {admin.execute("DROP DATABASE "+name);}
     }
     IdempotentMutations.Reply effect() {
@@ -606,8 +616,8 @@ class MySqlIdempotencyTests {
             db.update("UPDATE chart_snapshot SET state='PUBLISHED',item_count=1,published_at=UTC_TIMESTAMP(3) WHERE id=?",oldChartBytes);
             db.update("UPDATE chart_publication SET snapshot_id=? WHERE brand='TJ' AND period='MONTHLY'",oldChartBytes);
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();
-            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(13);flyway.validate();
-            assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("22");
+            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(14);flyway.validate();
+            assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("23");
             assertThat(db.queryForObject("SELECT COUNT(*) FROM chart_collection_payload",Integer.class)).isZero();
             assertThat(db.queryForObject("SELECT snapshot_id FROM chart_publication WHERE brand='TJ' AND period='MONTHLY'",byte[].class)).containsExactly(oldChartBytes);
             assertThat(db.queryForObject("SELECT collection_attempt_id FROM chart_publication WHERE brand='TJ' AND period='MONTHLY'",byte[].class)).containsExactly(oldChartBytes);
