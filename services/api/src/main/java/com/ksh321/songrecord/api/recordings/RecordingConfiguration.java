@@ -16,6 +16,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration(proxyBeanMethods=false)
 @Profile("!bootstrap")
 public class RecordingConfiguration {
+    @Bean RecordingTrash recordingTrash(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,AccountChanges changes,com.ksh321.songrecord.api.revision.RevisionChanges revisions,RecordingEditing editing){return new RecordingTrash(jdbc,access,mutations,changes,revisions,editing,Clock.systemUTC());}
     @Bean RecordingLinking recordingLinking(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,com.ksh321.songrecord.api.revision.RevisionChanges revisions,AccountChanges changes,RecordingEditing editing,com.ksh321.songrecord.api.jobs.JobQueue jobs){return new RecordingLinking(jdbc,access,mutations,revisions,changes,editing,jobs);}
     @Bean RecordingRating recordingRating(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,com.ksh321.songrecord.api.revision.RevisionChanges revisions,AccountChanges changes,RecordingEditing editing,com.ksh321.songrecord.api.jobs.JobQueue jobs){return new RecordingRating(jdbc,access,mutations,revisions,changes,editing,jobs);}
     @Bean RecordingEditing recordingEditing(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,com.ksh321.songrecord.api.revision.RevisionChanges revisions,AccountChanges changes,RecordingDrafts drafts,RecordingSaving saving,com.ksh321.songrecord.api.jobs.JobQueue jobs){return new RecordingEditing(jdbc,access,mutations,revisions,changes,drafts,saving,jobs);}
@@ -25,7 +26,7 @@ public class RecordingConfiguration {
     @Bean @Order(3) SecurityFilterChain recordingSecurity(HttpSecurity http)throws Exception{
         http.securityMatcher("/v1/recordings","/v1/recordings/**").csrf(c->c.disable())
             .sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).requestCache(c->c.disable())
-            .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.GET,"/v1/recordings").permitAll().requestMatchers(HttpMethod.POST,"/v1/recordings").permitAll().requestMatchers(HttpMethod.PATCH,"/v1/recordings/*","/v1/recordings/*/tier","/v1/recordings/*/song").permitAll().anyRequest().denyAll());
+            .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.GET,"/v1/recordings").permitAll().requestMatchers(HttpMethod.POST,"/v1/recordings","/v1/recordings/*/trash").permitAll().requestMatchers(HttpMethod.PATCH,"/v1/recordings/*","/v1/recordings/*/tier","/v1/recordings/*/song").permitAll().anyRequest().denyAll());
         return http.build();
     }
 }

@@ -13,7 +13,12 @@ public class RecordingController {
     private final RecordingListing listing;
     private final RecordingRating rating;
     private final RecordingLinking linking;
-    public RecordingController(RecordingDrafts drafts,RecordingEditing editing,RecordingListing listing,RecordingRating rating,RecordingLinking linking){this.drafts=drafts;this.editing=editing;this.listing=listing;this.rating=rating;this.linking=linking;}
+    private final RecordingTrash trash;
+    public RecordingController(RecordingDrafts drafts,RecordingEditing editing,RecordingListing listing,RecordingRating rating,RecordingLinking linking,RecordingTrash trash){this.drafts=drafts;this.editing=editing;this.listing=listing;this.rating=rating;this.linking=linking;this.trash=trash;}
+    @PostMapping(path="/{id}/trash",consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> trash(@RequestHeader(value="Authorization",required=false) String auth,@RequestHeader(value="X-Device-Id",required=false) String device,@RequestHeader(value="Idempotency-Key",required=false) String op,@PathVariable("id") String id,@RequestBody String body){
+        var result=trash.trash(auth,device,op,id,body);return ResponseEntity.status(result.status()).header("Cache-Control","no-store").contentType(MediaType.APPLICATION_JSON).body(result.body());
+    }
     @GetMapping(produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<com.ksh321.songrecord.api.pagination.KeysetPages.Page<java.util.Map<String,Object>>> list(
             @RequestHeader(value="Authorization",required=false) String auth,@RequestHeader(value="X-Device-Id",required=false) String device,

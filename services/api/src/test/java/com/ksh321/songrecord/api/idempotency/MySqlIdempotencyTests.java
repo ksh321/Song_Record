@@ -109,6 +109,16 @@ class MySqlIdempotencyTests {
             assertThat(db.queryForObject("SELECT used_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(owner))).isEqualTo(6291456);
             assertThat(db.queryForObject("SELECT current_recording_id FROM pin_slot WHERE user_id=? AND slot_no=1",byte[].class,bytes(owner))).isEqualTo(bytes(recording));
             assertThat(db.queryForObject("SELECT current_recording_id FROM pin_slot WHERE user_id=? AND slot_no=2",byte[].class,bytes(owner))).isNull();
+            assertThat(db.queryForObject("SELECT pending_recording_id FROM pin_slot WHERE user_id=? AND slot_no=2",byte[].class,bytes(owner))).isNull();
+            var individual=new com.ksh321.songrecord.api.recordings.RecordingTrash(db,a,mutations,changes,revisions,editing,clock);
+            long individualRevision=db.queryForObject("SELECT revision FROM recording WHERE id=?",Long.class,bytes(recording));
+            String deleteBody=new tools.jackson.databind.json.JsonMapper().writeValueAsString(java.util.Map.of("base_revision",individualRevision,"pin_release_confirmed",true));String deleteOp=UUID.randomUUID().toString();
+            var single=individual.trash("Bearer synthetic",device.toString(),deleteOp,recording.toString(),deleteBody);assertThat(single.status()).isEqualTo(200);
+            assertThat(individual.trash("Bearer synthetic",device.toString(),deleteOp,recording.toString(),deleteBody)).isEqualTo(single);
+            assertThat(db.queryForObject("SELECT current_recording_id FROM pin_slot WHERE user_id=? AND slot_no=1",byte[].class,bytes(owner))).isNull();
+            assertThat(db.queryForObject("SELECT lifecycle_state FROM recording WHERE id=?",String.class,bytes(recording))).isEqualTo("TRASHED");
+            assertThat(db.queryForObject("SELECT used_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(owner))).isEqualTo(6291456);
+
         } finally {admin.execute("DROP DATABASE "+name);}
     }
     IdempotentMutations.Reply effect() {

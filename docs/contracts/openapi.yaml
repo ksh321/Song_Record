@@ -10,6 +10,46 @@ servers:
 security:
 - BearerAuth: []
 paths:
+  /recordings/{id}/trash:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    - $ref: '#/components/parameters/DeviceId'
+    - $ref: '#/components/parameters/IdempotencyKey'
+    post:
+      operationId: trashRecording
+      summary: 녹음 개별 휴지통 이동과 고정 해제 확인
+      x-implementation-status: implemented
+      description: base_revision 일치와 현재/대기 고정 해제 확인 후 7일 서버 보관. 곡·목록·파일·사용 용량은 유지한다. 대표와 해당 자동 역할만 해제하고 재계산 작업을 제출한다. 재실행은 같은 삭제 묶음을 반환한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [base_revision, pin_release_confirmed]
+              properties:
+                base_revision: {type: integer, format: int64, minimum: 1}
+                pin_release_confirmed: {type: boolean}
+      responses:
+        '200':
+          description: 서버 삭제 시각·7일 만료와 보존한 녹음. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [batch_id, deleted_at, purge_after, recording]
+                properties:
+                  batch_id: {$ref: '#/components/schemas/Uuid'}
+                  deleted_at: {$ref: '#/components/schemas/UtcInstant'}
+                  purge_after: {$ref: '#/components/schemas/UtcInstant'}
+                  recording: {$ref: '#/components/schemas/RecordingEdited'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '404': {$ref: '#/components/responses/Error404'}
+        '409': {$ref: '#/components/responses/Error409'}
+        '500': {$ref: '#/components/responses/Error500'}
   /songs/{id}/trash:
     parameters:
     - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
