@@ -58,7 +58,7 @@ class MySqlIdempotencyTests {
             UUID generation=UUID.randomUUID();
             db.update("INSERT INTO recording_asset(recording_id,user_id,cloud_state,object_key,generation,verified_size,sha256,stored_at) VALUES(?,?,'STORED',?,?,6291456,?,CURRENT_TIMESTAMP)",bytes(recording),bytes(owner),"synthetic/delete-preview/"+generation,bytes(generation),"a".repeat(64));
             db.update("INSERT INTO user_entitlement(user_id) VALUES(?)",bytes(owner));
-            db.update("INSERT INTO pin_slot(user_id,slot_no,current_recording_id) VALUES(?,1,?)",bytes(owner),bytes(recording));
+            db.update("INSERT INTO pin_slot(user_id,slot_no,current_recording_id,operation_id,requested_at) VALUES(?,1,?,?,CURRENT_TIMESTAMP)",bytes(owner),bytes(recording),bytes(UUID.randomUUID()));
             var preview=new com.ksh321.songrecord.api.songs.SongDeletionPreview(db,a,manager);
             var result=preview.get("Bearer synthetic",device.toString(),song.toString());
             assertThat(result.get("recording_count")).isEqualTo(1);assertThat(result.get("server_bytes")).isEqualTo(6291456L);assertThat(result.get("pinned_count")).isEqualTo(1);

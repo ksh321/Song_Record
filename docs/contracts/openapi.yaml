@@ -30,8 +30,8 @@ paths:
                 required: [recording_count, server_bytes, pinned_count, preview_version, scope]
                 properties:
                   recording_count: {type: integer, minimum: 0}
-                  server_bytes: {type: integer, format: int64, minimum: 0}
-                  pinned_count: {type: integer, minimum: 0}
+                  server_bytes: {type: integer, format: int64, minimum: 0, description: 실제 STORED 또는 DELETING 서버 사본의 바이트 합계. 예약된 업로드 크기는 제외.}
+                  pinned_count: {type: integer, minimum: 0, description: 현재 고정 또는 대기 고정에 속하는 연결 녹음의 중복 없는 수. 슬롯 수가 아님.}
                   preview_version: {type: string, pattern: '^[0-9a-f]{64}$'}
                   scope: {type: string, enum: [SERVER_SYNCED_ONLY]}
         '400':
