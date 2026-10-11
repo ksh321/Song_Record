@@ -27,6 +27,8 @@ class SongCreationTests {
     @Import({com.ksh321.songrecord.api.playlists.PlaylistConfiguration.class,com.ksh321.songrecord.api.playlists.PlaylistController.class,com.ksh321.songrecord.api.classifications.ConditionConfiguration.class,com.ksh321.songrecord.api.classifications.ConditionController.class,com.ksh321.songrecord.api.classifications.TagConfiguration.class,com.ksh321.songrecord.api.classifications.TagController.class,com.ksh321.songrecord.api.recordings.RecordingConfiguration.class,com.ksh321.songrecord.api.recordings.RecordingController.class,SongConfiguration.class,SongController.class,SecurityConfig.class,GlobalExceptionHandler.class}) static class Config {}
     @BeforeEach void setup() throws Exception {
         f.setup();new ResourceDatabasePopulator(new ClassPathResource("revision-schema.sql"),new ClassPathResource("change-log-schema.sql")).populate(f.keeper);
+        f.jdbc.execute("ALTER TABLE playlist ADD created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP");
+        f.jdbc.execute("CREATE TABLE playlist_item(id BINARY(16) PRIMARY KEY,user_id BINARY(16),playlist_id BINARY(16),song_id BINARY(16),candidate_brand VARCHAR(2),candidate_number VARCHAR(20),candidate_snapshot VARCHAR(4000),entry_key VARCHAR(64),position BIGINT,hidden_by_batch_id BINARY(16),created_at TIMESTAMP(3),updated_at TIMESTAMP(3),UNIQUE(playlist_id,entry_key))");
         f.jdbc.execute("ALTER TABLE song ADD created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP");
         f.jdbc.execute("ALTER TABLE song ADD reserved_tj_number VARCHAR(20) GENERATED ALWAYS AS (CASE WHEN lifecycle_state='PURGED' THEN NULL ELSE tj_number END)");
         f.jdbc.execute("CREATE UNIQUE INDEX test_song_number ON song(user_id,reserved_tj_number)");

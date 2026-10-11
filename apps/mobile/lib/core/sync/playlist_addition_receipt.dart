@@ -9,8 +9,16 @@ import 'wire_json.dart';
 bool isPlaylistAddition(MutationRequest request) =>
     request.mutation.entity == LocalEntity.playlist &&
     request.mutation.operation == LocalOperation.patch &&
-    request.method == 'POST' &&
-    request.path == '/v1/playlists/${request.mutation.entityId}/items';
+    ((request.method == 'POST' &&
+            request.path ==
+                '/v1/playlists/${request.mutation.entityId}/items') ||
+        isPlaylistLink(request));
+
+bool isPlaylistLink(MutationRequest request) =>
+    request.method == 'PATCH' &&
+    RegExp(
+      '^/v1/playlists/${request.mutation.entityId}/items/[0-9a-f-]{36}/song\$',
+    ).hasMatch(request.path);
 
 Map<String, dynamic> decodePlaylistAddition(
   MutationRequest request,
@@ -26,6 +34,17 @@ Map<String, dynamic> decodePlaylistAddition(
   final raw = decodeWireJson(response.body);
   require(raw is Map<String, dynamic>);
   final value = raw as Map<String, dynamic>;
+  final link = isPlaylistLink(request);
+  if (link) {
+    require(
+      value.length == 4 &&
+          value.keys.every(
+            {'playlist', 'items', 'item_id', 'changed'}.contains,
+          ),
+    );
+    require(value['changed'] is bool && response.status == 200);
+    value['created'] = value.remove('changed');
+  }
   require(
     value.length == 4 &&
         value.keys.every({'playlist', 'items', 'item_id', 'created'}.contains),
@@ -41,7 +60,7 @@ Map<String, dynamic> decodePlaylistAddition(
     parent['id'] == request.mutation.entityId && parent['deleted_at'] == null,
   );
   require(
-    value['created'] == (response.status == 201) &&
+    (link || value['created'] == (response.status == 201)) &&
         {200, 201}.contains(response.status),
   );
   require(
@@ -56,6 +75,12 @@ Map<String, dynamic> decodePlaylistAddition(
   require(selected.length == 1);
   final sent = jsonDecode(request.body) as Map;
   final item = selected.single as Map;
+  if (link) {
+    require(
+      request.path.endsWith('/items/$itemId/song') &&
+          item['song_id'] == sent['song_id'],
+    );
+  }
   if (value['created'] == true) {
     require(item['song_id'] == sent['song_id']);
   }

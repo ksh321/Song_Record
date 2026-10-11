@@ -28,6 +28,22 @@ final class PlaylistLibrary {
     return () => repository.saveCheckedEdit(command, value);
   }
 
+  Future<void> Function() linkCandidate(
+    Map<String, dynamic> row,
+    String itemId,
+    String songId,
+  ) {
+    final value = _payload(row);
+    final command = repository.preparePatch(
+      entity: LocalEntity.playlist,
+      entityId: row['id'] as String,
+      baseRevision: row['local_base_revision'] as int,
+      draft: value,
+      changes: {'item_id': itemId, 'song_id': songId},
+    );
+    return () => repository.saveCheckedEdit(command, value);
+  }
+
   Future<void> Function() addRegistered(
     Map<String, dynamic> row,
     String songId,

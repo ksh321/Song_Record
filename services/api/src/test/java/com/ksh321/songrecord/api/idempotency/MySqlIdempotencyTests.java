@@ -64,7 +64,7 @@ class MySqlIdempotencyTests {
         for(String table:java.util.List.of("playlist","playlist_item")){
             start=lists.indexOf("CREATE TABLE "+table+" (");jdbc.execute(lists.substring(start,lists.indexOf(';',start)));
         }
-        for(String command:java.util.List.of("CREATE PROCEDURE p04_playlist_item_identity", "CREATE TRIGGER trg_playlist_item_before_insert")) {
+        for(String command:java.util.List.of("CREATE PROCEDURE p04_playlist_item_identity", "CREATE TRIGGER trg_playlist_item_before_insert", "CREATE TRIGGER trg_playlist_item_before_update")) {
             start=lists.indexOf(command);jdbc.execute(lists.substring(start,lists.indexOf("$$",start)));
         }
         String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));
@@ -101,6 +101,16 @@ class MySqlIdempotencyTests {
         assertThat(jdbc.queryForObject("SELECT position FROM playlist_item",Long.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(2);
+        UUID song=UUID.randomUUID();
+        jdbc.update("INSERT INTO song(id,user_id,source_type,tj_number,title,artist,version_code,lifecycle_state) VALUES(?,?,'TJ','00123','registered','artist','NORMAL','ACTIVE')",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(song),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()));
+        var revisions=new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,clock);
+        new org.springframework.transaction.support.TransactionTemplate(manager).execute(status->changes.write(account,()->new com.ksh321.songrecord.api.sync.AccountChanges.Batch<>(true,com.ksh321.songrecord.api.playlists.PlaylistService.linkNewSong(jdbc,revisions,account,song,"00123",clock))));
+        assertThat(jdbc.queryForObject("SELECT position FROM playlist_item",Long.class)).isZero();assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT song_id FROM playlist_item",byte[].class)).isEqualTo(com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(song));
+        assertThat(jdbc.queryForObject("SELECT entry_key FROM playlist_item",String.class)).isEqualTo("tj:00123");
+        String item=json.readTree(first.body()).get("item_id").asText();
+        var relink=listsService.linkSong("Bearer test","device",UUID.randomUUID().toString(),list.toString(),item,json.writeValueAsString(java.util.Map.of("song_id",song.toString(),"base_revision",3)));
+        assertThat(json.readTree(relink.body()).get("changed").asBoolean()).isFalse();assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(3);
     }
     @Test void rollbackLeavesNoReceiptAndRetrySucceeds() {
         assertThatThrownBy(()->service.execute(account,key,"POST","/v1/songs","{}",()->{effect();throw new IllegalStateException();})).isInstanceOf(IllegalStateException.class);
@@ -355,7 +365,7 @@ class MySqlIdempotencyTests {
         when(account.principal()).thenReturn(principal);
         var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
         var candidates=new com.ksh321.songrecord.api.songs.TjCandidates(token->new com.ksh321.songrecord.api.songs.CandidateVerifier.Verified("FIXTURE",com.ksh321.songrecord.api.songs.CandidateVerifier.Brand.TJ,token,"original","artist",clock.instant(),clock.instant().plusSeconds(3600)),clock);
-        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock);
+        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock,new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,clock));
         String body="{\"id\":\""+UUID.randomUUID()+"\",\"source_type\":\"TJ\",\"source_token\":\"990001\",\"title\":\"edited\"}";
         var first=creation.create("Bearer test","device",key,body);assertThat(first.status()).isEqualTo(201);
         assertThat(creation.create("Bearer test","device",key,body)).isEqualTo(first);
@@ -385,7 +395,7 @@ class MySqlIdempotencyTests {
         var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
         var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
         var candidates=new com.ksh321.songrecord.api.songs.TjCandidates(token->new com.ksh321.songrecord.api.songs.CandidateVerifier.Verified("FIXTURE",com.ksh321.songrecord.api.songs.CandidateVerifier.Brand.TJ,"990001","original","artist",clock.instant(),clock.instant().plusSeconds(3600)),clock);
-        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock);
+        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock,new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,clock));
         var json=new tools.jackson.databind.json.JsonMapper();
         String firstBody="{\"id\":\""+UUID.randomUUID()+"\",\"source_type\":\"TJ\",\"source_token\":\"proof\",\"note\":\"first\"}";
         String secondBody="{\"id\":\""+UUID.randomUUID()+"\",\"source_type\":\"TJ\",\"source_token\":\"proof\",\"note\":\"second\"}";
@@ -427,7 +437,7 @@ class MySqlIdempotencyTests {
         var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
         var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
         var candidates=new com.ksh321.songrecord.api.songs.TjCandidates(token->{throw new AssertionError("Manual creation must not access candidate verifier");},clock);
-        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock);
+        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock,new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,clock));
         var json=new tools.jackson.databind.json.JsonMapper();
 
         String id=UUID.randomUUID().toString();
@@ -458,6 +468,8 @@ class MySqlIdempotencyTests {
     }
 
     void installSongQueryKeys() throws Exception {
+        jdbc.execute("CREATE TABLE playlist(id BINARY(16) PRIMARY KEY,user_id BINARY(16),name VARCHAR(100),revision BIGINT DEFAULT 1,deleted_at TIMESTAMP(3),created_at TIMESTAMP(3),updated_at TIMESTAMP(3))");
+        jdbc.execute("CREATE TABLE playlist_item(id BINARY(16) PRIMARY KEY,user_id BINARY(16),playlist_id BINARY(16),song_id BINARY(16),candidate_brand VARCHAR(2),candidate_number VARCHAR(20),candidate_snapshot VARCHAR(4000),entry_key VARCHAR(64),position BIGINT,hidden_by_batch_id BINARY(16),created_at TIMESTAMP(3),updated_at TIMESTAMP(3),UNIQUE(playlist_id,entry_key))");
         String ddl=Files.readString(Path.of("src/main/resources/db/migration/V10__song_query_keys.sql"));
         int start=ddl.indexOf("CREATE TABLE song_query_key (");jdbc.execute(ddl.substring(start,ddl.indexOf(';',start)));
     }
@@ -619,7 +631,7 @@ class MySqlIdempotencyTests {
         var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
         var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
         var candidates=new com.ksh321.songrecord.api.songs.TjCandidates(token->new com.ksh321.songrecord.api.songs.CandidateVerifier.Verified("FIXTURE",com.ksh321.songrecord.api.songs.CandidateVerifier.Brand.TJ,token,"original","artist",clock.instant(),clock.instant().plusSeconds(3600)),clock);
-        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock);
+        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock,new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,clock));
         com.ksh321.songrecord.api.songs.SongLifecycleDatabaseChecks.verify(jdbc,creation,"Bearer test","device",principal.userId(),"00990001");
     }
 
@@ -634,7 +646,7 @@ class MySqlIdempotencyTests {
         jdbc.update("INSERT INTO app_user(id) VALUES(?)",otherBytes);jdbc.update("INSERT INTO user_sync_state(user_id) VALUES(?)",otherBytes);
         var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
         var candidates=new com.ksh321.songrecord.api.songs.TjCandidates(token->new com.ksh321.songrecord.api.songs.CandidateVerifier.Verified("FIXTURE",com.ksh321.songrecord.api.songs.CandidateVerifier.Brand.TJ,token,"same title","same artist",clock.instant(),clock.instant().plusSeconds(3600)),clock);
-        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock);
+        var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock,new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,clock));
         var json=new tools.jackson.databind.json.JsonMapper();UUID aId=UUID.randomUUID(),bId=UUID.randomUUID();String sharedKey=UUID.randomUUID().toString();
         String aBody=json.writeValueAsString(java.util.Map.of("id",aId.toString(),"source_type","TJ","source_token","00990001"));
         String bBody=aBody.replace(aId.toString(),bId.toString());

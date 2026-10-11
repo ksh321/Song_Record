@@ -11,6 +11,121 @@ import '../tool/playlist_addition_fixture.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('candidate link preserves identity and order through rejection, lost reply and restart', () async {
+    final root = await Directory.systemTemp.createTemp('p19-link-');
+    final manager = AccountStoreManager(
+      environment: AppEnvironment.dev,
+      directory: () async => root,
+      temporaryDirectory: () async => root,
+    );
+    try {
+      final repo = LocalRepository(
+        await manager.openAccount(playlistFixtureId(1902)),
+      );
+      final fixture = PlaylistAdditionFixture(repo);
+      await fixture.initialize();
+      final library = PlaylistLibrary(repo);
+      await library.addCandidate(
+        (await library.load()).single,
+        'isolated-tj-candidate',
+      )();
+      await fixture.synchronize();
+      final original = (await library.items(fixture.playlistId)).single;
+      for (final song in [playlistFixtureId(1910), playlistFixtureId(1911)]) {
+        // Each rejected head must remain FAILED, so use a separate account
+        // store for each rejection rather than erasing it to run a later edit.
+        final rejectedRoot = await Directory.systemTemp.createTemp(
+          'p19-rejected-link-',
+        );
+        final rejectedManager = AccountStoreManager(
+          environment: AppEnvironment.dev,
+          directory: () async => rejectedRoot,
+          temporaryDirectory: () async => rejectedRoot,
+        );
+        try {
+          final rejectedRepo = LocalRepository(
+            await rejectedManager.openAccount(playlistFixtureId(1902)),
+          );
+          final fixture = PlaylistAdditionFixture(rejectedRepo);
+          await fixture.initialize();
+          final library = PlaylistLibrary(rejectedRepo);
+          await library.addCandidate(
+            (await library.load()).single,
+            'isolated-tj-candidate',
+          )();
+          await fixture.synchronize();
+          final original = (await library.items(fixture.playlistId)).single;
+          await library.linkCandidate(
+            (await library.load()).single,
+            original['id'] as String,
+            song,
+          )();
+          await fixture.synchronize();
+          expect((await library.items(fixture.playlistId)).single, original);
+          expect((await library.load()).single['revision'], 2);
+          expect(fixture.requests.last.method, 'PATCH');
+          expect((await rejectedRepo.pendingWork()).single.state, 'FAILED');
+        } finally {
+          await rejectedManager.logout();
+          await rejectedRoot.delete(recursive: true);
+        }
+      }
+      final matching = playlistFixtureId(1955);
+      fixture.songs[matching] = {
+        ...fixture.songs[playlistFixtureId(1910)]!,
+        'id': matching,
+        'tj_number': '00555',
+      };
+      await repo.save(
+        repo.prepareCreate(
+          entity: LocalEntity.song,
+          entityId: matching,
+          draft: fixture.songs[matching]!,
+          changes: {'source_type': 'TJ', 'source_token': 'fixture-matching'},
+        ),
+      );
+      await fixture.synchronize();
+      fixture.loseNextAddition = true;
+      await library.linkCandidate(
+        (await library.load()).single,
+        original['id'] as String,
+        matching,
+      )();
+      await fixture.synchronize();
+      final lost = fixture.requests.last;
+      expect(lost.method, 'PATCH');
+      expect(lost.body, isNot(contains('item_id')));
+      expect(
+        await repo.retryMutation(lost.mutation.opId, expectedAttempt: 1),
+        isTrue,
+      );
+      await fixture.synchronize();
+      final linked = (await library.items(fixture.playlistId)).single;
+      expect(linked['id'], original['id']);
+      expect(linked['position'], original['position']);
+      expect(linked['candidate_snapshot'], original['candidate_snapshot']);
+      expect(linked['song_id'], matching);
+      expect((await library.load()).single['revision'], 3);
+      await library.linkCandidate(
+        (await library.load()).single,
+        linked['id'] as String,
+        matching,
+      )();
+      await fixture.synchronize();
+      expect((await library.load()).single['revision'], 3);
+      await manager.logout();
+      final reopened = PlaylistLibrary(
+        LocalRepository(await manager.openAccount(playlistFixtureId(1902))),
+      );
+      expect(
+        (await reopened.items(fixture.playlistId)).single['song_id'],
+        matching,
+      );
+    } finally {
+      await manager.logout();
+      await root.delete(recursive: true);
+    }
+  });
   test('offline playlist creation resolves an unsent candidate followup without rewriting its original request', () async {
     final root = await Directory.systemTemp.createTemp(
       'p19-offline-candidate-',

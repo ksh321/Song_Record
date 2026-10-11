@@ -20,8 +20,10 @@ public final class SongCreation {
     private static final JsonMapper JSON=new JsonMapper();
     private final JdbcTemplate jdbc;private final AccountAccess access;private final IdempotentMutations mutations;
     private final CreationGuard guard;private final AccountChanges changes;private final TjCandidates candidates;private final Clock clock;
-    public SongCreation(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,CreationGuard guard,AccountChanges changes,TjCandidates candidates,Clock clock){
+    private final com.ksh321.songrecord.api.revision.RevisionChanges revisions;
+    public SongCreation(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,CreationGuard guard,AccountChanges changes,TjCandidates candidates,Clock clock,com.ksh321.songrecord.api.revision.RevisionChanges revisions){
         this.jdbc=jdbc;this.access=access;this.mutations=mutations;this.guard=guard;this.changes=changes;this.candidates=candidates;this.clock=clock;
+        this.revisions=revisions;
     }
     public IdempotentMutations.Reply create(String auth,String device,String op,String body){
         var account=access.authenticate(auth,device);var request=parse(body);UUID owner=account.principal().userId();
@@ -45,7 +47,9 @@ public final class SongCreation {
                                 bytes(request.id),bytes(owner),proof.title(),proof.artist(),ref,now,now);
                     }
                     var song=snapshot(owner,request.id);var reply=reply(201,true,song);
-                    return new AccountChanges.Batch<>(reply,List.of(new AccountChanges.Change(AccountChanges.Entity.SONG,request.id,1,AccountChanges.Operation.UPSERT,JSON.writeValueAsString(song))));
+                    var log=new ArrayList<AccountChanges.Change>();log.add(new AccountChanges.Change(AccountChanges.Entity.SONG,request.id,1,AccountChanges.Operation.UPSERT,JSON.writeValueAsString(song)));
+                    if(proof!=null)log.addAll(com.ksh321.songrecord.api.playlists.PlaylistService.linkNewSong(jdbc,revisions,account,request.id,proof.number(),clock));
+                    return new AccountChanges.Batch<>(reply,log);
                 }).value();
             });
             return result.created()?result.value():existing(owner,request.id,request.type,proof==null?null:proof.number());

@@ -127,6 +127,33 @@ paths:
         '400': {$ref: '#/components/responses/Error400'}
         '404': {$ref: '#/components/responses/Error404'}
         '409': {$ref: '#/components/responses/Error409'}
+  /playlists/{id}/items/{itemId}/song:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    - {name: itemId, in: path, required: true, schema: {type: string, format: uuid}}
+    - $ref: '#/components/parameters/DeviceId'
+    - $ref: '#/components/parameters/IdempotencyKey'
+    patch:
+      operationId: linkPlaylistCandidateSong
+      summary: 같은 계정·같은 TJ 번호의 활성 내 곡으로 후보 연결
+      x-implementation-status: implemented
+      description: 항목 ID·position·entry_key·후보 원본 유지. 첫 연결은 부모 revision 증가, 동일 곡 재연결은 changed false. 새 TJ 곡 생성도 같은 계정·번호의 미등록 후보를 같은 트랜잭션에서 연결하고 변경 로그에 반영한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [song_id, base_revision]
+              properties:
+                song_id: {type: string, format: uuid}
+                base_revision: {type: integer, minimum: 1}
+      responses:
+        '200': {description: 'playlist·items·item_id·changed — 전체 활성 항목과 부모 버전'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '404': {$ref: '#/components/responses/Error404'}
+        '409': {$ref: '#/components/responses/Error409'}
   /charts/popular:
     get:
       operationId: getPopularChart

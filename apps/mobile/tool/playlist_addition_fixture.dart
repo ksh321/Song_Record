@@ -155,6 +155,36 @@ class PlaylistAdditionFixture implements MutationTransport {
       };
       final partial = {...header}..remove('created_at');
       response = MutationResponse(200, jsonEncode(partial));
+    } else if (request.method == 'PATCH' && request.path.endsWith('/song')) {
+      final itemId = request.path.split('/')[5];
+      final selected = items.singleWhere((x) => x['id'] == itemId);
+      final song = songs[body['song_id']]!;
+      if (body['base_revision'] != header['revision']) {
+        throw StateError('Fixture link revision mismatch');
+      }
+      if (song['source_type'] != 'TJ' ||
+          song['tj_number'] != selected['candidate_number']) {
+        return MutationResponse(
+          400,
+          jsonEncode({
+            'error': {'code': 'VALIDATION_FAILED'},
+          }),
+        );
+      }
+      final changed = selected['song_id'] == null;
+      selected['song_id'] = song['id'];
+      if (changed) {
+        header = {...header, 'revision': (header['revision'] as int) + 1};
+      }
+      response = MutationResponse(
+        200,
+        jsonEncode({
+          'playlist': header,
+          'items': items,
+          'item_id': itemId,
+          'changed': changed,
+        }),
+      );
     } else {
       if (request.path != '/v1/playlists/$playlistId/items' ||
           body['base_revision'] != header['revision']) {

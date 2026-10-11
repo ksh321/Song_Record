@@ -1681,6 +1681,37 @@ final class AccountStore {
       final selected = (result['items'] as List).singleWhere(
         (x) => (x as Map)['id'] == result['item_id'],
       ) as Map;
+      if (isPlaylistLink(request) &&
+          currentParent.read<int>('server_revision') <=
+              request.mutation.baseRevision) {
+        final saved = await _database
+            .customSelect(
+              "SELECT server_payload FROM metadata_copies WHERE user_id=? AND entity_type='PLAYLIST_ITEM' AND entity_id=? AND tombstone=0",
+              variables: [
+                Variable(userId),
+                Variable(result['item_id'] as String),
+              ],
+            )
+            .getSingle();
+        final original =
+            jsonDecode(saved.read<String>('server_payload')) as Map;
+        for (final field in [
+          'id',
+          'playlist_id',
+          'entry_key',
+          'position',
+          'candidate_brand',
+          'candidate_number',
+          'candidate_snapshot',
+        ]) {
+          if (canonicalJson({'value': original[field]}) !=
+              canonicalJson({'value': selected[field]})) {
+            throw const FormatException(
+              'Link changed candidate identity or order',
+            );
+          }
+        }
+      }
       if (body.containsKey('song_id')) {
         final song = await _database
             .customSelect(

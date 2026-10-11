@@ -13,13 +13,9 @@ class PlaylistTests {
  final tools.jackson.databind.json.JsonMapper json=new tools.jackson.databind.json.JsonMapper();
  final SongCreationTests s=new SongCreationTests();
  @BeforeEach void open() throws Exception {
-  s.setup();s.f.jdbc.execute("ALTER TABLE playlist ALTER COLUMN name VARCHAR(200)");s.f.jdbc.execute("ALTER TABLE playlist ADD created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP");
+  s.setup();s.f.jdbc.execute("ALTER TABLE playlist ALTER COLUMN name VARCHAR(200)");
   s.f.jdbc.execute("ALTER TABLE deletion_ledger ADD id BINARY(16)");s.f.jdbc.execute("ALTER TABLE deletion_ledger ADD purged_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP");
   s.f.jdbc.execute("CREATE UNIQUE INDEX playlist_proof ON deletion_ledger(user_id,entity_type,entity_id)");
-  s.f.jdbc.execute("CREATE TABLE playlist_item(id BINARY(16) PRIMARY KEY,user_id BINARY(16),playlist_id BINARY(16),song_id BINARY(16),candidate_brand VARCHAR(2),candidate_number VARCHAR(20),candidate_snapshot JSON,entry_key VARCHAR(64),position BIGINT,hidden_by_batch_id BINARY(16),created_at TIMESTAMP(3),updated_at TIMESTAMP(3),UNIQUE(playlist_id,entry_key))");
-  // H2 binds JSON strings as JSON string values, unlike MySQL's object input.
-  // Mirror MySQL getString here; real JSON + P04 triggers are checked in CI below.
-  s.f.jdbc.execute("ALTER TABLE playlist_item ALTER COLUMN candidate_snapshot VARCHAR(4000)");
   new ResourceDatabasePopulator(new ClassPathResource("job-schema.sql")).populate(s.f.keeper);
  }
  @AfterEach void close()throws Exception{s.close();}
@@ -107,7 +103,7 @@ class PlaylistTests {
   assertThat(candidate(p,"valid",1,op).getContentAsString()).isEqualTo(first.getContentAsString());
   var duplicate=candidate(p,"valid",2,UUID.randomUUID().toString());assertThat(duplicate.getStatus()).isEqualTo(200);
   assertThat(json.readTree(duplicate.getContentAsString()).get("item_id")).isEqualTo(item.get("id"));
-  s.postBody(s.f.key,s.body(""));var registered=add(p,s.id,2,UUID.randomUUID().toString());assertThat(registered.getStatus()).isEqualTo(200);
+  s.postBody(s.f.key,s.body(""));var registered=add(p,s.id,3,UUID.randomUUID().toString());assertThat(registered.getStatus()).isEqualTo(200);
   assertThat(json.readTree(registered.getContentAsString()).get("item_id")).isEqualTo(item.get("id"));assertThat(count("playlist_item")).isEqualTo(1);
  }
  @Test void kyForgedAndClientOverriddenCandidatesLeaveItemsAndOrderUnchanged()throws Exception{
@@ -120,5 +116,46 @@ class PlaylistTests {
   assertThat(s.f.jdbc.queryForList("SELECT * FROM playlist_item")).usingRecursiveComparison().isEqualTo(before);
   assertThat(s.f.jdbc.queryForObject("SELECT revision FROM playlist WHERE id=?",Long.class,bytes(p))).isEqualTo(2);
   assertThat(count("mutation_receipt")).isEqualTo(receipts);
+ }
+ MockHttpServletResponse link(UUID p,String item,UUID song,long base,String op)throws Exception{return s.mvc.perform(patch("/v1/playlists/"+p+"/items/"+item+"/song").header("Authorization","Bearer "+s.f.tokens.accessToken()).header("X-Device-Id",s.f.registration.deviceId()).header("Idempotency-Key",op).contentType("application/json").content(json.writeValueAsString(Map.of("song_id",song.toString(),"base_revision",base)))).andReturn().getResponse();}
+ @Test void creationLinksOnlySameOwnerNumberAndActiveParentWithoutChangingIdentityOrOrder()throws Exception{
+  UUID a=UUID.randomUUID(),b=UUID.randomUUID(),deleted=UUID.randomUUID();create(a,"a");create(b,"b");create(deleted,"deleted");
+  candidate(a,"valid",1,UUID.randomUUID().toString());candidate(a,"second",2,UUID.randomUUID().toString());candidate(b,"valid",1,UUID.randomUUID().toString());candidate(deleted,"valid",1,UUID.randomUUID().toString());
+  write("DELETE",deleted,"{\"base_revision\":2}",UUID.randomUUID().toString());
+  UUID foreignList=UUID.randomUUID();
+  s.f.jdbc.update("INSERT INTO playlist(id,user_id,name,revision,created_at,updated_at) VALUES(?,?,'foreign',1,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",bytes(foreignList),bytes(s.f.other.principal().userId()));
+  s.f.jdbc.update("INSERT INTO playlist_item(id,user_id,playlist_id,song_id,candidate_brand,candidate_number,candidate_snapshot,entry_key,position,created_at,updated_at) VALUES(?,?,?,NULL,'TJ','990001','{}','tj:990001',0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",bytes(UUID.randomUUID()),bytes(s.f.other.principal().userId()),bytes(foreignList));
+  var before=s.f.jdbc.queryForList("SELECT id,playlist_id,position,entry_key,candidate_snapshot FROM playlist_item ORDER BY id");
+  long seq=s.f.jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state WHERE user_id=?",Long.class,bytes(s.f.registration.userId()));
+  assertThat(s.postBody(s.f.key,s.body("")).getStatus()).isEqualTo(201);
+  assertThat(s.f.jdbc.queryForList("SELECT id,playlist_id,position,entry_key,candidate_snapshot FROM playlist_item ORDER BY id")).usingRecursiveComparison().isEqualTo(before);
+  assertThat(s.f.jdbc.queryForObject("SELECT COUNT(*) FROM playlist_item WHERE song_id=?",Long.class,bytes(s.id))).isEqualTo(2);
+  assertThat(s.f.jdbc.queryForObject("SELECT revision FROM playlist WHERE id=?",Long.class,bytes(a))).isEqualTo(4);
+  assertThat(s.f.jdbc.queryForObject("SELECT revision FROM playlist WHERE id=?",Long.class,bytes(b))).isEqualTo(3);
+  assertThat(s.f.jdbc.queryForObject("SELECT COUNT(*) FROM change_log WHERE change_seq>? AND entity_type='PLAYLIST_ITEM'",Long.class,seq)).isEqualTo(2);
+  assertThat(s.postBody(s.f.key,s.body("")).getStatus()).isEqualTo(201);
+  assertThat(s.f.jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state WHERE user_id=?",Long.class,bytes(s.f.registration.userId()))).isEqualTo(seq+3);
+ }
+ @Test void exhaustedParentRevisionRollsBackNewSongAndAllCandidateLinks()throws Exception{
+  UUID p=UUID.randomUUID();create(p,"rollback");candidate(p,"valid",1,UUID.randomUUID().toString());
+  s.f.jdbc.update("UPDATE playlist SET revision=? WHERE id=?",Long.MAX_VALUE,bytes(p));
+  var before=s.f.jdbc.queryForList("SELECT * FROM playlist_item");long receipts=count("mutation_receipt"),log=count("change_log");
+  assertThat(s.postBody(s.f.key,s.body("")).getContentAsString()).contains("REVISION_LIMIT_REACHED");
+  assertThat(count("song")).isZero();assertThat(count("song_source")).isZero();assertThat(count("mutation_receipt")).isEqualTo(receipts);assertThat(count("change_log")).isEqualTo(log);
+  assertThat(s.f.jdbc.queryForList("SELECT * FROM playlist_item")).usingRecursiveComparison().isEqualTo(before);
+ }
+ @Test void explicitLinkRejectsManualOtherNumberForeignAndStaleThenReplaysWithoutReordering()throws Exception{
+  UUID p=UUID.randomUUID(),manual=UUID.randomUUID(),other=UUID.randomUUID();create(p,"link");
+  var added=json.readTree(candidate(p,"valid",1,UUID.randomUUID().toString()).getContentAsString());String item=added.get("item_id").asText();
+  // Existing active Songs may precede a candidate imported from another device.
+  for(UUID song:List.of(s.id,other,manual))s.f.jdbc.update("INSERT INTO song(id,user_id,source_type,tj_number,title,artist,version_code,lifecycle_state,revision) VALUES(?,?,?,?, 'title','artist','NORMAL','ACTIVE',1)",bytes(song),bytes(s.f.registration.userId()),song.equals(manual)?"MANUAL":"TJ",song.equals(manual)?null:song.equals(other)?"990002":"990001");
+  var before=s.f.jdbc.queryForList("SELECT * FROM playlist_item");
+  for(UUID song:List.of(manual,other))assertThat(link(p,item,song,2,UUID.randomUUID().toString()).getContentAsString()).contains("VALIDATION_FAILED");
+  assertThat(link(p,item,UUID.randomUUID(),2,UUID.randomUUID().toString()).getStatus()).isEqualTo(404);
+  assertThat(link(p,item,s.id,1,UUID.randomUUID().toString()).getContentAsString()).contains("REVISION_CONFLICT");
+  assertThat(s.f.jdbc.queryForList("SELECT * FROM playlist_item")).usingRecursiveComparison().isEqualTo(before);
+  String op=UUID.randomUUID().toString();var first=link(p,item,s.id,2,op);assertThat(first.getStatus()).isEqualTo(200);assertThat(first.getContentAsString()).contains("\"changed\":true");
+  assertThat(link(p,item,s.id,2,op).getContentAsString()).isEqualTo(first.getContentAsString());
+  var repeated=json.readTree(link(p,item,s.id,3,UUID.randomUUID().toString()).getContentAsString());assertThat(repeated.get("changed").asBoolean()).isFalse();assertThat(repeated.get("playlist").get("revision").asLong()).isEqualTo(3);assertThat(repeated.get("items").get(0).get("position").asLong()).isZero();assertThat(repeated.get("item_id").asText()).isEqualTo(item);
  }
 }

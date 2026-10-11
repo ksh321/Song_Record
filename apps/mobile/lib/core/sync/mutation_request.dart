@@ -37,6 +37,24 @@ final class MutationRequest {
     if (m.entity == LocalEntity.playlist &&
         m.operation == LocalOperation.patch) {
       final decoded = jsonDecode(m.payload);
+      if (decoded is Map<String, dynamic> && decoded.containsKey('item_id')) {
+        if (decoded.length != 3 ||
+            decoded['base_revision'] != m.baseRevision ||
+            m.baseRevision < 1 ||
+            decoded['item_id'] is! String ||
+            decoded['song_id'] is! String) {
+          return null;
+        }
+        UuidValue(decoded['item_id'] as String);
+        UuidValue(decoded['song_id'] as String);
+        return MutationRequest(
+          mutation: m,
+          method: 'PATCH',
+          path: '/v1/playlists/${m.entityId}/items/${decoded['item_id']}/song',
+          body: canonicalJson({...decoded}..remove('item_id')),
+          attempt: m.attemptCount + 1,
+        );
+      }
       if (decoded is Map<String, dynamic> &&
           (decoded.containsKey('song_id') ||
               decoded.containsKey('source_token'))) {

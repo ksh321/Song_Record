@@ -24,7 +24,7 @@ class KaraokeRegistrationTests {
             if(outage)throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,"CANDIDATE_VERIFICATION_UNAVAILABLE","upstream unavailable",true,Map.of());
             return List.of(candidate(Brand.TJ,refreshed));
         },new SearchLimit(f.clock),f.clock);
-        creation=new SongCreation(f.jdbc,f.access,f.mutations,new CreationGuard(f.jdbc,f.access,f.manager),new AccountChanges(f.jdbc,f.access,f.manager,f.clock),new TjCandidates(live,f.clock),f.clock);
+        creation=new SongCreation(f.jdbc,f.access,f.mutations,new CreationGuard(f.jdbc,f.access,f.manager),new AccountChanges(f.jdbc,f.access,f.manager,f.clock),new TjCandidates(live,f.clock),f.clock,new com.ksh321.songrecord.api.revision.RevisionChanges(f.jdbc,f.access,f.manager,f.clock));
     }
     @AfterEach void close() throws Exception {fixture.close();}
     MananaSearchAdapter.Candidate candidate(Brand brand,String number){return new MananaSearchAdapter.Candidate(brand,number,"원본 (LIVE)","원본 가수","MANANA","manana:"+(brand==Brand.TJ?"tj":"kumyoung")+":"+number);}
