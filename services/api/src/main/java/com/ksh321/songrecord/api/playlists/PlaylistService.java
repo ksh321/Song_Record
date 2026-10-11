@@ -6,6 +6,7 @@ import com.ksh321.songrecord.api.idempotency.*;
 import com.ksh321.songrecord.api.pagination.*;
 import com.ksh321.songrecord.api.revision.*;
 import com.ksh321.songrecord.api.sync.AccountChanges;
+import com.ksh321.songrecord.api.songs.TjCandidates;
 import com.ksh321.songrecord.api.web.ApiException;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
@@ -26,8 +27,10 @@ public final class PlaylistService {
     private final JdbcTemplate jdbc;private final AccountAccess access;private final IdempotentMutations mutations;
     private final CreationGuard guard;private final RevisionChanges revisions;private final AccountChanges changes;
     private final KeysetPages pages;private final Clock clock;private final com.ksh321.songrecord.api.jobs.JobQueue jobs;
-    public PlaylistService(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,CreationGuard guard,RevisionChanges revisions,AccountChanges changes,KeysetPages pages,Clock clock,com.ksh321.songrecord.api.jobs.JobQueue jobs){
+    private final TjCandidates candidates;
+    public PlaylistService(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,CreationGuard guard,RevisionChanges revisions,AccountChanges changes,KeysetPages pages,Clock clock,com.ksh321.songrecord.api.jobs.JobQueue jobs,TjCandidates candidates){
         this.jdbc=jdbc;this.access=access;this.mutations=mutations;this.guard=guard;this.revisions=revisions;this.changes=changes;this.pages=pages;this.clock=clock;this.jobs=jobs;
+        this.candidates=candidates;
     }
     public IdempotentMutations.Reply create(String auth,String device,String op,String body){
         var account=access.authenticate(auth,device);var root=parse(body,Set.of("id","name"));UUID id=uuid(text(root.get("id")),false);String name=name(root.get("name"));UUID owner=account.principal().userId();
@@ -50,26 +53,36 @@ public final class PlaylistService {
         if(!Objects.equals(activeParent(owner,id).get("revision"),parent.get("revision")))throw conflict("REVISION_CONFLICT","최신 목록을 다시 확인해 주세요.");
         access.revalidate(account);return result;
     }
-    public IdempotentMutations.Reply addRegistered(String auth,String device,String op,String rawId,String body){
+    public IdempotentMutations.Reply addItem(String auth,String device,String op,String rawId,String body){
         var account=access.authenticate(auth,device);var owner=account.principal().userId();var id=uuid(rawId,true);
-        var root=parse(body,Set.of("song_id","base_revision"));var songId=uuid(text(root.get("song_id")),true);long base=revision(root.get("base_revision"));
-        return mutations.execute(account,op,"POST","/v1/playlists/"+id+"/items",body,()->{
+        var decoded=JSON.readTree(CanonicalRequest.canonical(body));boolean candidate=decoded.has("source_token");
+        var root=parse(body,candidate?Set.of("source_token","base_revision"):Set.of("song_id","base_revision"));
+        UUID songId=candidate?null:uuid(text(root.get("song_id")),true);long base=revision(root.get("base_revision"));
+        String sourceToken=candidate?text(root.get("source_token")):null;
+        return mutations.executePrepared(account,op,"POST","/v1/playlists/"+id+"/items",body,
+            ()->candidate?candidates.prepare(sourceToken,TjCandidates.Purpose.PLAYLIST,owner):null,prepared->{
+            var proof=prepared==null?null:candidates.requirePrepared(prepared,TjCandidates.Purpose.PLAYLIST);
             if(revisionsReadDeleted(account,id)!=null)throw conflict("PLAYLIST_DELETED","영구 삭제된 목록입니다.");
             var parent=activeParent(owner,id);requireRevision(parent,base);
-            var songs=jdbc.queryForList("SELECT source_type,tj_number,lifecycle_state FROM song WHERE user_id=? AND id=?",bytes(owner),bytes(songId));
-            if(songs.isEmpty())throw notFound();var song=songs.getFirst();
-            if(!"ACTIVE".equals(song.get("lifecycle_state")))throw conflict("SONG_NOT_ACTIVE","활성 내 곡만 추가할 수 있습니다.");
-            String key=switch((String)song.get("source_type")){case "TJ"->"tj:"+song.get("tj_number");case "MANUAL"->"manual:"+songId;default->throw invalid();};
+            final String key;
+            if(songId==null){key="tj:"+proof.number();}
+            else {
+                var songs=jdbc.queryForList("SELECT source_type,tj_number,lifecycle_state FROM song WHERE user_id=? AND id=?",bytes(owner),bytes(songId));
+                if(songs.isEmpty())throw notFound();var song=songs.getFirst();
+                if(!"ACTIVE".equals(song.get("lifecycle_state")))throw conflict("SONG_NOT_ACTIVE","활성 내 곡만 추가할 수 있습니다.");
+                key=switch((String)song.get("source_type")){case "TJ"->"tj:"+song.get("tj_number");case "MANUAL"->"manual:"+songId;default->throw invalid();};
+            }
             var existing=jdbc.query("SELECT id FROM playlist_item WHERE user_id=? AND playlist_id=? AND entry_key=?",(rs,n)->asUuid(rs.getBytes(1)),bytes(owner),bytes(id),key);
             if(!existing.isEmpty())return additionReply(owner,id,parent,existing.getFirst(),false,200);
             return changes.write(account,()->{
-                revisions.lock(account,RevisionChanges.Resource.SONG,songId.toString());
+                if(songId!=null)revisions.lock(account,RevisionChanges.Resource.SONG,songId.toString());
                 UUID item=UUID.randomUUID();
                 var updated=revisions.change(account,RevisionChanges.Resource.PLAYLIST,id.toString(),base,current->{
                     if(current.get("deleted_at")!=null)throw conflict("PLAYLIST_DELETED","영구 삭제된 목록입니다.");
                     Long max=jdbc.queryForObject("SELECT MAX(position) FROM playlist_item WHERE user_id=? AND playlist_id=?",Long.class,bytes(owner),bytes(id));
                     if(max!=null && max==Long.MAX_VALUE)throw conflict("PLAYLIST_POSITION_LIMIT","목록 순서를 확인해 주세요.");
-                    var time=now();jdbc.update("INSERT INTO playlist_item(id,user_id,playlist_id,song_id,candidate_brand,candidate_number,candidate_snapshot,entry_key,position,hidden_by_batch_id,created_at,updated_at) VALUES(?,?,?,?,NULL,NULL,NULL,?,?,NULL,?,?)",bytes(item),bytes(owner),bytes(id),bytes(songId),key,max==null?0:max+1,time,time);
+                    var time=now();String snapshot=proof==null?null:JSON.writeValueAsString(Map.of("provider",proof.provider(),"brand","TJ","number",proof.number(),"title",proof.title(),"artist",proof.artist(),"verified_at",clock.instant().toString()));
+                    jdbc.update("INSERT INTO playlist_item(id,user_id,playlist_id,song_id,candidate_brand,candidate_number,candidate_snapshot,entry_key,position,hidden_by_batch_id,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,NULL,?,?)",bytes(item),bytes(owner),bytes(id),songId==null?null:bytes(songId),proof==null?null:"TJ",proof==null?null:proof.number(),snapshot,key,max==null?0:max+1,time,time);
                 });
                 var full=aggregate(owner,id,updated);String change=JSON.writeValueAsString(full);
                 return new AccountChanges.Batch<>(additionReply(full,item,true,201),List.of(new AccountChanges.Change(AccountChanges.Entity.PLAYLIST_ITEM,item,((Number)updated.get("revision")).longValue(),AccountChanges.Operation.UPSERT,change)));

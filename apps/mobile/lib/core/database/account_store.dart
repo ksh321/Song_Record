@@ -1678,21 +1678,26 @@ final class AccountStore {
         );
       }
       final body = jsonDecode(request.body) as Map;
-      final song = await _database
-          .customSelect(
-            "SELECT server_payload FROM metadata_copies WHERE user_id=? AND entity_type='SONG' AND entity_id=? AND tombstone=0",
-            variables: [Variable(userId), Variable(body['song_id'] as String)],
-          )
-          .getSingle();
-      final target = jsonDecode(song.read<String>('server_payload')) as Map;
-      final key = target['source_type'] == 'TJ'
-          ? 'tj:${target['tj_number']}'
-          : 'manual:${body['song_id']}';
       final selected = (result['items'] as List).singleWhere(
         (x) => (x as Map)['id'] == result['item_id'],
       ) as Map;
-      if (selected['entry_key'] != key) {
-        throw const FormatException('Addition returned another song');
+      if (body.containsKey('song_id')) {
+        final song = await _database
+            .customSelect(
+              "SELECT server_payload FROM metadata_copies WHERE user_id=? AND entity_type='SONG' AND entity_id=? AND tombstone=0",
+              variables: [
+                Variable(userId),
+                Variable(body['song_id'] as String),
+              ],
+            )
+            .getSingle();
+        final target = jsonDecode(song.read<String>('server_payload')) as Map;
+        final key = target['source_type'] == 'TJ'
+            ? 'tj:${target['tj_number']}'
+            : 'manual:${body['song_id']}';
+        if (selected['entry_key'] != key) {
+          throw const FormatException('Addition returned another song');
+        }
       }
       final business = SnapshotBusinessStore(
         _database,

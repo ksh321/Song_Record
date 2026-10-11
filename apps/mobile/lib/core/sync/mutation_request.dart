@@ -37,14 +37,22 @@ final class MutationRequest {
     if (m.entity == LocalEntity.playlist &&
         m.operation == LocalOperation.patch) {
       final decoded = jsonDecode(m.payload);
-      if (decoded is Map<String, dynamic> && decoded.containsKey('song_id')) {
+      if (decoded is Map<String, dynamic> &&
+          (decoded.containsKey('song_id') ||
+              decoded.containsKey('source_token'))) {
         if (decoded.length != 2 ||
             decoded['base_revision'] != m.baseRevision ||
             m.baseRevision < 1 ||
-            decoded['song_id'] is! String) {
+            !(decoded['song_id'] is String ||
+                decoded['source_token'] is String)) {
           return null;
         }
-        UuidValue(decoded['song_id'] as String);
+        if (decoded.containsKey('song_id')) {
+          UuidValue(decoded['song_id'] as String);
+        } else if ((decoded['source_token'] as String).trim().isEmpty ||
+            (decoded['source_token'] as String).length > 8192) {
+          return null;
+        }
         return MutationRequest(
           mutation: m,
           method: 'POST',

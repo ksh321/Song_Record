@@ -101,8 +101,8 @@ paths:
         '404': {$ref: '#/components/responses/Error404'}
         '409': {$ref: '#/components/responses/Error409'}
     post:
-      operationId: addRegisteredPlaylistItem
-      summary: 활성 TJ·직접 등록 내 곡 추가 — 서버가 entry_key·ID·위치 계산
+      operationId: addPlaylistItem
+      summary: 활성 내 곡 또는 검증된 TJ 후보 추가 — 서버가 키·ID·위치 계산
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
@@ -113,9 +113,13 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [song_id, base_revision]
+              required: [base_revision]
+              oneOf:
+              - {required: [song_id]}
+              - {required: [source_token]}
               properties:
                 song_id: {type: string, format: uuid}
+                source_token: {type: string, minLength: 1, maxLength: 8192}
                 base_revision: {type: integer, minimum: 1}
       responses:
         '201': {description: 'created true·item_id·playlist·items, 부모 revision 1 증가'}

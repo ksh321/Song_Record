@@ -55,8 +55,29 @@ Map<String, dynamic> decodePlaylistAddition(
       .toList();
   require(selected.length == 1);
   final sent = jsonDecode(request.body) as Map;
+  final item = selected.single as Map;
   if (value['created'] == true) {
-    require((selected.single as Map)['song_id'] == sent['song_id']);
+    require(item['song_id'] == sent['song_id']);
+  }
+  if (sent.containsKey('source_token')) {
+    require(
+      item['entry_key'] is String &&
+          RegExp(r'^tj:\d{1,20}$').hasMatch(item['entry_key'] as String),
+    );
+    if (item['song_id'] == null) {
+      final snapshot = item['candidate_snapshot'];
+      require(item['candidate_brand'] == 'TJ' && snapshot is Map);
+      final original = snapshot as Map;
+      require(
+        original['brand'] == 'TJ' &&
+            original['number'] == item['candidate_number'] &&
+            item['entry_key'] == 'tj:${item['candidate_number']}' &&
+            original['title'] is String &&
+            (original['title'] as String).trim().isNotEmpty &&
+            original['artist'] is String &&
+            (original['artist'] as String).trim().isNotEmpty,
+      );
+    }
   }
   return value;
 }

@@ -160,8 +160,19 @@ class PlaylistAdditionFixture implements MutationTransport {
           body['base_revision'] != header['revision']) {
         throw StateError('Fixture parent revision mismatch');
       }
-      final song = songs[body['song_id']]!;
-      final key = song['source_type'] == 'TJ'
+      final isCandidate = body.containsKey('source_token');
+      if (isCandidate && body['source_token'] != 'isolated-tj-candidate') {
+        return MutationResponse(
+          400,
+          jsonEncode({
+            'error': {'code': 'PLAYLIST_TJ_REQUIRED'},
+          }),
+        );
+      }
+      final song = isCandidate ? null : songs[body['song_id']]!;
+      final key = isCandidate
+          ? 'tj:00555'
+          : song!['source_type'] == 'TJ'
           ? 'tj:${song['tj_number']}'
           : 'manual:${song['id']}';
       var selected = items.where((x) => x['entry_key'] == key).firstOrNull;
@@ -171,10 +182,19 @@ class PlaylistAdditionFixture implements MutationTransport {
           'id': request.mutation.opId,
           'user_id': repository.userId,
           'playlist_id': playlistId,
-          'song_id': song['id'],
-          'candidate_brand': null,
-          'candidate_number': null,
-          'candidate_snapshot': null,
+          'song_id': song?['id'],
+          'candidate_brand': isCandidate ? 'TJ' : null,
+          'candidate_number': isCandidate ? '00555' : null,
+          'candidate_snapshot': isCandidate
+              ? {
+                  'provider': 'FIXTURE',
+                  'brand': 'TJ',
+                  'number': '00555',
+                  'title': '미등록 TJ 후보',
+                  'artist': '후보 가수',
+                  'verified_at': playlistFixtureTime,
+                }
+              : null,
           'entry_key': key,
           'position': items.length,
           'hidden_by_batch_id': null,

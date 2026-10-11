@@ -56,6 +56,52 @@ class MySqlIdempotencyTests {
             assertThatThrownBy(()->run("{\"changed\":true}")).isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo("IDEMPOTENCY_CONFLICT"));
         }
     }
+    @Test void mysqlPlaylistCandidateUsesRealJsonConstraintsAndSkipsProofOnReplay() throws Exception {
+        var changes=syncService();
+        String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
+        int start=core.indexOf("CREATE TABLE song (");jdbc.execute(core.substring(start,core.indexOf(';',start)));
+        String lists=Files.readString(Path.of("src/main/resources/db/migration/V4__playlists_and_classifications.sql"));
+        for(String table:java.util.List.of("playlist","playlist_item")){
+            start=lists.indexOf("CREATE TABLE "+table+" (");jdbc.execute(lists.substring(start,lists.indexOf(';',start)));
+        }
+        for(String command:java.util.List.of("CREATE PROCEDURE p04_playlist_item_identity", "CREATE TRIGGER trg_playlist_item_before_insert")) {
+            start=lists.indexOf(command);jdbc.execute(lists.substring(start,lists.indexOf("$$",start)));
+        }
+        String sync=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));
+        start=sync.indexOf("CREATE TABLE deletion_ledger (");jdbc.execute(sync.substring(start,sync.indexOf(';',start)));
+        when(access.authenticate("Bearer test","device")).thenReturn(account);
+        var principal=access.revalidate(account);
+        when(account.principal()).thenReturn(principal);
+        var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
+        byte[] signingKey=new byte[32];new java.security.SecureRandom().nextBytes(signingKey);
+        var tokens=new com.ksh321.songrecord.api.karaoke.SourceTokens(signingKey,clock);
+        var outage=new java.util.concurrent.atomic.AtomicBoolean();var preparedCalls=new AtomicInteger();
+        var candidates=new com.ksh321.songrecord.api.songs.TjCandidates(token->{
+            preparedCalls.incrementAndGet();if(outage.get())throw new AssertionError("Committed replay must skip provider");
+            var proof=tokens.read(token);var c=proof.candidate();
+            return new com.ksh321.songrecord.api.songs.CandidateVerifier.Verified(c.provider(),c.brand(),c.number(),c.title(),c.artist(),proof.issuedAt(),proof.expiresAt());
+        },clock);
+        var listsService=new com.ksh321.songrecord.api.playlists.PlaylistService(jdbc,access,service,
+            new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),
+            new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,clock),changes,null,clock,null,candidates);
+        UUID list=UUID.randomUUID();listsService.create("Bearer test","device",UUID.randomUUID().toString(),"{\"id\":\""+list+"\",\"name\":\"candidate\"}");
+        var tj=new com.ksh321.songrecord.api.karaoke.MananaSearchAdapter.Candidate(com.ksh321.songrecord.api.songs.CandidateVerifier.Brand.TJ,"00123","original","artist","MANANA","manana:tj:00123");
+        var ky=new com.ksh321.songrecord.api.karaoke.MananaSearchAdapter.Candidate(com.ksh321.songrecord.api.songs.CandidateVerifier.Brand.KY,"00123","original","artist","MANANA","manana:kumyoung:00123");
+        String token=tokens.encode(tokens.issueProof(tj));var json=new tools.jackson.databind.json.JsonMapper();
+        String body=json.writeValueAsString(java.util.Map.of("source_token",token,"base_revision",1));
+        String op=UUID.randomUUID().toString();var first=listsService.addItem("Bearer test","device",op,list.toString(),body);
+        assertThat(first.status()).isEqualTo(201);assertThat(json.readTree(first.body()).get("items").get(0).get("candidate_snapshot").get("title").asText()).isEqualTo("original");
+        outage.set(true);assertThat(listsService.addItem("Bearer test","device",op,list.toString(),body)).isEqualTo(first);assertThat(preparedCalls.get()).isEqualTo(1);outage.set(false);
+        var duplicate=listsService.addItem("Bearer test","device",UUID.randomUUID().toString(),list.toString(),json.writeValueAsString(java.util.Map.of("source_token",token,"base_revision",2)));
+        assertThat(duplicate.status()).isEqualTo(200);assertThat(json.readTree(duplicate.body()).get("item_id")).isEqualTo(json.readTree(first.body()).get("item_id"));
+        String kyBody=json.writeValueAsString(java.util.Map.of("source_token",tokens.encode(tokens.issueProof(ky)),"base_revision",2));
+        assertThatThrownBy(()->listsService.addItem("Bearer test","device",UUID.randomUUID().toString(),list.toString(),kyBody)).isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo("PLAYLIST_TJ_REQUIRED"));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM playlist_item",Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT entry_key FROM playlist_item",String.class)).isEqualTo("tj:00123");
+        assertThat(jdbc.queryForObject("SELECT position FROM playlist_item",Long.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(2);
+    }
     @Test void rollbackLeavesNoReceiptAndRetrySucceeds() {
         assertThatThrownBy(()->service.execute(account,key,"POST","/v1/songs","{}",()->{effect();throw new IllegalStateException();})).isInstanceOf(IllegalStateException.class);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM mutation_receipt",Integer.class)).isZero();

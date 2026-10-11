@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_store.dart';
+import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/features/playlists/playlist_library.dart';
 
@@ -10,6 +11,105 @@ import '../tool/playlist_addition_fixture.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('offline playlist creation resolves an unsent candidate followup without rewriting its original request', () async {
+    final root = await Directory.systemTemp.createTemp(
+      'p19-offline-candidate-',
+    );
+    final manager = AccountStoreManager(
+      environment: AppEnvironment.dev,
+      directory: () async => root,
+      temporaryDirectory: () async => root,
+    );
+    try {
+      final repo = LocalRepository(
+        await manager.openAccount(playlistFixtureId(1902)),
+      );
+      final fixture = PlaylistAdditionFixture(repo);
+      fixture.header = {
+        'id': fixture.playlistId,
+        'name': '오프라인 후보',
+        'revision': 1,
+        'deleted_at': null,
+        'created_at': playlistFixtureTime,
+        'updated_at': playlistFixtureTime,
+      };
+      await repo.save(
+        repo.prepareCreate(
+          entity: LocalEntity.playlist,
+          entityId: fixture.playlistId,
+          draft: {'name': '오프라인 후보', 'deleted_at': null},
+          changes: {'name': '오프라인 후보'},
+        ),
+      );
+      final library = PlaylistLibrary(repo);
+      final row = (await library.load()).single;
+      expect(row['local_base_revision'], 0);
+      await library.addCandidate(row, 'isolated-tj-candidate')();
+      final original = (await repo.pendingWork()).last;
+      expect(original.baseRevision, 0);
+      await fixture.synchronize();
+      expect(await library.items(fixture.playlistId), hasLength(1));
+      expect((await library.load()).single['revision'], 2);
+      expect(await repo.pendingWork(), isEmpty);
+      expect(fixture.requests.last.mutation.opId, isNot(original.opId));
+      expect(original.baseRevision, 0);
+      expect(fixture.requests.last.body, contains('"base_revision":1'));
+    } finally {
+      await manager.logout();
+      await root.delete(recursive: true);
+    }
+  });
+  test('verified candidate persists without a song; duplicate and rejected KY preserve IDs/order', () async {
+    final root = await Directory.systemTemp.createTemp('p19-candidate-');
+    final manager = AccountStoreManager(
+      environment: AppEnvironment.dev,
+      directory: () async => root,
+      temporaryDirectory: () async => root,
+    );
+    try {
+      final repo = LocalRepository(
+        await manager.openAccount(playlistFixtureId(1902)),
+      );
+      final fixture = PlaylistAdditionFixture(repo);
+      await fixture.initialize();
+      final library = PlaylistLibrary(repo);
+      await library.addCandidate(
+        (await library.load()).single,
+        'isolated-tj-candidate',
+      )();
+      await fixture.synchronize();
+      final original = (await library.items(fixture.playlistId)).single;
+      expect(original['song_id'], isNull);
+      expect(original['candidate_number'], '00555');
+      expect(original['candidate_snapshot']['title'], '미등록 TJ 후보');
+      expect(original['entry_key'], 'tj:00555');
+      await library.addCandidate(
+        (await library.load()).single,
+        'isolated-tj-candidate',
+      )();
+      await fixture.synchronize();
+      expect((await library.items(fixture.playlistId)).single, original);
+      expect((await library.load()).single['revision'], 2);
+      await library.addCandidate(
+        (await library.load()).single,
+        'isolated-ky-candidate',
+      )();
+      await fixture.synchronize();
+      expect((await library.items(fixture.playlistId)).single, original);
+      expect((await library.load()).single['revision'], 2);
+      await manager.logout();
+      final restarted = LocalRepository(
+        await manager.openAccount(playlistFixtureId(1902)),
+      );
+      expect(
+        (await PlaylistLibrary(restarted).items(fixture.playlistId)).single,
+        original,
+      );
+    } finally {
+      await manager.logout();
+      await root.delete(recursive: true);
+    }
+  });
   test(
     'foreign item in addition receipt rolls back parent and items before retry',
     () async {

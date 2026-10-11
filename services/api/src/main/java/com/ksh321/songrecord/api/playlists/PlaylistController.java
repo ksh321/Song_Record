@@ -24,5 +24,5 @@ public class PlaylistController {
     @GetMapping(path="/{id}/items",produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String,Object>> items(@RequestHeader(value="Authorization",required=false) String auth,@RequestHeader(value="X-Device-Id",required=false) String device,@PathVariable("id") String id){return ResponseEntity.ok().header("Cache-Control","no-store").body(playlists.items(auth,device,id));}
     @PostMapping(path="/{id}/items",consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<String> add(@RequestHeader(value="Authorization",required=false) String auth,@RequestHeader(value="X-Device-Id",required=false) String device,@RequestHeader(value="Idempotency-Key",required=false) String op,@PathVariable("id") String id,@RequestBody String body){return reply(playlists.addRegistered(auth,device,op,id,body));}
+    public ResponseEntity<String> add(@RequestHeader(value="Authorization",required=false) String auth,@RequestHeader(value="X-Device-Id",required=false) String device,@RequestHeader(value="Idempotency-Key",required=false) String op,@PathVariable("id") String id,@RequestBody String body){return reply(playlists.addItem(auth,device,op,id,body));}
 }

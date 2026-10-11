@@ -10,6 +10,24 @@ final class PlaylistLibrary {
       repository.playlistItems(id);
   Future<List<Map<String, dynamic>>> songs() =>
       repository.watchActiveSongs().first;
+  Future<void> Function() addCandidate(
+    Map<String, dynamic> row,
+    String sourceToken,
+  ) {
+    if (sourceToken.trim().isEmpty || sourceToken.length > 8192) {
+      throw ArgumentError('검증된 TJ 검색 결과를 다시 선택해 주세요.');
+    }
+    final value = _payload(row);
+    final command = repository.preparePatch(
+      entity: LocalEntity.playlist,
+      entityId: row['id'] as String,
+      baseRevision: row['local_base_revision'] as int,
+      draft: value,
+      changes: {'source_token': sourceToken},
+    );
+    return () => repository.saveCheckedEdit(command, value);
+  }
+
   Future<void> Function() addRegistered(
     Map<String, dynamic> row,
     String songId,

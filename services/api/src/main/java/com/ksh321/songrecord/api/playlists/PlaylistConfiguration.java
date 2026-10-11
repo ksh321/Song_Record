@@ -17,7 +17,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration(proxyBeanMethods=false)
 @Profile("!bootstrap")
 public class PlaylistConfiguration {
-    @Bean PlaylistService playlistService(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,CreationGuard guard,RevisionChanges revisions,AccountChanges changes,KeysetPages pages,com.ksh321.songrecord.api.jobs.JobQueue jobs){return new PlaylistService(jdbc,access,mutations,guard,revisions,changes,pages,Clock.systemUTC(),jobs);}
+    @Bean PlaylistService playlistService(JdbcTemplate jdbc,AccountAccess access,IdempotentMutations mutations,CreationGuard guard,RevisionChanges revisions,AccountChanges changes,KeysetPages pages,com.ksh321.songrecord.api.jobs.JobQueue jobs,com.ksh321.songrecord.api.songs.TjCandidates candidates){return new PlaylistService(jdbc,access,mutations,guard,revisions,changes,pages,Clock.systemUTC(),jobs,candidates);}
     @Bean @Order(4) SecurityFilterChain playlistSecurity(HttpSecurity http)throws Exception{
         http.securityMatcher("/v1/playlists","/v1/playlists/**").csrf(c->c.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).requestCache(c->c.disable())
             .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.GET,"/v1/playlists","/v1/playlists/*/items").permitAll().requestMatchers(HttpMethod.POST,"/v1/playlists","/v1/playlists/*/items").permitAll().requestMatchers(HttpMethod.PATCH,"/v1/playlists/*").permitAll().requestMatchers(HttpMethod.DELETE,"/v1/playlists/*").permitAll().anyRequest().denyAll());return http.build();
