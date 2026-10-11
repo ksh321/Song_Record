@@ -41,7 +41,7 @@ class SongCreationTests {
             b.registerSingleton("revisions",new com.ksh321.songrecord.api.revision.RevisionChanges(f.jdbc,f.access,f.manager,f.clock));
             b.registerSingleton("pages",new com.ksh321.songrecord.api.pagination.KeysetPages(f.jdbc,f.access,f.manager,new com.ksh321.songrecord.api.pagination.PageCursor(new byte[32],f.clock,Duration.ofMinutes(30))));
             b.registerSingleton("jobs",new com.ksh321.songrecord.api.jobs.JobQueue(f.jdbc,f.access,f.manager,f.clock,Duration.ofMinutes(2),5));
-            b.registerSingleton("jdbc",f.jdbc);b.registerSingleton("access",f.access);b.registerSingleton("mutations",f.mutations);
+            b.registerSingleton("jdbc",f.jdbc);b.registerSingleton("access",f.access);b.registerSingleton("mutations",f.mutations);b.registerSingleton("transactionManager",f.manager);
             b.registerSingleton("guard",new CreationGuard(f.jdbc,f.access,f.manager));b.registerSingleton("changes",new AccountChanges(f.jdbc,f.access,f.manager,f.clock));
             b.registerSingleton("candidates",new TjCandidates(token->{
                 if(token.equals("outage"))throw new com.ksh321.songrecord.api.web.ApiException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,"CANDIDATE_VERIFICATION_UNAVAILABLE","unavailable",true,Map.of());

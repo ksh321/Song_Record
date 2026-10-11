@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.*;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 
 /** CI-only, real InnoDB and V6 receipt DDL. Authentication itself is covered by IdempotencyTests. */
 @EnabledIfEnvironmentVariable(named="P07_MYSQL_CI", matches="true")
@@ -40,6 +41,34 @@ class MySqlIdempotencyTests {
         service=new IdempotentMutations(jdbc,access,new DataSourceTransactionManager(jdbc.getDataSource()),Clock.systemUTC());
     }
     @AfterEach void cleanup() {if(admin!=null && database!=null)admin.execute("DROP DATABASE "+database);}
+    @Test void mysqlDeletionPreviewUsesMigratedAssetsAndInvalidatesChangedScope() throws Exception {
+        String name=database+"_delete_preview";admin.execute("CREATE DATABASE "+name);
+        try {
+            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));
+            org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();
+            var db=new JdbcTemplate(ds);var manager=new DataSourceTransactionManager(ds);
+            UUID owner=com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.account(db);
+            UUID device=com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.device(db,owner);
+            UUID song=com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.song(db,owner);
+            UUID recording=com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.recording(db,owner,device,song,true,true,"VALIDATED");
+            var a=mock(AccountAccess.class);var authority=mock(AccountAccess.Account.class);
+            when(a.authenticate("Bearer synthetic",device.toString())).thenReturn(authority);
+            when(a.revalidate(authority)).thenReturn(new SessionService.Principal(owner,device,UUID.randomUUID()));
+            db.update("INSERT INTO user_sync_state(user_id) VALUES(?)",bytes(owner));
+            UUID generation=UUID.randomUUID();
+            db.update("INSERT INTO recording_asset(recording_id,user_id,cloud_state,object_key,generation,verified_size,sha256,stored_at) VALUES(?,?,'STORED',?,?,6291456,?,CURRENT_TIMESTAMP)",bytes(recording),bytes(owner),"synthetic/delete-preview/"+generation,bytes(generation),"a".repeat(64));
+            db.update("INSERT INTO user_entitlement(user_id) VALUES(?)",bytes(owner));
+            db.update("INSERT INTO pin_slot(user_id,slot_no,current_recording_id) VALUES(?,1,?)",bytes(owner),bytes(recording));
+            var preview=new com.ksh321.songrecord.api.songs.SongDeletionPreview(db,a,manager);
+            var result=preview.get("Bearer synthetic",device.toString(),song.toString());
+            assertThat(result.get("recording_count")).isEqualTo(1);assertThat(result.get("server_bytes")).isEqualTo(6291456L);assertThat(result.get("pinned_count")).isEqualTo(1);
+            String version=(String)result.get("preview_version");
+            new org.springframework.transaction.support.TransactionTemplate(manager).execute(status->{preview.requireUnchanged(authority,song,version);return null;});
+            db.update("UPDATE recording_asset SET cloud_revision=cloud_revision+1 WHERE recording_id=?",bytes(recording));
+            assertThatThrownBy(()->new org.springframework.transaction.support.TransactionTemplate(manager).execute(status->{preview.requireUnchanged(authority,song,version);return null;}))
+                    .isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo("DELETE_PREVIEW_CHANGED"));
+        } finally {admin.execute("DROP DATABASE "+name);}
+    }
     IdempotentMutations.Reply effect() {
         calls.incrementAndGet();jdbc.update("UPDATE mutation_effect SET value_count=value_count+1 WHERE id=1");
         return new IdempotentMutations.Reply(201,"{\"n\":1.0,\"nested\":{\"z\":2,\"a\":1}}");

@@ -10,6 +10,38 @@ servers:
 security:
 - BearerAuth: []
 paths:
+  /songs/{id}/delete-preview:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    - $ref: '#/components/parameters/DeviceId'
+    get:
+      operationId: songDeletePreview
+      summary: 곡 삭제 전 서버 동기화 범위 확인
+      description: 연결된 ACTIVE 녹음 수와 실제 서버 사본 크기, 현재 또는 대기 고정 녹음의 중복 없는 수를 제공한다. 타 기기의 미동기화 데이터는 포함하지 않는다. preview_version은 계정·곡·대상 ID·revision·연결·파일·고정 상태에 묶이며 후속 휴지통 변경은 같은 계정 잠금 트랜잭션에서 재검사해 변경 시 DELETE_PREVIEW_CHANGED를 반환한다. 미리보기 자체는 데이터를 삭제하거나 수정하지 않는다.
+      x-implementation-status: implemented
+      responses:
+        '200':
+          description: 서버에서 확인한 삭제 범위. Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [recording_count, server_bytes, pinned_count, preview_version, scope]
+                properties:
+                  recording_count: {type: integer, minimum: 0}
+                  server_bytes: {type: integer, format: int64, minimum: 0}
+                  pinned_count: {type: integer, minimum: 0}
+                  preview_version: {type: string, pattern: '^[0-9a-f]{64}$'}
+                  scope: {type: string, enum: [SERVER_SYNCED_ONLY]}
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '500':
+          $ref: '#/components/responses/Error500'
   /playlists/{id}/order:
     parameters:
     - {name: id, in: path, required: true, schema: {type: string, format: uuid}}

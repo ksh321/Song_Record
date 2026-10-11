@@ -12,7 +12,12 @@ public class SongController {
     private final SongListing listing;
     private final SongEditing editing;
     private final SongRepresentative representative;
-    public SongController(SongCreation creation,SongListing listing,SongEditing editing,SongRepresentative representative){this.creation=creation;this.listing=listing;this.editing=editing;this.representative=representative;}
+    private final SongDeletionPreview deletionPreview;
+    public SongController(SongCreation creation,SongListing listing,SongEditing editing,SongRepresentative representative,SongDeletionPreview deletionPreview){this.creation=creation;this.listing=listing;this.editing=editing;this.representative=representative;this.deletionPreview=deletionPreview;}
+    @GetMapping(path="/{id}/delete-preview",produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<java.util.Map<String,Object>> deletePreview(@RequestHeader(value="Authorization",required=false) String auth,@RequestHeader(value="X-Device-Id",required=false) String device,@PathVariable("id") String id){
+        return ResponseEntity.ok().header("Cache-Control","no-store").body(deletionPreview.get(auth,device,id));
+    }
     @PutMapping(path="/{id}/representative",consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> representative(@RequestHeader(value="Authorization",required=false) String auth,
             @RequestHeader(value="X-Device-Id",required=false) String device,
