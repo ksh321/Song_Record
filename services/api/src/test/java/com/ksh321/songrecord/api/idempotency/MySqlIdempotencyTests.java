@@ -89,6 +89,26 @@ class MySqlIdempotencyTests {
             assertThat(db.queryForList("SELECT * FROM pin_slot WHERE user_id=?",bytes(owner))).usingRecursiveComparison().isEqualTo(pinsBefore);
             assertThat(db.queryForObject("SELECT COUNT(*) FROM deletion_item WHERE user_id=?",Integer.class,bytes(owner))).isEqualTo(3);
             assertThat(db.queryForObject("SELECT hidden_by_batch_id FROM playlist_item WHERE id=?",byte[].class,bytes(item))).isNotNull();assertThat(db.queryForObject("SELECT reason FROM cloud_hold WHERE recording_id=?",String.class,bytes(recording))).isEqualTo("ORPHAN_KEEP");
+            UUID nextSong=com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.song(db,owner);
+            UUID nextRecording=com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.recording(db,owner,device,nextSong,true,true,"VALIDATED");
+            UUID oldTrash=com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.recording(db,owner,device,nextSong,true,true,"VALIDATED");
+            var oldDeleted=java.sql.Timestamp.from(clock.instant().minusSeconds(86400).truncatedTo(java.time.temporal.ChronoUnit.MILLIS));
+            db.update("UPDATE recording SET lifecycle_state='TRASHED',deleted_at=? WHERE id=?",oldDeleted,bytes(oldTrash));
+            db.update("INSERT INTO storage_usage(user_id,used_bytes) VALUES(?,6291456)",bytes(owner));db.update("UPDATE global_storage_usage SET used_bytes=6291456 WHERE id=1");
+            var reserved=new com.ksh321.songrecord.api.uploads.UploadReservations(db,a,manager,clock).reserve(authority,new com.ksh321.songrecord.api.uploads.UploadReservations.Request(nextRecording,6291456,"a".repeat(64),1));
+            db.update("INSERT INTO pin_slot(user_id,slot_no,current_recording_id,operation_id,requested_at) VALUES(?,2,?,?,CURRENT_TIMESTAMP)",bytes(owner),bytes(nextRecording),bytes(UUID.randomUUID()));
+            String allVersion=(String)preview.get("Bearer synthetic",device.toString(),nextSong.toString()).get("preview_version");
+            String allBody=new tools.jackson.databind.json.JsonMapper().writeValueAsString(java.util.Map.of("mode","SONG_AND_RECORDINGS","preview_version",allVersion));String allOp=UUID.randomUUID().toString();
+            var allReply=trash.trash("Bearer synthetic",device.toString(),allOp,nextSong.toString(),allBody);assertThat(allReply.status()).isEqualTo(200);
+            assertThat(trash.trash("Bearer synthetic",device.toString(),allOp,nextSong.toString(),allBody)).isEqualTo(allReply);
+            assertThat(db.queryForObject("SELECT lifecycle_state FROM recording WHERE id=?",String.class,bytes(nextRecording))).isEqualTo("TRASHED");
+            assertThat(db.queryForObject("SELECT deleted_at FROM recording WHERE id=?",java.sql.Timestamp.class,bytes(oldTrash))).isEqualTo(oldDeleted);
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM deletion_item WHERE entity_id=?",Integer.class,bytes(oldTrash))).isZero();
+            assertThat(db.queryForObject("SELECT state FROM recording_upload WHERE id=?",String.class,bytes(reserved.attempt()))).isEqualTo("CANCELLED");
+            assertThat(db.queryForObject("SELECT reserved_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(owner))).isZero();
+            assertThat(db.queryForObject("SELECT used_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(owner))).isEqualTo(6291456);
+            assertThat(db.queryForObject("SELECT current_recording_id FROM pin_slot WHERE user_id=? AND slot_no=1",byte[].class,bytes(owner))).isEqualTo(bytes(recording));
+            assertThat(db.queryForObject("SELECT current_recording_id FROM pin_slot WHERE user_id=? AND slot_no=2",byte[].class,bytes(owner))).isNull();
         } finally {admin.execute("DROP DATABASE "+name);}
     }
     IdempotentMutations.Reply effect() {

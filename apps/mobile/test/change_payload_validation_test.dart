@@ -39,6 +39,14 @@ Map<String, dynamic> recordingWire(String schema) {
 }
 
 void main() {
+  test('recording trash accepts server UTC expiry basis without permanent deletion', () {
+    final value = recordingWire('RecordingEdited')
+      ..['lifecycle_state'] = 'TRASHED'
+      ..['deleted_at'] = '2026-10-11T05:00:00.123Z';
+    expect(() => validateChangePayload(LocalEntity.recording, value), returnsNormally);
+    value['deleted_at'] = '2026-02-30T00:00:00Z';
+    expect(() => validateChangePayload(LocalEntity.recording, value), throwsFormatException);
+  });
   test('trash change preserves a server UTC deletion date without a tombstone', () {
     final value = songChange(payloadId, 2)
       ..['lifecycle_state'] = 'TRASHED'

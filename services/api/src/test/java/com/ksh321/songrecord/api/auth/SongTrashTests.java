@@ -21,7 +21,10 @@ class SongTrashTests {
         f.jdbc.execute("CREATE TABLE deletion_batch(id BINARY(16) PRIMARY KEY,user_id BINARY(16),op_id BINARY(16),mode VARCHAR(32),deleted_at TIMESTAMP(3),purge_after TIMESTAMP(3),preview_version VARCHAR(128),UNIQUE(user_id,op_id))");
         f.jdbc.execute("CREATE TABLE deletion_item(batch_id BINARY(16),user_id BINARY(16),entity_type VARCHAR(32),entity_id BINARY(16),previous_song_id BINARY(16),previous_list_id BINARY(16),detached_link_revision BIGINT,original_deleted_at TIMESTAMP(3),PRIMARY KEY(batch_id,entity_type,entity_id))");
         f.jdbc.execute("CREATE TABLE cloud_hold(id BINARY(16) PRIMARY KEY,user_id BINARY(16),recording_id BINARY(16),reason VARCHAR(32))");
-        f.jdbc.execute("CREATE TABLE recording_upload(id BINARY(16) PRIMARY KEY,user_id BINARY(16),recording_id BINARY(16),state VARCHAR(32),policy_revision BIGINT,expires_at TIMESTAMP(3),updated_at TIMESTAMP(3))");
+        f.jdbc.execute("CREATE TABLE recording_upload(id BINARY(16) PRIMARY KEY,user_id BINARY(16),recording_id BINARY(16),state VARCHAR(32),policy_revision BIGINT,expires_at TIMESTAMP(3),updated_at TIMESTAMP(3),expected_size BIGINT,active_slot INT,reservation_released_at TIMESTAMP(3),error_code VARCHAR(64),pin_operation_id BINARY(16))");
+        f.jdbc.execute("ALTER TABLE pin_slot ADD operation_id BINARY(16)");f.jdbc.execute("ALTER TABLE pin_slot ADD requested_at TIMESTAMP(3)");f.jdbc.execute("ALTER TABLE pin_slot ADD updated_at TIMESTAMP(3)");
+        f.jdbc.execute("CREATE TABLE global_storage_usage(id INT PRIMARY KEY,used_bytes BIGINT DEFAULT 0,reserved_bytes BIGINT DEFAULT 0,revision BIGINT DEFAULT 1,updated_at TIMESTAMP(3))");
+        f.jdbc.update("INSERT INTO global_storage_usage(id) VALUES(1)");
         assertThat(s.postBody(UUID.randomUUID().toString(),s.body("")).getStatus()).isEqualTo(201);
         recording=r.setup.id;var body=r.setup.base();body.put("song_id",s.id.toString());body.put("title_snapshot","당시 곡");body.put("artist_snapshot","당시 가수");body.put("key_mode","FEMALE");body.put("key_shift",-2);body.put("version_code","LIVE");body.put("note","메모 보존");assertThat(r.setup.create(body).getStatus()).isEqualTo(201);
         f.jdbc.update("UPDATE recording SET metadata_state='SAVED',tier='D' WHERE id=?",bytes(recording));
@@ -62,6 +65,34 @@ class SongTrashTests {
         assertThat(f.jdbc.queryForObject("SELECT expires_at FROM recording_upload",java.sql.Timestamp.class)).isEqualTo(expiry);
         assertThat(f.jdbc.queryForObject("SELECT state FROM recording_upload",String.class)).isEqualTo("UPLOADING");
         assertThat(f.jdbc.queryForObject("SELECT reason FROM cloud_hold",String.class)).isEqualTo("ORPHAN_KEEP");
+    }
+    @Test void togetherTrashesOnlyActiveTargetsAndPreservesFilesAndOlderExpiry()throws Exception{
+        UUID old=UUID.randomUUID();var body=r.setup.base();body.put("id",old.toString());body.put("song_id",s.id.toString());assertThat(r.setup.create(body).getStatus()).isEqualTo(201);
+        var prior=java.sql.Timestamp.valueOf("2026-10-01 00:00:00");f.jdbc.update("UPDATE recording SET lifecycle_state='TRASHED',deleted_at=? WHERE id=?",prior,bytes(old));
+        var asset=f.jdbc.queryForMap("SELECT object_key,generation,verified_size,sha256,cloud_state FROM recording_asset");
+        var response=trash(s.id,UUID.randomUUID().toString(),preview(),"SONG_AND_RECORDINGS");assertThat(response.getStatus()).isEqualTo(200);var result=json.readTree(response.getContentAsString());
+        assertThat(result.get("recordings").size()).isEqualTo(1);assertThat(result.get("recordings").get(0).get("lifecycle_state").asText()).isEqualTo("TRASHED");
+        assertThat(result.get("recordings").get(0).get("deleted_at").asText()).isEqualTo(result.get("deleted_at").asText());
+        assertThat(f.jdbc.queryForObject("SELECT deleted_at FROM recording WHERE id=?",java.sql.Timestamp.class,bytes(old))).isEqualTo(prior);
+        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM deletion_item WHERE entity_id=?",Integer.class,bytes(old))).isZero();
+        assertThat(f.jdbc.queryForObject("SELECT current_recording_id FROM pin_slot",byte[].class)).isNull();
+        assertThat(f.jdbc.queryForMap("SELECT object_key,generation,verified_size,sha256,cloud_state FROM recording_asset")).usingRecursiveComparison().isEqualTo(asset);
+    }
+    @Test void togetherCancelsUploadAndReleasesOnlyReservationOnce()throws Exception{
+        f.jdbc.update("UPDATE recording_asset SET cloud_state='NONE',object_key=NULL,generation=NULL,verified_size=NULL,sha256=NULL,stored_at=NULL");
+        UUID attempt=UUID.randomUUID();f.jdbc.update("INSERT INTO recording_upload(id,user_id,recording_id,state,policy_revision,expires_at,expected_size,active_slot) VALUES(?,?,?,'UPLOADING',1,?,3,0)",bytes(attempt),bytes(owner()),bytes(recording),java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(3600)));
+        f.jdbc.update("UPDATE storage_usage SET reserved_bytes=3 WHERE user_id=?",bytes(owner()));f.jdbc.update("UPDATE global_storage_usage SET reserved_bytes=3");
+        String op=UUID.randomUUID().toString(),version=preview();var response=trash(s.id,op,version,"SONG_AND_RECORDINGS");assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(f.jdbc.queryForObject("SELECT state FROM recording_upload",String.class)).isEqualTo("CANCELLED");
+        assertThat(f.jdbc.queryForObject("SELECT reserved_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(owner()))).isZero();assertThat(f.jdbc.queryForObject("SELECT used_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(owner()))).isZero();
+        assertThat(f.jdbc.queryForObject("SELECT reserved_bytes FROM global_storage_usage",Long.class)).isZero();assertThat(trash(s.id,op,version,"SONG_AND_RECORDINGS").getContentAsString()).isEqualTo(response.getContentAsString());
+    }
+    @Test void pinRevisionLimitRollsBackTheEntireTrashBatch()throws Exception{
+        f.jdbc.update("UPDATE pin_slot SET revision=?",Long.MAX_VALUE);
+        var response=trash(s.id,UUID.randomUUID().toString(),preview(),"SONG_AND_RECORDINGS");assertThat(response.getStatus()).isEqualTo(409);assertThat(response.getContentAsString()).contains("PIN_REVISION_LIMIT_REACHED");
+        assertThat(f.jdbc.queryForObject("SELECT lifecycle_state FROM song",String.class)).isEqualTo("ACTIVE");assertThat(f.jdbc.queryForObject("SELECT lifecycle_state FROM recording",String.class)).isEqualTo("ACTIVE");
+        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM deletion_batch",Integer.class)).isZero();assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM deletion_item",Integer.class)).isZero();
+        assertThat(f.jdbc.queryForObject("SELECT hidden_by_batch_id FROM playlist_item",byte[].class)).isNull();
     }
     @Test void staleApprovalIsNotRevivedAsOrphanProtection()throws Exception{
         f.jdbc.update("UPDATE recording_asset SET cloud_state='NONE',object_key=NULL,generation=NULL,verified_size=NULL,sha256=NULL,stored_at=NULL,cloud_revision=2");

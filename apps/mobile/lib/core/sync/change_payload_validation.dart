@@ -172,6 +172,7 @@ void validateChangePayload(LocalEntity entity, Map<String, dynamic> value) {
           'tag_ids',
           'condition_code',
           'condition_name_snapshot',
+          'deleted_at',
         },
       );
       choice('metadata_state', {'DRAFT', 'SAVED'});
@@ -190,6 +191,7 @@ void validateChangePayload(LocalEntity entity, Map<String, dynamic> value) {
       text('timezone_id', 1, 64);
       number('timezone_offset_minutes', -1080, 1080);
       number('link_revision', 1, 9223372036854775807);
+      if (value.containsKey('deleted_at')) time('deleted_at', nullable: true);
       time('recorded_at');
       key('key_mode', 'key_shift');
       final condition = value['condition_code'];

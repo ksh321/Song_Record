@@ -1422,5 +1422,65 @@
       "has_more": false,
       "changes": []
     }
+  },
+  {
+    "name": "P20-04 recording trash keeps server deletion time",
+    "schema": "RecordingEdited",
+    "valid": true,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "DRAFT",
+      "song_id": null,
+      "title_snapshot": null,
+      "artist_snapshot": null,
+      "version_code": "NORMAL",
+      "key_mode": null,
+      "key_shift": null,
+      "note": "",
+      "recorded_at": "2026-09-28T00:00:00Z",
+      "timezone_id": "UTC",
+      "timezone_offset_minutes": 0,
+      "origin_device_id": "00000000-0000-4000-8000-000000000002",
+      "revision": 2,
+      "link_revision": 1,
+      "updated_at": "2026-09-28T01:00:00Z",
+      "lifecycle_state": "TRASHED",
+      "tier": null,
+      "condition_code": null,
+      "condition_name_snapshot": null,
+      "tag_ids": [],
+      "tags": [],
+      "deleted_at": "2026-10-11T05:00:00.123Z"
+    }
+  },
+  {
+    "name": "P20-04 recording trash rejects invalid server date",
+    "schema": "RecordingEdited",
+    "valid": false,
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "DRAFT",
+      "song_id": null,
+      "title_snapshot": null,
+      "artist_snapshot": null,
+      "version_code": "NORMAL",
+      "key_mode": null,
+      "key_shift": null,
+      "note": "",
+      "recorded_at": "2026-09-28T00:00:00Z",
+      "timezone_id": "UTC",
+      "timezone_offset_minutes": 0,
+      "origin_device_id": "00000000-0000-4000-8000-000000000002",
+      "revision": 2,
+      "link_revision": 1,
+      "updated_at": "2026-09-28T01:00:00Z",
+      "lifecycle_state": "TRASHED",
+      "tier": null,
+      "condition_code": null,
+      "condition_name_snapshot": null,
+      "tag_ids": [],
+      "tags": [],
+      "deleted_at": "2026-02-30T00:00:00Z"
+    }
   }
 ]

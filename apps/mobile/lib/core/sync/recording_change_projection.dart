@@ -23,6 +23,7 @@ Map<String, dynamic> projectRecordingChange(
     'tags',
     'condition_code',
     'condition_name_snapshot',
+    'deleted_at',
   ]) {
     if (!result.containsKey(key) && previous?.containsKey(key) == true) {
       result[key] = jsonDecode(jsonEncode(previous![key]));

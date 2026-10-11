@@ -206,6 +206,25 @@ void main() {
     expect(source['title'], 'server');
     expect(await cursor(), 8);
   });
+  test('recording trash keeps the local original until permanent deletion proof', () async {
+    await db.customStatement(
+      "INSERT INTO local_recording_files(recording_id,user_id,relative_path,sha256,size_bytes,verified_at,local_state,updated_at) VALUES(?,?,?,?,4,1,'SAVED',0)",
+      [id, owner, 'audio/$id.m4a', 'a' * 64],
+    );
+    final files = (await db.customSelect('SELECT * FROM local_recording_files').get()).map((r) => r.data).toList();
+    final incoming = entry(8, id)..['entity_type'] = 'RECORDING';
+    incoming['payload'] = recordingWire('RecordingEdited')
+      ..['id'] = id
+      ..['revision'] = 2
+      ..['song_id'] = null
+      ..['lifecycle_state'] = 'TRASHED'
+      ..['deleted_at'] = '2026-10-11T05:00:00.123Z';
+    await store.apply(page([incoming]), snapshotToken: token);
+    final copy = await db.customSelect("SELECT * FROM metadata_copies WHERE entity_type='RECORDING' AND entity_id=?", variables: [Variable(id)]).getSingle();
+    expect(copy.read<int>('tombstone'), 0);
+    expect((jsonDecode(copy.read<String>('server_payload')) as Map)['deleted_at'], '2026-10-11T05:00:00.123Z');
+    expect((await db.customSelect('SELECT * FROM local_recording_files').get()).map((r) => r.data).toList(), files);
+  });
   for (final kind in ['SONG', 'TAG', 'RECORDING_CONDITION', 'PLAYLIST']) {
     test('equal baseline $kind compares content and rolls back earlier writes', () async {
       final source = <String, dynamic>{
