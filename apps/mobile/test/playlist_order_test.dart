@@ -92,7 +92,7 @@ void main() {
       expect(await repo.pendingWork(), isEmpty);
       await library.reorder(row, ids);
       final queued = (await repo.pendingWork()).single;
-      expect(jsonDecode(queued.payload)['item_ids'], ids);
+      expect(jsonDecode(queued.payload)['ordered_item_ids'], ids);
       fixture.corruptNextOrder = true;
       await fixture.synchronize();
       expect(await library.items(fixture.playlistId), before);

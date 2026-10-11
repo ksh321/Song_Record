@@ -221,8 +221,9 @@ final class DependencyPlanner {
         add('playlist_id', LocalEntity.playlist, mandatory: true);
         add('song_id', LocalEntity.song, mandatory: true);
       case LocalEntity.playlist:
-        if (body.containsKey('item_ids')) {
-          final ids = body['item_ids'];
+        add('remove_item_id', LocalEntity.playlistItem);
+        if (body.containsKey('ordered_item_ids')) {
+          final ids = body['ordered_item_ids'];
           if (ids is! List || ids.any((id) => id is! String)) {
             throw const FormatException('Invalid item references');
           }

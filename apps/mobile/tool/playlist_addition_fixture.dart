@@ -145,6 +145,39 @@ class PlaylistAdditionFixture implements MutationTransport {
               }),
             )
           : MutationResponse(201, jsonEncode(header));
+    } else if (request.method == 'DELETE' && request.path.contains('/items/')) {
+      if (body['base_revision'] != header['revision']) {
+        throw StateError('Fixture removal revision mismatch');
+      }
+      final target = request.path.split('/').last;
+      if (!items.any((item) => item['id'] == target)) {
+        throw StateError('Fixture removal target missing');
+      }
+      items.removeWhere((item) => item['id'] == target);
+      header = {...header, 'revision': (header['revision'] as int) + 1};
+      response = MutationResponse(
+        200,
+        jsonEncode({'playlist': header, 'items': items}),
+      );
+    } else if (request.method == 'DELETE' &&
+        request.path == '/v1/playlists/$playlistId') {
+      if (body['base_revision'] != header['revision']) {
+        throw StateError('Fixture deletion revision mismatch');
+      }
+      header = {
+        ...header,
+        'revision': (header['revision'] as int) + 1,
+        'deleted_at': playlistFixtureTime,
+      };
+      response = MutationResponse(
+        200,
+        jsonEncode({
+          'id': playlistId,
+          'status': 'DELETED',
+          'revision': header['revision'],
+          'deleted_at': playlistFixtureTime,
+        }),
+      );
     } else if (body['song_ids'] case final List<Object?> ids) {
       if (body['base_revision'] != header['revision']) {
         throw StateError('Fixture batch revision mismatch');
@@ -193,7 +226,7 @@ class PlaylistAdditionFixture implements MutationTransport {
       );
     } else if (request.method == 'PUT' &&
         request.path == '/v1/playlists/$playlistId/order') {
-      final ids = (body['item_ids'] as List).cast<String>();
+      final ids = (body['ordered_item_ids'] as List).cast<String>();
       if (body['base_revision'] != header['revision'] ||
           ids.length != items.length ||
           ids.toSet().length != ids.length ||

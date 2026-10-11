@@ -411,6 +411,9 @@ final class RetryControls {
         m.entity == LocalEntity.playlist &&
         (method == 'POST' ||
             path.endsWith('/song') ||
+            (method == 'DELETE' &&
+                RegExp('^/v1/playlists/${m.entityId}/items/[0-9a-f-]{36}\$')
+                    .hasMatch(path)) ||
             (method == 'PUT' && path == '/v1/playlists/${m.entityId}/order'))) {
       final expected = MutationRequest.prepare(m);
       if (expected == null ||

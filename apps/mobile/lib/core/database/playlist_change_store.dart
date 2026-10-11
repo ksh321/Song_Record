@@ -303,6 +303,9 @@ final class PlaylistChangeStore {
             (jsonDecode(row.read<String>('server_payload'))
                     as Map)['playlist_id'] ==
                 parentId &&
+            (jsonDecode(row.read<String>('server_payload'))
+                    as Map)['hidden_by_batch_id'] ==
+                null &&
             !projectedItems.containsKey(row.read<String>('entity_id')) &&
             row.read<int>('tombstone') == 0)
           row.read<String>('entity_id'),

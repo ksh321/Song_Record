@@ -37,8 +37,26 @@ final class MutationRequest {
     if (m.entity == LocalEntity.playlist &&
         m.operation == LocalOperation.patch) {
       final decoded = jsonDecode(m.payload);
-      if (decoded is Map<String, dynamic> && decoded.containsKey('item_ids')) {
-        final ids = decoded['item_ids'];
+      if (decoded is Map<String, dynamic> &&
+          decoded.containsKey('remove_item_id')) {
+        if (decoded.length != 2 ||
+            decoded['base_revision'] != m.baseRevision ||
+            m.baseRevision < 1 ||
+            decoded['remove_item_id'] is! String) {
+          return null;
+        }
+        final item = UuidValue(decoded['remove_item_id'] as String).value;
+        return MutationRequest(
+          mutation: m,
+          method: 'DELETE',
+          path: '/v1/playlists/${m.entityId}/items/$item',
+          body: canonicalJson({'base_revision': m.baseRevision}),
+          attempt: m.attemptCount + 1,
+        );
+      }
+      if (decoded is Map<String, dynamic> &&
+          decoded.containsKey('ordered_item_ids')) {
+        final ids = decoded['ordered_item_ids'];
         if (decoded.length != 2 ||
             decoded['base_revision'] != m.baseRevision ||
             m.baseRevision < 1 ||

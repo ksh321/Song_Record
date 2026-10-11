@@ -186,7 +186,21 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                 Padding(
                   key: ValueKey(item['id']),
                   padding: const EdgeInsets.only(top: 8),
-                  child: row,
+                  child: Column(
+                    children: [
+                      row,
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: busy || parent == null
+                              ? null
+                              : () => removeItem(item),
+                          icon: const Icon(Icons.remove_circle_outline),
+                          label: const Text('목록에서 제거'),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
           ],
         ),
@@ -273,6 +287,47 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       await reload();
     } catch (_) {
       if (mounted) setState(() => error = '순서를 저장하지 못했어요. 최신 목록을 확인해 주세요.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> removeItem(Map<String, dynamic> item) async {
+    final library = widget.library, id = widget.id;
+    final original = Map<String, dynamic>.from(parent!);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('목록에서 제거'),
+        content: const Text('이 목록에서만 제거해요. 내 곡과 녹음은 그대로 유지돼요.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('제거'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted ||
+        confirmed != true ||
+        !identical(library, widget.library) ||
+        id != widget.id) {
+      return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await library.removeItem(original, item['id'] as String);
+      await widget.afterSave?.call();
+      await reload();
+    } catch (_) {
+      if (mounted) setState(() => error = '제거하지 못했어요. 최신 목록을 확인해 주세요.');
     } finally {
       if (mounted) setState(() => busy = false);
     }

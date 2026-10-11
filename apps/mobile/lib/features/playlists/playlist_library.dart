@@ -6,6 +6,29 @@ import '../search/search_intent.dart';
 final class PlaylistLibrary {
   PlaylistLibrary(this.repository);
   final LocalRepository repository;
+  Future<void> removeItem(Map<String, dynamic> row, String itemId) async {
+    final id = row['id'] as String;
+    if ((await repository.pendingWork()).any(
+      (m) => m.entity == LocalEntity.playlist && m.entityId == id,
+    )) {
+      throw StateError('이 목록의 이전 변경을 먼저 동기화해 주세요.');
+    }
+    if (!(await items(id)).any((item) => item['id'] == itemId)) {
+      throw StateError('목록 항목이 변경됐어요.');
+    }
+    final value = _payload(row);
+    await repository.saveCheckedEdit(
+      repository.preparePatch(
+        entity: LocalEntity.playlist,
+        entityId: id,
+        baseRevision: row['local_base_revision'] as int,
+        draft: value,
+        changes: {'remove_item_id': itemId},
+      ),
+      value,
+    );
+  }
+
   Future<void> reorder(Map<String, dynamic> row, List<String> ids) async {
     final id = row['id'] as String;
     if ((await repository.pendingWork()).any(
@@ -26,7 +49,7 @@ final class PlaylistLibrary {
         entityId: id,
         baseRevision: row['local_base_revision'] as int,
         draft: value,
-        changes: {'item_ids': ids},
+        changes: {'ordered_item_ids': ids},
       ),
       value,
     );

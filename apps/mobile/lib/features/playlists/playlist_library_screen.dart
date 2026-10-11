@@ -117,6 +117,7 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
     });
     try {
       await save();
+      await widget.afterSave?.call();
       await reload();
     } catch (e) {
       if (mounted) {

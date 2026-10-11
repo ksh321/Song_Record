@@ -13,7 +13,13 @@ bool isPlaylistAddition(MutationRequest request) =>
             request.path ==
                 '/v1/playlists/${request.mutation.entityId}/items') ||
         isPlaylistLink(request) ||
-        isPlaylistOrder(request));
+        isPlaylistOrder(request) ||
+        isPlaylistRemoval(request));
+
+bool isPlaylistRemoval(MutationRequest request) =>
+    request.method == 'DELETE' &&
+    RegExp('^/v1/playlists/${request.mutation.entityId}/items/[0-9a-f-]{36}\$')
+        .hasMatch(request.path);
 
 bool isPlaylistOrder(MutationRequest request) =>
     request.method == 'PUT' &&
@@ -40,6 +46,30 @@ Map<String, dynamic> decodePlaylistAddition(
   require(raw is Map<String, dynamic>);
   final value = raw as Map<String, dynamic>;
   final sent = jsonDecode(request.body) as Map;
+  if (isPlaylistRemoval(request)) {
+    require(
+      response.status == 200 &&
+          value.length == 2 &&
+          value.keys.every({'playlist', 'items'}.contains),
+    );
+    require(
+      value['playlist'] is Map<String, dynamic> && value['items'] is List,
+    );
+    final parent = value['playlist'] as Map<String, dynamic>;
+    validateChangePayload(LocalEntity.playlist, parent);
+    require(
+      parent['id'] == request.mutation.entityId &&
+          parent['deleted_at'] == null &&
+          parent['revision'] == request.mutation.baseRevision + 1,
+    );
+    final removed = request.path.split('/').last;
+    require(
+      (value['items'] as List).every(
+        (item) => item is Map && item['id'] != removed,
+      ),
+    );
+    return {...value, 'created': true};
+  }
   if (isPlaylistOrder(request)) {
     require(
       response.status == 200 &&
@@ -56,7 +86,8 @@ Map<String, dynamic> decodePlaylistAddition(
           parent['deleted_at'] == null &&
           parent['revision'] == request.mutation.baseRevision + 1,
     );
-    final ids = sent['item_ids'] as List, items = value['items'] as List;
+    final ids = sent['ordered_item_ids'] as List,
+        items = value['items'] as List;
     require(items.length == ids.length);
     for (var i = 0; i < ids.length; i++) {
       require(

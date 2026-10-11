@@ -18,6 +18,31 @@ class PlaylistTests {
   s.f.jdbc.execute("CREATE UNIQUE INDEX playlist_proof ON deletion_ledger(user_id,entity_type,entity_id)");
   new ResourceDatabasePopulator(new ClassPathResource("job-schema.sql")).populate(s.f.keeper);
  }
+ @Test void removingOneItemPreservesOtherListsSongsAndRecordings()throws Exception{
+  s.postBody(s.f.key,s.body(""));UUID a=UUID.randomUUID(),b=UUID.randomUUID(),recording=UUID.randomUUID();create(a,"첫 목록");create(b,"다른 목록");
+  s.f.jdbc.update("INSERT INTO recording(id,user_id,song_id,revision,lifecycle_state) VALUES(?,?,?,1,'ACTIVE')",bytes(recording),bytes(s.f.registration.userId()),bytes(s.id));
+  var first=json.readTree(add(a,s.id,1,UUID.randomUUID().toString()).getContentAsString());var other=json.readTree(add(b,s.id,1,UUID.randomUUID().toString()).getContentAsString());
+  String item=first.get("item_id").asText(),foreign=other.get("item_id").asText();var songBefore=s.f.jdbc.queryForList("SELECT * FROM song");var recBefore=s.f.jdbc.queryForList("SELECT * FROM recording");
+  assertThat(remove(a,foreign,2,UUID.randomUUID().toString()).getStatus()).isEqualTo(404);assertThat(remove(a,item,1,UUID.randomUUID().toString()).getStatus()).isEqualTo(409);assertThat(count("playlist_item")).isEqualTo(2);
+  String op=UUID.randomUUID().toString();var response=remove(a,item,2,op);assertThat(response.getStatus()).isEqualTo(200);var wire=json.readTree(response.getContentAsString());assertThat(wire.get("items").size()).isZero();assertThat(wire.get("playlist").get("revision").asLong()).isEqualTo(3);
+  assertThat(remove(a,item,2,op).getContentAsString()).isEqualTo(response.getContentAsString());assertThat(count("playlist_item")).isEqualTo(1);assertThat(count("deletion_ledger")).isEqualTo(1);
+  assertThat(s.f.jdbc.queryForList("SELECT * FROM song")).usingRecursiveComparison().isEqualTo(songBefore);assertThat(s.f.jdbc.queryForList("SELECT * FROM recording")).usingRecursiveComparison().isEqualTo(recBefore);
+  assertThat(s.f.jdbc.queryForObject("SELECT revision FROM playlist WHERE id=?",Long.class,bytes(b))).isEqualTo(2);
+ }
+ MockHttpServletResponse remove(UUID list,String item,long base,String op)throws Exception{return s.mvc.perform(delete("/v1/playlists/"+list+"/items/"+item).header("Authorization","Bearer "+s.f.tokens.accessToken()).header("X-Device-Id",s.f.registration.deviceId()).header("Idempotency-Key",op).contentType("application/json").content(json.writeValueAsString(Map.of("base_revision",base)))).andReturn().getResponse();}
+ @Test void songTrashHidesOnlyItsLinksAndPublishesRetainedIdentity()throws Exception{
+  s.postBody(s.f.key,s.body(""));UUID a=UUID.randomUUID(),b=UUID.randomUUID(),batch=UUID.randomUUID(),manual=UUID.randomUUID();create(a,"a");create(b,"b");
+  s.f.jdbc.update("INSERT INTO song(id,user_id,source_type,title,artist,version_code,note,lifecycle_state,revision) VALUES(?,?,'MANUAL','직접 곡','가수','NORMAL','','ACTIVE',1)",bytes(manual),bytes(s.f.registration.userId()));
+  multi(a,List.of(s.id,manual),1,UUID.randomUUID().toString());add(b,s.id,1,UUID.randomUUID().toString());
+  var before=s.f.jdbc.queryForList("SELECT id,playlist_id,song_id,entry_key,position FROM playlist_item ORDER BY id");
+  s.f.jdbc.execute("CREATE TABLE deletion_batch(id BINARY(16) PRIMARY KEY,user_id BINARY(16),mode VARCHAR(32))");s.f.jdbc.update("INSERT INTO deletion_batch VALUES(?,?,'SONG_ONLY')",bytes(batch),bytes(s.f.registration.userId()));
+  s.f.jdbc.execute("CREATE TABLE deletion_item(batch_id BINARY(16),entity_type VARCHAR(32),entity_id BINARY(16))");s.f.jdbc.update("INSERT INTO deletion_item VALUES(?,'SONG',?)",bytes(batch),bytes(s.id));var access=s.context.getBean(AccountAccess.class);var account=access.authenticate("Bearer "+s.f.tokens.accessToken(),s.f.registration.deviceId().toString());var revisions=s.context.getBean(com.ksh321.songrecord.api.revision.RevisionChanges.class);var changes=s.context.getBean(com.ksh321.songrecord.api.sync.AccountChanges.class);
+  var events=new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(s.f.jdbc.getDataSource())).execute(status->changes.write(account,()->{s.f.jdbc.update("UPDATE song SET lifecycle_state='TRASHED' WHERE id=?",bytes(s.id));var result=PlaylistService.hideTrashedSong(s.f.jdbc,revisions,account,s.id,batch,java.time.Clock.systemUTC());return new com.ksh321.songrecord.api.sync.AccountChanges.Batch<>(result,result);}).value());
+  assertThat(events).hasSize(2);assertThat(s.f.jdbc.queryForObject("SELECT COUNT(*) FROM playlist_item WHERE hidden_by_batch_id=?",Long.class,bytes(batch))).isEqualTo(2);assertThat(s.f.jdbc.queryForObject("SELECT COUNT(*) FROM playlist_item WHERE song_id=? AND hidden_by_batch_id IS NULL",Long.class,bytes(manual))).isEqualTo(1);
+  assertThat(s.f.jdbc.queryForList("SELECT id,playlist_id,song_id,entry_key,position FROM playlist_item ORDER BY id")).usingRecursiveComparison().isEqualTo(before);
+  assertThat(s.context.getBean(PlaylistService.class).items("Bearer "+s.f.tokens.accessToken(),s.f.registration.deviceId().toString(),a.toString()).get("items")).asList().hasSize(1);
+  assertThat(events).allSatisfy(e->assertThat(e.payload()).contains(batch.toString()));
+ }
  @AfterEach void close()throws Exception{s.close();}
  MockHttpServletResponse write(String method,UUID id,String body,String op)throws Exception{
   var r=switch(method){case "POST"->post("/v1/playlists");case "PATCH"->patch("/v1/playlists/"+id);default->delete("/v1/playlists/"+id);};
@@ -40,7 +65,7 @@ class PlaylistTests {
   assertThat(multi(a,List.of(s.id,manual),1,UUID.randomUUID().toString()).getStatus()).isEqualTo(409);assertThat(count("playlist_item")).isEqualTo(2);
   assertThat(multi(b,List.of(s.id,manual),1,UUID.randomUUID().toString()).getStatus()).isEqualTo(201);assertThat(count("playlist_item")).isEqualTo(4);
  }
- MockHttpServletResponse order(UUID p,List<String> ids,long base,String op)throws Exception{return s.mvc.perform(put("/v1/playlists/"+p+"/order").header("Authorization","Bearer "+s.f.tokens.accessToken()).header("X-Device-Id",s.f.registration.deviceId()).header("Idempotency-Key",op).contentType("application/json").content(json.writeValueAsString(Map.of("item_ids",ids,"base_revision",base)))).andReturn().getResponse();}
+ MockHttpServletResponse order(UUID p,List<String> ids,long base,String op)throws Exception{return s.mvc.perform(put("/v1/playlists/"+p+"/order").header("Authorization","Bearer "+s.f.tokens.accessToken()).header("X-Device-Id",s.f.registration.deviceId()).header("Idempotency-Key",op).contentType("application/json").content(json.writeValueAsString(Map.of("ordered_item_ids",ids,"base_revision",base)))).andReturn().getResponse();}
  @Test void wholeOrderRejectsDuplicateMissingForeignAndStaleAtomically()throws Exception{
   s.postBody(s.f.key,s.body(""));UUID p=UUID.randomUUID(),other=UUID.randomUUID(),manual=UUID.randomUUID();create(p,"정렬");create(other,"다른 목록");
   s.f.jdbc.update("INSERT INTO song(id,user_id,source_type,title,artist,version_code,note,lifecycle_state,revision) VALUES(?,?,'MANUAL','직접 곡','가수','NORMAL','','ACTIVE',1)",bytes(manual),bytes(s.f.registration.userId()));

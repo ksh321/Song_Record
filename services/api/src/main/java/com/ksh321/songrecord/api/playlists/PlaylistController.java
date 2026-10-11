@@ -25,6 +25,8 @@ public class PlaylistController {
     private static ResponseEntity<String> reply(IdempotentMutations.Reply reply){return ResponseEntity.status(reply.status()).header("Cache-Control","no-store").contentType(MediaType.APPLICATION_JSON).body(reply.body());}
     @PutMapping(path="/{id}/order",consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> reorder(@RequestHeader(value="Authorization",required=false) String auth,@RequestHeader(value="X-Device-Id",required=false) String device,@RequestHeader(value="Idempotency-Key",required=false) String op,@PathVariable("id") String id,@RequestBody String body){return reply(playlists.reorder(auth,device,op,id,body));}
+    @DeleteMapping(path="/{id}/items/{itemId}",consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<String> remove(@RequestHeader(value="Authorization",required=false) String auth,@RequestHeader(value="X-Device-Id",required=false) String device,@RequestHeader(value="Idempotency-Key",required=false) String op,@PathVariable("id") String id,@PathVariable("itemId") String itemId,@RequestBody String body){return reply(playlists.removeItem(auth,device,op,id,itemId,body));}
     @GetMapping(path="/{id}/items",produces=MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String,Object>> items(@RequestHeader(value="Authorization",required=false) String auth,@RequestHeader(value="X-Device-Id",required=false) String device,@PathVariable("id") String id){return ResponseEntity.ok().header("Cache-Control","no-store").body(playlists.items(auth,device,id));}
     @PostMapping(path="/{id}/items",consumes=MediaType.APPLICATION_JSON_VALUE,produces=MediaType.APPLICATION_JSON_VALUE)

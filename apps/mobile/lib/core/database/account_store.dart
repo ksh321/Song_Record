@@ -1678,6 +1678,54 @@ final class AccountStore {
         );
       }
       final body = jsonDecode(request.body) as Map;
+      if (isPlaylistRemoval(request) &&
+          currentParent.read<int>('server_revision') <=
+              request.mutation.baseRevision) {
+        final removed = request.path.split('/').last;
+        final rows = await _database
+            .customSelect(
+              "SELECT entity_id,server_payload FROM metadata_copies WHERE user_id=? AND entity_type='PLAYLIST_ITEM' AND tombstone=0 AND server_payload IS NOT NULL",
+              variables: [Variable(userId)],
+            )
+            .get();
+        final originals = <String, Map<dynamic, dynamic>>{};
+        for (final row in rows) {
+          final value = jsonDecode(row.read<String>('server_payload')) as Map;
+          if (value['playlist_id'] == request.mutation.entityId &&
+              value['hidden_by_batch_id'] == null &&
+              value['status'] != 'DELETED') {
+            originals[row.read<String>('entity_id')] = value;
+          }
+        }
+        if (!originals.containsKey(removed)) {
+          throw const FormatException('Removal target changed');
+        }
+        originals.remove(removed);
+        final incoming = result['items'] as List;
+        if (incoming.length != originals.length ||
+            !incoming.every((raw) => originals.containsKey((raw as Map)['id']))) {
+          throw const FormatException('Removal changed other members');
+        }
+        for (final raw in incoming) {
+          final item = raw as Map, original = originals[item['id']]!;
+          for (final field in [
+            'playlist_id',
+            'song_id',
+            'entry_key',
+            'position',
+            'candidate_brand',
+            'candidate_number',
+            'candidate_snapshot',
+            'created_at',
+            'hidden_by_batch_id',
+          ]) {
+            if (canonicalJson({'value': original[field]}) !=
+                canonicalJson({'value': item[field]})) {
+              throw const FormatException('Removal changed another item');
+            }
+          }
+        }
+      }
       if (isPlaylistOrder(request) &&
           currentParent.read<int>('server_revision') <=
               request.mutation.baseRevision) {
@@ -1706,7 +1754,7 @@ final class AccountStore {
           }
         }
       }
-      final selected = isPlaylistOrder(request)
+      final selected = (isPlaylistOrder(request) || isPlaylistRemoval(request))
           ? <String, dynamic>{}
           : (result['items'] as List).singleWhere(
               (x) => (x as Map)['id'] == result['item_id'],

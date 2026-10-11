@@ -27,12 +27,39 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [item_ids, base_revision]
+              required: [ordered_item_ids, base_revision]
               properties:
-                item_ids: {type: array, uniqueItems: true, items: {type: string, format: uuid}}
+                ordered_item_ids: {type: array, uniqueItems: true, items: {type: string, format: uuid}}
                 base_revision: {type: integer, minimum: 1}
       responses:
         '200': {description: '확정된 전체 playlist·items — 부모 revision +1, 연속된 position'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '404': {$ref: '#/components/responses/Error404'}
+        '409': {$ref: '#/components/responses/Error409'}
+  /playlists/{id}/items/{itemId}:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    - {name: itemId, in: path, required: true, schema: {type: string, format: uuid}}
+    - $ref: '#/components/parameters/DeviceId'
+    - $ref: '#/components/parameters/IdempotencyKey'
+    delete:
+      operationId: removePlaylistItem
+      summary: 이 목록의 항목만 제거 — 내 곡·녹음 보존
+      x-implementation-status: implemented
+      description: 소유권·부모 revision·숨김 상태 검증 후 항목 삭제·삭제 UUID 원장·부모 revision 증가·전체 집계 변경 피드를 한 트랜잭션으로 저장한다. 다른 항목의 위치는 유지한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [base_revision]
+              properties:
+                base_revision: {type: integer, minimum: 1}
+      responses:
+        '200': {description: '제거한 항목을 제외한 전체 playlist·items'}
         '400': {$ref: '#/components/responses/Error400'}
         '401': {$ref: '#/components/responses/Error401'}
         '404': {$ref: '#/components/responses/Error404'}
