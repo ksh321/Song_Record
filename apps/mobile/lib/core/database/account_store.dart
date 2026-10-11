@@ -19,6 +19,7 @@ import '../sync/metadata_response.dart';
 import '../sync/mutation_request.dart';
 import '../sync/playlist_addition_receipt.dart';
 import '../sync/recording_save_contract.dart';
+import '../sync/trash_receipt.dart';
 import 'account_database.dart' show AccountDatabase;
 import 'account_paths.dart';
 import 'asset_deletion_store.dart';
@@ -819,14 +820,61 @@ final class AccountStore {
           ],
         )
         .getSingleOrNull();
+    final raw =
+        row?.readNullable<String>('local_payload') ??
+        row?.readNullable<String>('server_payload');
+    var projected = entity == LocalEntity.recording && raw != null
+        ? await _projectPendingSongTrash(
+            jsonDecode(raw) as Map<String, dynamic>,
+          )
+        : null;
+    if (projected != null) {
+      final server = row?.readNullable<String>('server_payload');
+      final authority = server == null ? null : jsonDecode(server);
+      if (authority is Map && authority['lifecycle_state'] == 'TRASHED') {
+        projected = {
+          ...projected,
+          'lifecycle_state': 'TRASHED',
+          'deleted_at': authority['deleted_at'],
+        };
+      }
+      if (canonicalJson(projected) ==
+          canonicalJson(jsonDecode(raw!) as Map<String, dynamic>)) {
+        projected = null;
+      }
+    }
     return row == null
         ? null
         : MetadataCopy(
             revision: row.read<int>('server_revision'),
             serverJson: row.readNullable<String>('server_payload'),
-            localJson: row.readNullable<String>('local_payload'),
+            localJson: projected == null
+                ? row.readNullable<String>('local_payload')
+                : canonicalJson(projected),
             tombstone: row.read<int>('tombstone') == 1,
           );
+  }
+
+  Future<Map<String, dynamic>> _projectPendingSongTrash(
+    Map<String, dynamic> recording,
+  ) async {
+    final song = recording['song_id'];
+    if (song is! String || recording['lifecycle_state'] != 'ACTIVE') {
+      return recording;
+    }
+    final rows = await _database
+        .customSelect(
+          "SELECT payload FROM local_mutations WHERE user_id=? AND entity_type='SONG' AND entity_id=? AND operation='TRASH' AND queue_state<>'ACKED' ORDER BY rowid DESC LIMIT 1",
+          variables: [Variable(userId), Variable(song)],
+        )
+        .get();
+    if (rows.isEmpty) return recording;
+    final command = jsonDecode(rows.single.read<String>('payload')) as Map;
+    if (command['mode'] == 'SONG_ONLY') return {...recording, 'song_id': null};
+    if (command['mode'] == 'SONG_AND_RECORDINGS') {
+      return {...recording, 'lifecycle_state': 'TRASHED', 'deleted_at': null};
+    }
+    return recording;
   }
 
   Future<void> saveEdit(
@@ -1652,6 +1700,53 @@ final class AccountStore {
     () => _database.transaction(() => _acknowledgeMutation(request, snapshot)),
   );
 
+  Future<bool> acknowledgeTrash(
+    MutationRequest request,
+    MutationResponse response,
+  ) => _run(
+    () => _database.transaction(() async {
+      final receipt = decodeTrashReceipt(request, response);
+      final isSong = request.mutation.entity == LocalEntity.song;
+      final primary = Map<String, Object?>.from(
+        receipt[isSong ? 'song' : 'recording'] as Map,
+      );
+      // Validate every owner before the first write; any failure rolls back the receipt.
+      _validatePayloadOwner(canonicalJson(primary));
+      final children = isSong
+          ? (receipt['recordings'] as List).cast<Map<String, dynamic>>()
+          : <Map<String, dynamic>>[];
+      for (final child in children) {
+        _validatePayloadOwner(canonicalJson(child));
+      }
+      if (!await _ownsAttempt(request)) return false;
+      if (!await _acknowledgeMutation(request, primary)) return false;
+      final business = SnapshotBusinessStore(
+        _database,
+        requireActive: requireActive,
+        clock: _manager._clock,
+      );
+      for (final child in children) {
+        final current = await _readMetadata(
+          LocalEntity.recording,
+          child['id'] as String,
+        );
+        if (current?.tombstone == true ||
+            (current?.revision ?? 0) >= (child['revision'] as int)) {
+          continue;
+        }
+        await business.writeCopy(
+          'RECORDING',
+          child['id'] as String,
+          child['revision'] as int,
+          canonicalJson(child),
+          false,
+        );
+      }
+      requireActive();
+      return true;
+    }),
+  );
+
   Future<bool> acknowledgePlaylistAddition(
     MutationRequest request,
     MutationResponse response,
@@ -1703,7 +1798,9 @@ final class AccountStore {
         originals.remove(removed);
         final incoming = result['items'] as List;
         if (incoming.length != originals.length ||
-            !incoming.every((raw) => originals.containsKey((raw as Map)['id']))) {
+            !incoming.every(
+              (raw) => originals.containsKey((raw as Map)['id']),
+            )) {
           throw const FormatException('Removal changed other members');
         }
         for (final raw in incoming) {
@@ -2496,7 +2593,7 @@ final class AccountStore {
   Future<List<Map<String, dynamic>>> _savedRecordings() async {
     final rows = await _database
         .customSelect(
-          "SELECT entity_id,COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='RECORDING' AND tombstone=0",
+          "SELECT entity_id,server_payload,COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='RECORDING' AND tombstone=0",
           variables: [Variable(userId)],
         )
         .get();
@@ -2505,7 +2602,14 @@ final class AccountStore {
       final raw = row.readNullable<String>('payload');
       if (raw == null) continue;
       _validatePayloadOwner(raw);
-      final value = jsonDecode(raw) as Map<String, dynamic>;
+      final authority = row.readNullable<String>('server_payload');
+      if (authority != null &&
+          (jsonDecode(authority) as Map)['lifecycle_state'] == 'TRASHED') {
+        continue;
+      }
+      final value = await _projectPendingSongTrash(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
       if (value['id'] == row.read<String>('entity_id') &&
           value['metadata_state'] == 'SAVED' &&
           value['lifecycle_state'] == 'ACTIVE') {

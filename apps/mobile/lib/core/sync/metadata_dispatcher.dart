@@ -72,6 +72,10 @@ final class MetadataDispatcher {
             }
             continue;
           }
+          if (request.mutation.operation == LocalOperation.trash) {
+            if (await store.acknowledgeTrash(request, response)) acknowledged++;
+            continue;
+          }
           final snapshot = decodeMetadataSnapshot(request, response);
           if (snapshot['id'] != request.mutation.entityId) {
             if (request.mutation.entity == LocalEntity.song &&

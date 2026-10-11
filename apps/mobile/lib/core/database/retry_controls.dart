@@ -367,6 +367,8 @@ final class RetryControls {
     };
     if (route == null ||
         !({LocalOperation.create, LocalOperation.patch}.contains(m.operation) ||
+            {LocalEntity.song, LocalEntity.recording}.contains(m.entity) &&
+                m.operation == LocalOperation.trash ||
             m.entity == LocalEntity.playlist &&
                 m.operation == LocalOperation.purge)) {
       return null;
@@ -378,7 +380,15 @@ final class RetryControls {
     final body = row.read<String>('body_json');
     final representative =
         !create && m.entity == LocalEntity.song && method == 'PUT';
-    if (representative) {
+    if (m.operation == LocalOperation.trash) {
+      final expected = MutationRequest.prepare(m);
+      if (expected == null ||
+          expected.method != method ||
+          expected.path != path ||
+          expected.body != body) {
+        return null;
+      }
+    } else if (representative) {
       final Object? original;
       try {
         original = jsonDecode(m.payload);
@@ -441,7 +451,10 @@ final class RetryControls {
     }
     if (decoded is! Map<String, dynamic> ||
         (create && decoded['id'] != m.entityId) ||
-        (!create && decoded['base_revision'] != m.baseRevision) ||
+        (!create &&
+            !(m.operation == LocalOperation.trash &&
+                m.entity == LocalEntity.song) &&
+            decoded['base_revision'] != m.baseRevision) ||
         (decoded.containsKey('user_id') &&
             decoded['user_id'] != database.userId)) {
       return null;

@@ -107,6 +107,7 @@ final class DependencyPlanner {
         !({
               LocalOperation.create,
               LocalOperation.patch,
+              LocalOperation.trash,
             }.contains(mutation.operation) ||
             mutation.entity == LocalEntity.playlist &&
                 mutation.operation == LocalOperation.purge)) {
@@ -144,6 +145,8 @@ final class DependencyPlanner {
         return const DispatchWait(DispatchWaitReason.invalidPayload);
       }
       if (mutation.operation != LocalOperation.create &&
+          !(mutation.operation == LocalOperation.trash &&
+              mutation.entity == LocalEntity.song) &&
           decoded['base_revision'] != mutation.baseRevision) {
         return const DispatchWait(DispatchWaitReason.invalidPayload);
       }

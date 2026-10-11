@@ -13,6 +13,7 @@ import 'conflict_resolution_plan.dart';
 import 'conflict_review.dart';
 import 'dependency_planner.dart';
 import 'metadata_dispatcher.dart';
+import 'mutation_request.dart';
 import 'mutation_transport.dart';
 
 /// Prepare once, retain the command, then save. A failed save is retried with
@@ -26,6 +27,47 @@ final class LocalRepository
   final String Function() _newId;
 
   String get userId => _store.userId;
+  Future<void> Function() prepareTrash({
+    required LocalEntity entity,
+    required Map<String, Object?> expected,
+    required int revision,
+    required Map<String, Object?> command,
+  }) {
+    if (!{LocalEntity.song, LocalEntity.recording}.contains(entity) ||
+        revision < 1 ||
+        expected['lifecycle_state'] != 'ACTIVE') {
+      throw ArgumentError('Only a received active resource can be trashed');
+    }
+    final baseline = canonicalJson(expected);
+    final edit = LocalEdit(
+      opId: _newId(),
+      entity: entity,
+      entityId: expected['id'] as String,
+      operation: LocalOperation.trash,
+      baseRevision: revision,
+      // A device timestamp must never start the server's retention period.
+      draft: {...expected, 'lifecycle_state': 'TRASHED', 'deleted_at': null},
+      changes: command,
+    );
+    if (MutationRequest.prepare(
+          QueuedMutation(
+            opId: edit.opId,
+            localOrder: 1,
+            entity: entity,
+            entityId: edit.entityId,
+            operation: edit.operation,
+            state: 'PENDING',
+            baseRevision: revision,
+            payload: edit.changesJson,
+            attemptCount: 0,
+          ),
+        ) ==
+        null) {
+      throw ArgumentError('Invalid trash confirmation');
+    }
+    return () => _store.saveEdit(edit, expectedEffectivePayload: baseline);
+  }
+
   Future<List<Map<String, dynamic>>> playlistItems(String id) =>
       _store.playlistItems(id);
 
