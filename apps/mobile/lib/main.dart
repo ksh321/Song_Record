@@ -176,6 +176,7 @@ Future<void> main() async {
       syncController: () => activeSync,
       localRepository: () =>
           activeStore == null ? null : LocalRepository(activeStore!),
+      accountStore: () => activeStore,
     ),
   );
 }

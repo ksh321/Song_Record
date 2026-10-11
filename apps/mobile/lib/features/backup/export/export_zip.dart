@@ -171,6 +171,7 @@ final class ExportZipWriter {
 }
 
 abstract interface class BackupDestination {
+  Future<void> cancel();
   Future<bool> save(
     ExportZip zip, {
     required String owner,
@@ -181,6 +182,10 @@ abstract interface class BackupDestination {
 
 final class AndroidBackupDestination implements BackupDestination {
   const AndroidBackupDestination();
+  @override
+  Future<void> cancel() =>
+      const MethodChannel('song_record/audio_export')
+          .invokeMethod<void>('cancelBackup');
   @override
   Future<bool> save(
     ExportZip zip, {

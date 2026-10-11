@@ -15,10 +15,12 @@ final class ExportJob {
     required this.id,
     required this.file,
     required this.requireCurrent,
+    this.fileStates = const [],
   });
   final String owner, id;
   final ExportFile file;
   final void Function() requireCurrent;
+  List<dynamic> fileStates;
   bool _saving = false;
 
   Future<void> _atomic(String name, List<int> bytes) async {
@@ -67,6 +69,20 @@ final class ExportJob {
             'zip_sha256': zip?.checksum,
             'zip_size': zip?.size,
             'externally_saved': externallySaved,
+            'file_states': fileStates
+                .map(
+                  (row) => {
+                    for (final key in [
+                      'recording_id',
+                      'local_state',
+                      'sha256',
+                      'size_bytes',
+                      'updated_at',
+                    ])
+                      if ((row as Map).containsKey(key)) key: row[key],
+                  },
+                )
+                .toList(),
           }),
         ),
       );
@@ -141,6 +157,21 @@ final class ExportJob {
       );
     }
     requireCurrent();
+    fileStates = (checkpoint['file_states'] as List? ?? const []).map((row) {
+      final map = Map<String, dynamic>.from(row as Map);
+      if (map.keys.any(
+        (key) => !{
+          'recording_id',
+          'local_state',
+          'sha256',
+          'size_bytes',
+          'updated_at',
+        }.contains(key),
+      )) {
+        throw const FormatException('Invalid private collection state');
+      }
+      return map;
+    }).toList();
     return (
       data: data,
       manifest: manifest,

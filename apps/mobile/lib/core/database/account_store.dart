@@ -3186,6 +3186,37 @@ final class AccountStore {
     return file;
   }
 
+  Future<String?> latestExportJob() async {
+    requireActive();
+    final directory = Directory('${_paths.directory.path}/exports');
+    if (await directory.resolveSymbolicLinks() != directory.path) {
+      throw StateError('Export storage was redirected');
+    }
+    String? latest;
+    DateTime? time;
+    var count = 0;
+    await for (final child in directory.list(followLinks: false)) {
+      requireActive();
+      if (++count > 1000) throw StateError('Too many retained export jobs');
+      if (child is! Directory) continue;
+      final id = child.uri.pathSegments.where((value) => value.isNotEmpty).last;
+      if (!RegExp(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+      ).hasMatch(id)) {
+        continue;
+      }
+      final checkpoint = await privateExportFile(id, 'checkpoint.json');
+      if (!await checkpoint.exists()) continue;
+      final modified = (await checkpoint.stat()).modified;
+      if (time == null || modified.isAfter(time)) {
+        latest = id;
+        time = modified;
+      }
+    }
+    requireActive();
+    return latest;
+  }
+
   Future<Map<String, Object?>> exportAudioState(String recordingId) => _run(
     () => _database.transaction(() async {
       final id = UuidValue(recordingId).value;

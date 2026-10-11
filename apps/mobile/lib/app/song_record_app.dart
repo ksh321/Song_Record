@@ -30,6 +30,10 @@ import 'package:song_record/features/sync/sync_controller.dart';
 import 'package:song_record/network/health_client.dart';
 import 'package:song_record/routing/app_routes.dart';
 
+import '../core/database/account_store.dart';
+import '../core/sync/snapshot_transport.dart';
+import '../features/backup/export/export_controller.dart';
+import '../features/backup/export/export_screen.dart';
 import '../features/playlists/playlist_library.dart';
 import '../features/playlists/playlist_library_screen.dart';
 import '../features/trash/trash_screens.dart';
@@ -43,6 +47,7 @@ class SongRecordApp extends StatelessWidget {
     this.authController,
     this.syncController,
     this.localRepository,
+    this.accountStore,
     this.recorderGateway = const MethodChannelRecorderGateway(),
     this.accent = AppAccent.initial,
     super.key,
@@ -53,6 +58,7 @@ class SongRecordApp extends StatelessWidget {
   final AuthController? authController;
   final SyncController? syncController;
   final LocalRepository? Function()? localRepository;
+  final AccountStore? Function()? accountStore;
   final HealthLoader? healthLoader;
   final RecorderGateway recorderGateway;
   final AppAccent accent;
@@ -324,6 +330,39 @@ class SongRecordApp extends StatelessWidget {
           ),
         ),
         AppRoutes.settings: (context) => SettingsScreen(
+          backupBuilder: (context) {
+            final store = accountStore?.call(), auth = authController;
+            if (store == null ||
+                auth?.phase != AuthPhase.ready ||
+                store.userId != auth?.session?.userId) {
+              return const Scaffold(body: Center(child: Text('로그인이 필요해요.')));
+            }
+            void guard() {
+              store.requireActive();
+              if (auth!.phase != AuthPhase.ready ||
+                  auth.session?.userId != store.userId ||
+                  accountStore?.call() != store) {
+                throw StateError('The backup account changed');
+              }
+            }
+
+            final localHttp =
+                kDebugMode && config.environment == AppEnvironment.dev;
+            return ExportScreen(
+              controller: ExportController.forStore(
+                store: store,
+                recorder: recorderGateway,
+                transport: HttpSnapshotTransport(
+                  config.apiBaseUrl,
+                  allowLocalHttp: localHttp,
+                ),
+                session: auth!.validSession,
+                base: config.apiBaseUrl,
+                requireCurrent: guard,
+                allowLocalHttp: localHttp,
+              ),
+            );
+          },
           trashBuilder: (context) {
             final actions = trashActions();
             return actions == null

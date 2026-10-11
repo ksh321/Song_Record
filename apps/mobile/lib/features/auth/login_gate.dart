@@ -4,6 +4,7 @@ import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 
+import '../../core/database/account_store.dart';
 import '../sync/sync_controller.dart';
 import 'auth_session.dart';
 import 'identity_link.dart';
@@ -14,12 +15,14 @@ class LoginGate extends StatefulWidget {
     required this.config,
     this.syncController,
     this.localRepository,
+    this.accountStore,
     super.key,
   });
   final AuthController controller;
   final AppConfig config;
   final SyncController? Function()? syncController;
   final LocalRepository? Function()? localRepository;
+  final AccountStore? Function()? accountStore;
   @override
   State<LoginGate> createState() => _LoginGateState();
 }
@@ -65,6 +68,7 @@ class _LoginGateState extends State<LoginGate> with WidgetsBindingObserver {
           authController: auth,
           syncController: widget.syncController?.call(),
           localRepository: widget.localRepository,
+          accountStore: widget.accountStore,
           identityLink:
               auth.api is IdentityLinkApi &&
                   auth.proofs is IdentityLinkProofSource

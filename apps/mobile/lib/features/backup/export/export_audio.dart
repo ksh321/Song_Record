@@ -29,6 +29,7 @@ final class ExportAudioCollector {
     required this.stage,
     this.download,
     this.owner,
+    this.staged,
     this.timeout = const Duration(seconds: 35),
   });
   factory ExportAudioCollector.forStore(
@@ -52,6 +53,17 @@ final class ExportAudioCollector {
     },
     stage: store.stageExportAudio,
     download: download,
+    staged: (job, id) async {
+      store.requireActive();
+      final file = await store.privateExportFile(job, 'audio/$id.m4a');
+      if (!await file.exists()) return null;
+      if (await file.length() > 6291456) {
+        throw const FormatException('Invalid staged audio');
+      }
+      final bytes = await file.readAsBytes();
+      store.requireActive();
+      return bytes;
+    },
   );
   final void Function() requireCurrent;
   final Future<Map<String, Object?>> Function(String) state;
@@ -60,6 +72,7 @@ final class ExportAudioCollector {
   final PreservationDownload? download;
   final Duration timeout;
   final String? owner;
+  final Future<Uint8List?> Function(String job, String recording)? staged;
   bool _cancelled = false, _busy = false;
   void cancel() => _cancelled = true;
   void _guard() {
@@ -71,11 +84,52 @@ final class ExportAudioCollector {
     ExportBaseline baseline,
     ExportData data, {
     void Function(int done, int total)? progress,
+    Future<void> Function(List<ExportAudioEntry>)? checkpoint,
+  }) => _collect(
+    baseline.id,
+    baseline.owner,
+    baseline.online,
+    baseline.includeTrash,
+    baseline.local['file_states'] as List? ?? const [],
+    data,
+    progress: progress,
+    checkpoint: checkpoint,
+  );
+
+  Future<List<ExportAudioEntry>> collectJob(
+    ExportData data,
+    ExportManifest manifest, {
+    required List<dynamic> fileStates,
+    List<ExportAudioEntry> previous = const [],
+    void Function(int done, int total)? progress,
+    Future<void> Function(List<ExportAudioEntry>)? checkpoint,
+  }) => _collect(
+    manifest.exportId,
+    manifest.sourceUserId,
+    manifest.online,
+    manifest.includeTrash,
+    fileStates,
+    data,
+    previous: previous,
+    progress: progress,
+    checkpoint: checkpoint,
+  );
+
+  Future<List<ExportAudioEntry>> _collect(
+    String job,
+    String sourceOwner,
+    bool online,
+    bool includeTrash,
+    List<dynamic> fileStates,
+    ExportData data, {
+    List<ExportAudioEntry> previous = const [],
+    void Function(int done, int total)? progress,
+    Future<void> Function(List<ExportAudioEntry>)? checkpoint,
   }) async {
     if (_busy) throw StateError('Export collection already running');
-    if (data.toJson()['export_id'] != baseline.id ||
-        data.toJson()['source_user_id'] != baseline.owner ||
-        owner != null && owner != baseline.owner) {
+    if (data.toJson()['export_id'] != job ||
+        data.toJson()['source_user_id'] != sourceOwner ||
+        owner != null && owner != sourceOwner) {
       throw const FormatException('Export collection baseline mismatch');
     }
     _busy = true;
@@ -89,7 +143,7 @@ final class ExportAudioCollector {
           row['recording_id'] as String: row as Map<String, dynamic>,
       };
       final initial = {
-        for (final row in baseline.local['file_states'] as List? ?? const [])
+        for (final row in fileStates)
           row['recording_id'] as String: row as Map<String, dynamic>,
       };
       final recordings = <Map<String, dynamic>>[];
@@ -140,8 +194,7 @@ final class ExportAudioCollector {
           sizeBytes: valid ? spec!['size_bytes'] as int : null,
           durationMs: valid ? spec!['duration_ms'] as int : null,
         );
-        if (recording['lifecycle_state'] == 'TRASHED' &&
-            !baseline.includeTrash) {
+        if (recording['lifecycle_state'] == 'TRASHED' && !includeTrash) {
           result.add(
             entry(ExportMissingReason.trashNotSelected, selected: false),
           );
@@ -154,8 +207,7 @@ final class ExportAudioCollector {
             _guard();
             if (recording['lifecycle_state'] == 'PURGE_PENDING' ||
                 current['deleted'] == true ||
-                current['lifecycle_state'] == 'TRASHED' &&
-                    !baseline.includeTrash ||
+                current['lifecycle_state'] == 'TRASHED' && !includeTrash ||
                 initial[id] != null &&
                     current['local_state'] == 'MISSING' &&
                     current['updated_at'] != initial[id]!['updated_at']) {
@@ -167,7 +219,16 @@ final class ExportAudioCollector {
           ExportMissingReason? reason;
           try {
             await guard();
-            bytes = await local(id).timeout(timeout);
+            final prior = previous.where(
+              (f) =>
+                  f.recordingId == id &&
+                  f.included &&
+                  f.sha256 == spec!['sha256'],
+            );
+            if (prior.isNotEmpty && staged != null) {
+              bytes = await staged!(job, id).timeout(timeout);
+            }
+            bytes ??= await local(id).timeout(timeout);
             _guard();
             if (bytes == null &&
                 {
@@ -179,13 +240,13 @@ final class ExportAudioCollector {
             if (bytes == null) {
               final asset = assets[id];
               if (asset?['cloud_state'] == 'STORED') {
-                if (!baseline.online) {
+                if (!online) {
                   reason = ExportMissingReason.offlineServerOnly;
                 } else if (download == null) {
                   reason = ExportMissingReason.downloadFailed;
                 } else {
                   final object = PreservationObject(
-                    owner: baseline.owner,
+                    owner: sourceOwner,
                     recording: id,
                     generation: asset!['generation'] as String,
                     checksum: spec!['sha256'] as String,
@@ -223,7 +284,7 @@ final class ExportAudioCollector {
                 await guard();
                 // Staging/disk failures are fatal, not a partially successful ZIP.
                 await stage(
-                  baseline.id,
+                  job,
                   id,
                   spec['sha256'] as String,
                   spec['size_bytes'] as int,
@@ -244,6 +305,8 @@ final class ExportAudioCollector {
           }
           result.add(entry(reason));
         }
+        _guard();
+        await checkpoint?.call(List.unmodifiable(result));
         _guard();
         progress?.call(result.length, recordings.length);
       }

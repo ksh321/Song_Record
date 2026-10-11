@@ -230,6 +230,20 @@ final class ExportManifest {
     'files': files.map((f) => f.toJson()).toList(growable: false),
   };
   String encode() => jsonEncode(toJson());
+  ExportManifest withFiles(List<ExportAudioEntry> entries) => ExportManifest(
+    exportId: exportId,
+    sourceUserId: sourceUserId,
+    createdAt: createdAt,
+    localCutoffAt: localCutoffAt,
+    online: online,
+    includeTrash: includeTrash,
+    snapshotCursor: snapshotCursor,
+    serverBaselineComplete: serverBaselineComplete,
+    serverConfirmedAt: serverConfirmedAt,
+    serverCapturedAt: serverCapturedAt,
+    metadataCount: metadataCount,
+    files: entries,
+  );
   factory ExportManifest.fromBaseline(
     ExportBaseline baseline, {
     required int metadataCount,
