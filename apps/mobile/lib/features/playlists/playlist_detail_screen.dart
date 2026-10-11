@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import '../../core/sync/local_repository.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/song_row.dart';
 import '../auth/auth_session.dart';
@@ -10,7 +11,6 @@ import '../charts/popular_chart.dart';
 import '../search/karaoke_search.dart';
 import '../search/search_intent.dart';
 import '../songs/my_song.dart';
-
 import 'playlist_discovery_screen.dart';
 import 'playlist_library.dart';
 import 'playlist_order_picker.dart';
@@ -144,8 +144,14 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         ScaffoldMessenger.of(context)
             .showSnackBar(const SnackBar(content: Text('목록 추가 요청 저장 완료')));
       }
-    } catch (_) {
-      if (mounted) setState(() => error = '추가 요청을 저장하지 못했어요. 최신 목록을 확인해 주세요.');
+    } catch (failure) {
+      if (mounted) {
+        setState(
+          () => error = failure is TjTrashReservation
+              ? failure.message
+              : '추가 요청을 저장하지 못했어요. 최신 목록을 확인해 주세요.',
+        );
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -244,8 +250,14 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       await library.addSelection(id, selected);
       await widget.afterSave?.call();
       await reload();
-    } catch (_) {
-      if (mounted) setState(() => error = '추가 요청을 저장하지 못했어요. 최신 목록을 확인해 주세요.');
+    } catch (failure) {
+      if (mounted) {
+        setState(
+          () => error = failure is TjTrashReservation
+              ? failure.message
+              : '추가 요청을 저장하지 못했어요. 최신 목록을 확인해 주세요.',
+        );
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }

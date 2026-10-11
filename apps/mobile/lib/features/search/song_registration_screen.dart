@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/domain/input_validation.dart';
 import '../../core/domain/song_types.dart';
+import '../../core/sync/local_repository.dart';
 import '../../core/widgets/version_picker.dart';
 import 'karaoke_search.dart';
 import 'search_intent.dart';
@@ -79,9 +80,13 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
       );
       await _savePrepared!();
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
+    } catch (failure) {
       if (mounted) {
-        setState(() => error = '저장하지 못했어요. 입력을 유지했습니다. 같은 내용으로 다시 저장해 주세요.');
+        setState(
+          () => error = failure is TjTrashReservation
+              ? failure.message
+              : '저장하지 못했어요. 입력을 유지했습니다. 같은 내용으로 다시 저장해 주세요.',
+        );
       }
     } finally {
       if (mounted) setState(() => busy = false);

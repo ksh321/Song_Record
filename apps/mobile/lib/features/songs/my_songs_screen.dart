@@ -7,6 +7,7 @@ import '../../core/widgets/content_state.dart';
 import '../../core/widgets/song_row.dart';
 import '../../core/widgets/sort_sheet.dart';
 import '../auth/auth_session.dart';
+import '../trash/trash_workflow.dart';
 import 'my_song.dart';
 import 'my_song_pages.dart';
 import 'song_detail_screen.dart';
@@ -25,6 +26,7 @@ class MySongsScreen extends StatefulWidget {
     this.prepareEdit,
     this.prepareRepresentative,
     this.watchUnlinked,
+    this.trash,
     super.key,
   });
   final UnlinkedWatch? watchUnlinked;
@@ -34,6 +36,7 @@ class MySongsScreen extends StatefulWidget {
   final SongDetailWatch Function(String songId)? watchDetail;
   final SongEditPreparer? prepareEdit;
   final RepresentativePreparer? prepareRepresentative;
+  final TrashActions? trash;
   @override
   State<MySongsScreen> createState() => _MySongsScreenState();
 }
@@ -155,6 +158,7 @@ class _MySongsScreenState extends State<MySongsScreen> {
               Navigator.of(context).push<void>(
                 MaterialPageRoute(
                   builder: (_) => SongDetailScreen(
+                    trash: widget.trash,
                     watch: widget.watchDetail!(song.view.id.value),
                     auth: widget.auth,
                     prepareEdit: widget.prepareEdit,

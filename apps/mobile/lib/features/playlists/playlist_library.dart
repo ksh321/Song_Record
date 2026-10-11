@@ -69,6 +69,7 @@ final class PlaylistLibrary {
     )) {
       throw StateError('이 목록의 이전 변경을 먼저 동기화해 주세요.');
     }
+    await repository.ensureTjAvailable(selection.candidate.number);
     final row = (await load()).singleWhere((p) => p['id'] == id);
     await addCandidate(row, selection.candidate.sourceToken)();
   }

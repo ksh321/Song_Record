@@ -105,6 +105,20 @@ void main() {
     );
   });
   tearDown(() => auth.dispose());
+  test('account epoch keeps token refresh but invalidates away-and-back account scope', () {
+    auth.phase = AuthPhase.ready;
+    auth.session = session();
+    auth.notifyListeners();
+    final start = auth.accountEpoch;
+    auth.session = session(access: 'refreshed');
+    auth.notifyListeners();
+    expect(auth.accountEpoch, start);
+    auth.session = session(user: 'account-b');
+    auth.notifyListeners();
+    auth.session = session();
+    auth.notifyListeners();
+    expect(auth.accountEpoch, greaterThan(start));
+  });
   test('저장된 세션이 없으면 로그인 화면', () async {
     await auth.restore();
     expect(auth.phase, AuthPhase.signedOut);

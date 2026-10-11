@@ -26,6 +26,17 @@ final class LocalRepository
   final AccountStore _store;
   final String Function() _newId;
 
+  Future<void> ensureTjAvailable(String number) async {
+    final state = await _store.trashReservation(number);
+    if (state != null) {
+      throw TjTrashReservation(
+        state == 'PURGE_PENDING'
+            ? '이 TJ 번호는 영구 삭제 처리 중이에요. 완료 동기화 후 다시 등록해 주세요.'
+            : '이 TJ 번호는 휴지통에서 예약 중이에요. 설정 → 휴지통에서 기존 곡을 복원해 주세요.',
+      );
+    }
+  }
+
   String get userId => _store.userId;
   Future<void> Function() prepareTrash({
     required LocalEntity entity,
@@ -334,4 +345,11 @@ final class LocalRepository
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
     return UuidValue.fromBytes(bytes).value;
   }
+}
+
+class TjTrashReservation implements Exception {
+  const TjTrashReservation(this.message);
+  final String message;
+  @override
+  String toString() => message;
 }

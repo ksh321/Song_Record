@@ -6,6 +6,7 @@ import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 
 import '../../core/files/recording_catalog.dart';
+import '../trash/trash_workflow.dart';
 import 'recorder_gateway.dart';
 import 'recorder_panel.dart';
 import 'recording_detail_screen.dart';
@@ -20,6 +21,7 @@ class RecordingWorkspace extends StatefulWidget {
     required this.isCurrent,
     this.wakeSync,
     this.discoveryBuilder,
+    this.trash,
     super.key,
   });
   final RecorderGateway gateway;
@@ -27,6 +29,7 @@ class RecordingWorkspace extends StatefulWidget {
   final bool Function(LocalRepository) isCurrent;
   final VoidCallback? wakeSync;
   final RecordingDiscoveryBuilder? discoveryBuilder;
+  final TrashActions? trash;
   @override
   State<RecordingWorkspace> createState() => _RecordingWorkspaceState();
 }
@@ -182,6 +185,7 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
                 context,
                 MaterialPageRoute(
                   builder: (_) => RecordingDetailScreen(
+                    trash: widget.trash,
                     id: row['id'] as String,
                     repository: repo,
                     isCurrent: widget.isCurrent,

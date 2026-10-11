@@ -6,6 +6,8 @@ import '../../core/database/local_models.dart';
 import '../../core/domain/song_types.dart';
 import '../../core/sync/local_repository.dart';
 import '../../core/theme/app_tokens.dart';
+import '../trash/trash_screens.dart';
+import '../trash/trash_workflow.dart';
 import 'recording_input_screen.dart';
 import 'recording_relink_screen.dart';
 
@@ -15,12 +17,14 @@ class RecordingDetailScreen extends StatefulWidget {
     required this.repository,
     required this.isCurrent,
     this.wakeSync,
+    this.trash,
     super.key,
   });
   final String id;
   final LocalRepository repository;
   final bool Function(LocalRepository) isCurrent;
   final VoidCallback? wakeSync;
+  final TrashActions? trash;
   @override
   State<RecordingDetailScreen> createState() => _RecordingDetailScreenState();
 }
@@ -99,6 +103,21 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                 },
                 child: const Text('곡 연결 변경'),
               ),
+              if (widget.trash != null)
+                TextButton(
+                  onPressed: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => DeleteScreen(
+                        actions: widget.trash!,
+                        id: widget.id,
+                        title: row['title_snapshot'] as String,
+                        recording: true,
+                      ),
+                    ),
+                  ),
+                  child: const Text('녹음 삭제'),
+                ),
               const Text('녹음 당시 메모'),
               Text(row['note'] as String? ?? ''),
               FilledButton(

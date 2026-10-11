@@ -11,6 +11,8 @@ import '../../core/widgets/recording_roles_card.dart';
 import '../../core/widgets/recording_row.dart';
 import '../../core/widgets/selection_sheet.dart';
 import '../auth/auth_session.dart';
+import '../trash/trash_screens.dart';
+import '../trash/trash_workflow.dart';
 import 'my_song_detail.dart';
 import 'song_action_entry.dart';
 import 'song_edit.dart';
@@ -26,6 +28,7 @@ class SongDetailScreen extends StatefulWidget {
     this.recordingId,
     this.prepareEdit,
     this.prepareRepresentative,
+    this.trash,
     super.key,
   });
   final SongDetailWatch watch;
@@ -33,6 +36,7 @@ class SongDetailScreen extends StatefulWidget {
   final String? recordingId;
   final SongEditPreparer? prepareEdit;
   final RepresentativePreparer? prepareRepresentative;
+  final TrashActions? trash;
   @override
   State<SongDetailScreen> createState() => _SongDetailScreenState();
 }
@@ -306,11 +310,18 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
         TextButton(
           onPressed: () => Navigator.of(context).push<void>(
             MaterialPageRoute(
-              builder: (_) => SongActionEntry(
-                action: SongAction.delete,
-                detail: detail,
-                auth: widget.auth,
-              ),
+              builder: (_) => widget.trash == null
+                  ? SongActionEntry(
+                      action: SongAction.delete,
+                      detail: detail,
+                      auth: widget.auth,
+                    )
+                  : DeleteScreen(
+                      actions: widget.trash!,
+                      id: detail.song!.view.id.value,
+                      title: detail.song!.view.title,
+                      auth: widget.auth,
+                    ),
             ),
           ),
           child: const Text('곡 삭제'),

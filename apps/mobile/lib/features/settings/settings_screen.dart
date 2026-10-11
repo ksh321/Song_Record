@@ -16,9 +16,11 @@ class SettingsScreen extends StatelessWidget {
     this.identityLink,
     this.authController,
     this.syncController,
+    this.trashBuilder,
     super.key,
   });
 
+  final WidgetBuilder? trashBuilder;
   final bool showDevelopmentTools;
   final IdentityLinkFlow? identityLink;
   final AuthController? authController;
@@ -42,6 +44,17 @@ class SettingsScreen extends StatelessWidget {
           children: [
             Text('나에게 맞는 노래 기록', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: AppSpacing.md),
+            if (trashBuilder != null)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.delete_outline),
+                  title: const Text('휴지통'),
+                  onTap: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(builder: trashBuilder!),
+                  ),
+                ),
+              ),
             if (syncController != null)
               Card(
                 child: ListTile(

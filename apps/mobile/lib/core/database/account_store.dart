@@ -302,6 +302,31 @@ final class AccountStore {
   }
 
   /// Serialized current-account reads, including unsent local edits. Never network.
+  Future<String?> trashReservation(String number) => _run(() async {
+    if (!RegExp(r'^\d{5}$').hasMatch(number)) {
+      throw ArgumentError('Invalid TJ number');
+    }
+    final rows = await _database
+        .customSelect(
+          "SELECT server_payload,local_payload FROM metadata_copies WHERE user_id=? AND entity_type='SONG' AND tombstone=0",
+          variables: [Variable(userId)],
+        )
+        .get();
+    for (final row in rows) {
+      for (final key in ['server_payload', 'local_payload']) {
+        final raw = row.readNullable<String>(key);
+        if (raw == null) continue;
+        final value = jsonDecode(raw) as Map;
+        if (value['tj_number'] == number &&
+            value['source_type'] == 'TJ' &&
+            {'TRASHED', 'PURGE_PENDING'}.contains(value['lifecycle_state'])) {
+          return value['lifecycle_state'] as String;
+        }
+      }
+    }
+    return null;
+  });
+
   Future<List<Map<String, dynamic>>> readActiveSongs() => _run(() async {
     final rows = await _database
         .customSelect(

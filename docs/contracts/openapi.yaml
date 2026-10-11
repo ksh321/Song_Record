@@ -91,6 +91,7 @@ paths:
                             properties:
                               entity_type: {type: string, enum: [SONG, RECORDING, PLAYLIST_ITEM]}
                               id: {$ref: '#/components/schemas/Uuid'}
+                              lifecycle_state: {type: string, enum: [ACTIVE, TRASHED, PURGE_PENDING, PURGED], description: SONG/RECORDING의 현재 서버 상태. 선택·대기 표시에 사용하며 이전 삭제 묶음/만료는 변경하지 않는다.}
                   next_cursor: {type: [string, 'null'], format: uuid}
         '400': {$ref: '#/components/responses/Error400'}
         '401': {$ref: '#/components/responses/Error401'}

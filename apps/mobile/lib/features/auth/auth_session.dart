@@ -92,6 +92,19 @@ class AuthController extends ChangeNotifier {
   bool busy = false;
   Future<AuthSession>? _refreshing;
 
+  int _accountEpoch = 0;
+  String? _accountTag;
+  int get accountEpoch => _accountEpoch;
+  @override
+  void notifyListeners() {
+    final tag = '$phase:${session?.userId}:${session?.deviceId}';
+    if (tag != _accountTag) {
+      _accountTag = tag;
+      _accountEpoch++;
+    }
+    super.notifyListeners();
+  }
+
   Future<void> restore() async {
     if (busy) {
       return;

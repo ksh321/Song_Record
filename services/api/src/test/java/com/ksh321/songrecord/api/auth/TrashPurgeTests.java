@@ -19,6 +19,12 @@ class TrashPurgeTests {
  @Test void songOnlyPurgeNeverTouchesRetainedRecordingOrFile()throws Exception{
   var f=r.f;String batch=r.batch("SONG_ONLY");assertThat(purge(batch,UUID.randomUUID().toString(),"{\"base_revision\":1}").getStatus()).isEqualTo(202);worker.runOnce();assertThat(f.f.jdbc.queryForObject("SELECT lifecycle_state FROM song",String.class)).isEqualTo("PURGED");assertThat(f.f.jdbc.queryForObject("SELECT lifecycle_state FROM recording",String.class)).isEqualTo("ACTIVE");assertThat(f.f.jdbc.queryForObject("SELECT cloud_state FROM recording_asset",String.class)).isEqualTo("STORED");assertThat(exists).isTrue();assertThat(f.f.jdbc.queryForObject("SELECT used_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(f.owner()))).isEqualTo(1234);
  }
+ @Test void listingExposesCurrentOwnedPurgeStateForRemainingSelection()throws Exception{
+  var f=r.f;String batch=r.batch("SONG_AND_RECORDINGS");
+  assertThat(purge(batch,UUID.randomUUID().toString(),"{\"base_revision\":1,\"item_ids\":[\""+f.s.id+"\"]}").getStatus()).isEqualTo(202);
+  String json=f.s.mvc.perform(get("/v1/trash").header("Authorization","Bearer "+f.f.tokens.accessToken()).header("X-Device-Id",f.f.registration.deviceId())).andReturn().getResponse().getContentAsString();
+  assertThat(json).contains("PURGE_PENDING").contains("TRASHED").doesNotContain("final_key");
+ }
  @Test void foreignSelectionAndStaleRevisionCannotFenceSubjects()throws Exception{
   var f=r.f;String batch=r.batch("SONG_AND_RECORDINGS");assertThat(purge(batch,UUID.randomUUID().toString(),"{\"base_revision\":1,\"item_ids\":[\""+UUID.randomUUID()+"\"]}").getStatus()).isEqualTo(400);assertThat(purge(batch,UUID.randomUUID().toString(),"{\"base_revision\":99}").getStatus()).isEqualTo(409);assertThat(f.f.jdbc.queryForObject("SELECT lifecycle_state FROM recording",String.class)).isEqualTo("TRASHED");
  }

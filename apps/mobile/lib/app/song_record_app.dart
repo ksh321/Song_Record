@@ -32,6 +32,8 @@ import 'package:song_record/routing/app_routes.dart';
 
 import '../features/playlists/playlist_library.dart';
 import '../features/playlists/playlist_library_screen.dart';
+import '../features/trash/trash_screens.dart';
+import '../features/trash/trash_workflow.dart';
 
 class SongRecordApp extends StatelessWidget {
   const SongRecordApp({
@@ -73,6 +75,9 @@ class SongRecordApp extends StatelessWidget {
             }
             final command = draft.prepare(repository);
             return () async {
+              if (draft.candidate != null) {
+                await repository.ensureTjAvailable(draft.candidate!.number);
+              }
               await repository.save(command);
               final sync = syncController;
               if (sync != null) unawaited(sync.wake());
@@ -133,6 +138,44 @@ class SongRecordApp extends StatelessWidget {
       return chart;
     }
 
+    TrashActions? trashActions() {
+      final auth = authController, repository = localRepository?.call();
+      if (auth == null ||
+          auth.phase != AuthPhase.ready ||
+          repository == null ||
+          repository.userId != auth.session?.userId) {
+        return null;
+      }
+      final owner = repository.userId,
+          device = auth.session!.deviceId,
+          epoch = auth.accountEpoch;
+      void current() {
+        if (auth.accountEpoch != epoch ||
+            auth.phase != AuthPhase.ready ||
+            auth.session?.userId != owner ||
+            auth.session?.deviceId != device) {
+          throw const TrashFailure('계정이 변경됐어요. 다시 열어 주세요.');
+        }
+      }
+
+      return TrashWorkflow(
+        repository: repository,
+        api: HttpTrashApi(
+          config.apiBaseUrl,
+          auth.validSession,
+          current,
+          allowLocalHttp:
+              kDebugMode && config.environment == AppEnvironment.dev,
+        ),
+        journal: SecureTrashJournal(config.environment.name, owner),
+        requireCurrent: current,
+        wakeSync: () {
+          final sync = syncController;
+          if (sync != null) unawaited(sync.wake());
+        },
+      );
+    }
+
     return MaterialApp(
       title: '노래기록',
       debugShowCheckedModeBanner: config.environment != AppEnvironment.prod,
@@ -169,6 +212,7 @@ class SongRecordApp extends StatelessWidget {
           recordingBuilder: localRepository == null
               ? null
               : (context) => RecordingWorkspace(
+                  trash: trashActions(),
                   gateway: recorderGateway,
                   repository: localRepository!,
                   discoveryBuilder: (context, destination, prepare) => Scaffold(
@@ -204,6 +248,7 @@ class SongRecordApp extends StatelessWidget {
                   },
                 ),
           songsBuilder: (context, findSong) => MySongsScreen(
+            trash: trashActions(),
             auth: authController,
             watchUnlinked: () {
               final auth = authController, repository = localRepository?.call();
@@ -279,6 +324,12 @@ class SongRecordApp extends StatelessWidget {
           ),
         ),
         AppRoutes.settings: (context) => SettingsScreen(
+          trashBuilder: (context) {
+            final actions = trashActions();
+            return actions == null
+                ? const Scaffold(body: Center(child: Text('로그인이 필요해요.')))
+                : TrashScreen(actions: actions, auth: authController);
+          },
           showDevelopmentTools: config.environment == AppEnvironment.dev,
           identityLink: identityLink,
           authController: authController,

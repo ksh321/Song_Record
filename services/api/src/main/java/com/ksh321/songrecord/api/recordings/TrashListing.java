@@ -29,7 +29,16 @@ public final class TrashListing {
             var rows=db.queryForList("SELECT b.id,b.mode,b.deleted_at,b.purge_after,COALESCE(w.revision,1) AS revision FROM deletion_batch b LEFT JOIN deletion_batch_work w ON w.user_id=b.user_id AND w.batch_id=b.id WHERE b.user_id=?"+pending+condition+" ORDER BY b.deleted_at DESC,b.id DESC LIMIT ?",arguments.toArray());
             boolean more=rows.size()>limit;var result=new ArrayList<Map<String,Object>>();
             for(var row:rows.subList(0,Math.min(limit,rows.size()))){UUID batch=uuid((byte[])row.get("id"));var value=new LinkedHashMap<String,Object>();value.put("batch_id",batch.toString());value.put("mode",row.get("mode"));value.put("revision",row.get("revision"));for(String key:List.of("deleted_at","purge_after"))value.put(key,TrashRestoration.time(row.get(key)).toInstant(ZoneOffset.UTC).toString());
-                var items=new ArrayList<Map<String,Object>>();for(var item:db.queryForList("SELECT entity_type,entity_id FROM deletion_item WHERE user_id=? AND batch_id=? ORDER BY entity_type,entity_id",bytes(owner),bytes(batch)))items.add(Map.of("entity_type",item.get("entity_type"),"id",uuid((byte[])item.get("entity_id")).toString()));value.put("items",items);result.add(value);
+                var items=new ArrayList<Map<String,Object>>();for(var item:db.queryForList("SELECT entity_type,entity_id FROM deletion_item WHERE user_id=? AND batch_id=? ORDER BY entity_type,entity_id",bytes(owner),bytes(batch))){
+                    var member=new LinkedHashMap<String,Object>();member.put("entity_type",item.get("entity_type"));member.put("id",uuid((byte[])item.get("entity_id")).toString());
+                    String type=(String)item.get("entity_type");
+                    if(List.of("SONG","RECORDING").contains(type)){
+                        String table=type.equals("SONG")?"song":"recording";
+                        var states=db.queryForList("SELECT lifecycle_state FROM "+table+" WHERE user_id=? AND id=?",bytes(owner),item.get("entity_id"));
+                        if(!states.isEmpty())member.put("lifecycle_state",states.getFirst().get("lifecycle_state"));
+                    }
+                    items.add(member);
+                }value.put("items",items);result.add(value);
             }
             var response=new LinkedHashMap<String,Object>();response.put("items",result);response.put("next_cursor",more?result.getLast().get("batch_id"):null);return response;
         });
