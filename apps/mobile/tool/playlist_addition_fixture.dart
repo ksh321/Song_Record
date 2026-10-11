@@ -130,7 +130,7 @@ class PlaylistAdditionFixture implements MutationTransport {
       }
       return prior.$2;
     }
-    final body = jsonDecode(request.body) as Map;
+    final body = jsonDecode(request.body) as Map<String, dynamic>;
     late MutationResponse response;
     if (request.mutation.operation == LocalOperation.create) {
       response = request.mutation.entity == LocalEntity.song
@@ -143,6 +143,16 @@ class PlaylistAdditionFixture implements MutationTransport {
               }),
             )
           : MutationResponse(201, jsonEncode(header));
+    } else if (request.mutation.entity == LocalEntity.song &&
+        request.method == 'PATCH') {
+      final id = request.mutation.entityId;
+      final song = songs[id]!;
+      if (body['base_revision'] != song['revision']) {
+        throw StateError('Fixture song revision mismatch');
+      }
+      songs[id] = {...song, ...body}..remove('base_revision');
+      songs[id]!['revision'] = (song['revision'] as int) + 1;
+      response = MutationResponse(200, jsonEncode(songs[id]));
     } else if (request.path == '/v1/playlists/$playlistId' &&
         request.method == 'PATCH') {
       if (body['base_revision'] != header['revision']) {
