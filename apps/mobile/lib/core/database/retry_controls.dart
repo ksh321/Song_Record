@@ -407,6 +407,16 @@ final class RetryControls {
           return null;
         }
       }
+    } else if (!create &&
+        m.entity == LocalEntity.playlist &&
+        method == 'POST') {
+      final expected = MutationRequest.prepare(m);
+      if (expected == null ||
+          expected.path != path ||
+          expected.method != method ||
+          expected.body != body) {
+        return null;
+      }
     } else if (method !=
             (create
                 ? 'POST'

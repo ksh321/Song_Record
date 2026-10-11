@@ -5,6 +5,7 @@ import '../domain/identifiers.dart';
 import '../domain/input_validation.dart';
 import 'change_payload_validation.dart';
 import 'mutation_request.dart';
+import 'playlist_addition_receipt.dart';
 import 'recording_change_projection.dart';
 import 'recording_save_contract.dart';
 import 'wire_json.dart';
@@ -16,6 +17,11 @@ Map<String, Object?> decodeMetadataSnapshot(
   bool conflict = false,
 }) {
   final m = request.mutation;
+  if (!conflict && isPlaylistAddition(request)) {
+    return Map<String, Object?>.from(
+      decodePlaylistAddition(request, response)['playlist'] as Map,
+    );
+  }
   final decoded = decodeWireJson(response.body);
   if (decoded is! Map<String, dynamic>) {
     throw const FormatException('Expected object');

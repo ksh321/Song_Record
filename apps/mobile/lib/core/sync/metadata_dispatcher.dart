@@ -6,6 +6,7 @@ import '../database/local_models.dart';
 import 'metadata_response.dart';
 import 'mutation_request.dart';
 import 'mutation_transport.dart';
+import 'playlist_addition_receipt.dart';
 import 'wire_json.dart';
 
 /// One bounded pass, including atomic canonical mapping; no automatic rebasing.
@@ -65,6 +66,12 @@ final class MetadataDispatcher {
         }
         store.requireActive();
         if (response.status == 200 || response.status == 201) {
+          if (isPlaylistAddition(request)) {
+            if (await store.acknowledgePlaylistAddition(request, response)) {
+              acknowledged++;
+            }
+            continue;
+          }
           final snapshot = decodeMetadataSnapshot(request, response);
           if (snapshot['id'] != request.mutation.entityId) {
             if (request.mutation.entity == LocalEntity.song &&

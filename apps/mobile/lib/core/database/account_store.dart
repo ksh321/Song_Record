@@ -17,6 +17,7 @@ import '../sync/conflict_review.dart';
 import '../sync/dependency_planner.dart';
 import '../sync/metadata_response.dart';
 import '../sync/mutation_request.dart';
+import '../sync/playlist_addition_receipt.dart';
 import '../sync/recording_save_contract.dart';
 import 'account_database.dart' show AccountDatabase;
 import 'account_paths.dart';
@@ -218,6 +219,47 @@ final class AccountStore {
     result.sort((a, b) => (a['id'] as String).compareTo(b['id'] as String));
     return result;
   });
+
+  Future<List<Map<String, dynamic>>> playlistItems(String playlistId) =>
+      _run(() async {
+        UuidValue(playlistId);
+        final parent = await _database
+            .customSelect(
+              "SELECT tombstone,COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='PLAYLIST' AND entity_id=?",
+              variables: [Variable(userId), Variable(playlistId)],
+            )
+            .getSingleOrNull();
+        if (parent == null ||
+            parent.read<int>('tombstone') == 1 ||
+            parent.readNullable<String>('payload') == null) {
+          return <Map<String, dynamic>>[];
+        }
+        final parentValue = jsonDecode(parent.read<String>('payload')) as Map;
+        if (parentValue['deleted_at'] != null) return <Map<String, dynamic>>[];
+        final rows = await _database
+            .customSelect(
+              "SELECT COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='PLAYLIST_ITEM' AND tombstone=0",
+              variables: [Variable(userId)],
+            )
+            .get();
+        final result = <Map<String, dynamic>>[];
+        for (final row in rows) {
+          final raw = row.readNullable<String>('payload');
+          if (raw == null) continue;
+          _validatePayloadOwner(raw);
+          final value = jsonDecode(raw) as Map<String, dynamic>;
+          if (value['playlist_id'] == playlistId &&
+              value['hidden_by_batch_id'] == null &&
+              value['playlist_deleted_at'] == null &&
+              value['status'] != 'DELETED') {
+            result.add(value);
+          }
+        }
+        result.sort(
+          (a, b) => (a['position'] as int).compareTo(b['position'] as int),
+        );
+        return result;
+      });
 
   /// Only active saved recordings with no song; no file or queue writes.
   Future<List<Map<String, dynamic>>> readUnlinkedRecordings() => _run(() async {
@@ -1607,48 +1649,120 @@ final class AccountStore {
     MutationRequest request,
     Map<String, Object?> snapshot,
   ) => _run(
+    () => _database.transaction(() => _acknowledgeMutation(request, snapshot)),
+  );
+
+  Future<bool> acknowledgePlaylistAddition(
+    MutationRequest request,
+    MutationResponse response,
+  ) => _run(
     () => _database.transaction(() async {
-      final m = request.mutation;
-      if (snapshot['id'] != m.entityId ||
-          snapshot['revision'] is! int ||
-          (snapshot['revision'] as int) <= m.baseRevision) {
-        throw ArgumentError(
-          'Response identity/revision is not an acknowledgement',
-        );
-      }
-      _validatePayloadOwner(canonicalJson(snapshot));
+      final result = decodePlaylistAddition(request, response);
       if (!await _ownsAttempt(request)) return false;
-      final current = await _database
+      final parent = Map<String, Object?>.from(result['playlist'] as Map);
+      final currentParent = await _database
           .customSelect(
-            'SELECT server_revision,tombstone FROM metadata_copies WHERE entity_type=? AND entity_id=?',
-            variables: [Variable(m.entity.code), Variable(m.entityId)],
+            "SELECT server_revision,tombstone FROM metadata_copies WHERE user_id=? AND entity_type='PLAYLIST' AND entity_id=?",
+            variables: [Variable(userId), Variable(request.mutation.entityId)],
           )
           .getSingle();
-      // A replay receipt acknowledges this operation even when a later pull
-      // has already advanced/deleted the entity. Never rewind that newer copy.
-      final preserveCurrent =
-          current.read<int>('tombstone') == 1 ||
-          current.read<int>('server_revision') > (snapshot['revision'] as int);
-      final eligibility = await readMappingEligibility(_database);
-      final resolved = {
-        for (final op in eligibility.superseded)
-          if (!eligibility.blocked.contains(op)) op,
-      };
-      final later = await _database
+      // A delayed receipt acknowledges its immutable operation without restoring
+      // items from before a newer pull or permanent parent deletion.
+      if (currentParent.read<int>('tombstone') == 1 ||
+          currentParent.read<int>('server_revision') >
+              (parent['revision'] as int)) {
+        return _acknowledgeMutation(
+          request,
+          parent,
+          allowSameRevision: result['created'] == false,
+        );
+      }
+      final body = jsonDecode(request.body) as Map;
+      final song = await _database
           .customSelect(
-            "SELECT op_id FROM local_mutations WHERE entity_type=? AND entity_id=? AND op_id<>? AND queue_state<>'ACKED'",
-            variables: [
-              Variable(m.entity.code),
-              Variable(m.entityId),
-              Variable(m.opId),
-            ],
+            "SELECT server_payload FROM metadata_copies WHERE user_id=? AND entity_type='SONG' AND entity_id=? AND tombstone=0",
+            variables: [Variable(userId), Variable(body['song_id'] as String)],
           )
-          .get();
-      final payload = canonicalJson(snapshot);
-      // Accept the receipt without overwriting a mapping-held local draft.
-      if (!preserveCurrent) {
-        await _database.customStatement(
-          '''
+          .getSingle();
+      final target = jsonDecode(song.read<String>('server_payload')) as Map;
+      final key = target['source_type'] == 'TJ'
+          ? 'tj:${target['tj_number']}'
+          : 'manual:${body['song_id']}';
+      final selected = (result['items'] as List).singleWhere(
+        (x) => (x as Map)['id'] == result['item_id'],
+      ) as Map;
+      if (selected['entry_key'] != key) {
+        throw const FormatException('Addition returned another song');
+      }
+      final business = SnapshotBusinessStore(
+        _database,
+        requireActive: requireActive,
+        clock: _manager._clock,
+      );
+      await PlaylistChangeStore(
+        _database,
+        requireActive,
+        business.writeCopy,
+      ).applyReceipt(
+        {'playlist': result['playlist'], 'items': result['items']},
+        request.mutation.entityId,
+        parent['revision'] as int,
+      );
+      return _acknowledgeMutation(
+        request,
+        parent,
+        allowSameRevision: result['created'] == false,
+      );
+    }),
+  );
+
+  Future<bool> _acknowledgeMutation(
+    MutationRequest request,
+    Map<String, Object?> snapshot, {
+    bool allowSameRevision = false,
+  }) async {
+    final m = request.mutation;
+    if (snapshot['id'] != m.entityId ||
+        snapshot['revision'] is! int ||
+        ((snapshot['revision'] as int) < m.baseRevision ||
+            (snapshot['revision'] == m.baseRevision && !allowSameRevision))) {
+      throw ArgumentError(
+        'Response identity/revision is not an acknowledgement',
+      );
+    }
+    _validatePayloadOwner(canonicalJson(snapshot));
+    if (!await _ownsAttempt(request)) return false;
+    final current = await _database
+        .customSelect(
+          'SELECT server_revision,tombstone FROM metadata_copies WHERE entity_type=? AND entity_id=?',
+          variables: [Variable(m.entity.code), Variable(m.entityId)],
+        )
+        .getSingle();
+    // A replay receipt acknowledges this operation even when a later pull
+    // has already advanced/deleted the entity. Never rewind that newer copy.
+    final preserveCurrent =
+        current.read<int>('tombstone') == 1 ||
+        current.read<int>('server_revision') > (snapshot['revision'] as int);
+    final eligibility = await readMappingEligibility(_database);
+    final resolved = {
+      for (final op in eligibility.superseded)
+        if (!eligibility.blocked.contains(op)) op,
+    };
+    final later = await _database
+        .customSelect(
+          "SELECT op_id FROM local_mutations WHERE entity_type=? AND entity_id=? AND op_id<>? AND queue_state<>'ACKED'",
+          variables: [
+            Variable(m.entity.code),
+            Variable(m.entityId),
+            Variable(m.opId),
+          ],
+        )
+        .get();
+    final payload = canonicalJson(snapshot);
+    // Accept the receipt without overwriting a mapping-held local draft.
+    if (!preserveCurrent) {
+      await _database.customStatement(
+        '''
       UPDATE metadata_copies
       SET server_revision=?,server_payload=?,
           local_payload=CASE
@@ -1661,60 +1775,57 @@ final class AccountStore {
           updated_at=?
       WHERE entity_type=? AND entity_id=?
     ''',
-          [
-            snapshot['revision'],
-            payload,
-            (later.any(
-                      (row) => !resolved.contains(row.read<String>('op_id')),
-                    ) ||
-                    await canonicalKeepsDraft(_database, m.opId))
-                ? 1
-                : 0,
-            m.opId,
-            payload,
-            DateTime.now().toUtc().millisecondsSinceEpoch,
-            m.entity.code,
-            m.entityId,
-          ],
-        );
-      }
-      await _database.customStatement(
-        "UPDATE local_mutations SET queue_state='ACKED',server_response=?,updated_at=? WHERE op_id=? AND queue_state='SENDING' AND attempt_count=?",
         [
+          snapshot['revision'],
+          payload,
+          (later.any((row) => !resolved.contains(row.read<String>('op_id'))) ||
+                  await canonicalKeepsDraft(_database, m.opId))
+              ? 1
+              : 0,
+          m.opId,
           payload,
           DateTime.now().toUtc().millisecondsSinceEpoch,
-          m.opId,
-          request.attempt,
+          m.entity.code,
+          m.entityId,
         ],
       );
-      if (m.entity == LocalEntity.playlist &&
-          m.operation == LocalOperation.purge &&
-          !preserveCurrent) {
-        await _database.customStatement(
-          "UPDATE metadata_copies SET tombstone=1 WHERE entity_type='PLAYLIST' AND entity_id=?",
-          [m.entityId],
-        );
-        final business = SnapshotBusinessStore(
-          _database,
-          requireActive: requireActive,
-          clock: _manager._clock,
-        );
-        await PlaylistChangeStore(
-          _database,
-          requireActive,
-          business.writeCopy,
-        ).applyDeletionReceipt(Map<String, dynamic>.from(snapshot));
-      }
-      await _retry.finish(m.opId);
-      await finishCanonicalChoices(
-        _database,
-        await readMappingEligibility(_database),
-        _retry.nowMs,
+    }
+    await _database.customStatement(
+      "UPDATE local_mutations SET queue_state='ACKED',server_response=?,updated_at=? WHERE op_id=? AND queue_state='SENDING' AND attempt_count=?",
+      [
+        payload,
+        DateTime.now().toUtc().millisecondsSinceEpoch,
+        m.opId,
+        request.attempt,
+      ],
+    );
+    if (m.entity == LocalEntity.playlist &&
+        m.operation == LocalOperation.purge &&
+        !preserveCurrent) {
+      await _database.customStatement(
+        "UPDATE metadata_copies SET tombstone=1 WHERE entity_type='PLAYLIST' AND entity_id=?",
+        [m.entityId],
       );
-      requireActive();
-      return true;
-    }),
-  );
+      final business = SnapshotBusinessStore(
+        _database,
+        requireActive: requireActive,
+        clock: _manager._clock,
+      );
+      await PlaylistChangeStore(
+        _database,
+        requireActive,
+        business.writeCopy,
+      ).applyDeletionReceipt(Map<String, dynamic>.from(snapshot));
+    }
+    await _retry.finish(m.opId);
+    await finishCanonicalChoices(
+      _database,
+      await readMappingEligibility(_database),
+      _retry.nowMs,
+    );
+    requireActive();
+    return true;
+  }
 
   Future<bool> deferMutation(
     MutationRequest request,

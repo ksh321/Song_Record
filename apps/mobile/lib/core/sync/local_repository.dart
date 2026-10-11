@@ -26,6 +26,8 @@ final class LocalRepository
   final String Function() _newId;
 
   String get userId => _store.userId;
+  Future<List<Map<String, dynamic>>> playlistItems(String id) =>
+      _store.playlistItems(id);
 
   Future<void> importCompletedCapture({
     required String accountScope,

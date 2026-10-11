@@ -220,6 +220,10 @@ final class DependencyPlanner {
       case LocalEntity.playlistItem:
         add('playlist_id', LocalEntity.playlist, mandatory: true);
         add('song_id', LocalEntity.song, mandatory: true);
+      case LocalEntity.playlist:
+        if (body.containsKey('song_id')) {
+          add('song_id', LocalEntity.song, mandatory: true);
+        }
       case LocalEntity.recordingTag:
         add('recording_id', LocalEntity.recording, mandatory: true);
         add('tag_id', LocalEntity.tag, mandatory: true);

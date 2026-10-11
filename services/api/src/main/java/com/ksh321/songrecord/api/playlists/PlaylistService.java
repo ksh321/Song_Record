@@ -44,6 +44,57 @@ public final class PlaylistService {
     }
     public IdempotentMutations.Reply rename(String auth,String device,String op,String id,String body){return edit(auth,device,op,id,body,false);}
     public IdempotentMutations.Reply delete(String auth,String device,String op,String id,String body){return edit(auth,device,op,id,body,true);}
+    public Map<String,Object> items(String auth,String device,String rawId){
+        var account=access.authenticate(auth,device);var owner=account.principal().userId();var id=uuid(rawId,true);
+        var parent=activeParent(owner,id);var result=aggregate(owner,id,parent);
+        if(!Objects.equals(activeParent(owner,id).get("revision"),parent.get("revision")))throw conflict("REVISION_CONFLICT","최신 목록을 다시 확인해 주세요.");
+        access.revalidate(account);return result;
+    }
+    public IdempotentMutations.Reply addRegistered(String auth,String device,String op,String rawId,String body){
+        var account=access.authenticate(auth,device);var owner=account.principal().userId();var id=uuid(rawId,true);
+        var root=parse(body,Set.of("song_id","base_revision"));var songId=uuid(text(root.get("song_id")),true);long base=revision(root.get("base_revision"));
+        return mutations.execute(account,op,"POST","/v1/playlists/"+id+"/items",body,()->{
+            if(revisionsReadDeleted(account,id)!=null)throw conflict("PLAYLIST_DELETED","영구 삭제된 목록입니다.");
+            var parent=activeParent(owner,id);requireRevision(parent,base);
+            var songs=jdbc.queryForList("SELECT source_type,tj_number,lifecycle_state FROM song WHERE user_id=? AND id=?",bytes(owner),bytes(songId));
+            if(songs.isEmpty())throw notFound();var song=songs.getFirst();
+            if(!"ACTIVE".equals(song.get("lifecycle_state")))throw conflict("SONG_NOT_ACTIVE","활성 내 곡만 추가할 수 있습니다.");
+            String key=switch((String)song.get("source_type")){case "TJ"->"tj:"+song.get("tj_number");case "MANUAL"->"manual:"+songId;default->throw invalid();};
+            var existing=jdbc.query("SELECT id FROM playlist_item WHERE user_id=? AND playlist_id=? AND entry_key=?",(rs,n)->asUuid(rs.getBytes(1)),bytes(owner),bytes(id),key);
+            if(!existing.isEmpty())return additionReply(owner,id,parent,existing.getFirst(),false,200);
+            return changes.write(account,()->{
+                revisions.lock(account,RevisionChanges.Resource.SONG,songId.toString());
+                UUID item=UUID.randomUUID();
+                var updated=revisions.change(account,RevisionChanges.Resource.PLAYLIST,id.toString(),base,current->{
+                    if(current.get("deleted_at")!=null)throw conflict("PLAYLIST_DELETED","영구 삭제된 목록입니다.");
+                    Long max=jdbc.queryForObject("SELECT MAX(position) FROM playlist_item WHERE user_id=? AND playlist_id=?",Long.class,bytes(owner),bytes(id));
+                    if(max!=null && max==Long.MAX_VALUE)throw conflict("PLAYLIST_POSITION_LIMIT","목록 순서를 확인해 주세요.");
+                    var time=now();jdbc.update("INSERT INTO playlist_item(id,user_id,playlist_id,song_id,candidate_brand,candidate_number,candidate_snapshot,entry_key,position,hidden_by_batch_id,created_at,updated_at) VALUES(?,?,?,?,NULL,NULL,NULL,?,?,NULL,?,?)",bytes(item),bytes(owner),bytes(id),bytes(songId),key,max==null?0:max+1,time,time);
+                });
+                var full=aggregate(owner,id,updated);String change=JSON.writeValueAsString(full);
+                return new AccountChanges.Batch<>(additionReply(full,item,true,201),List.of(new AccountChanges.Change(AccountChanges.Entity.PLAYLIST_ITEM,item,((Number)updated.get("revision")).longValue(),AccountChanges.Operation.UPSERT,change)));
+            }).value();
+        });
+    }
+    private Map<String,Object> activeParent(UUID owner,UUID id){
+        var rows=jdbc.query("SELECT id,name,revision,deleted_at,updated_at FROM playlist WHERE user_id=? AND id=?",(rs,n)->wire(rs),bytes(owner),bytes(id));
+        if(rows.isEmpty())throw notFound();var parent=rows.getFirst();if(parent.get("deleted_at")!=null)throw conflict("PLAYLIST_DELETED","영구 삭제된 목록입니다.");return parent;
+    }
+    private static void requireRevision(Map<String,Object> parent,long base){if(((Number)parent.get("revision")).longValue()!=base)throw new ApiException(HttpStatus.CONFLICT,"REVISION_CONFLICT","최신 목록을 확인해 주세요.",false,Map.of("current_revision",parent.get("revision"),"current",parent));}
+    private Map<String,Object> aggregate(UUID owner,UUID id,Map<String,Object> header){
+        var parent=new LinkedHashMap<>(header);parent.put("created_at",jdbc.queryForObject("SELECT created_at FROM playlist WHERE user_id=? AND id=?",Timestamp.class,bytes(owner),bytes(id)).toLocalDateTime().toInstant(ZoneOffset.UTC).toString());
+        var items=jdbc.query("SELECT i.* FROM playlist_item i LEFT JOIN song s ON s.user_id=i.user_id AND s.id=i.song_id WHERE i.user_id=? AND i.playlist_id=? AND i.hidden_by_batch_id IS NULL AND (i.song_id IS NULL OR s.lifecycle_state='ACTIVE') ORDER BY i.position,i.id",(rs,n)->{
+            var value=new LinkedHashMap<String,Object>();
+            for(String field:List.of("id","user_id","playlist_id","song_id","hidden_by_batch_id")){var b=rs.getBytes(field);value.put(field,b==null?null:asUuid(b).toString());}
+            for(String field:List.of("candidate_brand","candidate_number","entry_key"))value.put(field,rs.getString(field));
+            var candidate=rs.getString("candidate_snapshot");value.put("candidate_snapshot",candidate==null?null:JSON.readValue(candidate,Map.class));value.put("position",rs.getLong("position"));
+            for(String field:List.of("created_at","updated_at"))value.put(field,rs.getTimestamp(field).toLocalDateTime().toInstant(ZoneOffset.UTC).toString());return value;
+        },bytes(owner),bytes(id));return Map.of("playlist",parent,"items",items);
+    }
+    private IdempotentMutations.Reply additionReply(UUID owner,UUID id,Map<String,Object> parent,UUID item,boolean created,int status){return additionReply(aggregate(owner,id,parent),item,created,status);}
+    private static IdempotentMutations.Reply additionReply(Map<String,Object> aggregate,UUID item,boolean created,int status){var result=new LinkedHashMap<>(aggregate);result.put("item_id",item.toString());result.put("created",created);return new IdempotentMutations.Reply(status,JSON.writeValueAsString(result));}
+    private static UUID asUuid(byte[] value){var b=java.nio.ByteBuffer.wrap(value);return new UUID(b.getLong(),b.getLong());}
+    private static ApiException notFound(){return new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","내 곡 또는 목록을 찾을 수 없습니다.",false,Map.of());}
     private IdempotentMutations.Reply edit(String auth,String device,String op,String rawId,String body,boolean delete){
         var account=access.authenticate(auth,device);UUID id=uuid(rawId,true),owner=account.principal().userId();
         var root=parse(body,delete?Set.of("base_revision"):Set.of("base_revision","name"));long revision=revision(root.get("base_revision"));String name=delete?null:name(root.get("name"));

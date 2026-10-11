@@ -88,6 +88,41 @@ paths:
         '200': {description: 최소 삭제 결과 — id/status DELETED/revision/deleted_at}
         '404': {$ref: '#/components/responses/Error404'}
         '409': {$ref: '#/components/responses/Error409'}
+  /playlists/{id}/items:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    - $ref: '#/components/parameters/DeviceId'
+    get:
+      operationId: listPlaylistItems
+      summary: 동일 계정 목록의 전체 활성 항목과 부모 버전 조회
+      x-implementation-status: implemented
+      responses:
+        '200': {description: 'playlist 헤더(created_at 포함)와 전체 items 배열 — position 순서'}
+        '404': {$ref: '#/components/responses/Error404'}
+        '409': {$ref: '#/components/responses/Error409'}
+    post:
+      operationId: addRegisteredPlaylistItem
+      summary: 활성 TJ·직접 등록 내 곡 추가 — 서버가 entry_key·ID·위치 계산
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [song_id, base_revision]
+              properties:
+                song_id: {type: string, format: uuid}
+                base_revision: {type: integer, minimum: 1}
+      responses:
+        '201': {description: 'created true·item_id·playlist·items, 부모 revision 1 증가'}
+        '200': {description: '같은 키의 기존 item_id·position 반환, created false·부모 revision/변경 순서 불변'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '404': {$ref: '#/components/responses/Error404'}
+        '409': {$ref: '#/components/responses/Error409'}
   /charts/popular:
     get:
       operationId: getPopularChart

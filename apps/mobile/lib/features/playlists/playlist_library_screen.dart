@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'playlist_detail_screen.dart';
 import 'playlist_library.dart';
 
 class PlaylistLibraryScreen extends StatefulWidget {
@@ -140,9 +141,23 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
             Card(
               child: ListTile(
                 title: Text(row['name'] as String),
-                onTap: busy || widget.onOpen == null
+                onTap: busy
                     ? null
-                    : () => widget.onOpen!(row),
+                    : () async {
+                        if (widget.onOpen != null) {
+                          widget.onOpen!(row);
+                          return;
+                        }
+                        await Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => PlaylistDetailScreen(
+                              library: widget.library,
+                              id: row['id'] as String,
+                            ),
+                          ),
+                        );
+                        await reload();
+                      },
                 trailing: PopupMenuButton<String>(
                   enabled: !busy,
                   onSelected: (value) =>

@@ -35,6 +35,26 @@ final class MutationRequest {
   /// Only implemented server routes. Unsupported legacy queues remain intact.
   static MutationRequest? prepare(QueuedMutation m) {
     if (m.entity == LocalEntity.playlist &&
+        m.operation == LocalOperation.patch) {
+      final decoded = jsonDecode(m.payload);
+      if (decoded is Map<String, dynamic> && decoded.containsKey('song_id')) {
+        if (decoded.length != 2 ||
+            decoded['base_revision'] != m.baseRevision ||
+            m.baseRevision < 1 ||
+            decoded['song_id'] is! String) {
+          return null;
+        }
+        UuidValue(decoded['song_id'] as String);
+        return MutationRequest(
+          mutation: m,
+          method: 'POST',
+          path: '/v1/playlists/${m.entityId}/items',
+          body: m.payload,
+          attempt: m.attemptCount + 1,
+        );
+      }
+    }
+    if (m.entity == LocalEntity.playlist &&
         m.operation == LocalOperation.purge) {
       final value = jsonDecode(m.payload);
       if (value is! Map<String, dynamic> ||

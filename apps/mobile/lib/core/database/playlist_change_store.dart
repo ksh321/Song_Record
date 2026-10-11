@@ -128,7 +128,27 @@ final class PlaylistChangeStore {
     requireActive();
   }
 
-  Future<void> apply(ChangeFeedEntry entry) async {
+  Future<void> apply(ChangeFeedEntry entry) => _applyAggregate(
+    entry.payload,
+    entry.entity,
+    entry.id,
+    entry.revision,
+    entry.deleted,
+  );
+
+  Future<void> applyReceipt(
+    Map<String, dynamic> payload,
+    String id,
+    int revision,
+  ) => _applyAggregate(payload, LocalEntity.playlist, id, revision, false);
+
+  Future<void> _applyAggregate(
+    Map<String, dynamic> payload,
+    LocalEntity entity,
+    String entryId,
+    int revision,
+    bool deleted,
+  ) async {
     void require(bool value) {
       if (!value) {
         throw const FormatException('Invalid playlist aggregate change');
@@ -141,7 +161,6 @@ final class PlaylistChangeStore {
     }
 
     requireActive();
-    final payload = entry.payload;
     require(
       payload.length == 2 &&
           payload['playlist'] is Map<String, dynamic> &&
@@ -153,12 +172,12 @@ final class PlaylistChangeStore {
     final projectedParent = Map<String, dynamic>.of(parent)..remove('user_id');
     validateChangePayload(LocalEntity.playlist, projectedParent);
     final playlistId = parentId as String;
-    require(projectedParent['revision'] == entry.revision);
-    if (entry.entity == LocalEntity.playlist) {
-      require(entry.id == parentId);
-      require(!entry.deleted || projectedParent['deleted_at'] != null);
+    require(projectedParent['revision'] == revision);
+    if (entity == LocalEntity.playlist) {
+      require(entryId == parentId);
+      require(!deleted || projectedParent['deleted_at'] != null);
     } else {
-      require(entry.entity == LocalEntity.playlistItem);
+      require(entity == LocalEntity.playlistItem);
     }
     final projectedItems = <String, Map<String, dynamic>>{};
     final keys = <String>{};
@@ -197,11 +216,11 @@ final class PlaylistChangeStore {
       projectedItems[projected['id'] as String] = projected;
       requireActive();
     }
-    if (entry.entity == LocalEntity.playlistItem) {
+    if (entity == LocalEntity.playlistItem) {
       require(
-        entry.deleted
-            ? !projectedItems.containsKey(entry.id)
-            : projectedItems.containsKey(entry.id),
+        deleted
+            ? !projectedItems.containsKey(entryId)
+            : projectedItems.containsKey(entryId),
       );
     }
     final currentParent = await db
@@ -212,19 +231,21 @@ final class PlaylistChangeStore {
         .getSingleOrNull();
     final parentTombstoned = currentParent?.read<int>('tombstone') == 1;
     final deletedParent = projectedParent['deleted_at'] != null;
-    if ((currentParent?.read<int>('server_revision') ?? 0) > entry.revision ||
+    if ((currentParent?.read<int>('server_revision') ?? 0) > revision ||
         parentTombstoned && !deletedParent) {
       return;
     }
     if (!parentTombstoned &&
-        currentParent?.read<int>('server_revision') == entry.revision) {
-      require(
-        canonicalJson(
-              jsonDecode(currentParent!.read<String>('server_payload'))
-                  as Map<String, dynamic>,
-            ) ==
-            canonicalJson(projectedParent),
-      );
+        currentParent?.read<int>('server_revision') == revision) {
+      final previousHeader = jsonDecode(
+        currentParent!.read<String>('server_payload'),
+      ) as Map<String, dynamic>;
+      final incomingHeader = Map<String, dynamic>.of(projectedParent);
+      // A CRUD header can omit created_at; a full aggregate can enrich it.
+      if (!previousHeader.containsKey('created_at')) {
+        incomingHeader.remove('created_at');
+      }
+      require(canonicalJson(previousHeader) == canonicalJson(incomingHeader));
     }
     final rows = await db
         .customSelect(
@@ -251,8 +272,8 @@ final class PlaylistChangeStore {
             : jsonDecode(encoded) as Map<String, dynamic>;
         require(saved == null || saved['playlist_id'] == parentId);
         require(previous.read<int>('tombstone') == 0 || deletedParent);
-        require(previous.read<int>('server_revision') <= entry.revision);
-        if (previous.read<int>('server_revision') == entry.revision &&
+        require(previous.read<int>('server_revision') <= revision);
+        if (previous.read<int>('server_revision') == revision &&
             !(parentTombstoned && previous.read<int>('tombstone') == 1)) {
           require(canonicalJson(saved!) == canonicalJson(item.value));
         }
@@ -262,7 +283,7 @@ final class PlaylistChangeStore {
       // Older receivers could store only the parent deletion. Validate the
       // aggregate first, then repair known children without replacing that
       // parent's deletion proof or creating server rows for unsent drafts.
-      await _applyParentDeletion(playlistId, entry.revision, projectedParent);
+      await _applyParentDeletion(playlistId, revision, projectedParent);
       return;
     }
     for (final row in rows) {
@@ -274,7 +295,7 @@ final class PlaylistChangeStore {
           row.read<int>('tombstone') == 1) {
         continue;
       }
-      require(row.read<int>('server_revision') < entry.revision);
+      require(row.read<int>('server_revision') < revision);
     }
     final removed = <String>{
       for (final row in rows)
@@ -285,7 +306,7 @@ final class PlaylistChangeStore {
             !projectedItems.containsKey(row.read<String>('entity_id')) &&
             row.read<int>('tombstone') == 0)
           row.read<String>('entity_id'),
-      if (entry.entity == LocalEntity.playlistItem && entry.deleted) entry.id,
+      if (entity == LocalEntity.playlistItem && deleted) entryId,
     };
     for (final id in removed) {
       final previous = current[id];
@@ -308,12 +329,12 @@ final class PlaylistChangeStore {
       await writeCopy(
         'PLAYLIST_ITEM',
         id,
-        entry.revision,
+        revision,
         canonicalJson({
           'id': id,
           'playlist_id': parentId,
-          'revision': entry.revision,
-          'playlist_revision': entry.revision,
+          'revision': revision,
+          'playlist_revision': revision,
           'status': 'DELETED',
         }),
         true,
@@ -322,7 +343,7 @@ final class PlaylistChangeStore {
     await writeCopy(
       'PLAYLIST',
       playlistId,
-      entry.revision,
+      revision,
       canonicalJson(projectedParent),
       deletedParent,
     );
@@ -330,7 +351,7 @@ final class PlaylistChangeStore {
       await writeCopy(
         'PLAYLIST_ITEM',
         item.key,
-        entry.revision,
+        revision,
         canonicalJson(item.value),
         deletedParent,
       );
