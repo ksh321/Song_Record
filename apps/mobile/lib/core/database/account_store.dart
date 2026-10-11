@@ -3179,6 +3179,13 @@ final class AccountStore {
       _run(() => _readLocalAudio(recordingId));
 
   /// Fresh deletion/presence evidence for export. Does not expose device paths.
+  Future<File> privateExportFile(String jobId, String name) async {
+    requireActive();
+    final file = await _paths.exportFile(jobId, name);
+    requireActive();
+    return file;
+  }
+
   Future<Map<String, Object?>> exportAudioState(String recordingId) => _run(
     () => _database.transaction(() async {
       final id = UuidValue(recordingId).value;

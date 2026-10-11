@@ -21,7 +21,8 @@ internal class AudioExportBridge(private val activity: Activity) {
     private var writing = false
     private var closed = false
     fun handle(call: MethodCall, result: MethodChannel.Result) {
-        if (call.method != "export") { result.notImplemented(); return }
+        if (call.method != "export" && call.method != "exportBackup") { result.notImplemented(); return }
+        val backup = call.method == "exportBackup"
         try {
             check(!closed && pending == null && !RecorderAccount.exporting && !RecorderService.isCapturing())
             val user = requireNotNull(call.argument<String>("userId"))
@@ -29,17 +30,19 @@ internal class AudioExportBridge(private val activity: Activity) {
             val env = requireNotNull(call.argument<String>("environment"))
             require(UUID.fromString(user).toString() == user && UUID.fromString(id).toString() == id)
             check(RecorderAccount.scope == "$env/$user")
-            val expected = RecorderPaths.child(activity.filesDir, "song_record/$env/accounts/$user/audio/$id.m4a")
+            val expected = RecorderPaths.child(activity.filesDir, if (backup)
+                "song_record/$env/accounts/$user/exports/$id/export.zip" else
+                "song_record/$env/accounts/$user/audio/$id.m4a")
             val path = requireNotNull(call.argument<String>("path"))
             check(RecorderPaths.contains(activity.filesDir, expected.parentFile!!, path) && File(path).canonicalFile == expected)
             val count = requireNotNull(call.argument<Number>("size")).toLong()
             val hash = requireNotNull(call.argument<String>("checksum"))
-            require(count in 1L..6291456L && hash.matches(Regex("[a-f0-9]{64}")))
+            require(count in 1L..(if (backup) 4294967295L else 6291456L) && hash.matches(Regex("[a-f0-9]{64}")))
             check(expected.isFile && expected.length() == count)
             val filename = requireNotNull(call.argument<String>("filename"))
-            require(filename.endsWith(".m4a") && filename.length <= 180 && filename.none { it.code < 32 || it.code == 127 || it in "/\\:*?\"<>|" })
+            require(filename.endsWith(if (backup) ".zip" else ".m4a") && filename.length <= 180 && filename.none { it.code < 32 || it.code == 127 || it in "/\\:*?\"<>|" })
             val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE); type = "audio/mp4"; putExtra(Intent.EXTRA_TITLE, filename)
+                addCategory(Intent.CATEGORY_OPENABLE); type = if (backup) "application/zip" else "audio/mp4"; putExtra(Intent.EXTRA_TITLE, filename)
             }
             pending = result; source = expected; scope = RecorderAccount.scope; size = count; checksum = hash
             RecorderAccount.exporting = true
@@ -59,29 +62,35 @@ internal class AudioExportBridge(private val activity: Activity) {
                 check(!closed && RecorderAccount.scope == scope)
                 val file = checkNotNull(source)
                 check(file.canonicalFile == file && file.isFile && file.length() == size)
-                // Buffer the whole bounded source before writing: never mix a changed file into the export.
-                val bytes = file.inputStream().use { input ->
-                    val buffer = java.io.ByteArrayOutputStream()
-                    val chunk = ByteArray(65536)
-                    while (true) { val n = input.read(chunk); if (n < 0) break; check(buffer.size() + n <= size); buffer.write(chunk, 0, n) }
-                    buffer.toByteArray()
+                val deadline = android.os.SystemClock.elapsedRealtime() + 300000L
+                fun guard() { check(!closed && RecorderAccount.scope == scope && android.os.SystemClock.elapsedRealtime() < deadline) }
+                fun copyVerified(output: java.io.OutputStream?) {
+                    val digest = MessageDigest.getInstance("SHA-256")
+                    var total = 0L
+                    file.inputStream().use { input ->
+                        val chunk = ByteArray(65536)
+                        while (true) {
+                            guard(); val n = input.read(chunk); if (n < 0) break
+                            total += n; check(total <= size); digest.update(chunk, 0, n); output?.write(chunk, 0, n)
+                        }
+                    }
+                    check(total == size && digest.digest().joinToString("") { "%02x".format(it) } == checksum)
+                    guard()
                 }
-                check(bytes.size.toLong() == size)
-                val hash = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
-                check(hash == checksum && !closed && RecorderAccount.scope == scope)
+                copyVerified(null)
                 // Reject populated/unknown-size destinations even if a provider offers overwrite.
                 activity.contentResolver.openFileDescriptor(uri, "rw").use { descriptor ->
                     val fd = checkNotNull(descriptor)
                     check(fd.statSize == 0L)
-                    android.os.ParcelFileDescriptor.AutoCloseOutputStream(fd).use { it.write(bytes); it.flush() }
+                    android.os.ParcelFileDescriptor.AutoCloseOutputStream(fd).use { copyVerified(it); it.flush() }
                 }
                 val copied = activity.contentResolver.openInputStream(uri).use { input ->
                     val digest = MessageDigest.getInstance("SHA-256")
                     val stream = checkNotNull(input); val chunk = ByteArray(65536); var total = 0L
-                    while (true) { val n = stream.read(chunk); if (n < 0) break; total += n; check(total <= size); digest.update(chunk, 0, n) }
+                    while (true) { guard(); val n = stream.read(chunk); if (n < 0) break; total += n; check(total <= size); digest.update(chunk, 0, n) }
                     check(total == size); digest.digest().joinToString("") { "%02x".format(it) }
                 }
-                check(copied == checksum)
+                check(copied == checksum); guard()
                 failed = false
             } catch (_: Exception) {
                 // Do not delete a user/provider URI. Explain that a failed copy may remain.

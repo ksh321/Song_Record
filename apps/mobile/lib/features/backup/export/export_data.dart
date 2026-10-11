@@ -184,6 +184,38 @@ final class ExportData {
   final String _encoded;
   Map<String, dynamic> toJson() => jsonDecode(_encoded) as Map<String, dynamic>;
   String encode() => _encoded;
+
+  /// Only a checksum-verified app-private export checkpoint may call this.
+  /// External ZIP input still requires the separate P22 import preflight.
+  factory ExportData.fromPrivateCheckpoint(String text) {
+    final root = readJson(text);
+    _check(root['schema_version'] == 1 && root['schema_version'] is int);
+    _check(
+      root.keys.toSet().difference({
+        'schema_version',
+        'export_id',
+        'source_user_id',
+        'local_cutoff_at',
+        'server_rows',
+        'local_copies',
+        'pending_changes',
+        'recording_inputs',
+        'records',
+      }).isEmpty,
+    );
+    UuidValue(root['export_id'] as String);
+    UuidValue(root['source_user_id'] as String);
+    for (final field in [
+      'server_rows',
+      'local_copies',
+      'pending_changes',
+      'recording_inputs',
+      'records',
+    ]) {
+      _check(root[field] is List);
+    }
+    return ExportData._(root);
+  }
   int get metadataCount => (toJson()['records'] as List).length;
   List<Map<String, dynamic>> get records =>
       (toJson()['records'] as List).cast<Map<String, dynamic>>();

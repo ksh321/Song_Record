@@ -64,7 +64,7 @@ final class AccountPaths {
   Future<File> exportFile(String jobId, String name) async {
     final id = UuidValue(jobId).value;
     if (!RegExp(
-      r'^(?:audio/[0-9a-f-]{36}\.m4a(?:\.part)?|manifest\.json|data\.json|recordings\.csv|checkpoint\.json|export\.zip(?:\.part)?)$',
+      r'^(?:audio/[0-9a-f-]{36}\.m4a(?:\.part)?|(?:manifest\.json|data\.json|recordings\.csv|checkpoint\.json|export\.zip)(?:\.part)?)$',
     ).hasMatch(name)) {
       throw ArgumentError('Invalid private export filename');
     }
@@ -90,7 +90,7 @@ final class AccountPaths {
         ? RegExp(r'^account\.sqlite(?:-wal|-shm|-journal)?$')
               .hasMatch(relativePath)
         : RegExp(
-            r'^(?:audio/[0-9a-f-]{36}\.m4a|pending/[0-9a-f-]{36}\.m4a\.part|imports/[0-9a-f-]{36}\.zip|exports/[0-9a-f-]{36}/(?:audio/[0-9a-f-]{36}\.m4a(?:\.part)?|manifest\.json|data\.json|recordings\.csv|checkpoint\.json|export\.zip(?:\.part)?))$',
+            r'^(?:audio/[0-9a-f-]{36}\.m4a|pending/[0-9a-f-]{36}\.m4a\.part|imports/[0-9a-f-]{36}\.zip|exports/[0-9a-f-]{36}/(?:audio/[0-9a-f-]{36}\.m4a(?:\.part)?|(?:manifest\.json|data\.json|recordings\.csv|checkpoint\.json|export\.zip)(?:\.part)?))$',
           ).hasMatch(relativePath);
     if (!valid || relativePath.contains('..') || relativePath.contains('\\')) {
       throw ArgumentError('Not an account-relative storage path');
