@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:song_record/core/sync/local_repository.dart';
@@ -7,6 +6,7 @@ import 'package:song_record/core/theme/app_tokens.dart';
 
 import '../../core/files/recording_catalog.dart';
 import '../trash/trash_workflow.dart';
+import 'completed_capture_handoff.dart';
 import 'recorder_gateway.dart';
 import 'recorder_panel.dart';
 import 'recording_detail_screen.dart';
@@ -72,46 +72,16 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
         status.recordingId == null) {
       throw StateError('Capture handoff unavailable');
     }
-    final source = await (gateway as CompletedRecordingGateway).readCompleted(
-      status.recordingId!,
+    await preserveCompletedCapture(
+      status: status,
+      gateway: gateway as CompletedRecordingGateway,
+      repository: repo,
+      requireCurrent: () {
+        if (!mounted || !widget.isCurrent(repo)) {
+          throw StateError('Capture account changed');
+        }
+      },
     );
-    if (!mounted ||
-        !widget.isCurrent(repo) ||
-        source['recordingId'] != status.recordingId ||
-        source['phase'] != 'completed') {
-      throw StateError('Capture account changed');
-    }
-    final file = <String, dynamic>{
-      'sha256': source['sha256'],
-      'size_bytes': source['sizeBytes'],
-      'duration_ms': source['durationMs'],
-      'codec': 'AAC_LC',
-      'sample_rate': source['actualSampleRate'],
-      'channels': source['actualChannels'],
-      'capture_integrity': source['recovered'] == true
-          ? 'RECOVERED'
-          : 'VALIDATED',
-    };
-    if (source['actualMime'] != 'audio/mp4a-latm' ||
-        source['actualAacProfile'] != 2 ||
-        source['bytes'] is! Uint8List) {
-      throw StateError('Unverified audio format');
-    }
-    await repo.importCompletedCapture(
-      accountScope: source['accountScope'] as String,
-      recordingId: status.recordingId!,
-      bytes: source['bytes'] as Uint8List,
-      fileSpec: file,
-      recordedAt: DateTime.fromMillisecondsSinceEpoch(
-        (source['startedAtWallClockMs'] as num).toInt(),
-        isUtc: true,
-      ),
-      timezoneId: source['timezoneId'] as String,
-      timezoneOffsetMinutes: (source['timezoneOffsetMinutes'] as num).toInt(),
-    );
-    if (!mounted || !widget.isCurrent(repo)) {
-      throw StateError('Capture account changed');
-    }
     widget.wakeSync?.call();
   }
 

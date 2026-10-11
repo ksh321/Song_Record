@@ -99,6 +99,10 @@ final class LocalRepository
     timezoneId: timezoneId,
     timezoneOffsetMinutes: timezoneOffsetMinutes,
   );
+
+  /// Includes tombstones: an old native completion must never revive a deletion.
+  Future<bool> hasRecordingMetadata(String id) async =>
+      await _store.readMetadata(LocalEntity.recording, id) != null;
   Future<List<Map<String, dynamic>>> pendingRecordings() =>
       _store.readPendingRecordings();
 

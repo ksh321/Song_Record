@@ -50,6 +50,7 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "getStatus" -> result.success(RecorderService.currentState())
+                "availableBackupBytes" -> result.success(android.os.StatFs(cacheDir.absolutePath).availableBytes)
                 "readCompleted" -> readCompletedRecording(call.argument<String>("recordingId"), result)
                 "getDeviceInfo" -> result.success(deviceInfo())
                 "openAppSettings" -> openAppSettings(result)

@@ -185,6 +185,9 @@ class MethodChannelRecorderGateway
     'com.ksh321.songrecord/recorder_commands',
   );
   static const _events = EventChannel('com.ksh321.songrecord/recorder_events');
+  static final _statuses = _events.receiveBroadcastStream().map((event) {
+    return RecorderStatus.fromMap(Map<Object?, Object?>.from(event as Map));
+  });
 
   @override
   Future<Map<Object?, Object?>> readCompleted(String recordingId) async {
@@ -200,9 +203,7 @@ class MethodChannelRecorderGateway
 
   @override
   Stream<RecorderStatus> watchStatus() {
-    return _events.receiveBroadcastStream().map((event) {
-      return RecorderStatus.fromMap(Map<Object?, Object?>.from(event as Map));
-    });
+    return _statuses;
   }
 
   @override
