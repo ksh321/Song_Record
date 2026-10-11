@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 
 import '../../../core/database/account_store.dart';
 import '../../../core/files/local_preservation.dart';
+import '../../../core/files/preservation_download.dart';
 import '../../../core/sync/recording_save_contract.dart';
 import 'export_baseline.dart';
 import 'export_data.dart';
@@ -30,6 +31,7 @@ final class ExportAudioCollector {
     this.download,
     this.owner,
     this.staged,
+    this.validateServer,
     this.timeout = const Duration(seconds: 35),
   });
   factory ExportAudioCollector.forStore(
@@ -53,6 +55,9 @@ final class ExportAudioCollector {
     },
     stage: store.stageExportAudio,
     download: download,
+    validateServer: download is HttpPreservationDownload
+        ? download.validateCurrent
+        : null,
     staged: (job, id) async {
       store.requireActive();
       final file = await store.privateExportFile(job, 'audio/$id.m4a');
@@ -73,6 +78,88 @@ final class ExportAudioCollector {
   final Duration timeout;
   final String? owner;
   final Future<Uint8List?> Function(String job, String recording)? staged;
+  final Future<void> Function(PreservationObject, Future<void> Function())?
+  validateServer;
+
+  /// Validate again before external publication; never copy a deleted original back.
+  Future<List<ExportAudioEntry>> revalidate(
+    ExportData data,
+    ExportManifest manifest,
+    List<dynamic> fileStates,
+  ) async {
+    final initial = {
+      for (final row in fileStates) row['recording_id']: row as Map,
+    };
+    final assets = {
+      for (final row in data.records)
+        if (row['entity'] == 'RECORDING_ASSET')
+          row['resource_id']: row['payload'] as Map,
+    };
+    final result = <ExportAudioEntry>[];
+    for (final entry in manifest.files) {
+      _guard();
+      if (!entry.included) {
+        result.add(entry);
+        continue;
+      }
+      ExportMissingReason? reason;
+      final current = await state(entry.recordingId).timeout(timeout);
+      _guard();
+      final before = initial[entry.recordingId];
+      if (current['deleted'] == true ||
+          current['lifecycle_state'] == 'TRASHED' && !manifest.includeTrash ||
+          current['local_file_exists'] == false &&
+              {'SAVED', 'INPUT_PENDING'}.contains(before?['local_state']) ||
+          current['local_state'] == 'MISSING' &&
+              before != null &&
+              current['updated_at'] != before['updated_at']) {
+        reason = ExportMissingReason.fileDeleted;
+      }
+      final asset = assets[entry.recordingId];
+      if (reason == null &&
+          manifest.online &&
+          asset?['cloud_state'] == 'STORED' &&
+          !{'SAVED', 'INPUT_PENDING'}.contains(before?['local_state']) &&
+          validateServer != null) {
+        try {
+          await validateServer!(
+            PreservationObject(
+              owner: manifest.sourceUserId,
+              recording: entry.recordingId,
+              generation: asset!['generation'] as String,
+              checksum: entry.sha256!,
+              size: entry.sizeBytes!,
+              revision: asset['cloud_revision'] as int,
+            ),
+            () async {
+              _guard();
+            },
+          ).timeout(timeout);
+        } on PreservationFileUnavailable {
+          reason = ExportMissingReason.fileDeleted;
+        } catch (_) {
+          _guard();
+          reason = ExportMissingReason.downloadFailed;
+        }
+      }
+      _guard();
+      result.add(
+        reason == null
+            ? entry
+            : ExportAudioEntry(
+                recordingId: entry.recordingId,
+                selected: true,
+                included: false,
+                missingReason: reason,
+                sha256: entry.sha256,
+                sizeBytes: entry.sizeBytes,
+                durationMs: entry.durationMs,
+              ),
+      );
+    }
+    return List.unmodifiable(result);
+  }
+
   bool _cancelled = false, _busy = false;
   void cancel() => _cancelled = true;
   void _guard() {
@@ -262,6 +349,8 @@ final class ExportAudioCollector {
                 reason = ExportMissingReason.fileNotOnDevice;
               }
             }
+          } on PreservationFileUnavailable {
+            reason = ExportMissingReason.fileDeleted;
           } on _Deleted {
             reason = ExportMissingReason.fileDeleted;
           } on ExportCancelled {

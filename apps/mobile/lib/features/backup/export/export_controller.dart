@@ -261,7 +261,9 @@ final class ExportController extends ChangeNotifier {
         final spec = row['entity'] == 'RECORDING_FILE_SPEC'
             ? payload
             : payload['file'];
-        if (spec is Map && spec['size_bytes'] is int && (spec['size_bytes'] as int) > 0) {
+        if (spec is Map &&
+            spec['size_bytes'] is int &&
+            (spec['size_bytes'] as int) > 0) {
           sizes[row['resource_id'] as String] = spec['size_bytes'] as int;
         }
       }
@@ -319,14 +321,67 @@ final class ExportController extends ChangeNotifier {
         await job!.save(data!, manifest!, zip: artifact);
       }
       _guard();
-      _phase(BackupPhase.saving);
-      final saved = await destination.save(
-        artifact!,
-        owner: owner,
-        environment: environment,
-        jobId: job!.id,
+      _collector ??= createCollector();
+      final checked = await _collector!.revalidate(
+        data!,
+        manifest!,
+        job!.fileStates,
       );
       _guard();
+      if (checked.any(
+        (entry) =>
+            manifest!.files
+                .firstWhere((old) => old.recordingId == entry.recordingId)
+                .included !=
+            entry.included,
+      )) {
+        manifest = manifest!.withFiles(checked);
+        // Keep the old ZIP until a replacement is fully written and checked.
+        await job!.save(data!, manifest!);
+        _phase(BackupPhase.zip);
+        artifact = await ExportZipWriter(
+          file: job!.file,
+          requireCurrent: _guard,
+        ).write(data!, manifest!);
+        await job!.save(data!, manifest!, zip: artifact);
+      }
+      _guard();
+      _phase(BackupPhase.saving);
+      final saved = await destination
+          .save(
+            artifact!,
+            owner: owner,
+            environment: environment,
+            jobId: job!.id,
+          )
+          .timeout(
+            const Duration(minutes: 6),
+            onTimeout: () {
+              unawaited(destination.cancel().catchError((Object _) {}));
+              throw TimeoutException('Backup destination did not finish');
+            },
+          );
+      _guard();
+      if (saved) {
+        final after = await _collector!.revalidate(
+          data!,
+          manifest!,
+          job!.fileStates,
+        );
+        _guard();
+        if (after.any(
+          (entry) =>
+              manifest!.files
+                  .firstWhere((old) => old.recordingId == entry.recordingId)
+                  .included !=
+              entry.included,
+        )) {
+          manifest = manifest!.withFiles(after);
+          artifact = null;
+          await job!.save(data!, manifest!);
+          throw StateError('Files changed while external output was open');
+        }
+      }
       await job!.save(data!, manifest!, zip: artifact, externallySaved: saved);
       _guard();
       _phase(saved ? BackupPhase.completed : BackupPhase.cancelled);

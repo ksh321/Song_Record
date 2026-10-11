@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -33,10 +34,24 @@ void main() {
         accessExpiresAt: DateTime.now().add(const Duration(hours: 1)),
         refreshExpiresAt: DateTime.now().add(const Duration(days: 1)),
       );
-      var wrong = false, objectGets = 0, redirect = false;
+      var wrong = false,
+          objectGets = 0,
+          redirect = false,
+          deleteDuring = false,
+          deleted = false;
       final sub = server.listen((r) async {
         if (r.uri.path.startsWith('/v1/')) {
           expect(r.headers.value('Authorization'), 'Bearer synthetic');
+          if (deleted) {
+            r.response.statusCode = 409;
+            r.response.write(
+              jsonEncode({
+                'error': {'code': 'FILE_NOT_STORED'},
+              }),
+            );
+            await r.response.close();
+            return;
+          }
           r.response.headers.contentType = ContentType.json;
           r.response.write(
             jsonEncode({
@@ -65,6 +80,7 @@ void main() {
             );
           } else {
             r.response.add(bytes);
+            if (deleteDuring) deleted = true;
           }
         }
         await r.response.close();
@@ -89,6 +105,18 @@ void main() {
           throwsA(isA<PreservationNetworkFailure>()),
         );
         expect(objectGets, 2);
+        redirect = false;
+        deleteDuring = true;
+        await expectLater(
+          transport.download(object, () async {}),
+          throwsA(isA<PreservationFileUnavailable>()),
+        );
+        expect(objectGets, 3);
+        await expectLater(
+          transport.validateCurrent(object, () async {}),
+          throwsA(isA<PreservationFileUnavailable>()),
+        );
+        expect(objectGets, 3);
       } finally {
         await sub.cancel();
         await server.close(force: true);
@@ -103,5 +131,45 @@ void main() {
       ),
       throwsArgumentError,
     );
+  });
+  test('stalled current-access request times out and closes its connection', () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final arrived = Completer<void>();
+    final sub = server.listen((request) {
+      if (!arrived.isCompleted) arrived.complete();
+      // Deliberately never respond; the client must close on its own deadline.
+    });
+    final object = PreservationObject(
+      owner: preservationId(1),
+      recording: preservationId(2),
+      generation: preservationId(3),
+      checksum: 'a' * 64,
+      size: 1,
+      revision: 1,
+    );
+    final auth = AuthSession(
+      userId: object.owner,
+      deviceId: preservationId(4),
+      accessToken: 'synthetic',
+      refreshToken: 'synthetic',
+      accessExpiresAt: DateTime.now().add(const Duration(hours: 1)),
+      refreshExpiresAt: DateTime.now().add(const Duration(days: 1)),
+    );
+    final transport = HttpPreservationDownload(
+      Uri.parse('http://127.0.0.1:${server.port}'),
+      () async => auth,
+      allowLocalHttp: true,
+      timeout: const Duration(milliseconds: 100),
+    );
+    try {
+      await expectLater(
+        transport.validateCurrent(object, () async {}),
+        throwsA(isA<PreservationNetworkFailure>()),
+      );
+      expect(arrived.isCompleted, isTrue);
+    } finally {
+      await sub.cancel();
+      await server.close(force: true);
+    }
   });
 }

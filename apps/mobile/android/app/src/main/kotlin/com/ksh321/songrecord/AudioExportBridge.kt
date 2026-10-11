@@ -23,10 +23,26 @@ internal class AudioExportBridge(private val activity: Activity) {
     @Volatile private var cancelled = false
     private var backupOperation = false
     private var requestCode = REQUEST
+    private class OutputIo {
+        val signal = android.os.CancellationSignal()
+        private val handles = java.util.Collections.synchronizedSet(mutableSetOf<java.io.Closeable>())
+        fun cancel() {
+            signal.cancel()
+            val copy = synchronized(handles) { handles.toList() }
+            copy.forEach { try { it.close() } catch (_: Exception) {} }
+        }
+        fun <T : java.io.Closeable> track(value: T): T {
+            handles.add(value)
+            if (signal.isCanceled) { value.close(); error("Output cancelled") }
+            return value
+        }
+    }
+    @Volatile private var activeIo: OutputIo? = null
+    private fun abortIo() { cancelled = true; activeIo?.cancel() }
     fun handle(call: MethodCall, result: MethodChannel.Result) {
         if (call.method == "cancelBackup") {
             if (backupOperation && pending != null) {
-                cancelled = true
+                abortIo()
                 if (!writing) { activity.finishActivity(requestCode); finish(false) }
             }
             result.success(null); return
@@ -70,16 +86,24 @@ internal class AudioExportBridge(private val activity: Activity) {
         writing = true
         Thread {
             var failed = true
+            val operation = OutputIo()
+            activeIo = operation
+            if (cancelled || closed) operation.cancel()
+            val cancellation = operation.signal
+            val timer = java.util.Timer("song-record-export-timeout", true)
+            timer.schedule(object : java.util.TimerTask() {
+                override fun run() { operation.cancel() }
+            }, 300000L)
             try {
                 check(!closed && RecorderAccount.scope == scope)
                 val file = checkNotNull(source)
                 check(file.canonicalFile == file && file.isFile && file.length() == size)
                 val deadline = android.os.SystemClock.elapsedRealtime() + 300000L
-                fun guard() { check(!closed && !cancelled && RecorderAccount.scope == scope && android.os.SystemClock.elapsedRealtime() < deadline) }
+                fun guard() { check(!closed && !cancelled && !cancellation.isCanceled && RecorderAccount.scope == scope && android.os.SystemClock.elapsedRealtime() < deadline) }
                 fun copyVerified(output: java.io.OutputStream?) {
                     val digest = MessageDigest.getInstance("SHA-256")
                     var total = 0L
-                    file.inputStream().use { input ->
+                    operation.track(file.inputStream()).use { input ->
                         val chunk = ByteArray(65536)
                         while (true) {
                             guard(); val n = input.read(chunk); if (n < 0) break
@@ -91,12 +115,13 @@ internal class AudioExportBridge(private val activity: Activity) {
                 }
                 copyVerified(null)
                 // Reject populated/unknown-size destinations even if a provider offers overwrite.
-                activity.contentResolver.openFileDescriptor(uri, "rw").use { descriptor ->
+                activity.contentResolver.openFileDescriptor(uri, "rw", cancellation).let { operation.track(checkNotNull(it)) }.use { descriptor ->
                     val fd = checkNotNull(descriptor)
                     check(fd.statSize == 0L)
                     android.os.ParcelFileDescriptor.AutoCloseOutputStream(fd).use { copyVerified(it); it.flush() }
                 }
-                val copied = activity.contentResolver.openInputStream(uri).use { input ->
+                val copied = activity.contentResolver.openFileDescriptor(uri, "r", cancellation)
+                    .let { operation.track(android.os.ParcelFileDescriptor.AutoCloseInputStream(checkNotNull(it))) }.use { input ->
                     val digest = MessageDigest.getInstance("SHA-256")
                     val stream = checkNotNull(input); val chunk = ByteArray(65536); var total = 0L
                     while (true) { guard(); val n = stream.read(chunk); if (n < 0) break; total += n; check(total <= size); digest.update(chunk, 0, n) }
@@ -106,7 +131,10 @@ internal class AudioExportBridge(private val activity: Activity) {
                 failed = false
             } catch (_: Exception) {
                 // Do not delete a user/provider URI. Explain that a failed copy may remain.
-            } finally { activity.runOnUiThread { writing = false; finish(!failed, failed) } }
+            } finally {
+                timer.cancel(); if (activeIo === operation) activeIo = null
+                activity.runOnUiThread { writing = false; finish(!failed, failed) }
+            }
         }.start()
     }
     private fun finish(saved: Boolean, failed: Boolean = false) {
@@ -116,6 +144,6 @@ internal class AudioExportBridge(private val activity: Activity) {
         if (failed) callback?.error("EXPORT_FAILED", "파일 저장을 완료하지 못했어요. 저장 위치에 미완성 사본이 있을 수 있습니다.", null)
         else callback?.success(saved)
     }
-    fun close() { closed = true; if (!writing) finish(false) }
+    fun close() { closed = true; abortIo(); if (!writing) finish(false) }
     companion object { private const val REQUEST = 24146 }
 }

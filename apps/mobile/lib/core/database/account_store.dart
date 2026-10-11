@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
+import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart' as native;
 
@@ -3188,8 +3189,8 @@ final class AccountStore {
 
   Future<String?> latestExportJob() async {
     requireActive();
-    final directory = Directory('${_paths.directory.path}/exports');
-    if (await directory.resolveSymbolicLinks() != directory.path) {
+    final directory = Directory(path.join(_paths.directory.path, 'exports'));
+    if (!path.equals(await directory.resolveSymbolicLinks(), directory.path)) {
       throw StateError('Export storage was redirected');
     }
     String? latest;
@@ -3231,7 +3232,9 @@ final class AccountStore {
             variables: [Variable(userId), Variable(id)],
           )
           .getSingleOrNull();
+      final original = await _paths.checkedFile(_paths.audioPath(id));
       return {
+        'local_file_exists': await original.exists(),
         'deleted':
             copy?.tombstone == true ||
             {'PURGE_PENDING', 'PURGED'}.contains(payload?['lifecycle_state']),
