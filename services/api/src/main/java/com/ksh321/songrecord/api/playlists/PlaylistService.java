@@ -282,6 +282,19 @@ public final class PlaylistService {
         var proofs=jdbc.query("SELECT revision,purged_at FROM deletion_ledger WHERE user_id=? AND entity_type='PLAYLIST' AND entity_id=? AND object_generation IS NULL",(rs,n)->Map.<String,Object>of("id",id.toString(),"revision",rs.getLong(1),"deleted_at",rs.getTimestamp(2).toLocalDateTime().toInstant(ZoneOffset.UTC).toString()),bytes(account.principal().userId()),bytes(id));
         return proofs.isEmpty()?null:proofs.getFirst();
     }
+    /** Maintenance owns USER_SYNC and every parent aggregate before invoking this. */
+    public static List<AccountChanges.Change> purgeHiddenBatch(JdbcTemplate db,UUID owner,UUID batch,Collection<UUID> songs,Collection<UUID> parents,Clock clock){
+        var events=new ArrayList<AccountChanges.Change>();
+        for(UUID parent:parents){
+            var header=com.ksh321.songrecord.api.revision.RevisionChanges.readSnapshot(db,RevisionChanges.Resource.PLAYLIST,owner,parent);
+            var hidden=db.query("SELECT id,song_id FROM playlist_item WHERE user_id=? AND playlist_id=? AND hidden_by_batch_id=?",(rs,n)->Map.entry(asUuid(rs.getBytes(1)),asUuid(rs.getBytes(2))),bytes(owner),bytes(parent),bytes(batch)).stream().filter(item->songs.contains(item.getValue())).toList();
+            if(hidden.isEmpty())continue;long revision=Math.incrementExact(((Number)header.get("revision")).longValue());var now=Timestamp.from(clock.instant());
+            db.update("UPDATE playlist SET revision=?,updated_at=? WHERE user_id=? AND id=?",revision,now,bytes(owner),bytes(parent));
+            for(var item:hidden){db.update("INSERT INTO deletion_ledger(id,user_id,entity_type,entity_id,object_generation,revision,purged_at) VALUES(?,?,'PLAYLIST_ITEM',?,NULL,?,?)",bytes(UUID.randomUUID()),bytes(owner),bytes(item.getKey()),revision,now);db.update("DELETE FROM playlist_item WHERE user_id=? AND id=? AND hidden_by_batch_id=?",bytes(owner),bytes(item.getKey()),bytes(batch));}
+            var updated=new LinkedHashMap<>(header);updated.put("revision",revision);updated.put("updated_at",now.toLocalDateTime().toInstant(ZoneOffset.UTC).toString());String payload=JSON.writeValueAsString(aggregate(db,owner,parent,updated,true));
+            for(var item:hidden)events.add(new AccountChanges.Change(AccountChanges.Entity.PLAYLIST_ITEM,item.getKey(),revision,AccountChanges.Operation.DELETE,payload));
+        }return events;
+    }
     /** All participating parent aggregates are locked before asset/job locks by the caller. */
     public static void restoreTrashedItems(JdbcTemplate db,RevisionChanges revisions,AccountAccess.Account account,UUID batch,List<Map<String,Object>> members,Map<UUID,Map<String,Object>> parents,List<Map<String,Object>> restored,List<Map<String,Object>> skipped,List<AccountChanges.Change> events,Clock clock){
         UUID owner=account.principal().userId();

@@ -15,7 +15,8 @@ import org.springframework.security.web.SecurityFilterChain;
 public class TrashConfiguration {
     @Bean TrashRestoration trashRestoration(JdbcTemplate db,AccountAccess access,IdempotentMutations mutations,AccountChanges changes,RevisionChanges revisions,RecordingEditing editing){return new TrashRestoration(db,access,mutations,changes,revisions,editing,Clock.systemUTC());}
     @Bean TrashListing trashListing(JdbcTemplate db,AccountAccess access){return new TrashListing(db,access);}
+    @Bean TrashPurge trashPurge(JdbcTemplate db,AccountAccess access,IdempotentMutations mutations,AccountChanges changes,com.ksh321.songrecord.api.jobs.JobQueue jobs,RecordingEditing editing){return new TrashPurge(db,access,mutations,changes,jobs,editing,Clock.systemUTC());}
     @Bean @Order(9) SecurityFilterChain trashSecurity(HttpSecurity http)throws Exception{
-        http.securityMatcher("/v1/trash","/v1/trash/**").csrf(c->c.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).requestCache(c->c.disable()).authorizeHttpRequests(a->a.requestMatchers(HttpMethod.GET,"/v1/trash").permitAll().requestMatchers(HttpMethod.POST,"/v1/trash/*/restore").permitAll().anyRequest().denyAll());return http.build();
+        http.securityMatcher("/v1/trash","/v1/trash/**").csrf(c->c.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS)).requestCache(c->c.disable()).authorizeHttpRequests(a->a.requestMatchers(HttpMethod.GET,"/v1/trash").permitAll().requestMatchers(HttpMethod.POST,"/v1/trash/*/restore","/v1/trash/*/purge").permitAll().anyRequest().denyAll());return http.build();
     }
 }

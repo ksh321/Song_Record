@@ -77,6 +77,10 @@ public final class RevisionChanges {
         if(rows.isEmpty())throw notFound();
         return rows.getFirst();
     }
+    /** Caller already owns the aggregate lock; no arbitrary table name is accepted. */
+    public static Map<String,Object> readSnapshot(JdbcTemplate db,Resource resource,UUID owner,UUID id){
+        return db.queryForObject("SELECT id,user_id,revision,updated_at,"+resource.columns+" FROM "+resource.table+" WHERE user_id=? AND id=?",(rs,n)->snapshot(rs),bytes(owner),bytes(id));
+    }
     private static Map<String,Object> snapshot(ResultSet rs) throws SQLException {
         var result=new LinkedHashMap<String,Object>();
         var metadata=rs.getMetaData();
