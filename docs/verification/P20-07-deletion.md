@@ -23,3 +23,5 @@
 
 - 실제 MySQL CI에서 JDBC DATETIME 반환이 LocalDateTime인 반면 H2는 Timestamp여서 캐스트 실패(P20-07-JDBC-TIME-01)를 확인했다. 두 표현 모두 명시적 UTC로 처리하도록 복원·목록 경로를 보완했다. 수정 시도1, 이전 SHA 이력은 보존하며 최종 SHA에서 실제 MySQL 재검증한다.
 - 날짜 처리 수정 후 복원5개·API 계약 영향 검사 PASS. 현재 모델 별도 검토에서 두 JDBC 반환 경로와 UTC 비교/표시를 대조하고 실제 MySQL 휴지통 조회도 회귀 검사에 포함했다.
+
+- 713f052 실제 MySQL81개 PASS. 통합 서버 검사에서는 기존 KaraokeRegistrationTests의 전체 문자열 MR→LIVE 치환이 무작위 암호화 토큰까지 바꾸는 독립 원인(P20-07-FIXTURE-TOKEN-01)이 확인됐다. version_code 필드만 치환하도록 수정하고 인증 검증·실패 기대값은 유지한다. 수정 시도1, JDBC 문제와 합산하지 않는다. 관련 녹음 복원·검색 등록 영향 검사 PASS.

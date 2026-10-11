@@ -35,7 +35,7 @@ class KaraokeRegistrationTests {
     @Test void sameNumberReusesCanonicalAndPreservesEditsDifferentNumberRemainsDistinct(){
         var first=UUID.randomUUID();var proof=token(Brand.TJ,"00123",false);
         assertThat(send(UUID.randomUUID().toString(),body(first,proof,"내 편집값")).status()).isEqualTo(201);
-        var duplicate=send(UUID.randomUUID().toString(),body(UUID.randomUUID(),proof,"다른 표기").replace("내 가수","다른 가수").replace("MR","LIVE"));
+        var duplicate=send(UUID.randomUUID().toString(),body(UUID.randomUUID(),proof,"다른 표기").replace("내 가수","다른 가수").replace("\"version_code\":\"MR\"","\"version_code\":\"LIVE\""));
         assertThat(duplicate.status()).isEqualTo(200);assertThat(duplicate.body()).contains(first.toString(),"내 편집값","내 가수","MR","offline draft");
         assertThat(count("song")).isEqualTo(1);assertThat(count("change_log")).isEqualTo(1);
         assertThat(send(UUID.randomUUID().toString(),body(UUID.randomUUID(),token(Brand.TJ,"00124",false),"내 편집값")).status()).isEqualTo(201);
