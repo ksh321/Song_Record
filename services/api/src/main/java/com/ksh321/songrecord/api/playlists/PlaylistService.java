@@ -282,6 +282,40 @@ public final class PlaylistService {
         var proofs=jdbc.query("SELECT revision,purged_at FROM deletion_ledger WHERE user_id=? AND entity_type='PLAYLIST' AND entity_id=? AND object_generation IS NULL",(rs,n)->Map.<String,Object>of("id",id.toString(),"revision",rs.getLong(1),"deleted_at",rs.getTimestamp(2).toLocalDateTime().toInstant(ZoneOffset.UTC).toString()),bytes(account.principal().userId()),bytes(id));
         return proofs.isEmpty()?null:proofs.getFirst();
     }
+    /** All participating parent aggregates are locked before asset/job locks by the caller. */
+    public static void restoreTrashedItems(JdbcTemplate db,RevisionChanges revisions,AccountAccess.Account account,UUID batch,List<Map<String,Object>> members,Map<UUID,Map<String,Object>> parents,List<Map<String,Object>> restored,List<Map<String,Object>> skipped,List<AccountChanges.Change> events,Clock clock){
+        UUID owner=account.principal().userId();
+        var groups=new TreeMap<UUID,List<Map<String,Object>>>(Comparator.comparing(UUID::toString));
+        for(var member:members)if("PLAYLIST_ITEM".equals(member.get("entity_type"))){
+            UUID item=asUuid((byte[])member.get("entity_id"));
+            if(member.get("previous_list_id")==null){skipped.add(Map.of("entity_type","PLAYLIST_ITEM","id",item.toString(),"reason","PARENT_UNAVAILABLE"));continue;}
+            groups.computeIfAbsent(asUuid((byte[])member.get("previous_list_id")),key->new ArrayList<>()).add(member);
+        }
+        for(var group:groups.entrySet()){
+            UUID parent=group.getKey();var header=parents.get(parent);var targets=new ArrayList<UUID>();
+            long last=db.queryForObject("SELECT COALESCE(MAX(position),-1) FROM playlist_item WHERE user_id=? AND playlist_id=? AND hidden_by_batch_id IS NULL",Long.class,bytes(owner),bytes(parent));
+            for(var member:group.getValue()){
+                UUID item=asUuid((byte[])member.get("entity_id"));String reason=null;
+                var rows=db.queryForList("SELECT song_id,entry_key,hidden_by_batch_id FROM playlist_item WHERE user_id=? AND playlist_id=? AND id=?",bytes(owner),bytes(parent),bytes(item));
+                if(header==null || header.get("deleted_at")!=null)reason="PARENT_UNAVAILABLE";
+                else if(rows.isEmpty() || !Arrays.equals((byte[])rows.getFirst().get("hidden_by_batch_id"),bytes(batch)))reason="STATE_CHANGED";
+                else {
+                    var row=rows.getFirst();
+                    if(!Arrays.equals((byte[])row.get("song_id"),(byte[])member.get("previous_song_id")) || db.queryForObject("SELECT COUNT(*) FROM song WHERE user_id=? AND id=? AND lifecycle_state='ACTIVE'",Long.class,bytes(owner),member.get("previous_song_id"))!=1)reason="PARENT_UNAVAILABLE";
+                    else if(!db.queryForList("SELECT id FROM playlist_item WHERE user_id=? AND playlist_id=? AND entry_key=? AND hidden_by_batch_id IS NULL AND id<>?",bytes(owner),bytes(parent),row.get("entry_key"),bytes(item)).isEmpty())reason="DUPLICATE_ACTIVE";
+                }
+                if(reason!=null)skipped.add(Map.of("entity_type","PLAYLIST_ITEM","id",item.toString(),"reason",reason));else targets.add(item);
+            }
+            if(targets.isEmpty())continue;
+            if(last>Long.MAX_VALUE-targets.size())throw conflict("PLAYLIST_POSITION_LIMIT","목록 순서 범위를 확인해 주세요.");
+            long start=last;
+            var updated=revisions.change(account,RevisionChanges.Resource.PLAYLIST,parent.toString(),((Number)header.get("revision")).longValue(),old->{
+                long position=start;for(UUID item:targets)if(db.update("UPDATE playlist_item SET hidden_by_batch_id=NULL,position=?,updated_at=? WHERE user_id=? AND playlist_id=? AND id=? AND hidden_by_batch_id=?",++position,Timestamp.from(clock.instant()),bytes(owner),bytes(parent),bytes(item),bytes(batch))!=1)throw new IllegalStateException("Trash list member changed");
+            });
+            var full=aggregate(db,owner,parent,updated,true);String payload=JSON.writeValueAsString(full);
+            for(UUID item:targets){restored.add(Map.of("entity_type","PLAYLIST_ITEM","value",Map.of("id",item.toString(),"aggregate",full)));events.add(new AccountChanges.Change(AccountChanges.Entity.PLAYLIST_ITEM,item,((Number)updated.get("revision")).longValue(),AccountChanges.Operation.UPSERT,payload));}
+        }
+    }
     private AccountChanges.Batch<IdempotentMutations.Reply> batch(UUID id,int status,Map<String,Object> snapshot){
         String payload=JSON.writeValueAsString(snapshot.get("deleted_at")==null?snapshot:deletion(snapshot));
         return new AccountChanges.Batch<>(new IdempotentMutations.Reply(status,payload),List.of(new AccountChanges.Change(AccountChanges.Entity.PLAYLIST,id,((Number)snapshot.get("revision")).longValue(),snapshot.get("deleted_at")==null?AccountChanges.Operation.UPSERT:AccountChanges.Operation.DELETE,payload)));

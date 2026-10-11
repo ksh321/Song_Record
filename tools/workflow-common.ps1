@@ -40,10 +40,23 @@ function Get-OverallState($Results, [bool]$PolicyPending = $false) {
 function Get-LatestCiRun($Runs, [string]$Commit, [string]$Path) {
     # Same-second duplicate pushes need a deterministic run-ID tie breaker.
     # Never select an older success merely because the latest run has not passed.
-    $Runs | Where-Object {
+    $matches = @($Runs | Where-Object {
         $_.head_sha -eq $Commit -and $_.path -eq $Path -and
         $_.event -in @('push','pull_request','workflow_dispatch')
-    } | Sort-Object {[DateTime]$_.created_at}, {[long]$_.id}, {[int]$_.run_attempt} -Descending | Select-Object -First 1
+    } | Sort-Object {[DateTime]$_.created_at}, {[long]$_.id}, {[int]$_.run_attempt} -Descending)
+    $latest = $matches | Select-Object -First 1
+    # Concurrent push/dispatch IDs do not encode start order. A full manual run
+    # in the exact same creation second can supersede its cancelled push.
+    # Its own failure/pending state remains authoritative; later cancellations
+    # and newer failures must never fall back to an earlier success.
+    if ($latest.event -eq 'push' -and $latest.conclusion -eq 'cancelled') {
+        $replacement = $matches | Where-Object {
+            $_.event -eq 'workflow_dispatch' -and $_.conclusion -ne 'cancelled' -and
+            [DateTime]$_.created_at -eq [DateTime]$latest.created_at
+        } | Select-Object -First 1
+        if ($replacement) { return $replacement }
+    }
+    return $latest
 }
 
 function Get-CiState($Run, $Jobs, [string[]]$RequiredJobs, [switch]$AllowUnrequiredSkipped) {

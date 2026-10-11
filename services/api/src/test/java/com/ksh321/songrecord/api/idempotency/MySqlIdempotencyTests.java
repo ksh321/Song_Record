@@ -130,6 +130,13 @@ class MySqlIdempotencyTests {
             assertThat(db.queryForObject("SELECT revision FROM deletion_batch_work WHERE batch_id=?",Long.class,bytes(UUID.fromString(restoreBatch)))).isEqualTo(2);
             assertThat(db.queryForObject("SELECT used_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(owner))).isEqualTo(6291456);
             assertThatThrownBy(()->db.update("UPDATE deletion_batch SET purge_after=DATE_ADD(purge_after,INTERVAL 1 DAY) WHERE id=?",bytes(UUID.fromString(restoreBatch)))).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            UUID trailing=com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.song(db,owner),trailingItem=UUID.randomUUID();
+            db.update("INSERT INTO playlist_item(id,user_id,playlist_id,song_id,entry_key,position) VALUES(?,?,?,?,?,20)",bytes(trailingItem),bytes(owner),bytes(list),bytes(trailing),"MANUAL:"+trailing);
+            String songBatch=new tools.jackson.databind.json.JsonMapper().readTree(deleted.body()).get("batch_id").asText();
+            assertThat(restoring.restore("Bearer synthetic",device.toString(),UUID.randomUUID().toString(),songBatch,"{\"base_revision\":1}").status()).isEqualTo(200);
+            assertThat(db.queryForObject("SELECT hidden_by_batch_id FROM playlist_item WHERE id=?",byte[].class,bytes(item))).isNull();
+            assertThat(db.queryForObject("SELECT position FROM playlist_item WHERE id=?",Long.class,bytes(item))).isEqualTo(21);
+            assertThat(db.queryForObject("SELECT position FROM playlist_item WHERE id=?",Long.class,bytes(trailingItem))).isEqualTo(20);
 
         } finally {admin.execute("DROP DATABASE "+name);}
     }

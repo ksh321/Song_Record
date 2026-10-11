@@ -15,7 +15,7 @@ class TrashRestorationTests {
     }
     @Test void songOnlyRestoresOriginalLinkWithoutAutomaticallyReassigningRepresentative()throws Exception{
         String b=batch("SONG_ONLY"),op=UUID.randomUUID().toString();var dates=f.f.jdbc.queryForMap("SELECT deleted_at,purge_after FROM deletion_batch");
-        var result=restore(b,op,1,null);assertThat(result.getStatus()).isEqualTo(200);assertThat(f.json.readTree(result.getContentAsString()).get("restored").size()).isEqualTo(2);
+        var result=restore(b,op,1,null);assertThat(result.getStatus()).isEqualTo(200);assertThat(f.json.readTree(result.getContentAsString()).get("restored").size()).isEqualTo(3);
         assertThat(f.f.jdbc.queryForObject("SELECT song_id FROM recording",byte[].class)).isEqualTo(bytes(f.s.id));assertThat(f.f.jdbc.queryForObject("SELECT link_revision FROM recording",Long.class)).isEqualTo(3);
         assertThat(f.f.jdbc.queryForObject("SELECT representative_recording_id FROM song",byte[].class)).isNull();assertThat(f.f.jdbc.queryForObject("SELECT current_recording_id FROM pin_slot",byte[].class)).isEqualTo(bytes(f.recording));
         assertThat(f.f.jdbc.queryForMap("SELECT deleted_at,purge_after FROM deletion_batch")).usingRecursiveComparison().isEqualTo(dates);

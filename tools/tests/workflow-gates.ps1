@@ -23,6 +23,13 @@ $newRun.status='completed'; $newRun.conclusion='failure'
 Assert-Equal (Get-CiState (Get-LatestCiRun @($oldRun,$newRun) 'target' 'ci.yml') @($job) @('required')) 'FAIL' 'old success cannot hide newer failure'
 Assert-Equal (Get-LatestCiRun @($oldRun,$newRun) 'other' 'ci.yml') $null 'wrong commit excluded'
 Assert-Equal (Get-LatestCiRun @($oldRun,$newRun) 'target' 'other.yml') $null 'wrong workflow excluded'
+$push=[pscustomobject]@{id=102;head_sha='target';path='ci.yml';event='push';created_at='2026-10-01T05:00:00Z';run_attempt=1;status='completed';conclusion='cancelled'}
+$dispatch=[pscustomobject]@{id=101;head_sha='target';path='ci.yml';event='workflow_dispatch';created_at=$push.created_at;run_attempt=1;status='in_progress';conclusion=$null}
+Assert-Equal (Get-LatestCiRun @($push,$dispatch) 'target' 'ci.yml').id 101 'same-second full dispatch replaces cancelled push even with lower ID'
+$dispatch.status='completed';$dispatch.conclusion='failure'
+Assert-Equal (Get-CiState (Get-LatestCiRun @($push,$dispatch) 'target' 'ci.yml') @($job) @('required')) 'FAIL' 'replacement failure remains failure'
+$push.created_at='2026-10-01T05:00:01Z';$dispatch.conclusion='success'
+Assert-Equal (Get-CiState (Get-LatestCiRun @($push,$dispatch) 'target' 'ci.yml') @($job) @('required')) 'FAIL' 'later cancellation cannot use older success'
 Assert-Equal (Get-CiState $null @() @('required')) 'PENDING' 'missing run'
 Assert-Equal (Get-CiState ([pscustomobject]@{status='in_progress'}) @() @('required')) 'PENDING' 'running'
 Assert-Equal (Get-CiState $run @($job) @('required')) 'PASS' 'required passed'

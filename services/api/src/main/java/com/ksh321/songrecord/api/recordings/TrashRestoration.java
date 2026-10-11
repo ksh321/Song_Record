@@ -5,6 +5,7 @@ import com.ksh321.songrecord.api.idempotency.*;
 import com.ksh321.songrecord.api.revision.RevisionChanges;
 import com.ksh321.songrecord.api.retention.RetentionAssetVersions;
 import com.ksh321.songrecord.api.songs.SongEditing;
+import com.ksh321.songrecord.api.playlists.PlaylistService;
 import com.ksh321.songrecord.api.sync.AccountChanges;
 import com.ksh321.songrecord.api.web.ApiException;
 import java.time.*;
@@ -38,11 +39,12 @@ public final class TrashRestoration {
             long version=db.queryForObject("SELECT revision FROM deletion_batch_work WHERE user_id=? AND batch_id=? FOR UPDATE",Long.class,bytes(owner),bytes(batch));
             if(version!=root.get("base_revision").asLong())throw new ApiException(HttpStatus.CONFLICT,"REVISION_CONFLICT","최신 휴지통 묶음을 확인해 주세요.",false,Map.of("current_revision",version));
             if(version==Long.MAX_VALUE)throw error(HttpStatus.CONFLICT,"REVISION_LIMIT_REACHED");
-            var all=db.queryForList("SELECT entity_type,entity_id,previous_song_id,detached_link_revision FROM deletion_item WHERE user_id=? AND batch_id=? ORDER BY entity_type,entity_id",bytes(owner),bytes(batch));
+            var all=db.queryForList("SELECT entity_type,entity_id,previous_song_id,previous_list_id,detached_link_revision FROM deletion_item WHERE user_id=? AND batch_id=? ORDER BY entity_type,entity_id",bytes(owner),bytes(batch));
             Set<UUID> selected=selection==null?new HashSet<>():new HashSet<>(selection);
-            if(selection==null)for(var item:all)if(!"PLAYLIST_ITEM".equals(item.get("entity_type")))selected.add(uuid((byte[])item.get("entity_id")));
+            if(selection==null)for(var item:all)selected.add(uuid((byte[])item.get("entity_id")));
             for(UUID target:selected)if(all.stream().filter(i->Arrays.equals((byte[])i.get("entity_id"),bytes(target))).count()!=1)throw error(HttpStatus.BAD_REQUEST,"INVALID_TRASH_ITEM");
-            if(all.stream().anyMatch(i->"PLAYLIST_ITEM".equals(i.get("entity_type")) && selected.contains(uuid((byte[])i.get("entity_id")))))throw error(HttpStatus.BAD_REQUEST,"TRASH_ITEM_NOT_RESTORABLE");
+            var selectedSongs=new HashSet<UUID>();for(var item:all)if("SONG".equals(item.get("entity_type")) && selected.contains(uuid((byte[])item.get("entity_id"))))selectedSongs.add(uuid((byte[])item.get("entity_id")));
+            for(var item:all)if("PLAYLIST_ITEM".equals(item.get("entity_type")) && item.get("previous_song_id")!=null && selectedSongs.contains(uuid((byte[])item.get("previous_song_id"))))selected.add(uuid((byte[])item.get("entity_id")));
             if("SONG_ONLY".equals(history.get("mode")) && all.stream().anyMatch(i->"SONG".equals(i.get("entity_type")) && selected.contains(uuid((byte[])i.get("entity_id")))))for(var item:all)if("RECORDING".equals(item.get("entity_type")))selected.add(uuid((byte[])item.get("entity_id")));
             var members=all.stream().filter(i->selected.contains(uuid((byte[])i.get("entity_id")))).toList();
             var songIds=new TreeSet<UUID>(Comparator.comparing(UUID::toString));
@@ -51,6 +53,8 @@ public final class TrashRestoration {
             for(UUID song:songIds)if(!db.queryForList("SELECT id FROM song WHERE user_id=? AND id=?",bytes(owner),bytes(song)).isEmpty())songs.put(song,revisions.lock(account,RevisionChanges.Resource.SONG,song.toString()));
             var records=new TreeMap<UUID,Map<String,Object>>(Comparator.comparing(UUID::toString));
             for(UUID recording:members.stream().filter(i->"RECORDING".equals(i.get("entity_type"))).map(i->uuid((byte[])i.get("entity_id"))).sorted(Comparator.comparing(UUID::toString)).toList())if(!db.queryForList("SELECT id FROM recording WHERE user_id=? AND id=?",bytes(owner),bytes(recording)).isEmpty())records.put(recording,revisions.lock(account,RevisionChanges.Resource.RECORDING,recording.toString()));
+            var lists=new TreeMap<UUID,Map<String,Object>>(Comparator.comparing(UUID::toString));
+            for(UUID parent:members.stream().filter(i->"PLAYLIST_ITEM".equals(i.get("entity_type")) && i.get("previous_list_id")!=null).map(i->uuid((byte[])i.get("previous_list_id"))).distinct().sorted(Comparator.comparing(UUID::toString)).toList())if(!db.queryForList("SELECT id FROM playlist WHERE user_id=? AND id=?",bytes(owner),bytes(parent)).isEmpty())lists.put(parent,revisions.lock(account,RevisionChanges.Resource.PLAYLIST,parent.toString()));
             var events=new ArrayList<AccountChanges.Change>();var restored=new ArrayList<Map<String,Object>>();var skipped=new ArrayList<Map<String,Object>>();var changedAssets=new ArrayList<UUID>();
             for(var item:members){if(!"SONG".equals(item.get("entity_type")))continue;UUID song=uuid((byte[])item.get("entity_id"));var current=songs.get(song);
                 if(!eligible(current,deleted)){skipped.add(result("SONG",song,current==null?"PURGED":"STATE_CHANGED"));continue;}
@@ -72,6 +76,7 @@ public final class TrashRestoration {
                 });
                 changedAssets.add(recording);var wire=editing.snapshot(owner,recording);wire.put("deleted_at",null);restored.add(Map.of("entity_type","RECORDING","value",wire));events.add(new AccountChanges.Change(AccountChanges.Entity.RECORDING,recording,((Number)wire.get("revision")).longValue(),AccountChanges.Operation.UPSERT,json.writeValueAsString(wire)));
             }
+            PlaylistService.restoreTrashedItems(db,revisions,account,batch,members,lists,restored,skipped,events,clock);
             RetentionAssetVersions.bump(db,owner,changedAssets);
             db.update("UPDATE deletion_batch_work SET revision=revision+1,updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND batch_id=? AND revision=?",bytes(owner),bytes(batch),version);
             return new AccountChanges.Batch<>(new IdempotentMutations.Reply(200,json.writeValueAsString(Map.of("batch_id",batch.toString(),"revision",version+1,"restored",restored,"skipped",skipped,"pin_reselection_required",true))),events);

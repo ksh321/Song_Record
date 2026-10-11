@@ -63,7 +63,7 @@ paths:
       operationId: restoreTrash
       summary: 같은 삭제 묶음의 선택 항목 복원
       x-implementation-status: implemented
-      description: 서버 보관 기간 안의 항목만 복원한다. 원래 삭제 이력·만료는 불변이며 별도 작업 revision을 비교한다. 변경된 곡 연결은 덮어쓰지 않고 대표·고정을 자동 재지정하지 않는다. P20-08에서 목록 복원을 연결한다.
+      description: 서버 보관 기간 안의 항목만 복원한다. 원래 삭제 이력·만료는 불변이며 별도 작업 revision을 비교한다. 변경된 곡 연결은 덮어쓰지 않고 대표·고정을 자동 재지정하지 않는다. 남아 있는 목록의 끝에 중복 없이 복원하고 이미 활성인 항목·위치는 유지한다. 삭제된 목록은 재생성하지 않는다.
       requestBody:
         required: true
         content:
@@ -95,7 +95,7 @@ paths:
                       additionalProperties: false
                       required: [entity_type, value]
                       properties:
-                        entity_type: {type: string, enum: [SONG, RECORDING]}
+                        entity_type: {type: string, enum: [SONG, RECORDING, PLAYLIST_ITEM]}
                         value: {type: object}
                   skipped:
                     type: array
@@ -104,9 +104,9 @@ paths:
                       additionalProperties: false
                       required: [entity_type, id, reason]
                       properties:
-                        entity_type: {type: string, enum: [SONG, RECORDING]}
+                        entity_type: {type: string, enum: [SONG, RECORDING, PLAYLIST_ITEM]}
                         id: {$ref: '#/components/schemas/Uuid'}
-                        reason: {type: string, enum: [PURGED, STATE_CHANGED, LINK_CHANGED, PARENT_UNAVAILABLE]}
+                        reason: {type: string, enum: [PURGED, STATE_CHANGED, LINK_CHANGED, PARENT_UNAVAILABLE, DUPLICATE_ACTIVE]}
         '400': {$ref: '#/components/responses/Error400'}
         '401': {$ref: '#/components/responses/Error401'}
         '404': {$ref: '#/components/responses/Error404'}
