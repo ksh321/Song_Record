@@ -202,6 +202,17 @@ final class AccountStore {
         'changes': await rows(
           "SELECT op_id,entity_type,entity_id,operation,base_revision,base_payload,payload,queue_state,server_response,created_at FROM local_mutations WHERE user_id=? AND queue_state<>'ACKED' ORDER BY created_at,op_id",
         ),
+        'snapshot_rows': await rows(
+          '''SELECT r.entity,r.ordinal,r.resource_id,r.canonical_payload
+          FROM snapshot_download_rows r JOIN snapshot_baseline b
+          ON b.snapshot_token=r.snapshot_token AND b.user_id=r.user_id
+          JOIN snapshot_downloads h ON h.snapshot_token=b.snapshot_token
+          WHERE r.user_id=? AND h.state='APPLIED' ORDER BY r.entity,r.ordinal''',
+        ),
+        'recording_inputs': await rows(
+          '''SELECT recording_id,phase,revision,recovery_payload
+          FROM recording_journals WHERE user_id=? ORDER BY recording_id''',
+        ),
       };
     }),
   );
