@@ -102,7 +102,7 @@ class MySqlIdempotencyTests {
         assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(2);
         UUID song=UUID.randomUUID();
-        jdbc.update("INSERT INTO song(id,user_id,source_type,tj_number,title,artist,version_code,lifecycle_state) VALUES(?,?,'TJ','00123','registered','artist','NORMAL','ACTIVE')",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(song),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()));
+        jdbc.update("INSERT INTO song(id,user_id,source_type,tj_number,title,artist,version_code,note,lifecycle_state) VALUES(?,?,'TJ','00123','registered','artist','NORMAL','','ACTIVE')",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(song),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()));
         var revisions=new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,clock);
         new org.springframework.transaction.support.TransactionTemplate(manager).execute(status->changes.write(account,()->new com.ksh321.songrecord.api.sync.AccountChanges.Batch<>(true,com.ksh321.songrecord.api.playlists.PlaylistService.linkNewSong(jdbc,revisions,account,song,"00123",clock))));
         assertThat(jdbc.queryForObject("SELECT position FROM playlist_item",Long.class)).isZero();assertThat(jdbc.queryForObject("SELECT revision FROM playlist",Long.class)).isEqualTo(3);
