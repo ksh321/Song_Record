@@ -62,6 +62,8 @@ public final class UploadApprovalDatabaseChecks {
         assertThat(approvals.approve(b,stored,6291456,"a".repeat(64)).state()).isEqualTo("STORED");
         assertThat(db.queryForObject("SELECT reserved_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(other))).isEqualTo(before);
         UUID unselected=recording(db,other,od,null,true,true,"VALIDATED");assertCode(()->approvals.approve(b,unselected,6291456,"a".repeat(64)),"NOT_CLOUD_TARGET");
+        db.update("INSERT INTO cloud_hold(id,user_id,recording_id,reason) VALUES(?,?,?,'ORPHAN_KEEP')",bytes(UUID.randomUUID()),bytes(other),bytes(unselected));
+        assertCode(()->approvals.approve(b,unselected,6291456,"a".repeat(64)),"NOT_CLOUD_TARGET");
         UUID third=account(db),td=device(db,third);db.update("INSERT INTO user_sync_state(user_id) VALUES(?)",bytes(third));db.update("INSERT INTO user_entitlement(user_id) VALUES(?)",bytes(third));db.update("INSERT INTO storage_usage(user_id) VALUES(?)",bytes(third));
         var c=mock(AccountAccess.Account.class);when(access.revalidate(c)).thenReturn(new SessionService.Principal(third,td,UUID.randomUUID()));
         UUID ca=recording(db,third,td,null,true,true,"VALIDATED"),cb=recording(db,third,td,null,true,true,"VALIDATED");

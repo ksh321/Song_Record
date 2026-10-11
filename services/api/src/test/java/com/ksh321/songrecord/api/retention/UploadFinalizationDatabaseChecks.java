@@ -27,6 +27,24 @@ public final class UploadFinalizationDatabaseChecks {
   assertThat(db.queryForObject("SELECT COUNT(*) FROM recording_asset WHERE user_id=?",Long.class,bytes(other.owner))).isZero();
   assertThat(db.queryForObject("SELECT reserved_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(other.owner))).isEqualTo(3);
   new UploadRecovery(db,new DataSourceTransactionManager(db.getDataSource()),other.clock).failed(other.lease,"NOT_CLOUD_TARGET");
+  // Object verification already started when a song-only deletion removes its automatic role.
+  var kept=fixture(db);var keeper=new UploadFinalization(db,writer,kept.clock);
+  db.update("INSERT INTO recording_asset(recording_id,user_id,cloud_state,cloud_revision) VALUES(?,?,'NONE',1)",bytes(kept.recording),bytes(kept.owner));
+  var inFlight=keeper.prepare(kept.lease,audio);
+  var tx=new org.springframework.transaction.support.TransactionTemplate(new DataSourceTransactionManager(db.getDataSource()));
+  tx.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_READ_COMMITTED);
+  tx.executeWithoutResult(status->{
+   com.ksh321.songrecord.api.locking.LockOrder.before(com.ksh321.songrecord.api.locking.LockOrder.Rank.USER_SYNC,kept.owner.toString());
+   db.queryForMap("SELECT user_id FROM user_sync_state WHERE user_id=? FOR UPDATE",bytes(kept.owner));
+   db.update("DELETE FROM pin_slot WHERE user_id=?",bytes(kept.owner));
+   OrphanUploads.preserve(db,kept.owner,List.of(kept.recording),kept.clock);
+  });
+  assertThat(db.queryForObject("SELECT policy_revision FROM recording_upload WHERE id=?",Long.class,bytes(kept.attempt))).isEqualTo(2);
+  assertThat(kept.jobs.complete(kept.lease,inFlight)).isTrue();
+  assertThat(db.queryForObject("SELECT reason FROM cloud_hold WHERE user_id=?",String.class,bytes(kept.owner))).isEqualTo("ORPHAN_KEEP");
+  assertThat(db.queryForObject("SELECT COUNT(*) FROM pin_slot WHERE user_id=?",Long.class,bytes(kept.owner))).isZero();
+  assertThat(db.queryForObject("SELECT used_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(kept.owner))).isEqualTo(3);
+  assertThat(db.queryForObject("SELECT reserved_bytes FROM storage_usage WHERE user_id=?",Long.class,bytes(kept.owner))).isZero();
  }
  public record Fixture(UUID owner,UUID recording,UUID attempt,JobQueue jobs,JobQueue.Lease lease,UploadApprovalDatabaseChecks.MutableClock clock){}
  public static Fixture fixture(JdbcTemplate db){return fixture(db,"a".repeat(64));}

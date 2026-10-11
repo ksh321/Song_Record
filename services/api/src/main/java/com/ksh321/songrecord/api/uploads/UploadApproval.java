@@ -48,8 +48,11 @@ public final class UploadApproval {
             if(!"ACTIVE".equals(row.get("lifecycle_state")) || !"SAVED".equals(row.get("metadata_state")))throw error("NOT_CLOUD_TARGET",HttpStatus.CONFLICT);
             var specs=db.query("SELECT sha256,size_bytes,duration_ms,codec,sample_rate,channels,capture_integrity FROM recording_file_spec WHERE user_id=? AND recording_id=?",(r,n)->new RetentionCandidates.FileSpec(r.getString(1),r.getLong(2),r.getInt(3),r.getString(4),r.getInt(5),r.getInt(6),r.getString(7)),bytes(owner),bytes(recording));
             if(specs.size()!=1 || !specs.getFirst().valid() || specs.getFirst().sizeBytes()!=size || !Objects.equals(specs.getFirst().sha256(),sha))throw error("FILE_SPEC_MISMATCH",HttpStatus.CONFLICT);
+            boolean existingApproval=!db.queryForList("SELECT id FROM recording_upload WHERE user_id=? AND recording_id=? AND state IN ('RESERVED','UPLOADING','VERIFYING') AND expires_at>?",bytes(owner),bytes(recording),java.sql.Timestamp.from(clock.instant())).isEmpty();
+            boolean storedCopy=!db.queryForList("SELECT recording_id FROM recording_asset WHERE user_id=? AND recording_id=? AND cloud_state='STORED'",bytes(owner),bytes(recording)).isEmpty();
+            // A standing orphan hold preserves bytes/old approval, never grants a fresh upload.
             boolean target=!db.queryForList("SELECT slot_no FROM pin_slot WHERE user_id=? AND (current_recording_id=? OR pending_recording_id=?)",bytes(owner),bytes(recording),bytes(recording)).isEmpty()
-                || !db.queryForList("SELECT recording_id FROM cloud_hold WHERE user_id=? AND recording_id=?",bytes(owner),bytes(recording)).isEmpty();
+                || ((row.get("song_id")!=null || storedCopy || existingApproval) && !db.queryForList("SELECT recording_id FROM cloud_hold WHERE user_id=? AND recording_id=?",bytes(owner),bytes(recording)).isEmpty());
             if(!target && row.get("song_id")!=null){
                 UUID song=uuid((byte[])row.get("song_id"));
                 target=roles.representative(owner,song).map(s->s.candidate().recordingId().equals(recording)).orElse(false)

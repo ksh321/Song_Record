@@ -5,7 +5,7 @@ import com.ksh321.songrecord.api.idempotency.*;
 import com.ksh321.songrecord.api.locking.LockOrder;
 import com.ksh321.songrecord.api.playlists.PlaylistService;
 import com.ksh321.songrecord.api.recordings.RecordingEditing;
-import com.ksh321.songrecord.api.retention.RetentionAssetVersions;
+import com.ksh321.songrecord.api.uploads.OrphanUploads;
 import com.ksh321.songrecord.api.revision.RevisionChanges;
 import com.ksh321.songrecord.api.sync.AccountChanges;
 import com.ksh321.songrecord.api.web.ApiException;
@@ -66,12 +66,7 @@ public final class SongTrash {
             }
             for(UUID parent:parents)db.update("INSERT INTO deletion_item(batch_id,user_id,entity_type,entity_id,previous_song_id,previous_list_id) SELECT ?,?,'PLAYLIST_ITEM',id,song_id,playlist_id FROM playlist_item WHERE user_id=? AND playlist_id=? AND song_id=? AND hidden_by_batch_id IS NULL",bytes(batch),bytes(owner),bytes(owner),bytes(parent),bytes(song));
             events.addAll(PlaylistService.hideTrashedSong(db,revisions,account,song,batch,clock));
-            RetentionAssetVersions.bump(db,owner,targets.stream().map(t->t.id).toList());
-            for(var target:targets){
-                if(!db.queryForList("SELECT recording_id FROM recording_asset WHERE user_id=? AND recording_id=? AND cloud_state='STORED'",bytes(owner),bytes(target.id)).isEmpty()
-                        && db.queryForList("SELECT id FROM cloud_hold WHERE user_id=? AND recording_id=? AND reason='ORPHAN_KEEP'",bytes(owner),bytes(target.id)).isEmpty())
-                    db.update("INSERT INTO cloud_hold(id,user_id,recording_id,reason) VALUES(?,?,?,'ORPHAN_KEEP')",bytes(UUID.randomUUID()),bytes(owner),bytes(target.id));
-            }
+            OrphanUploads.preserve(db,owner,targets.stream().map(t->t.id).toList(),clock);
             return new AccountChanges.Batch<>(new IdempotentMutations.Reply(200,json.writeValueAsString(Map.of("batch_id",batch.toString(),"mode","SONG_ONLY","deleted_at",now.toInstant(ZoneOffset.UTC).toString(),"purge_after",expiry.toInstant(ZoneOffset.UTC).toString(),"song",songWire,"recordings",detached))),events);
         }).value());
     }

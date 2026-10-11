@@ -21,6 +21,7 @@ class SongTrashTests {
         f.jdbc.execute("CREATE TABLE deletion_batch(id BINARY(16) PRIMARY KEY,user_id BINARY(16),op_id BINARY(16),mode VARCHAR(32),deleted_at TIMESTAMP(3),purge_after TIMESTAMP(3),preview_version VARCHAR(128),UNIQUE(user_id,op_id))");
         f.jdbc.execute("CREATE TABLE deletion_item(batch_id BINARY(16),user_id BINARY(16),entity_type VARCHAR(32),entity_id BINARY(16),previous_song_id BINARY(16),previous_list_id BINARY(16),detached_link_revision BIGINT,original_deleted_at TIMESTAMP(3),PRIMARY KEY(batch_id,entity_type,entity_id))");
         f.jdbc.execute("CREATE TABLE cloud_hold(id BINARY(16) PRIMARY KEY,user_id BINARY(16),recording_id BINARY(16),reason VARCHAR(32))");
+        f.jdbc.execute("CREATE TABLE recording_upload(id BINARY(16) PRIMARY KEY,user_id BINARY(16),recording_id BINARY(16),state VARCHAR(32),policy_revision BIGINT,expires_at TIMESTAMP(3),updated_at TIMESTAMP(3))");
         assertThat(s.postBody(UUID.randomUUID().toString(),s.body("")).getStatus()).isEqualTo(201);
         recording=r.setup.id;var body=r.setup.base();body.put("song_id",s.id.toString());body.put("title_snapshot","당시 곡");body.put("artist_snapshot","당시 가수");body.put("key_mode","FEMALE");body.put("key_shift",-2);body.put("version_code","LIVE");body.put("note","메모 보존");assertThat(r.setup.create(body).getStatus()).isEqualTo(201);
         f.jdbc.update("UPDATE recording SET metadata_state='SAVED',tier='D' WHERE id=?",bytes(recording));
@@ -51,6 +52,23 @@ class SongTrashTests {
     @Test void changedPreviewAndInvalidModeCannotMutateAnything()throws Exception{
         String token=preview();f.jdbc.update("UPDATE recording SET link_revision=link_revision+1 WHERE id=?",bytes(recording));var failed=trash(s.id,UUID.randomUUID().toString(),token,"SONG_ONLY");assertThat(failed.getStatus()).isEqualTo(409);assertThat(failed.getContentAsString()).contains("DELETE_PREVIEW_CHANGED");
         assertThat(trash(s.id,UUID.randomUUID().toString(),preview(),"unknown").getStatus()).isEqualTo(400);assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM deletion_batch",Integer.class)).isZero();assertThat(f.jdbc.queryForObject("SELECT lifecycle_state FROM song",String.class)).isEqualTo("ACTIVE");
+    }
+    @Test void approvedUploadKeepsExpiryAndMovesOnlyItsCurrentPolicy()throws Exception{
+        f.jdbc.update("UPDATE recording_asset SET cloud_state='NONE',object_key=NULL,generation=NULL,verified_size=NULL,sha256=NULL,stored_at=NULL");
+        UUID attempt=UUID.randomUUID();var expiry=java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.MILLIS));
+        f.jdbc.update("INSERT INTO recording_upload(id,user_id,recording_id,state,policy_revision,expires_at) VALUES(?,?,?,'UPLOADING',1,?)",bytes(attempt),bytes(owner()),bytes(recording),expiry);
+        assertThat(trash(s.id,UUID.randomUUID().toString(),preview(),"SONG_ONLY").getStatus()).isEqualTo(200);
+        assertThat(f.jdbc.queryForObject("SELECT policy_revision FROM recording_upload",Long.class)).isEqualTo(2);
+        assertThat(f.jdbc.queryForObject("SELECT expires_at FROM recording_upload",java.sql.Timestamp.class)).isEqualTo(expiry);
+        assertThat(f.jdbc.queryForObject("SELECT state FROM recording_upload",String.class)).isEqualTo("UPLOADING");
+        assertThat(f.jdbc.queryForObject("SELECT reason FROM cloud_hold",String.class)).isEqualTo("ORPHAN_KEEP");
+    }
+    @Test void staleApprovalIsNotRevivedAsOrphanProtection()throws Exception{
+        f.jdbc.update("UPDATE recording_asset SET cloud_state='NONE',object_key=NULL,generation=NULL,verified_size=NULL,sha256=NULL,stored_at=NULL,cloud_revision=2");
+        f.jdbc.update("INSERT INTO recording_upload(id,user_id,recording_id,state,policy_revision,expires_at) VALUES(?,?,?,'UPLOADING',1,?)",bytes(UUID.randomUUID()),bytes(owner()),bytes(recording),java.sql.Timestamp.from(java.time.Instant.now().plusSeconds(3600)));
+        assertThat(trash(s.id,UUID.randomUUID().toString(),preview(),"SONG_ONLY").getStatus()).isEqualTo(200);
+        assertThat(f.jdbc.queryForObject("SELECT policy_revision FROM recording_upload",Long.class)).isEqualTo(1);
+        assertThat(f.jdbc.queryForObject("SELECT COUNT(*) FROM cloud_hold",Integer.class)).isZero();
     }
     @Test void fileDeletionAlreadyInProgressAndForeignSongAreRejected()throws Exception{
         f.jdbc.update("UPDATE recording_asset SET cloud_state='DELETING'");var blocked=trash(s.id,UUID.randomUUID().toString(),preview(),"SONG_ONLY");assertThat(blocked.getStatus()).isEqualTo(409);assertThat(blocked.getContentAsString()).contains("FILE_CLEANUP_IN_PROGRESS");
