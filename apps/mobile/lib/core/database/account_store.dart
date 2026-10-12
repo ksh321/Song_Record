@@ -48,6 +48,8 @@ export 'snapshot_download_store.dart'
         SnapshotRecordingBaseline;
 export 'upload_queue_store.dart' show UploadWork;
 
+part 'import_apply_store.dart';
+
 typedef SupportDirectory = Future<Directory> Function();
 
 /// Both sources are captured together; callers must not silently merge conflicts
