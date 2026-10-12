@@ -28,6 +28,21 @@ class MainActivity : FlutterActivity() {
         runOnUiThread { recorderEventSink?.success(state) }
     }
 
+    private fun inspectImportAudio(raw: String?, result: MethodChannel.Result) {
+        Thread {
+            try {
+                val file = File(raw ?: throw IllegalArgumentException()).canonicalFile
+                val parent = cacheDir.canonicalFile
+                require(file.path.startsWith(parent.path + File.separator))
+                require(file.isFile && file.length() in 1..6L * 1024 * 1024)
+                val inspected = ImportAudioInspector.inspect(file)
+                runOnUiThread { result.success(inspected) }
+            } catch (_: Exception) {
+                runOnUiThread { result.error("IMPORT_AUDIO_INVALID", "Invalid backup audio", null) }
+            }
+        }.start()
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/audio_export")
@@ -50,6 +65,7 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "getStatus" -> result.success(RecorderService.currentState())
+                "inspectImportAudio" -> inspectImportAudio(call.argument<String>("path"), result)
                 "availableBackupBytes" -> result.success(android.os.StatFs(cacheDir.absolutePath).availableBytes)
                 "readCompleted" -> readCompletedRecording(call.argument<String>("recordingId"), result)
                 "getDeviceInfo" -> result.success(deviceInfo())
