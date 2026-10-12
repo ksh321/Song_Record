@@ -18,6 +18,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val audioExportBridge by lazy { AudioExportBridge(this) }
+    private val backupImportBridge by lazy { BackupImportBridge(this) }
     private val playbackBridge by lazy { PlaybackBridge(this) }
     private val accountBridge by lazy { AccountBridge(this) { mediaPlayer?.release(); mediaPlayer = null; playbackBridge.stop() } }
     private val identityLinkBridge by lazy { IdentityLinkBridge(this) }
@@ -45,6 +46,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/backup_import")
+            .setMethodCallHandler(backupImportBridge::handle)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/audio_export")
             .setMethodCallHandler(audioExportBridge::handle)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/playback")
@@ -244,10 +247,12 @@ class MainActivity : FlutterActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         accountBridge.onResult(requestCode, resultCode, data)
         audioExportBridge.onResult(requestCode, resultCode, data)
+        backupImportBridge.onResult(requestCode, resultCode, data)
     }
 
     override fun onDestroy() {
         audioExportBridge.close()
+        backupImportBridge.close()
         playbackBridge.close()
         accountBridge.close()
         mediaPlayer?.release()

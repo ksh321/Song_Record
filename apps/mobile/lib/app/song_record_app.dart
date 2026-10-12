@@ -10,6 +10,7 @@ import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/song_discovery_sheet.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/auth/identity_link.dart';
+import 'package:song_record/features/backup/import/import_entry_screen.dart';
 import 'package:song_record/features/charts/popular_chart.dart';
 import 'package:song_record/features/charts/popular_chart_http.dart';
 import 'package:song_record/features/charts/popular_chart_screen.dart';
@@ -21,6 +22,8 @@ import 'package:song_record/features/search/karaoke_search.dart';
 import 'package:song_record/features/search/karaoke_search_screen.dart';
 import 'package:song_record/features/search/search_intent.dart';
 import 'package:song_record/features/search/song_registration.dart';
+import 'package:song_record/features/settings/settings_api.dart';
+import 'package:song_record/features/settings/settings_read_screen.dart';
 import 'package:song_record/features/settings/settings_screen.dart';
 import 'package:song_record/features/songs/my_song.dart';
 import 'package:song_record/features/songs/my_song_detail.dart';
@@ -67,6 +70,47 @@ class SongRecordApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final loadHealth =
         healthLoader ?? HealthClient(apiBaseUrl: config.apiBaseUrl).fetch;
+
+    Widget settingsRead(
+      String title,
+      Future<List<(String, String)>> Function(
+        SettingsApi api,
+        AccountStore store,
+      )
+      load,
+    ) {
+      final store = accountStore?.call(), auth = authController;
+      if (store == null ||
+          auth?.phase != AuthPhase.ready ||
+          store.userId != auth?.session?.userId) {
+        return const Scaffold(
+          body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
+        );
+      }
+      final epoch = auth!.accountEpoch;
+      void guard() {
+        store.requireActive();
+        if (auth.phase != AuthPhase.ready ||
+            auth.accountEpoch != epoch ||
+            accountStore?.call() != store ||
+            auth.session?.userId != store.userId) {
+          throw StateError('Settings account changed');
+        }
+      }
+
+      final api = SettingsApi(
+        config.apiBaseUrl,
+        auth.validSession,
+        guard,
+        local: kDebugMode && config.environment == AppEnvironment.dev,
+      );
+      return SettingsReadScreen(
+        title: title,
+        requireCurrent: guard,
+        accountChanges: auth,
+        load: () => load(api, store),
+      );
+    }
 
     final SongRegistrationPreparer? prepareRegistration =
         localRepository == null
@@ -330,6 +374,69 @@ class SongRecordApp extends StatelessWidget {
           ),
         ),
         AppRoutes.settings: (context) => SettingsScreen(
+          importBuilder: (_) {
+            final store = accountStore?.call(), auth = authController;
+            if (store == null ||
+                auth?.phase != AuthPhase.ready ||
+                store.userId != auth?.session?.userId) {
+              return const Scaffold(
+                body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
+              );
+            }
+            final epoch = auth!.accountEpoch;
+            void guard() {
+              store.requireActive();
+              if (auth.phase != AuthPhase.ready ||
+                  auth.accountEpoch != epoch ||
+                  accountStore?.call() != store ||
+                  auth.session?.userId != store.userId) {
+                throw StateError('Import account changed');
+              }
+            }
+
+            return ImportEntryScreen(
+              store: store,
+              accountChanges: auth,
+              synchronize: syncController?.wake,
+              requireCurrent: guard,
+              session: auth.validSession,
+              transport: HttpSnapshotTransport(
+                config.apiBaseUrl,
+                allowLocalHttp:
+                    kDebugMode && config.environment == AppEnvironment.dev,
+              ),
+            );
+          },
+          storageBuilder: (_) => settingsRead('보관량과 고정', (api, _) async {
+            final value = await api.get('/v1/storage') as Map<String, dynamic>;
+            const fields = {
+              'used_bytes': '사용 중인 바이트',
+              'reserved_bytes': '예약된 바이트',
+              'quota_bytes': '보관 한도 바이트',
+              'pinned_used': '고정 사용 수',
+              'pinned_limit': '고정 한도',
+              'pinned_pending': '고정 대기 수',
+            };
+            return [
+              for (final field in fields.entries)
+                if (value[field.key] is int && (value[field.key] as int) >= 0)
+                  (field.value, '${value[field.key]}')
+                else
+                  throw const FormatException('Storage data missing'),
+            ];
+          }),
+          classificationBuilder: (_) =>
+              settingsRead('개인화와 분류 관리', (api, _) async {
+                final tags = await api.get('/v1/tags') as Map<String, dynamic>;
+                final conditions =
+                    await api.get('/v1/conditions') as Map<String, dynamic>;
+                return [
+                  for (final row in tags['items'] as List)
+                    ('태그', row['name'] as String),
+                  for (final row in conditions['items'] as List)
+                    ('컨디션', row['name'] as String),
+                ];
+              }),
           backupBuilder: (context) {
             final store = accountStore?.call(), auth = authController;
             if (store == null ||

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
@@ -19,14 +20,16 @@ class ImportDecisionScreen extends StatelessWidget {
     required this.controller,
     required this.onApproved,
     required this.onCancel,
+    this.progress,
     super.key,
   });
   final ImportDecision controller;
   final void Function(ImportConsent consent) onApproved;
   final VoidCallback onCancel;
+  final ValueListenable<String?>? progress;
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: controller,
+    listenable: Listenable.merge([controller, progress]),
     builder: (context, _) {
       final source = controller.source;
       void cancel() {
@@ -50,6 +53,10 @@ class ImportDecisionScreen extends StatelessWidget {
               padding: const EdgeInsets.all(AppSpacing.lg),
               children: [
                 const Text('검사와 미리보기 단계에서는 기존 정보와 정상 파일을 변경하지 않습니다.'),
+                if (progress?.value != null) ...[
+                  const LinearProgressIndicator(),
+                  Text(progress!.value!),
+                ],
                 if (controller.phase == ImportDecisionPhase.ready)
                   FilledButton(
                     onPressed: () => unawaited(controller.check()),

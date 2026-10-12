@@ -18,11 +18,15 @@ class SettingsScreen extends StatelessWidget {
     this.syncController,
     this.trashBuilder,
     this.backupBuilder,
+    this.importBuilder,
+    this.storageBuilder,
+    this.classificationBuilder,
     super.key,
   });
 
   final WidgetBuilder? trashBuilder;
   final WidgetBuilder? backupBuilder;
+  final WidgetBuilder? importBuilder, storageBuilder, classificationBuilder;
   final bool showDevelopmentTools;
   final IdentityLinkFlow? identityLink;
   final AuthController? authController;
@@ -46,6 +50,27 @@ class SettingsScreen extends StatelessWidget {
           children: [
             Text('나에게 맞는 노래 기록', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: AppSpacing.md),
+            for (final (label, icon, builder) in [
+              ('보관량과 고정', Icons.storage_outlined, storageBuilder),
+              ('개인화와 분류 관리', Icons.palette_outlined, classificationBuilder),
+              ('백업 가져오기', Icons.unarchive_outlined, importBuilder),
+            ])
+              Card(
+                child: ListTile(
+                  leading: Icon(icon),
+                  title: Text(label),
+                  subtitle: builder == null
+                      ? const Text('현재 연결 정보를 확인할 수 없습니다.')
+                      : null,
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: builder == null
+                      ? null
+                      : () => Navigator.push<void>(
+                          context,
+                          MaterialPageRoute(builder: builder),
+                        ),
+                ),
+              ),
             if (backupBuilder != null)
               Card(
                 child: ListTile(
