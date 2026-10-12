@@ -85,12 +85,14 @@ class StorageScreen extends StatefulWidget {
     required this.command,
     required this.requireCurrent,
     this.accountChanges,
+    this.requestBuilder,
     super.key,
   });
   final Future<StorageView> Function() load;
   final PinCommand command;
   final VoidCallback requireCurrent;
   final Listenable? accountChanges;
+  final WidgetBuilder? requestBuilder;
   @override
   State<StorageScreen> createState() => _StorageState();
 }
@@ -340,6 +342,24 @@ class _StorageState extends State<StorageScreen> {
             const Text(
               '휴지통·정리 대기·보호 중인 사본은 사용 중 용량에 포함되며 서로 겹칠 수 있어요. 합산하지 않습니다. 고정을 해제해도 용량은 즉시 줄지 않아요.',
             ),
+            if (current.usage['waiting_by_reason'] is Map)
+              for (final waiting
+                  in (current.usage['waiting_by_reason'] as Map).entries)
+                if (waiting.value is int && (waiting.value as int) > 0)
+                  Text(
+                    '${const {'PIN_LIMIT': '고정 개수 부족', 'USER_QUOTA': '계정 보관 용량 부족', 'GLOBAL_QUOTA': '서비스 보관 용량 대기', 'QUOTA': '보관 용량 부족', 'WAITING_LOCAL_CONFIRM': '기기 보존 확인 대기'}[waiting.key] ?? '다른 보관 대기'}: ${waiting.value}개',
+                  ),
+            if (widget.requestBuilder != null)
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: widget.requestBuilder!,
+                        ),
+                      ),
+                child: const Text('추가 보관 요청'),
+              ),
             if (current.usage['cleanup_pending_bytes'] == 0)
               const Text('현재 정리 대기 중인 사본이 없어요. 공간 확보를 약속할 수 없습니다.'),
             FilledButton(

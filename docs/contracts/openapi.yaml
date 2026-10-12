@@ -836,6 +836,92 @@ paths:
               schema: {$ref: '#/components/schemas/StorageSummary'}
         '401': {$ref: '#/components/responses/Error401'}
         '403': {$ref: '#/components/responses/Error403'}
+  /storage/requests:
+    post:
+      operationId: submitStorageDemand
+      summary: 고정 개수·보관 용량 수요 접수
+      description: D08. 새 제출은 새 id/op_id로 반복 접수하며 같은 id/op_id 재전송은 재집계하지 않는다. 두 종류를 함께 선택해도 요청은 한 건이다. 현재 한도·고정·업로드 승인은 변경하지 않는다. 본문과 사용량 스냅샷은 90일 후 제거하며 최소 ID 원장은 계정 삭제까지 보존한다. 만료 ID는 409 STORAGE_REQUEST_EXPIRED이며 자동 재생성하지 않는다.
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [id, types]
+              properties:
+                id: {$ref: '#/components/schemas/Uuid'}
+                types: {$ref: '#/components/schemas/StorageDemandTypes'}
+      responses:
+        '201':
+          description: 신규 접수 또는 동일 op_id 영수증 재현. Cache-Control no-store.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StorageDemandReceipt'}
+        '200':
+          description: 동일 id·같은 종류를 다른 op_id로 재조회. 재집계 없음. Cache-Control no-store.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StorageDemandReceipt'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
+        '404': {$ref: '#/components/responses/Error404'}
+        '409': {$ref: '#/components/responses/Error409'}
+  /storage/requests/me:
+    get:
+      operationId: listStorageDemand
+      summary: 현재 계정 최근 90일 접수 이력
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/RequestId'
+      - $ref: '#/components/parameters/Cursor'
+      - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: 접수 시각 내림차순→UUID 내림차순, 계정 한정, Cache-Control no-store.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items, count, next_cursor]
+                properties:
+                  items: {type: array, items: {$ref: '#/components/schemas/StorageDemandReceipt'}}
+                  count: {type: integer, minimum: 0}
+                  next_cursor:
+                    oneOf:
+                    - {$ref: '#/components/schemas/OpaqueCursor'}
+                    - {type: 'null'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
+        '409': {$ref: '#/components/responses/Error409'}
+  /storage/requests/{id}:
+    get:
+      operationId: getStorageDemand
+      summary: 현재 계정의 유효 접수 확인
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/RequestId'
+      - {name: id, in: path, required: true, schema: {$ref: '#/components/schemas/Uuid'}}
+      responses:
+        '200':
+          description: 계정 본인 요청만 반환. Cache-Control no-store.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/StorageDemandReceipt'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
+        '404': {$ref: '#/components/responses/Error404'}
   /pins:
     get:
       operationId: listPins
@@ -2498,6 +2584,23 @@ components:
         waiting_by_reason:
           type: object
           additionalProperties: {type: integer, format: int64, minimum: 0}
+    StorageDemandTypes:
+      type: array
+      minItems: 1
+      maxItems: 2
+      uniqueItems: true
+      items: {type: string, enum: [PIN_LIMIT, STORAGE_QUOTA]}
+    StorageDemandReceipt:
+      type: object
+      additionalProperties: false
+      required: [id, types, status, revision, received_at, updated_at]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        types: {$ref: '#/components/schemas/StorageDemandTypes'}
+        status: {type: string, const: RECEIVED}
+        revision: {type: integer, const: 1}
+        received_at: {$ref: '#/components/schemas/UtcInstant'}
+        updated_at: {$ref: '#/components/schemas/UtcInstant'}
     PinSlot:
       type: object
       additionalProperties: false

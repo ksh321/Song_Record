@@ -25,6 +25,22 @@ class SettingsApi {
   final Uri base;
   final Future<AuthSession> Function() session;
   final void Function() requireCurrent;
+  Future<dynamic> sendStorageRequest(
+    Map<String, Object?> body,
+    String operationId,
+  ) => _request(
+    'POST',
+    '/v1/storage/requests',
+    body: body,
+    operationId: operationId,
+  );
+  Future<dynamic> storageRequestsPage({String? cursor}) => _request(
+    'GET',
+    Uri(
+      path: '/v1/storage/requests/me',
+      queryParameters: {'limit': '100', 'cursor': ?cursor},
+    ).toString(),
+  );
   Future<dynamic> tagsPage({String? cursor}) {
     if (cursor != null && cursor.length > 4096) {
       throw ArgumentError('Invalid cursor');
@@ -123,7 +139,18 @@ class SettingsApi {
         }
         requireCurrent();
         if (response.statusCode < 200 || response.statusCode >= 300) {
-          throw SettingsUnavailable(status: response.statusCode);
+          String? code;
+          try {
+            final error = jsonDecode(utf8.decode(bytes));
+            if (error is Map &&
+                error['error'] is Map &&
+                (error['error'] as Map)['code'] == 'STORAGE_REQUEST_EXPIRED') {
+              code = 'STORAGE_REQUEST_EXPIRED';
+            }
+          } catch (_) {
+            /* Arbitrary error payloads never become user messages. */
+          }
+          throw SettingsUnavailable(status: response.statusCode, code: code);
         }
         return jsonDecode(utf8.decode(bytes));
       })().timeout(const Duration(seconds: 15));
@@ -134,8 +161,9 @@ class SettingsApi {
 }
 
 class SettingsUnavailable implements Exception {
-  const SettingsUnavailable({this.status});
+  const SettingsUnavailable({this.status, this.code});
   final int? status;
+  final String? code;
   @override
   String toString() => '설정 정보를 읽지 못했어요. 연결과 로그인 상태를 확인해 주세요.';
 }

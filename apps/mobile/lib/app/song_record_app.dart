@@ -27,6 +27,8 @@ import 'package:song_record/features/settings/accent_preferences.dart';
 import 'package:song_record/features/settings/classification_screen.dart';
 import 'package:song_record/features/settings/settings_api.dart';
 import 'package:song_record/features/settings/settings_screen.dart';
+import 'package:song_record/features/settings/storage_request_outbox.dart';
+import 'package:song_record/features/settings/storage_request_screen.dart';
 import 'package:song_record/features/settings/storage_screen.dart';
 import 'package:song_record/features/songs/my_song.dart';
 import 'package:song_record/features/songs/my_song_detail.dart';
@@ -75,7 +77,8 @@ class SongRecordApp extends StatefulWidget {
   State<SongRecordApp> createState() => _SongRecordAppState();
 }
 
-class _SongRecordAppState extends State<SongRecordApp> {
+class _SongRecordAppState extends State<SongRecordApp>
+    with WidgetsBindingObserver {
   late final ValueNotifier<AppAccent> accentChanges = ValueNotifier(
     widget.accent,
   );
@@ -92,7 +95,91 @@ class _SongRecordAppState extends State<SongRecordApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     restoreAccent();
+  }
+
+  StorageRequestOutbox? demand;
+  SettingsApi? demandApi;
+  AccountStore? demandStore;
+  int? demandEpoch;
+  StorageRequestOutbox? currentDemand() {
+    final store = accountStore?.call(), auth = authController;
+    if (store == null ||
+        auth?.phase != AuthPhase.ready ||
+        store.userId != auth?.session?.userId) {
+      return null;
+    }
+    if (demandStore == store && demandEpoch == auth!.accountEpoch) {
+      return demand;
+    }
+    demand?.dispose();
+    demandStore = store;
+    demandEpoch = auth!.accountEpoch;
+    final epoch = auth.accountEpoch;
+    void guard() {
+      store.requireActive();
+      if (auth.phase != AuthPhase.ready ||
+          auth.accountEpoch != epoch ||
+          accountStore?.call() != store ||
+          auth.session?.userId != store.userId) {
+        throw StateError('Demand account changed');
+      }
+    }
+
+    final scope =
+        '${config.environment.name}:${config.apiBaseUrl.origin}:${store.userId}';
+    final api = SettingsApi(
+      config.apiBaseUrl,
+      auth.validSession,
+      guard,
+      local: kDebugMode && config.environment == AppEnvironment.dev,
+    );
+    demandApi = api;
+    final box = StorageRequestOutbox(
+      scope: scope,
+      vault: SecureDemandVault(scope),
+      accountChanges: auth,
+      requireCurrent: guard,
+      send: api.sendStorageRequest,
+    );
+    demand = box;
+    unawaited(box.initialize());
+    return box;
+  }
+
+  Widget demandScreen(BuildContext context) {
+    final box = currentDemand(), api = demandApi;
+    if (box == null || api == null) {
+      return const Scaffold(
+        body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
+      );
+    }
+    return StorageRequestScreen(
+      outbox: box,
+      loadHistory: () async {
+        final rows = <Map<String, dynamic>>[], seen = <String>{};
+        String? cursor;
+        do {
+          final page = await api.storageRequestsPage(
+            cursor: cursor,
+          ) as Map<String, dynamic>;
+          rows.addAll((page['items'] as List).cast<Map<String, dynamic>>());
+          cursor = page['next_cursor'] as String?;
+          if (cursor != null && !seen.add(cursor)) {
+            throw const FormatException('Repeated demand cursor');
+          }
+        } while (cursor != null);
+        return rows;
+      },
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && demand != null) {
+      unawaited(demand!.flush());
+    }
   }
 
   Future<void> restoreAccent() async {
@@ -126,6 +213,8 @@ class _SongRecordAppState extends State<SongRecordApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    demand?.dispose();
     accentVersion++;
     accentChanges.dispose();
     super.dispose();
@@ -133,6 +222,7 @@ class _SongRecordAppState extends State<SongRecordApp> {
 
   @override
   Widget build(BuildContext context) {
+    currentDemand();
     final loadHealth =
         healthLoader ?? HealthClient(apiBaseUrl: config.apiBaseUrl).fetch;
 
@@ -458,6 +548,7 @@ class _SongRecordAppState extends State<SongRecordApp> {
               local: kDebugMode && config.environment == AppEnvironment.dev,
             );
             return StorageScreen(
+              requestBuilder: demandScreen,
               requireCurrent: guard,
               accountChanges: auth,
               load: () async {
