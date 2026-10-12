@@ -636,8 +636,12 @@ class MySqlIdempotencyTests {
             db.update("UPDATE chart_snapshot SET state='PUBLISHED',item_count=1,published_at=UTC_TIMESTAMP(3) WHERE id=?",oldChartBytes);
             db.update("UPDATE chart_publication SET snapshot_id=? WHERE brand='TJ' AND period='MONTHLY'",oldChartBytes);
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();
-            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(14);flyway.validate();
-            assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("23");
+            var pending=flyway.info().pending();
+            assertThat(pending).isNotEmpty();
+            var latestVersion=pending[pending.length-1].getVersion();
+            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(pending.length);flyway.validate();
+            assertThat(flyway.info().current().getVersion()).isEqualTo(latestVersion);
+            assertThat(flyway.info().pending()).isEmpty();
             assertThat(db.queryForObject("SELECT COUNT(*) FROM chart_collection_payload",Integer.class)).isZero();
             assertThat(db.queryForObject("SELECT snapshot_id FROM chart_publication WHERE brand='TJ' AND period='MONTHLY'",byte[].class)).containsExactly(oldChartBytes);
             assertThat(db.queryForObject("SELECT collection_attempt_id FROM chart_publication WHERE brand='TJ' AND period='MONTHLY'",byte[].class)).containsExactly(oldChartBytes);
