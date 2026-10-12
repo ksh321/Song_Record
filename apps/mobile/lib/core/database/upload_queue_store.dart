@@ -51,7 +51,11 @@ final class UploadQueueStore {
   String _exclude(Set<String> ids) => ids.isEmpty
       ? ''
       : "AND m.entity_id NOT IN (${ids.map((id) => "'${UuidValue(id).value}'").join(',')})";
-  Future<void> discover() => db.transaction(() async {
+  Future<void> discover({Set<String>? only}) => db.transaction(() async {
+    if (only != null && only.isEmpty) return;
+    final scope = only == null
+        ? ''
+        : "AND f.recording_id IN (${only.map((id) => "'${UuidValue(id).value}'").join(',')})";
     final blocked = await _blockedRecordings();
     // Only acknowledged SAVED metadata, matching verified original; no local edit is mistaken for approval.
     final rows = await db.customSelect(
@@ -62,6 +66,7 @@ final class UploadQueueStore {
       AND json_extract(m.server_payload,'\$.file.sha256')=f.sha256 AND json_extract(m.server_payload,'\$.file.size_bytes')=f.size_bytes
       AND NOT EXISTS(SELECT 1 FROM local_upload_queue q WHERE q.recording_id=f.recording_id)
       ${_exclude(blocked)}
+      $scope
       ORDER BY f.updated_at,f.recording_id LIMIT 500""",
     ).get();
     for (final r in rows) {

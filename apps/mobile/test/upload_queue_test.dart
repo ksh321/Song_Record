@@ -1,12 +1,11 @@
 import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_store.dart';
+
 import '../tool/deleted_song_verification.dart';
 import '../tool/upload_verification_fixture.dart';
-
-
-
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +38,10 @@ void main() {
         );
         try {
           final store = await manager.openAccount(uploadFixtureId(1));
+          await store.discoverImportUploads({});
+          expect(await store.uploadStatus(), isEmpty);
+          await store.discoverImportUploads({uploadFixtureId(999)});
+          expect(await store.uploadStatus(), isEmpty);
           await store.discoverUploads();
           expect((await store.uploadStatus()).length, 1);
           expect(await store.claimUpload(), isNotNull);

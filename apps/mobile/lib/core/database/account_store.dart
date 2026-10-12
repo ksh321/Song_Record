@@ -534,7 +534,14 @@ final class AccountStore {
     }
   }
 
-  Future<void> discoverUploads() => _run(_uploads.discover);
+  Future<void> discoverUploads() => _run(() => _uploads.discover());
+  Future<void> discoverImportUploads(Set<String> eligible) {
+    final frozen = Set<String>.unmodifiable(
+      eligible.map((id) => UuidValue(id).value),
+    );
+    return _run(() => _uploads.discover(only: frozen));
+  }
+
   Future<UploadWork?> claimUpload() => _run(_uploads.claim);
   Future<bool> uploadCurrent(UploadWork work) =>
       _run(() => _uploads.current(work));
