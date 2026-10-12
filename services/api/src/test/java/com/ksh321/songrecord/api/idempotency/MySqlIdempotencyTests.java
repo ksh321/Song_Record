@@ -19,6 +19,10 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 /** CI-only, real InnoDB and V6 receipt DDL. Authentication itself is covered by IdempotencyTests. */
 @EnabledIfEnvironmentVariable(named="P07_MYSQL_CI", matches="true")
 class MySqlIdempotencyTests {
+    @Test void mysqlAccountDeletionAcceptanceRevokesSessionsAndNewIssuance() throws Exception {
+        String name=database+"_account_delete";admin.execute("CREATE DATABASE "+name);
+        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.account.AccountDeletionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+    }
     @Test void mysqlStorageDemandLedgerAndConcurrentUniqueUsers() throws Exception {
         String name=database+"_storage_demand";admin.execute("CREATE DATABASE "+name);
         try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.account.StorageRequestDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}

@@ -86,6 +86,7 @@ class AuthController extends ChangeNotifier {
   final Future<void> Function()? prepareLogout;
   final Future<bool> Function()? exportRecovery;
   bool _loggingOut = false;
+  final Set<String> _acceptedDeletionOwners = {};
   AuthSession? session;
   AuthPhase phase = AuthPhase.loading;
   String? message;
@@ -220,6 +221,38 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Called only after the dedicated deletion proof confirms acceptance for this owner.
+  /// Closes account handles; physical per-account file cleanup belongs to verified deletion sync.
+  Future<void> deletionAccepted(String owner) async {
+    if (session?.userId != owner) return;
+    _acceptedDeletionOwners.add(owner);
+    _loggingOut = true;
+    busy = true;
+    session = null;
+    phase = AuthPhase.signedOut;
+    message = '계정 탈퇴가 접수됐어요. 저장된 확인증으로 삭제 상태를 확인할 수 있어요.';
+    notifyListeners();
+    try {
+      final rotating = _refreshing;
+      if (rotating != null) {
+        try {
+          await rotating;
+        } catch (_) {
+          /* Server acceptance already revoked this owner. */
+        }
+      }
+      await vault.write(jsonEncode({'signedOut': true}));
+    } finally {
+      try {
+        await closeAccount();
+      } finally {
+        _loggingOut = false;
+        busy = false;
+        notifyListeners();
+      }
+    }
+  }
+
   Future<AuthSession> validSession() async {
     if (_loggingOut) throw const AuthFailure('로그아웃 중이에요.');
     final current = session;
@@ -246,13 +279,23 @@ class AuthController extends ChangeNotifier {
         jsonEncode({...current.toJson(), 'refreshPending': true}),
       );
       final next = await api.refresh(current);
+      if (_acceptedDeletionOwners.contains(current.userId)) {
+        throw const AuthFailure('계정 탈퇴가 접수됐어요.', status: 401);
+      }
       if (next.userId != current.userId || next.deviceId != current.deviceId) {
         throw const AuthFailure('계정 확인이 필요해요.', status: 401);
       }
       await vault.write(jsonEncode(next.toJson()));
+      if (_acceptedDeletionOwners.contains(current.userId)) {
+        await vault.write(jsonEncode({'signedOut': true}));
+        throw const AuthFailure('계정 탈퇴가 접수됐어요.', status: 401);
+      }
       session = next;
       return next;
     } catch (_) {
+      if (_acceptedDeletionOwners.contains(current.userId)) {
+        throw const AuthFailure('계정 탈퇴가 접수됐어요.', status: 401);
+      }
       await _requireLogin('로그인 갱신을 확인하지 못했어요. 다시 로그인해 주세요.');
       throw const AuthFailure('다시 로그인해 주세요.', status: 401);
     }

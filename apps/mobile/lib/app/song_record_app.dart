@@ -45,6 +45,8 @@ import '../features/backup/export/export_controller.dart';
 import '../features/backup/export/export_screen.dart';
 import '../features/playlists/playlist_library.dart';
 import '../features/playlists/playlist_library_screen.dart';
+import '../features/settings/account_deletion.dart';
+import '../features/settings/account_deletion_screen.dart';
 import '../features/trash/trash_screens.dart';
 import '../features/trash/trash_workflow.dart';
 
@@ -488,6 +490,49 @@ class _SongRecordAppState extends State<SongRecordApp>
           ),
         ),
         AppRoutes.settings: (context) => SettingsScreen(
+          deletionBuilder: authController?.phase == AuthPhase.ready
+              ? (_) {
+                  final store = accountStore?.call(), auth = authController;
+                  if (store == null ||
+                      auth?.phase != AuthPhase.ready ||
+                      store.userId != auth?.session?.userId ||
+                      auth!.proofs is! IdentityLinkProofSource) {
+                    return const Scaffold(
+                      body: SafeArea(
+                        child: Center(child: Text('최근 계정 재인증을 사용할 수 없어요.')),
+                      ),
+                    );
+                  }
+                  final epoch = auth.accountEpoch, owner = store.userId;
+                  void guard() {
+                    store.requireActive();
+                    if (auth.phase != AuthPhase.ready ||
+                        auth.accountEpoch != epoch ||
+                        auth.session?.userId != owner ||
+                        accountStore?.call() != store) {
+                      throw StateError('Deletion account changed');
+                    }
+                  }
+
+                  final api = AccountDeletionApi(
+                    config.apiBaseUrl,
+                    auth.validSession,
+                    guard,
+                    local:
+                        kDebugMode && config.environment == AppEnvironment.dev,
+                  );
+                  final flow = AccountDeletionFlow(
+                    '${config.environment.name}:${config.apiBaseUrl.origin}:$owner',
+                    api,
+                    auth.proofs as IdentityLinkProofSource,
+                    const SecureDeletionReceiptVault(),
+                  );
+                  return AccountDeletionScreen(
+                    flow: flow,
+                    onAccepted: () => auth.deletionAccepted(owner),
+                  );
+                }
+              : null,
           importBuilder: (_) {
             final store = accountStore?.call(), auth = authController;
             if (store == null ||

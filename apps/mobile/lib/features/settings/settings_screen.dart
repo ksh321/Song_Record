@@ -21,12 +21,14 @@ class SettingsScreen extends StatelessWidget {
     this.importBuilder,
     this.storageBuilder,
     this.classificationBuilder,
+    this.deletionBuilder,
     super.key,
   });
 
   final WidgetBuilder? trashBuilder;
   final WidgetBuilder? backupBuilder;
   final WidgetBuilder? importBuilder, storageBuilder, classificationBuilder;
+  final WidgetBuilder? deletionBuilder;
   final bool showDevelopmentTools;
   final IdentityLinkFlow? identityLink;
   final AuthController? authController;
@@ -133,6 +135,15 @@ class SettingsScreen extends StatelessWidget {
                       builder: (_) => LogoutScreen(auth: authController!),
                     ),
                   ),
+                ),
+              ),
+            if (deletionBuilder != null)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.person_remove_outlined),
+                  title: const Text('계정 탈퇴'),
+                  onTap: () => Navigator.of(context)
+                      .push<void>(MaterialPageRoute(builder: deletionBuilder!)),
                 ),
               ),
             if (showDevelopmentTools) ...[

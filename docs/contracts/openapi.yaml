@@ -836,6 +836,263 @@ paths:
               schema: {$ref: '#/components/schemas/StorageSummary'}
         '401': {$ref: '#/components/responses/Error401'}
         '403': {$ref: '#/components/responses/Error403'}
+  /account/deletion-reauth-challenges:
+    post:
+      operationId: beginAccountDeletionReauthentication
+      summary: 현재 계정 로그인 수단의 최근 재인증 nonce 발급
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Cache-Control no-store. 원문 확인증을 로그·URL·일반 영수증에 넣지 않는다.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - challenge_id
+                - nonce
+                - expires_at
+                properties:
+                  challenge_id:
+                    $ref: '#/components/schemas/Uuid'
+                  nonce:
+                    type: string
+                    pattern: ^[A-Za-z0-9_-]{43}$
+                  expires_at:
+                    $ref: '#/components/schemas/UtcInstant'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - provider
+              properties:
+                provider:
+                  type: string
+                  enum:
+                  - GOOGLE
+                  - KAKAO
+  /account/deletion-status-preparations:
+    post:
+      operationId: prepareAccountDeletionStatus
+      summary: 서버 검증된 동일 소유자 재인증 후 확인증 준비 — 아직 탈퇴 접수 아님
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Cache-Control no-store. 원문 확인증을 로그·URL·일반 영수증에 넣지 않는다.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - preparation_id
+                - status_token
+                - reauth_proof
+                - base_revision
+                - prepare_expires_at
+                properties:
+                  preparation_id:
+                    $ref: '#/components/schemas/Uuid'
+                  status_token:
+                    type: string
+                    pattern: ^[A-Za-z0-9_-]{43}$
+                  reauth_proof:
+                    $ref: '#/components/schemas/Uuid'
+                  base_revision:
+                    type: integer
+                    minimum: 1
+                  prepare_expires_at:
+                    $ref: '#/components/schemas/UtcInstant'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - challenge_id
+              - proof
+              properties:
+                challenge_id:
+                  $ref: '#/components/schemas/Uuid'
+                proof:
+                  type: string
+                  minLength: 1
+  /account/deletion-requests:
+    post:
+      operationId: acceptAccountDeletion
+      summary: 최근 재인증·보호 저장한 확인증·전체 범위 최종 동의 후 원자적 탈퇴 접수
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      - name: X-Deletion-Status-Token
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+      responses:
+        '202':
+          description: Cache-Control no-store. 원문 확인증을 로그·URL·일반 영수증에 넣지 않는다.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - operation_id
+                - status_path
+                - accepted_at
+                - expires_at
+                properties:
+                  operation_id:
+                    $ref: '#/components/schemas/Uuid'
+                  status_path:
+                    type: string
+                    pattern: ^/v1/account/deletion-status/[0-9a-f-]{36}$
+                  accepted_at:
+                    $ref: '#/components/schemas/UtcInstant'
+                  expires_at:
+                    $ref: '#/components/schemas/UtcInstant'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - preparation_id
+              - base_revision
+              - reauth_proof
+              - scope
+              - confirmed
+              properties:
+                preparation_id:
+                  $ref: '#/components/schemas/Uuid'
+                base_revision:
+                  type: integer
+                  minimum: 1
+                reauth_proof:
+                  $ref: '#/components/schemas/Uuid'
+                scope:
+                  type: string
+                  enum:
+                  - ALL_ACCOUNT_DATA
+                confirmed:
+                  type: boolean
+                  enum:
+                  - true
+  /account/deletion-status/{id}:
+    get:
+      operationId: getAccountDeletionStatus
+      summary: 전용 확인증만으로 제한된 상태 조회 — 일반 로그인 권한 없음
+      x-implementation-status: implemented
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/Uuid'
+      - name: X-Deletion-Status-Token
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+      responses:
+        '200':
+          description: Cache-Control no-store. 원문 확인증을 로그·URL·일반 영수증에 넣지 않는다.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - status
+                - retrying
+                - accepted_at
+                - service_deleted_at
+                - backup_purge_due_at
+                - completed_at
+                - expires_at
+                properties:
+                  status:
+                    type: string
+                    enum:
+                    - PREPARED
+                    - ACCEPTED
+                    - DELETING
+                    - BACKUP_CLEANUP
+                    - COMPLETED
+                  retrying:
+                    type: boolean
+                  accepted_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  service_deleted_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  backup_purge_due_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  completed_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  expires_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '410':
+          description: 유효한 확인증의 30일 만료. STATUS_TOKEN_EXPIRED.
+      security: []
   /storage/requests:
     post:
       operationId: submitStorageDemand

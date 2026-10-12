@@ -105,6 +105,28 @@ void main() {
     );
   });
   tearDown(() => auth.dispose());
+  test('탈퇴 접수 중 갱신 응답이 기존 계정을 다시 활성화하지 않는다', () async {
+    auth.phase = AuthPhase.ready;
+    auth.session = session(minutes: 0);
+    auth.notifyListeners();
+    api.pending = Completer<AuthSession>();
+    final rotating = auth.validSession();
+    final rejected = expectLater(rotating, throwsA(isA<AuthFailure>()));
+    await Future<void>.delayed(Duration.zero);
+    final accepted = auth.deletionAccepted('account-a');
+    expect(auth.phase, AuthPhase.signedOut);
+    expect(auth.session, isNull);
+    await auth.signIn('GOOGLE');
+    expect(api.logins, 0);
+    api.pending!.complete(session());
+    await rejected;
+    await accepted;
+    expect(auth.session, isNull);
+    expect(jsonDecode(vault.value!), {'signedOut': true});
+    expect(closed, 1);
+    await auth.deletionAccepted('account-b');
+    expect(closed, 1);
+  });
   test('account epoch keeps token refresh but invalidates away-and-back account scope', () {
     auth.phase = AuthPhase.ready;
     auth.session = session();

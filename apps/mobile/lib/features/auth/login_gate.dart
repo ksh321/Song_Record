@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:song_record/app/song_record_app.dart';
 import 'package:song_record/config/app_config.dart';
@@ -5,6 +6,7 @@ import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 
 import '../../core/database/account_store.dart';
+import '../settings/deletion_status_recovery_screen.dart';
 import '../sync/sync_controller.dart';
 import 'auth_session.dart';
 import 'identity_link.dart';
@@ -113,6 +115,27 @@ class _LoginGateState extends State<LoginGate> with WidgetsBindingObserver {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 32),
+                      Builder(
+                        builder: (innerContext) => TextButton(
+                          onPressed: auth.busy
+                              ? null
+                              : () => Navigator.push<void>(
+                                  innerContext,
+                                  MaterialPageRoute(
+                                    builder: (_) => DeletionStatusRecoveryScreen(
+                                      base: widget.config.apiBaseUrl,
+                                      prefix:
+                                          '${widget.config.environment.name}:${widget.config.apiBaseUrl.origin}:',
+                                      local:
+                                          kDebugMode &&
+                                          widget.config.environment ==
+                                              AppEnvironment.dev,
+                                    ),
+                                  ),
+                                ),
+                          child: const Text('저장된 탈퇴 확인증으로 상태 확인'),
+                        ),
+                      ),
                       if (auth.phase == AuthPhase.loading)
                         const Center(child: CircularProgressIndicator())
                       else ...[
