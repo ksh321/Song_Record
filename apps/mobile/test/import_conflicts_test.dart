@@ -9,6 +9,7 @@ import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_database.dart';
 import 'package:song_record/core/database/account_paths.dart';
 import 'package:song_record/core/database/account_store.dart';
+import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/backup/export/export_baseline.dart';
@@ -65,10 +66,11 @@ void main() {
   });
   Future<ImportServerBaseline> server({
     bool fileSpec = false,
+    bool omitSong = false,
     String? serverSha,
   }) async {
     final f = businessSnapshotFixture();
-    replaceBusinessSnapshotRows(f, 'SONG', [remoteSong]);
+    replaceBusinessSnapshotRows(f, 'SONG', omitSong ? [] : [remoteSong]);
     replaceBusinessSnapshotRows(f, 'RECORDING', []);
     replaceBusinessSnapshotRows(
       f,
@@ -118,8 +120,13 @@ void main() {
     String? serverSha,
     String? backupSha,
     int baseRevision = 1,
+    bool omitSong = false,
   }) async {
-    final current = await server(fileSpec: fileSpec, serverSha: serverSha);
+    final current = await server(
+      fileSpec: fileSpec,
+      serverSha: serverSha,
+      omitSong: omitSong,
+    );
     final base = {...remoteSong, 'revision': baseRevision, 'note': baseNote}
       ..remove('user_id');
     final local = note == null ? null : {...base, 'note': note};
@@ -310,6 +317,43 @@ void main() {
       'destination draft',
     );
   });
+  test(
+    'server absence never authorizes overwriting a newer unsent local UUID',
+    () async {
+      final local = {...remoteSong, 'note': 'newer unsent draft'};
+      await store.saveEdit(
+        LocalEdit(
+          opId: id(990),
+          entity: LocalEntity.song,
+          entityId: id(701),
+          operation: LocalOperation.create,
+          baseRevision: 0,
+          draft: local,
+          changes: {'id': id(701), 'title': local['title']},
+        ),
+      );
+      final p = await preview(
+        await input(note: 'older backup draft', omitSong: true),
+      );
+      expect(
+        p.conflicts.any((c) => c.code == 'LOCAL_ONLY_UUID_CONFLICT'),
+        true,
+      );
+      expect(
+        p.records.any(
+          (r) => r['entity'] == 'SONG' && r['resource_id'] == id(701),
+        ),
+        false,
+      );
+      expect(
+        jsonDecode(
+          (await store.readMetadata(LocalEntity.song, id(701)))!.localJson!,
+        )['note'],
+        'newer unsent draft',
+      );
+      expect((await store.pendingMutations()).length, 1);
+    },
+  );
   test('identical existing file is reusable and never rewritten', () async {
     final file = await localFile();
     await file.writeAsBytes(bytes);

@@ -106,6 +106,12 @@ void main() {
       expect(await store.pendingImportJobs(), isEmpty);
     },
   );
+  test('sealed source lookup preserves original intent on retry and rejects a changed archive', () async {
+    expect(await store.importJobMatches(job, 'a' * 64), false);
+    await prepare();
+    expect(await store.importJobMatches(job, 'a' * 64), true);
+    await expectLater(store.importJobMatches(job, 'b' * 64), throwsStateError);
+  });
   test('same job cannot be reused for another plan or manifest', () async {
     await prepare();
     await expectLater(

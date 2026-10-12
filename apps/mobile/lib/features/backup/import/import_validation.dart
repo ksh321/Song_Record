@@ -258,8 +258,16 @@ final class ImportData {
           }.contains(item.key)) {
         _valid(item.value is List);
       }
+      if (item.value != null && item.key == 'timezone_id') {
+        _valid(
+          item.value is String &&
+              (item.value as String).isNotEmpty &&
+              (item.value as String).length <= 64,
+        );
+      }
       if (item.value != null &&
-          (item.key == 'id' || item.key.endsWith('_id'))) {
+          (item.key == 'id' ||
+              item.key.endsWith('_id') && item.key != 'timezone_id')) {
         _id(item.value);
       }
       _fields(item.value, depth + 1);

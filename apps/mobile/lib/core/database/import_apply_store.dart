@@ -2,6 +2,27 @@ part of 'account_store.dart';
 
 /// Immutable account-scoped commands and item results, without file bytes.
 extension ImportApplyStore on AccountStore {
+  Future<bool> importJobMatches(
+    String jobId,
+    String sourceDigest,
+  ) => _run(() async {
+    final id = UuidValue(jobId).value;
+    if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(sourceDigest)) {
+      throw const FormatException('Invalid import source digest');
+    }
+    final row = await _database
+        .customSelect(
+          'SELECT user_id,manifest_hash FROM import_jobs WHERE import_job_id=?',
+          variables: [Variable(id)],
+        )
+        .getSingleOrNull();
+    if (row == null) return false;
+    if (row.read<String>('user_id') != userId ||
+        row.read<String>('manifest_hash') != sourceDigest) {
+      throw StateError('Import source or owner changed');
+    }
+    return true;
+  });
   LocalEdit _importEdit(Map<String, dynamic> c) {
     final entity = LocalEntity.values.singleWhere((e) => e.code == c['entity']);
     final operation = LocalOperation.values.singleWhere(

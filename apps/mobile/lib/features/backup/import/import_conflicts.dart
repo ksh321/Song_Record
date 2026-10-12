@@ -161,6 +161,38 @@ Future<ImportConflictPreview> previewImportConflicts({
         payload = row['payload'] as Map<String, dynamic>;
     final remote = existing[key], fields = importEditableFields[entity];
     if (remote == null) {
+      final dest = destCopies[key];
+      final currentLocal =
+          _stored(dest?['local_payload']) ?? _stored(dest?['server_payload']);
+      if (currentLocal != null) {
+        final compared = {
+          ...?fields,
+          'source_type',
+          'tj_number',
+          'song_id',
+          'metadata_state',
+          'file',
+          'tag_ids',
+        };
+        final different = {
+          for (final f in compared)
+            if (payload.containsKey(f) && !_equal(currentLocal[f], payload[f]))
+              f,
+        };
+        if (different.isNotEmpty) {
+          conflicts.add(
+            ImportConflict(
+              entity,
+              id,
+              'LOCAL_ONLY_UUID_CONFLICT',
+              different,
+              incoming: payload,
+              destination: currentLocal,
+            ),
+          );
+          continue;
+        }
+      }
       rows.add(row);
       continue;
     }
