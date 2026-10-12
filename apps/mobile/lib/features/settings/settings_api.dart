@@ -25,6 +25,37 @@ class SettingsApi {
   final Uri base;
   final Future<AuthSession> Function() session;
   final void Function() requireCurrent;
+  Future<dynamic> tagsPage({String? cursor}) {
+    if (cursor != null && cursor.length > 4096) {
+      throw ArgumentError('Invalid cursor');
+    }
+    return _request(
+      'GET',
+      Uri(
+        path: '/v1/tags',
+        queryParameters: {'state': 'ALL', 'limit': '100', 'cursor': ?cursor},
+      ).toString(),
+    );
+  }
+
+  Future<dynamic> tagCommand(
+    String method,
+    String path,
+    Map<String, Object?> body,
+    String operationId,
+  ) {
+    const uuid =
+        r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+    if (!(method == 'POST' && path == '/v1/tags' ||
+            method == 'PATCH' && RegExp('^/v1/tags/$uuid\$').hasMatch(path) ||
+            method == 'POST' &&
+                RegExp('^/v1/tags/$uuid/archive\$').hasMatch(path)) ||
+        !RegExp('^$uuid\$').hasMatch(operationId)) {
+      throw ArgumentError('Invalid tag command');
+    }
+    return _request(method, path, body: body, operationId: operationId);
+  }
+
   Future<dynamic> get(String path) async {
     if (!{
       '/v1/storage',

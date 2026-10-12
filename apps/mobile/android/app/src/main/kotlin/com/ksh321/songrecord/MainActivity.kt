@@ -46,6 +46,24 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/device_settings")
+            .setMethodCallHandler { call, result ->
+                val preferences = getSharedPreferences("song_record_device_settings", MODE_PRIVATE)
+                when (call.method) {
+                    "readAccent" -> result.success(preferences.getString("accent", null))
+                    "writeAccent" -> {
+                        val accent = call.argument<String>("accent")
+                        if (accent !in setOf("blue", "green", "yellow", "pink", "orange", "purple", "white", "default")) {
+                            result.error("INVALID_ACCENT", "Invalid accent", null)
+                        } else if (preferences.edit().putString("accent", accent).commit()) {
+                            result.success(null)
+                        } else {
+                            result.error("ACCENT_SAVE_FAILED", "Device preference not saved", null)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/backup_import")
             .setMethodCallHandler(backupImportBridge::handle)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/audio_export")

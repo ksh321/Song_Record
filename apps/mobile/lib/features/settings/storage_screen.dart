@@ -115,7 +115,10 @@ class _StorageState extends State<StorageScreen> {
     } catch (_) {
       generation++;
       if (mounted) {
-        if (dialogOpen) Navigator.of(context).pop();
+        if (dialogOpen) {
+          dialogOpen = false;
+          Navigator.of(context).pop();
+        }
         setState(() {
           data = null;
           pending = null;

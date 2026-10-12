@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -22,8 +23,9 @@ import 'package:song_record/features/search/karaoke_search.dart';
 import 'package:song_record/features/search/karaoke_search_screen.dart';
 import 'package:song_record/features/search/search_intent.dart';
 import 'package:song_record/features/search/song_registration.dart';
+import 'package:song_record/features/settings/accent_preferences.dart';
+import 'package:song_record/features/settings/classification_screen.dart';
 import 'package:song_record/features/settings/settings_api.dart';
-import 'package:song_record/features/settings/settings_read_screen.dart';
 import 'package:song_record/features/settings/settings_screen.dart';
 import 'package:song_record/features/settings/storage_screen.dart';
 import 'package:song_record/features/songs/my_song.dart';
@@ -35,6 +37,7 @@ import 'package:song_record/network/health_client.dart';
 import 'package:song_record/routing/app_routes.dart';
 
 import '../core/database/account_store.dart';
+import '../core/database/local_models.dart';
 import '../core/sync/snapshot_transport.dart';
 import '../features/backup/export/export_controller.dart';
 import '../features/backup/export/export_screen.dart';
@@ -43,7 +46,7 @@ import '../features/playlists/playlist_library_screen.dart';
 import '../features/trash/trash_screens.dart';
 import '../features/trash/trash_workflow.dart';
 
-class SongRecordApp extends StatelessWidget {
+class SongRecordApp extends StatefulWidget {
   const SongRecordApp({
     required this.config,
     this.healthLoader,
@@ -54,6 +57,7 @@ class SongRecordApp extends StatelessWidget {
     this.accountStore,
     this.recorderGateway = const MethodChannelRecorderGateway(),
     this.accent = AppAccent.initial,
+    this.accentPreferences = const DeviceAccentPreferences(),
     super.key,
   });
 
@@ -66,52 +70,71 @@ class SongRecordApp extends StatelessWidget {
   final HealthLoader? healthLoader;
   final RecorderGateway recorderGateway;
   final AppAccent accent;
+  final AccentPreferences accentPreferences;
+  @override
+  State<SongRecordApp> createState() => _SongRecordAppState();
+}
+
+class _SongRecordAppState extends State<SongRecordApp> {
+  late final ValueNotifier<AppAccent> accentChanges = ValueNotifier(
+    widget.accent,
+  );
+  int accentVersion = 0;
+  AppConfig get config => widget.config;
+  IdentityLinkFlow? get identityLink => widget.identityLink;
+  AuthController? get authController => widget.authController;
+  SyncController? get syncController => widget.syncController;
+  LocalRepository? Function()? get localRepository => widget.localRepository;
+  AccountStore? Function()? get accountStore => widget.accountStore;
+  HealthLoader? get healthLoader => widget.healthLoader;
+  RecorderGateway get recorderGateway => widget.recorderGateway;
+  AppAccent get accent => accentChanges.value;
+  @override
+  void initState() {
+    super.initState();
+    restoreAccent();
+  }
+
+  Future<void> restoreAccent() async {
+    final version = accentVersion;
+    try {
+      final saved = await widget.accentPreferences.read();
+      if (mounted && version == accentVersion && saved != null) {
+        setState(() => accentChanges.value = saved);
+      }
+    } catch (_) {
+      /* Initial theme remains usable when device preferences fail. */
+    }
+  }
+
+  Future<void> saveAccent(AppAccent value) async {
+    final version = ++accentVersion;
+    await widget.accentPreferences.write(value);
+    if (mounted && version == accentVersion) {
+      setState(() => accentChanges.value = value);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant SongRecordApp old) {
+    super.didUpdateWidget(old);
+    if (old.accent != widget.accent) {
+      accentVersion++;
+      accentChanges.value = widget.accent;
+    }
+  }
+
+  @override
+  void dispose() {
+    accentVersion++;
+    accentChanges.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final loadHealth =
         healthLoader ?? HealthClient(apiBaseUrl: config.apiBaseUrl).fetch;
-
-    Widget settingsRead(
-      String title,
-      Future<List<(String, String)>> Function(
-        SettingsApi api,
-        AccountStore store,
-      )
-      load,
-    ) {
-      final store = accountStore?.call(), auth = authController;
-      if (store == null ||
-          auth?.phase != AuthPhase.ready ||
-          store.userId != auth?.session?.userId) {
-        return const Scaffold(
-          body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
-        );
-      }
-      final epoch = auth!.accountEpoch;
-      void guard() {
-        store.requireActive();
-        if (auth.phase != AuthPhase.ready ||
-            auth.accountEpoch != epoch ||
-            accountStore?.call() != store ||
-            auth.session?.userId != store.userId) {
-          throw StateError('Settings account changed');
-        }
-      }
-
-      final api = SettingsApi(
-        config.apiBaseUrl,
-        auth.validSession,
-        guard,
-        local: kDebugMode && config.environment == AppEnvironment.dev,
-      );
-      return SettingsReadScreen(
-        title: title,
-        requireCurrent: guard,
-        accountChanges: auth,
-        load: () => load(api, store),
-      );
-    }
 
     final SongRegistrationPreparer? prepareRegistration =
         localRepository == null
@@ -456,18 +479,98 @@ class SongRecordApp extends StatelessWidget {
               },
             );
           },
-          classificationBuilder: (_) =>
-              settingsRead('개인화와 분류 관리', (api, _) async {
-                final tags = await api.get('/v1/tags') as Map<String, dynamic>;
+          classificationBuilder: (_) {
+            final store = accountStore?.call(), auth = authController;
+            if (store == null ||
+                auth?.phase != AuthPhase.ready ||
+                store.userId != auth?.session?.userId) {
+              return const Scaffold(
+                body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
+              );
+            }
+            final epoch = auth!.accountEpoch;
+            void guard() {
+              store.requireActive();
+              if (auth.phase != AuthPhase.ready ||
+                  auth.accountEpoch != epoch ||
+                  accountStore?.call() != store ||
+                  auth.session?.userId != store.userId) {
+                throw StateError('Classification account changed');
+              }
+            }
+
+            final api = SettingsApi(
+              config.apiBaseUrl,
+              auth.validSession,
+              guard,
+              local: kDebugMode && config.environment == AppEnvironment.dev,
+            );
+            return ClassificationScreen(
+              canEdit: syncController != null,
+              requireCurrent: guard,
+              accountChanges: auth,
+              accent: accentChanges,
+              saveAccent: saveAccent,
+              load: () async {
+                final tags = <Map<String, dynamic>>[], cursors = <String>{};
+                String? cursor;
+                do {
+                  final page = await api.tagsPage(
+                    cursor: cursor,
+                  ) as Map<String, dynamic>;
+                  tags.addAll(
+                    (page['items'] as List).cast<Map<String, dynamic>>(),
+                  );
+                  cursor = page['next_cursor'] as String?;
+                  if (cursor != null && !cursors.add(cursor)) {
+                    throw const FormatException('Repeated tag cursor');
+                  }
+                } while (cursor != null);
                 final conditions =
                     await api.get('/v1/conditions') as Map<String, dynamic>;
-                return [
-                  for (final row in tags['items'] as List)
-                    ('태그', row['name'] as String),
-                  for (final row in conditions['items'] as List)
-                    ('컨디션', row['name'] as String),
-                ];
-              }),
+                guard();
+                return (
+                  tags: tags,
+                  conditions: (conditions['items'] as List)
+                      .cast<Map<String, dynamic>>(),
+                );
+              },
+              command: (method, path, body, op) async {
+                final result = await api.tagCommand(
+                  method,
+                  path,
+                  body,
+                  op,
+                ) as Map<String, dynamic>;
+                guard();
+                await syncController?.wake();
+                guard();
+                final copy = await store.readMetadata(
+                  LocalEntity.tag,
+                  result['id'] as String,
+                );
+                guard();
+                final local = copy?.localJson ?? copy?.serverJson;
+                if (local == null) {
+                  throw StateError('Tag receipt awaiting local sync');
+                }
+                final actual = jsonDecode(local) as Map<String, dynamic>;
+                if (copy!.revision > (result['revision'] as int)) {
+                  // A newer account change superseded this accepted receipt.
+                  // Refresh instead of endlessly replaying the old request.
+                  throw const SettingsUnavailable(status: 409);
+                }
+                if (copy.revision < (result['revision'] as int) ||
+                    actual['name'] != result['name'] ||
+                    (actual['archived_at'] == null) !=
+                        (result['archived_at'] == null)) {
+                  throw StateError(
+                    'Tag receipt awaiting local sync or conflict resolution',
+                  );
+                }
+              },
+            );
+          },
           backupBuilder: (context) {
             final store = accountStore?.call(), auth = authController;
             if (store == null ||
