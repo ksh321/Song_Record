@@ -25,6 +25,7 @@ import 'package:song_record/features/search/song_registration.dart';
 import 'package:song_record/features/settings/settings_api.dart';
 import 'package:song_record/features/settings/settings_read_screen.dart';
 import 'package:song_record/features/settings/settings_screen.dart';
+import 'package:song_record/features/settings/storage_screen.dart';
 import 'package:song_record/features/songs/my_song.dart';
 import 'package:song_record/features/songs/my_song_detail.dart';
 import 'package:song_record/features/songs/my_songs_screen.dart';
@@ -407,24 +408,54 @@ class SongRecordApp extends StatelessWidget {
               ),
             );
           },
-          storageBuilder: (_) => settingsRead('보관량과 고정', (api, _) async {
-            final value = await api.get('/v1/storage') as Map<String, dynamic>;
-            const fields = {
-              'used_bytes': '사용 중인 바이트',
-              'reserved_bytes': '예약된 바이트',
-              'quota_bytes': '보관 한도 바이트',
-              'pinned_used': '고정 사용 수',
-              'pinned_limit': '고정 한도',
-              'pinned_pending': '고정 대기 수',
-            };
-            return [
-              for (final field in fields.entries)
-                if (value[field.key] is int && (value[field.key] as int) >= 0)
-                  (field.value, '${value[field.key]}')
-                else
-                  throw const FormatException('Storage data missing'),
-            ];
-          }),
+          storageBuilder: (_) {
+            final store = accountStore?.call(), auth = authController;
+            if (store == null ||
+                auth?.phase != AuthPhase.ready ||
+                store.userId != auth?.session?.userId) {
+              return const Scaffold(
+                body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
+              );
+            }
+            final epoch = auth!.accountEpoch;
+            void guard() {
+              store.requireActive();
+              if (auth.phase != AuthPhase.ready ||
+                  auth.accountEpoch != epoch ||
+                  accountStore?.call() != store ||
+                  auth.session?.userId != store.userId) {
+                throw StateError('Storage account changed');
+              }
+            }
+
+            final api = SettingsApi(
+              config.apiBaseUrl,
+              auth.validSession,
+              guard,
+              local: kDebugMode && config.environment == AppEnvironment.dev,
+            );
+            return StorageScreen(
+              requireCurrent: guard,
+              accountChanges: auth,
+              load: () async {
+                final usage =
+                    await api.get('/v1/storage') as Map<String, dynamic>;
+                final pins = await api.get('/v1/pins') as Map<String, dynamic>;
+                final recordings = await store.savedRecordings();
+                guard();
+                return StorageView(
+                  usage,
+                  (pins['items'] as List).cast<Map<String, dynamic>>(),
+                  recordings,
+                );
+              },
+              command: (method, path, body, id) async {
+                await api.pinCommand(method, path, body, id);
+                guard();
+                syncController?.wake();
+              },
+            );
+          },
           classificationBuilder: (_) =>
               settingsRead('개인화와 분류 관리', (api, _) async {
                 final tags = await api.get('/v1/tags') as Map<String, dynamic>;

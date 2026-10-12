@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.*;
 public final class RetentionController {
     private final RetentionQueries query;
     public RetentionController(RetentionQueries query){this.query=query;}
+    @GetMapping("/pins")
+    public ResponseEntity<Map<String,Object>> pins(@RequestHeader(value="Authorization",required=false)String auth,@RequestHeader(value="X-Device-Id",required=false)String device){return ResponseEntity.ok().header("Cache-Control","no-store").body(query.pins(auth,device));}
     @GetMapping("/recordings/{id}/retention")
     public ResponseEntity<Map<String,Object>> retention(@RequestHeader(value="Authorization",required=false)String auth,@RequestHeader(value="X-Device-Id",required=false)String device,@PathVariable("id")String id,@RequestHeader(value="X-Cleanup-Confirmation-Id",required=false)String cleanup){return ResponseEntity.ok().header("Cache-Control","no-store").body(query.retention(auth,device,id,cleanup));}
     @GetMapping("/storage")

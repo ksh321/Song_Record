@@ -34,17 +34,54 @@ class SettingsApi {
     }.contains(path)) {
       throw ArgumentError('Unknown settings route');
     }
+    return _request('GET', path);
+  }
+
+  Future<dynamic> pinCommand(
+    String method,
+    String path,
+    Map<String, Object?> body,
+    String operationId,
+  ) {
+    final allowed =
+        method == 'POST' && path == '/v1/pins' ||
+        method == 'DELETE' &&
+            RegExp(r'^/v1/pins/[1-9][0-9]*$').hasMatch(path) ||
+        method == 'POST' &&
+            RegExp(r'^/v1/pins/[1-9][0-9]*/replacement(?:/cancel)?$')
+                .hasMatch(path);
+    if (!allowed ||
+        !RegExp(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+        ).hasMatch(operationId)) {
+      throw ArgumentError('Invalid pin command');
+    }
+    return _request(method, path, body: body, operationId: operationId);
+  }
+
+  Future<dynamic> _request(
+    String method,
+    String path, {
+    Map<String, Object?>? body,
+    String? operationId,
+  }) async {
     requireCurrent();
     final auth = await session();
     requireCurrent();
     final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
     try {
       return await (() async {
-        final request = await client.getUrl(base.resolve(path));
+        final request = await client.openUrl(method, base.resolve(path));
+        requireCurrent();
         request.followRedirects = false;
         request.headers.set('Authorization', 'Bearer ${auth.accessToken}');
         request.headers.set('X-Device-Id', auth.deviceId);
         request.headers.set('Cache-Control', 'no-store');
+        if (body != null) {
+          request.headers.contentType = ContentType.json;
+          request.headers.set('Idempotency-Key', operationId!);
+          request.write(jsonEncode(body));
+        }
         final response = await request.close();
         final bytes = <int>[];
         await for (final chunk in response) {
@@ -54,7 +91,9 @@ class SettingsApi {
           bytes.addAll(chunk);
         }
         requireCurrent();
-        if (response.statusCode != 200) throw const SettingsUnavailable();
+        if (response.statusCode < 200 || response.statusCode >= 300) {
+          throw SettingsUnavailable(status: response.statusCode);
+        }
         return jsonDecode(utf8.decode(bytes));
       })().timeout(const Duration(seconds: 15));
     } finally {
@@ -64,7 +103,8 @@ class SettingsApi {
 }
 
 class SettingsUnavailable implements Exception {
-  const SettingsUnavailable();
+  const SettingsUnavailable({this.status});
+  final int? status;
   @override
   String toString() => '설정 정보를 읽지 못했어요. 연결과 로그인 상태를 확인해 주세요.';
 }

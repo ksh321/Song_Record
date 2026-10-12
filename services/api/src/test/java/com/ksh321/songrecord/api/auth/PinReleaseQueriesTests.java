@@ -41,7 +41,10 @@ class PinReleaseQueriesTests {
         assertThatThrownBy(()->query.retention(foreign,principal.deviceId().toString(),id.toString())).isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo("RESOURCE_NOT_FOUND"));
         assertThatThrownBy(()->f.pins.release(foreign,principal.deviceId().toString(),UUID.randomUUID().toString(),"1","{\"base_revision\":1}")).isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo("RESOURCE_NOT_FOUND"));
         assertThat(((Number)query.storage(foreign,principal.deviceId().toString()).get("pinned_used")).longValue()).isZero();
-        for(String path:List.of("/v1/storage","/v1/recordings/"+id+"/retention")){
+        assertThat((List<?>)query.pins(foreign,principal.deviceId().toString()).get("items")).isEmpty();
+        assertThat((List<?>)query.pins(f.auth,f.device).get("items")).hasSize(1);
+        assertThat(mvc.perform(get("/v1/pins")).andReturn().getResponse().getStatus()).isEqualTo(401);
+        for(String path:List.of("/v1/storage","/v1/pins","/v1/recordings/"+id+"/retention")){
             var response=mvc.perform(get(path).header("Authorization",f.auth).header("X-Device-Id",f.device)).andReturn().getResponse();assertThat(response.getStatus()).isEqualTo(200);assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");assertThat(response.getContentAsString()).doesNotContain("object_key", "fixture/object");
         }
         var response=mvc.perform(delete("/v1/pins/1").header("Authorization",f.auth).header("X-Device-Id",f.device).header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content("{\"base_revision\":1}")).andReturn().getResponse();assertThat(response.getStatus()).isEqualTo(200);assertThat(response.getHeader("Cache-Control")).isEqualTo("no-store");

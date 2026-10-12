@@ -51,6 +51,10 @@ public final class RetentionQueries {
             result.put("waiting_by_reason",waiting);return result;
         });
     }
+    public Map<String,Object> pins(String auth,String device){
+        var account=access.authenticate(auth,device);UUID owner=account.principal().userId();
+        return view(account,()->Map.of("items",db.query("SELECT slot_no,current_recording_id,pending_recording_id,revision FROM pin_slot WHERE user_id=? AND (current_recording_id IS NOT NULL OR pending_recording_id IS NOT NULL) ORDER BY slot_no",(r,n)->new PinSlots.Slot(r.getInt(1),PinSlots.id(r.getBytes(2)),PinSlots.id(r.getBytes(3)),r.getLong(4)).wire(),bytes(owner))));
+    }
     private long number(String sql,UUID owner){return db.queryForObject(sql,Long.class,bytes(owner));}
     private <T>T view(AccountAccess.Account account,Supplier<T> body){return read.execute(s->{access.revalidate(account);return body.get();});}
 }

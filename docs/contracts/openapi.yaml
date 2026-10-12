@@ -837,6 +837,30 @@ paths:
         '401': {$ref: '#/components/responses/Error401'}
         '403': {$ref: '#/components/responses/Error403'}
   /pins:
+    get:
+      operationId: listPins
+      summary: 현재 계정의 고정·교체 대기 슬롯 조회
+      x-implementation-status: implemented
+      parameters:
+      - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: 점유 슬롯만 반환. 읽기는 파일 삭제·고정 변경을 수행하지 않는다.
+          headers:
+            Cache-Control: {schema: {type: string, const: no-store}}
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/PinSlot'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '403': {$ref: '#/components/responses/Error403'}
     post:
       operationId: reservePin
       summary: 계정 고정 슬롯 예약
