@@ -3176,6 +3176,25 @@ final class AccountStore {
     return result;
   });
 
+  /// Read-only import fence: existing bytes never disappear merely because the
+  /// local DB cannot currently prove them playable. Returns no path or bytes.
+  Future<({bool exists, String? checksum})> inspectImportLocalFile(
+    String recordingId,
+  ) => _run(() async {
+    final file = await _paths.checkedFile(_paths.audioPath(recordingId));
+    if (!await file.exists()) return (exists: false, checksum: null);
+    final length = await file.length();
+    if (length < 1 || length > 6291456) return (exists: true, checksum: null);
+    try {
+      final digest = (await sha256.bind(file.openRead()).first).toString();
+      requireActive();
+      if (await file.length() != length) return (exists: true, checksum: null);
+      return (exists: true, checksum: digest);
+    } on FileSystemException {
+      return (exists: true, checksum: null);
+    }
+  });
+
   Future<Uint8List> readLocalAudio(String recordingId) =>
       _run(() => _readLocalAudio(recordingId));
 
