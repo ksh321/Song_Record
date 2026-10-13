@@ -8,6 +8,7 @@ import '../../core/domain/identifiers.dart';
 
 import '../auth/auth_session.dart';
 import '../auth/identity_link.dart';
+import 'deletion_status.dart';
 
 class DeletionReceipt {
   DeletionReceipt(
@@ -297,27 +298,7 @@ class AccountDeletionFlow {
       statusOnly: true,
       statusToken: r.token,
     );
-    if (!{
-          'PREPARED',
-          'ACCEPTED',
-          'DELETING',
-          'BACKUP_CLEANUP',
-          'COMPLETED',
-        }.contains(result['status']) ||
-        result.keys.any(
-          (k) => !{
-            'status',
-            'accepted_at',
-            'service_deleted_at',
-            'backup_purge_due_at',
-            'completed_at',
-            'expires_at',
-            'retrying',
-          }.contains(k),
-        ) ||
-        result['retrying'] is! bool) {
-      throw const FormatException('Invalid restricted status');
-    }
+    DeletionStatus.parse(result);
     return result;
   }
 

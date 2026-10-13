@@ -81,9 +81,13 @@ class Api extends AccountDeletionApi {
       'retrying': false,
       'accepted_at': state == 'PREPARED' ? null : '2026-10-12T11:00:00Z',
       'service_deleted_at': null,
-      'backup_purge_due_at': null,
+      'backup_purge_due_at': state == 'PREPARED'
+          ? null
+          : '2026-10-19T11:00:00Z',
       'completed_at': null,
-      'expires_at': null,
+      'expires_at': state == 'PREPARED'
+          ? '2026-10-12T11:10:00Z'
+          : '2026-11-11T11:00:00Z',
     };
   }
 }

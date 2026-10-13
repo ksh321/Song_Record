@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'account_deletion.dart';
+import 'deletion_status.dart';
 
 class AccountDeletionScreen extends StatefulWidget {
   const AccountDeletionScreen({
@@ -20,7 +21,11 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
   bool working = true, confirmed = false;
   String provider = 'GOOGLE', message = '확인증을 읽고 있어요.';
   String? status;
+  DeletionStatus? details;
+  DateTime? checkedAt;
   bool expired = false;
+  String timeLabel(DateTime value) =>
+      value.toLocal().toIso8601String().substring(0, 16).replaceFirst('T', ' ');
   @override
   void initState() {
     super.initState();
@@ -44,16 +49,14 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
       message = '확인증이 만료됐어요. 이미 접수된 계정은 복구·재발급할 수 없습니다. 접수 전 준비만 만료됐다면 현재 활성 계정으로 새 재인증을 진행해 주세요.';
       return;
     }
-    status = r['status'] as String;
+    details = DeletionStatus.parse(r);
+    status = details!.state;
+    checkedAt = DateTime.now();
+    expired = false;
     if (status != 'PREPARED') {
       await widget.onAccepted();
     }
-    message = switch (status) {
-      'PREPARED' => '아직 접수 전이에요. 삭제 범위를 확인하고 최종 동의해 주세요.',
-      'COMPLETED' => '서비스 데이터와 운영 백업 정리가 확인됐어요.',
-      'BACKUP_CLEANUP' => '서비스 데이터 삭제가 확인됐고 운영 백업을 정리하고 있어요.',
-      _ => '탈퇴가 접수됐어요. 일반 이용은 차단됐고 삭제 작업이 진행됩니다.',
-    };
+    message = details!.message(DateTime.now());
   }
 
   Future<void> run(Future<void> Function() task) async {
@@ -64,7 +67,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
       await task();
     } catch (_) {
       message = status != null && status != 'PREPARED'
-          ? '서버의 탈퇴 접수 상태는 확인됐어요. 이 기기 계정 정리를 확인하지 못했으니 확인증으로 상태를 다시 확인해 주세요.'
+          ? '마지막 확인 결과를 유지합니다. 최신 삭제 상태 또는 이 기기 반영을 확인하지 못했어요. 저장된 확인증으로 다시 확인해 주세요.'
           : '처리를 확인하지 못했어요. 저장된 확인증으로 상태를 다시 확인해 주세요. 재인증·확인증 저장 실패 시 탈퇴를 접수하지 않습니다.';
     } finally {
       if (mounted) {
@@ -89,6 +92,20 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
           ),
           const SizedBox(height: 16),
           Text(message),
+          if (checkedAt != null) Text('마지막 상태 확인: ${timeLabel(checkedAt!)}'),
+          if (details != null)
+            for (final entry in DeletionStatus.labels.entries)
+              if (details!.times[entry.key] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    '${entry.value}: ${timeLabel(details!.times[entry.key]!)}',
+                  ),
+                ),
+          const SizedBox(height: 12),
+          const Text(
+            '확인증은 접수 후 30일 동안 삭제 상태 조회만 허용합니다. 로그인·계정 복구·삭제 취소·파일 접근 권한은 없어요. 분실 시 재발급하거나 이메일로 조회할 수 없습니다.',
+          ),
           if (working) const LinearProgressIndicator(),
           if (!widget.statusOnly &&
               widget.flow.loaded &&
@@ -106,6 +123,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
                   ? null
                   : () => run(() async {
                       await widget.flow.prepare(provider);
+                      details = null;
                       status = 'PREPARED';
                       expired = false;
                       message = '확인증 암호화 저장을 확인했어요. 분실 시 재발급할 수 없습니다. 아래 범위에 최종 동의하면 접수합니다.';
@@ -116,7 +134,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
           if (!widget.statusOnly &&
               !expired &&
               widget.flow.receipt != null &&
-              (status == null || status == 'PREPARED')) ...[
+              status == 'PREPARED') ...[
             CheckboxListTile(
               value: confirmed,
               onChanged: working

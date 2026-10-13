@@ -78,4 +78,14 @@ class AccountDeletionTests {
   f.clock.instant=f.clock.instant.plusSeconds(60);
   assertThat(restarted.status(id,token).get("status")).isEqualTo("PREPARED");
  }
+ @Test void preparedExpiryIsVisibleAndBackupDelayNeverManufacturesCompletion(){
+  var p=prepare();String id=(String)p.get("preparation_id"),token=(String)p.get("status_token");
+  assertThat(service.status(id,token).get("expires_at")).isEqualTo(p.get("prepare_expires_at"));
+  service.accept(auth,device,UUID.randomUUID().toString(),token,body(p));
+  f.clock.instant=f.clock.instant.plus(Duration.ofDays(8));
+  var status=service.status(id,token);
+  assertThat(status).containsEntry("status","ACCEPTED").containsEntry("completed_at",null).containsEntry("service_deleted_at",null);
+  assertThat(Instant.parse((String)status.get("backup_purge_due_at"))).isBefore(f.clock.instant);
+  assertThat(status.keySet()).containsExactlyInAnyOrder("status","retrying","accepted_at","service_deleted_at","backup_purge_due_at","completed_at","expires_at");
+ }
 }

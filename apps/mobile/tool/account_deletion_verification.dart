@@ -39,7 +39,9 @@ Future<void> main() async {
             'service_deleted_at': null,
             'backup_purge_due_at': accepted ? '2026-10-19T00:00:00Z' : null,
             'completed_at': null,
-            'expires_at': accepted ? '2026-11-11T00:00:00Z' : null,
+            'expires_at': accepted
+                ? '2026-11-11T00:00:00Z'
+                : '2026-10-12T00:10:00Z',
           };
         }
       } else if (r.headers.value('Authorization') != 'Bearer synthetic' ||

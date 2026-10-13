@@ -97,6 +97,7 @@ public final class AccountDeletion {
   else {if(((Number)row.get("query_count")).intValue()>=60)throw rate();db.update("UPDATE account_deletion_status SET query_count=query_count+1 WHERE id=?",b(id));}
   Map<String,Object> result=new LinkedHashMap<>();result.put("status",row.get("state"));result.put("retrying",row.get("retrying"));
   for(var key:List.of("accepted_at","service_deleted_at","backup_purge_due_at","completed_at","expires_at"))result.put(key,row.get(key)==null?null:wire(time(row.get(key))));
+  if(row.get("accepted_at")==null)result.put("expires_at",wire(expiry));
   return result;});
  }
  private SessionService.Principal lock(AccountAccess.Account account){var p=access.revalidate(account);db.queryForList("SELECT id FROM app_user WHERE id=? FOR UPDATE",b(p.userId()));return access.revalidate(account);}

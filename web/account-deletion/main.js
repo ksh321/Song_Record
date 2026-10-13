@@ -5,7 +5,19 @@ export function receiptFrom(result){
  return {preparation_id:result.preparation_id,status_token:result.status_token,reauth_proof:result.reauth_proof,base_revision:result.base_revision,user_id:result.user_id,prepare_expires_at:result.prepare_expires_at,operation:crypto.randomUUID()};
 }
 export function commandFor(receipt,confirmed){if(!confirmed)throw Error('Explicit scope consent required');return {preparation_id:receipt.preparation_id,reauth_proof:receipt.reauth_proof,base_revision:receipt.base_revision,scope:'ALL_ACCOUNT_DATA',confirmed:true};}
-export function restrictedStatus(value){const keys=['status','retrying','accepted_at','service_deleted_at','backup_purge_due_at','completed_at','expires_at'];if(!value||!['PREPARED','ACCEPTED','DELETING','BACKUP_CLEANUP','COMPLETED'].includes(value.status)||typeof value.retrying!=='boolean'||Object.keys(value).some(k=>!keys.includes(k)))throw Error('Invalid restricted status');return value;}
+export function restrictedStatus(value){
+ const keys=['status','retrying','accepted_at','service_deleted_at','backup_purge_due_at','completed_at','expires_at'];
+ if(!value||!['PREPARED','ACCEPTED','DELETING','BACKUP_CLEANUP','COMPLETED'].includes(value.status)||typeof value.retrying!=='boolean'||Object.keys(value).some(k=>!keys.includes(k)))throw Error('Invalid restricted status');
+ const time=k=>{const v=value[k];if(v==null)return null;if(typeof v!=='string'||!v.endsWith('Z')||!Number.isFinite(Date.parse(v)))throw Error('Invalid deletion timestamp');return Date.parse(v);};
+ const accepted=time('accepted_at'),service=time('service_deleted_at'),due=time('backup_purge_due_at'),completed=time('completed_at'),expiry=time('expires_at'),prepared=value.status==='PREPARED';
+ if(expiry===null||(prepared&&[accepted,service,due,completed].some(v=>v!==null))||(!prepared&&(accepted===null||due===null||due<=accepted||expiry<=accepted||due>accepted+7*86400000))||(service!==null&&(accepted===null||service<accepted))||(['BACKUP_CLEANUP','COMPLETED'].includes(value.status)&&service===null)||(value.status==='COMPLETED'&&(completed===null||completed<service||value.retrying))||(value.status!=='COMPLETED'&&completed!==null))throw Error('Inconsistent deletion progress');
+ return value;
+}
+export function statusMessage(value,now=Date.now()){
+ const v=restrictedStatus(value);
+ const text=({'PREPARED':'아직 탈퇴 접수 전이에요. 준비는 10분 동안 유효하며 일반 이용은 차단되지 않았어요.','ACCEPTED':'탈퇴가 접수됐어요. 일반 이용은 차단됐고 삭제 작업이 대기 중이에요.','DELETING':'서비스 DB와 보관 음원을 삭제하고 있어요. 아직 삭제 완료가 아닙니다.','BACKUP_CLEANUP':'서비스 데이터 삭제가 확인됐고 운영 백업 정리 중이에요. 아직 전체 삭제 완료가 아닙니다.','COMPLETED':'서비스 데이터와 관련 운영 백업 정리가 확인됐어요. 필요한 최소 상태 기록·삭제 방지 원장은 별도 정책에 따라 유지됩니다.'})[v.status];
+ return text+(v.retrying?'\n장애로 재시도 중이에요. 시간 경과만으로 완료 처리하지 않습니다.':'')+(!['PREPARED','COMPLETED'].includes(v.status)&&Date.parse(v.backup_purge_due_at)<now?'\n운영 백업 정리 기한을 초과했어요. 운영 확인·복구가 필요하며 완료로 표시하지 않습니다.':'');
+}
 export class Failure extends Error{constructor(status){super('Request could not be confirmed');this.status=status;}}
 export async function api(path,{body,auth,statusProof,operation}={}){
  if(!['/v1/account/web/configuration','/v1/account/web/challenges','/v1/account/web/preparations','/v1/account/deletion-requests'].includes(path)&&!/^\/v1\/account\/deletion-status\/[0-9a-f-]{36}$/.test(path))throw Error('Invalid same-origin route');
@@ -35,7 +47,7 @@ if(typeof document!=='undefined'){
  async function list(){el('receipts').replaceChildren();const ids=await receiptIds();for(let i=0;i<ids.length;i++){const button=document.createElement('button');button.textContent=`탈퇴 확인증 ${i+1}`;button.addEventListener('click',()=>run(async()=>{receipt=await loadReceipt(ids[i]);el('consent').checked=false;await status();}));el('receipts').append(button);}return ids;}
  async function status(){const result=restrictedStatus(await api(`/v1/account/deletion-status/${receipt.preparation_id}`,{statusProof:receipt.status_token}));state=result.status;el('times').replaceChildren();for(const [key,label] of Object.entries({accepted_at:'접수',service_deleted_at:'서비스 데이터 삭제 확인',backup_purge_due_at:'백업 정리 기한',completed_at:'삭제 완료 확인',expires_at:'확인증 만료'})){if(result[key]){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=new Date(result[key]).toLocaleString('ko-KR');el('times').append(dt,dd);}}
   if(state!=='PREPARED')auth=null;
-  say(({'PREPARED':auth?.user_id===receipt.user_id?'아직 접수 전이에요. 확인증 보호 저장을 확인했습니다. 삭제 범위에 최종 동의해 주세요.':'아직 접수 전이에요. 새 소유 확인을 진행한 뒤 최종 동의해 주세요.','ACCEPTED':'탈퇴가 접수됐어요. 일반 이용은 차단됐고 삭제 작업이 진행됩니다.','DELETING':'서비스 데이터를 삭제하고 있어요.','BACKUP_CLEANUP':'서비스 데이터 삭제가 확인됐고 운영 백업 정리 중이에요.','COMPLETED':'서비스 데이터와 운영 백업 정리가 확인됐어요.'})[state]+(result.retrying?'\n장애로 재시도 중입니다. 완료로 처리하지 않습니다.':''));controls();
+  say(statusMessage(result)+(state==='PREPARED'?(auth?.user_id===receipt.user_id?'\n확인증 보호 저장을 확인했습니다. 삭제 범위에 최종 동의해 주세요.':'\n새 소유 확인을 진행한 뒤 최종 동의해 주세요.') : ''));controls();
  }
  async function googleProof(client,nonce){if(!globalThis.google?.accounts?.id){await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://accounts.google.com/gsi/client';script.onload=resolve;script.onerror=()=>reject(Error('Provider unavailable'));document.head.append(script);});}
   return new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Owner confirmation expired')),300000);google.accounts.id.initialize({client_id:client,nonce,auto_select:false,callback:result=>{clearTimeout(timer);el('google-button').replaceChildren();resolve(result.credential);}});google.accounts.id.renderButton(el('google-button'),{theme:'outline',size:'large',text:'continue_with'});say('Google 버튼에서 노래기록에 연결한 계정을 선택해 주세요.');});
