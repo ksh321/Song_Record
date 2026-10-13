@@ -31,7 +31,7 @@ public final class RecordingEditing {
         CanonicalRequest.canonical(body);var root=JSON.readTree(body);if(!root.isObject())throw invalid();
         // Completed file specs belong exclusively to the existing one-way DRAFT -> SAVED operation.
         if(root.has("file"))return saving.save(auth,device,op,id,body);
-        var request=parse(root);
+        var request=parse(root);if("SAVED".equals(request.state)){com.ksh321.songrecord.api.operations.OperationsContext.target(recording);com.ksh321.songrecord.api.operations.OperationsContext.activity(com.ksh321.songrecord.api.operations.OperationsContext.Action.RECORDING_SAVED);}
         return mutations.execute(account,op,"PATCH","/v1/recordings/"+recording,body,()->changes.write(account,()->{
             try {
             var updated=revisions.change(account,RevisionChanges.Resource.RECORDING,id,request.revision,current->{

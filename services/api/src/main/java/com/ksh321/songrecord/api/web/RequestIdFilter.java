@@ -35,7 +35,9 @@ public class RequestIdFilter extends OncePerRequestFilter {
 
         request.setAttribute(RequestContext.REQUEST_ID_ATTRIBUTE, requestId);
         response.setHeader(RequestContext.REQUEST_ID_HEADER, requestId);
-        MDC.put(RequestContext.REQUEST_ID_ATTRIBUTE, requestId);
+        // A syntactically valid client correlation header could itself contain a secret.
+        // Preserve the public echo contract, but keep only its digest in server logs.
+        MDC.put(RequestContext.REQUEST_ID_ATTRIBUTE, logCorrelation(requestId));
 
         try {
             filterChain.doFilter(request, response);
@@ -43,7 +45,7 @@ public class RequestIdFilter extends OncePerRequestFilter {
             long durationMillis = (System.nanoTime() - startedAt) / 1_000_000;
             log.info(
                     "request_completed method={} status={} duration_ms={}",
-                    request.getMethod(),
+                    java.util.Set.of("GET","POST","PATCH","PUT","DELETE","HEAD","OPTIONS").contains(request.getMethod())?request.getMethod():"OTHER",
                     response.getStatus(),
                     durationMillis
             );
@@ -56,5 +58,9 @@ public class RequestIdFilter extends OncePerRequestFilter {
             return candidate;
         }
         return UUID.randomUUID().toString();
+    }
+    static String logCorrelation(String value) {
+        try{return "sha256:"+java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256").digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8)));}
+        catch(java.security.NoSuchAlgorithmException error){throw new IllegalStateException("Log correlation unavailable");}
     }
 }

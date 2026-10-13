@@ -23,6 +23,7 @@ public class GlobalExceptionHandler {
             ApiException exception,
             HttpServletRequest request
     ) {
+        com.ksh321.songrecord.api.operations.OperationsContext.failure(exception.code());
         log.warn(
                 "api_error code={} exception_type={}",
                 exception.code(),

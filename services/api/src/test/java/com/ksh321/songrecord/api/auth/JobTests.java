@@ -20,6 +20,18 @@ class JobTests {
     }
     @AfterEach void close() throws Exception {f.close();}
     UUID enqueue(){return new TransactionTemplate(f.manager).execute(s->queue.enqueue(f.account,Type.UPLOAD_VERIFY,aggregate,operation,"{\"a\":1}"));}
+    @Test void committedLeaseAuditHasNoPayloadOrTokenAndRollbackHasNoCompletionEvent(){
+        var events=new ArrayList<JobQueue.Observation>();queue=new JobQueue(f.jdbc,f.access,f.manager,f.clock,Duration.ofSeconds(10),3,events::add);
+        enqueue();var lease=queue.claim(Type.UPLOAD_VERIFY).orElseThrow();
+        assertThat(events).extracting(JobQueue.Observation::action).containsExactly(com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_CLAIM);
+        assertThat(queue.renew(lease)).isTrue();
+        assertThatThrownBy(()->queue.complete(lease,()->{throw new IllegalStateException("synthetic-private-error");})).isInstanceOf(IllegalStateException.class);
+        assertThat(events).extracting(JobQueue.Observation::action).containsExactly(com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_CLAIM,com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_RENEW);
+        assertThat(queue.fail(lease,true)).isTrue();assertThat(queue.complete(lease,()->{})).isFalse();
+        assertThat(events).extracting(JobQueue.Observation::action).containsExactly(com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_CLAIM,com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_RENEW,com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_RETRY);
+        assertThat(events.getFirst().target()).isEqualTo(aggregate);assertThat(events.getFirst().worker()).isEqualTo(events.getLast().worker());
+        assertThat(Arrays.stream(JobQueue.Observation.class.getRecordComponents()).map(java.lang.reflect.RecordComponent::getName)).doesNotContain("token","payload");
+    }
     String state(){return f.jdbc.queryForObject("SELECT state FROM job",String.class);}
     @Test void dedupeReusesSameJobAndRejectsDifferentPayload() {
         assertThat(enqueue()).isEqualTo(enqueue());

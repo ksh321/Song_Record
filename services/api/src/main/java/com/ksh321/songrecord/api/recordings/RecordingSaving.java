@@ -22,7 +22,7 @@ public final class RecordingSaving {
     public IdempotentMutations.Reply save(String auth,String device,String op,String id,String body){
         var account=access.authenticate(auth,device);UUID recording;
         try{recording=UUID.fromString(id);if(!recording.toString().equals(id))throw new IllegalArgumentException();}catch(IllegalArgumentException|NullPointerException e){throw error(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","녹음을 찾을 수 없습니다.");}
-        var request=parse(body);UUID owner=account.principal().userId();
+        var request=parse(body);UUID owner=account.principal().userId();com.ksh321.songrecord.api.operations.OperationsContext.target(recording);com.ksh321.songrecord.api.operations.OperationsContext.activity(com.ksh321.songrecord.api.operations.OperationsContext.Action.RECORDING_SAVED);
         return mutations.execute(account,op,"PATCH","/v1/recordings/"+recording,body,()->changes.write(account,()->{
             var updated=revisions.change(account,RevisionChanges.Resource.RECORDING,recording.toString(),request.revision,current->{
                 if(!"ACTIVE".equals(current.get("lifecycle_state")))throw error(HttpStatus.CONFLICT,"RECORDING_NOT_ACTIVE","활성 녹음만 저장 완료할 수 있습니다.");

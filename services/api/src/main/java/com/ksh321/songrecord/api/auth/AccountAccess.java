@@ -18,7 +18,9 @@ public final class AccountAccess {
             if (!deviceId.toString().equals(device)) throw unauthorized();
         } catch (IllegalArgumentException | NullPointerException e) { throw unauthorized(); }
         String token = authorization.substring(7);
-        return new Account(token, sessions.authenticate(token, deviceId));
+        var principal=sessions.authenticate(token,deviceId);
+        com.ksh321.songrecord.api.operations.OperationsContext.actor(principal.userId());
+        return new Account(token, principal);
     }
 
     public SessionService.Principal revalidate(Account account) {

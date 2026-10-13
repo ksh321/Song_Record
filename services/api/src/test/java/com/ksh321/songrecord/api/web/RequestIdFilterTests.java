@@ -14,7 +14,7 @@ class RequestIdFilterTests {
     private final RequestIdFilter filter = new RequestIdFilter();
 
     @Test
-    void keepsSafeIncomingRequestIdAndExposesItToLogsAndResponse() throws Exception {
+    void keepsPublicRequestIdAndLogsOnlyItsDigest() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/actuator/health");
         request.addHeader(RequestContext.REQUEST_ID_HEADER, "client-request-123");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -27,7 +27,7 @@ class RequestIdFilterTests {
                 .isEqualTo("client-request-123");
         assertThat(request.getAttribute(RequestContext.REQUEST_ID_ATTRIBUTE))
                 .isEqualTo("client-request-123");
-        assertThat(mdcValue).hasValue("client-request-123");
+        assertThat(mdcValue.get()).isEqualTo("sha256:06d7f6015e13d0e3045a07d9d5d057561db2947a74a03b15c086e6d7e61538f7").doesNotContain("client-request-123");
         assertThat(MDC.get(RequestContext.REQUEST_ID_ATTRIBUTE)).isNull();
     }
 
@@ -43,5 +43,14 @@ class RequestIdFilterTests {
         assertThat(response.getHeader(RequestContext.REQUEST_ID_HEADER))
                 .matches("[a-f0-9-]{36}")
                 .isNotEqualTo("bad id with spaces");
+    }
+    @Test void unknownHttpMethodCannotPlaceASecretInCompletionLogs()throws Exception {
+        var logger=(ch.qos.logback.classic.Logger)org.slf4j.LoggerFactory.getLogger(RequestIdFilter.class);
+        var appender=new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();appender.start();logger.addAppender(appender);
+        try {
+            var request=new MockHttpServletRequest("synthetic-private-method-token","/v1/songs");request.setQueryString("memo=synthetic-private-note");
+            filter.doFilter(request,new MockHttpServletResponse(),(r,s)->{});
+            assertThat(appender.list).extracting(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage).anyMatch(line->line.contains("method=OTHER")).allMatch(line->!line.contains("synthetic-private"));
+        }finally{logger.detachAppender(appender);appender.stop();}
     }
 }

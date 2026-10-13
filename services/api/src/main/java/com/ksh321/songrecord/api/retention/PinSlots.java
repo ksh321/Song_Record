@@ -22,7 +22,7 @@ public final class PinSlots {
     public IdempotentMutations.Reply reserve(String auth,String device,String operation,String body) {
         var account=access.authenticate(auth,device);CanonicalRequest.canonical(body);var root=JSON.readTree(body);
         if(!root.isObject() || root.size()!=2 || !root.has("recording_id") || !root.has("entitlement_revision") || !root.get("recording_id").isTextual())throw invalid();
-        UUID recording=parse(root.get("recording_id").asText());var revision=root.get("entitlement_revision");
+        UUID recording=parse(root.get("recording_id").asText());com.ksh321.songrecord.api.operations.OperationsContext.target(recording);var revision=root.get("entitlement_revision");
         if(!revision.isIntegralNumber() || !revision.canConvertToLong() || revision.asLong()<1)throw invalid();
         UUID owner=account.principal().userId();
         return mutations.execute(account,operation,"POST","/v1/pins",body,()->{
@@ -60,7 +60,7 @@ public final class PinSlots {
     public IdempotentMutations.Reply replace(String auth,String device,String operation,String number,String body){
         var account=access.authenticate(auth,device);int slot=slotNumber(number);CanonicalRequest.canonical(body);var root=JSON.readTree(body);
         if(!root.isObject() || root.size()!=2 || !root.has("recording_id") || !root.has("base_revision") || !root.get("recording_id").isTextual())throw invalid();
-        UUID target=parse(root.get("recording_id").asText());var base=root.get("base_revision");if(!base.isIntegralNumber() || !base.canConvertToLong() || base.asLong()<1)throw invalid();UUID owner=account.principal().userId();
+        UUID target=parse(root.get("recording_id").asText());com.ksh321.songrecord.api.operations.OperationsContext.target(target);var base=root.get("base_revision");if(!base.isIntegralNumber() || !base.canConvertToLong() || base.asLong()<1)throw invalid();UUID owner=account.principal().userId();
         return mutations.execute(account,operation,"POST","/v1/pins/"+slot+"/replacement",body,()->{
             lockAccount(account);entitlement(owner);
             LockOrder.before(LockOrder.Rank.AGGREGATE,owner+"/1/"+target);var records=db.queryForList("SELECT lifecycle_state,metadata_state FROM recording WHERE user_id=? AND id=? FOR UPDATE",bytes(owner),bytes(target));if(records.isEmpty())throw missing();var metadata=records.getFirst();if(!"ACTIVE".equals(metadata.get("lifecycle_state")) || !"SAVED".equals(metadata.get("metadata_state")))throw error(HttpStatus.CONFLICT,"PIN_NOT_ELIGIBLE","활성 상태의 저장 완료 녹음만 교체할 수 있습니다.");

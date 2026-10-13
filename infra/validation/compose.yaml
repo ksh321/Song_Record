@@ -40,6 +40,11 @@ services:
       - /tmp:rw,nosuid,nodev,size=128m,uid=10001,gid=10001
     networks: [database,egress]
     mem_limit: 768m
+    logging: &private_logs
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck: &api_health
       test: ["CMD", "python3", "-c", "import ssl,urllib.request; c=ssl.create_default_context(cafile='/run/runtime/server.crt'); urllib.request.urlopen('https://localhost:8443/actuator/health',context=c,timeout=4).read(4096)"]
       interval: 5s
@@ -64,6 +69,7 @@ services:
       - /tmp:rw,nosuid,nodev,size=128m,uid=10001,gid=10001
     networks: [database,egress]
     mem_limit: 1536m
+    logging: *private_logs
     healthcheck: *api_health
 volumes:
   validation_db:

@@ -27,6 +27,7 @@ public final class ChangeQueries {
             }
         }catch(NumberFormatException e){throw invalid();}
         var page=view.read(account,after,limit);
+        com.ksh321.songrecord.api.operations.OperationsContext.syncBacklog(Math.max(0,page.head()-page.afterSequence()));
         Map<String,Object> body=Map.of("after_seq",page.afterSequence(),"next_seq",page.nextSequence(),"head_seq",page.head(),"has_more",page.hasMore(),
             "changes",page.entries().stream().map(e->Map.of("change_seq",e.sequence(),"entity_type",e.change().entity().name(),
                 "entity_id",e.change().id().toString(),"revision",e.change().revision(),"operation",e.change().operation().name(),

@@ -26,9 +26,15 @@ public final class JobQueue {
     private final Clock clock;
     private final Duration leaseDuration;
     private final int maxAttempts;
+    public record Observation(UUID worker,UUID job,UUID target,int attempt,com.ksh321.songrecord.api.operations.OperationsContext.Action action,Instant at) {}
+    private final UUID workerInstance=UUID.randomUUID();
+    private final java.util.function.Consumer<Observation> observer;
     public JobQueue(JdbcTemplate jdbc,AccountAccess access,PlatformTransactionManager manager,Clock clock,Duration leaseDuration,int maxAttempts) {
+        this(jdbc,access,manager,clock,leaseDuration,maxAttempts,event->{});
+    }
+    public JobQueue(JdbcTemplate jdbc,AccountAccess access,PlatformTransactionManager manager,Clock clock,Duration leaseDuration,int maxAttempts,java.util.function.Consumer<Observation> observer) {
         if(leaseDuration.compareTo(Duration.ofSeconds(1))<0 || leaseDuration.compareTo(Duration.ofHours(1))>0 || maxAttempts<1 || maxAttempts>100)throw new IllegalArgumentException("Invalid job policy");
-        this.jdbc=jdbc;this.access=access;this.clock=clock;this.leaseDuration=leaseDuration;this.maxAttempts=maxAttempts;
+        this.jdbc=jdbc;this.access=access;this.clock=clock;this.leaseDuration=leaseDuration;this.maxAttempts=maxAttempts;this.observer=Objects.requireNonNull(observer);
         tx=new TransactionTemplate(manager);tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);tx.setTimeout(30);
         joined=new TransactionTemplate(manager);joined.setPropagationBehavior(TransactionDefinition.PROPAGATION_MANDATORY);
     }
@@ -92,20 +98,22 @@ public final class JobQueue {
             // Waiting for an issued URL or shared backup is not a failed attempt.
             if(type!=Type.ACCOUNT_DELETE && lease.attempt()>maxAttempts) {
                 jdbc.update("UPDATE job SET state='FAILED',lease_token=NULL,claimed_at=NULL,lease_until=NULL,last_error='ATTEMPTS_EXHAUSTED',finished_at=?,updated_at=?,revision=revision+1 WHERE id=?",now,now,bytes(lease.id()));
+                observe(lease,com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_FAILURE);
                 return Optional.empty();
             }
             jdbc.update("UPDATE job SET state='RUNNING',attempt_count=?,lease_token=?,claimed_at=?,lease_until=?,finished_at=NULL,updated_at=?,revision=revision+1 WHERE id=?",
                     lease.attempt(),bytes(lease.token()),now,now.plus(leaseDuration),now,bytes(lease.id()));
+            observe(lease,com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_CLAIM);
             return Optional.of(lease);
         });
     }
     public boolean renew(Lease lease) {
-        requireBoundary();return Boolean.TRUE.equals(tx.execute(s->{LockOrder.before(LockOrder.Rank.JOB,lease.id().toString());var now=now();return jdbc.update("UPDATE job SET lease_until=?,updated_at=?,revision=revision+1 WHERE id=? AND state='RUNNING' AND lease_token=? AND lease_until>?",now.plus(leaseDuration),now,bytes(lease.id()),bytes(lease.token()),now)==1;}));
+        requireBoundary();return Boolean.TRUE.equals(tx.execute(s->{LockOrder.before(LockOrder.Rank.JOB,lease.id().toString());var now=now();boolean renewed=jdbc.update("UPDATE job SET lease_until=?,updated_at=?,revision=revision+1 WHERE id=? AND state='RUNNING' AND lease_token=? AND lease_until>?",now.plus(leaseDuration),now,bytes(lease.id()),bytes(lease.token()),now)==1;if(renewed)observe(lease,com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_RENEW);return renewed;}));
     }
     public int retryLimit(){return maxAttempts;}
     public boolean defer(Lease lease,Duration delay){
         requireBoundary();if(lease.type()!=Type.ACCOUNT_DELETE||delay.isNegative()||delay.isZero()||delay.compareTo(Duration.ofDays(1))>0)throw new IllegalArgumentException("Invalid deletion wait");
-        return Boolean.TRUE.equals(tx.execute(s->{if(!owns(lease))return false;var at=now();return jdbc.update("UPDATE job SET state='RETRY_WAIT',run_after=?,lease_token=NULL,claimed_at=NULL,lease_until=NULL,finished_at=NULL,updated_at=?,revision=revision+1 WHERE id=? AND lease_token=?",at.plus(delay),at,bytes(lease.id()),bytes(lease.token()))==1;}));
+        return Boolean.TRUE.equals(tx.execute(s->{if(!owns(lease))return false;var at=now();boolean deferred=jdbc.update("UPDATE job SET state='RETRY_WAIT',run_after=?,lease_token=NULL,claimed_at=NULL,lease_until=NULL,finished_at=NULL,updated_at=?,revision=revision+1 WHERE id=? AND lease_token=?",at.plus(delay),at,bytes(lease.id()),bytes(lease.token()))==1;if(deferred)observe(lease,com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_DEFER);return deferred;}));
     }
     /** Apply transactional DB effects, then fence completion. A lease lost during effects rolls them back. */
     public boolean complete(Lease lease,Runnable databaseEffects) {
@@ -118,6 +126,7 @@ public final class JobQueue {
             var now=now();
             int updated=jdbc.update("UPDATE job SET state='SUCCEEDED',lease_token=NULL,claimed_at=NULL,lease_until=NULL,last_error=NULL,finished_at=?,updated_at=?,revision=revision+1 WHERE id=? AND state='RUNNING' AND lease_token=? AND lease_until>?",now,now,bytes(lease.id()),bytes(lease.token()),now);
             if(updated!=1)throw new IllegalStateException("Job lease expired during completion");
+            observe(lease,com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_SUCCESS);
             return true;
         }));
     }
@@ -126,13 +135,19 @@ public final class JobQueue {
             if(!owns(lease))return false;
             var now=now();boolean retry=retryable && lease.attempt()<maxAttempts;
             long delay=Math.min(300,5L << Math.min(lease.attempt()-1,6));
-            return jdbc.update("UPDATE job SET state=?,run_after=?,lease_token=NULL,claimed_at=NULL,lease_until=NULL,last_error=?,finished_at=?,updated_at=?,revision=revision+1 WHERE id=? AND lease_token=?",
+            boolean updated=jdbc.update("UPDATE job SET state=?,run_after=?,lease_token=NULL,claimed_at=NULL,lease_until=NULL,last_error=?,finished_at=?,updated_at=?,revision=revision+1 WHERE id=? AND lease_token=?",
                     retry?"RETRY_WAIT":"FAILED",now.plusSeconds(delay),retryable?"EXECUTION_FAILED":"PERMANENT_FAILURE",retry?null:now,now,bytes(lease.id()),bytes(lease.token()))==1;
+            if(updated)observe(lease,retry?com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_RETRY:com.ksh321.songrecord.api.operations.OperationsContext.Action.JOB_FAILURE);
+            return updated;
         }));
     }
     private boolean owns(Lease lease) {
         LockOrder.before(LockOrder.Rank.JOB,lease.id().toString());
         return !jdbc.query("SELECT id FROM job WHERE id=? AND state='RUNNING' AND lease_token=? AND lease_until>? FOR UPDATE",(rs,n)->1,bytes(lease.id()),bytes(lease.token()),now()).isEmpty();
+    }
+    private void observe(Lease lease,com.ksh321.songrecord.api.operations.OperationsContext.Action action){
+        var event=new Observation(workerInstance,lease.id(),lease.aggregateId(),lease.attempt(),action,clock.instant());
+        TransactionSynchronizationManager.registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization(){@Override public void afterCommit(){try{observer.accept(event);}catch(Exception error){org.slf4j.LoggerFactory.getLogger(JobQueue.class).error("operations_job_observer_failed action={}",action.name());}}});
     }
     private void requireTransaction(){if(!TransactionSynchronizationManager.isActualTransactionActive() || !TransactionSynchronizationManager.hasResource(Objects.requireNonNull(jdbc.getDataSource())))throw new IllegalStateException("Enqueue requires the domain transaction");}
     private static void requireBoundary(){if(TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("Worker requires an independent transaction boundary");}

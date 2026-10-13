@@ -39,6 +39,12 @@ def start_cost_monitor():
  with (directory/'monitor.log').open('ab') as log:
   subprocess.Popen([sys.executable,str(ROOT/'tools/cost_monitor.py'),'watch'],cwd=ROOT,stdout=log,stderr=log,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.DETACHED_PROCESS)
  return 'Cost monitor requested; freshness is enforced by the server, not process presence'
+def start_operations_monitor():
+ if int(select_image()[4:6])<4:return 'Operations image not yet deployed'
+ directory=ROOT/'.local/workflow/operations';directory.mkdir(parents=True,exist_ok=True)
+ with (directory/'monitor.log').open('ab') as log:
+  subprocess.Popen([sys.executable,str(ROOT/'tools/operations_monitor.py'),'watch'],cwd=ROOT,stdout=log,stderr=log,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.DETACHED_PROCESS)
+ return 'Private operations monitor requested'
 def prepare():
  row=state();directory=DIRECTORY/'https';directory.mkdir(exist_ok=True)
  if not (directory/'server.p12').exists():run(['pwsh','-NoProfile','-File',str(ROOT/'infra/validation/create-certificate.ps1')],input=json.dumps({'password':row['tls_password'],'directory':str(directory)}).encode())
@@ -64,6 +70,7 @@ def connect():
  path=DIRECTORY/'image.json';pending=path.with_suffix('.pending')
  pending.write_text(json.dumps({'tag':os.environ['VALIDATION_IMAGE_TAG']}),encoding='utf-8');pending.replace(path)
  start_cost_monitor()
+ start_operations_monitor()
  return 'Validation API/worker configured from sealed stdin; no public deployment'
 def smoke():
  context=ssl.create_default_context(cafile=str(DIRECTORY/'https/server.crt'))
