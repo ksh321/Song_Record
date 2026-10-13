@@ -10,7 +10,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart' as native;
 
 import '../../config/app_config.dart';
+import '../domain/account_deletion_confirmation.dart';
 import '../domain/identifiers.dart';
+import '../files/account_deletion_files.dart';
 import '../sync/canonical_conflict_plan.dart';
 import '../sync/change_feed_response.dart';
 import '../sync/conflict_resolution_plan.dart';
@@ -82,6 +84,7 @@ void _configureSqlite(native.Database database) {
 final class AccountStoreManager {
   AccountStoreManager({
     required this.environment,
+    this.origin,
     SupportDirectory? directory,
     SupportDirectory? temporaryDirectory,
     RetryClock? clock,
@@ -90,6 +93,7 @@ final class AccountStoreManager {
        _clock = clock ?? DateTime.now;
 
   final AppEnvironment environment;
+  final Uri? origin;
   final SupportDirectory _directory;
   final SupportDirectory _temporaryDirectory;
   final RetryClock _clock;
@@ -119,6 +123,13 @@ final class AccountStoreManager {
       final previous = _active;
       _active = null;
       await previous?._database.close();
+      if (await AccountDeletionFiles(
+        await _directory(),
+        environment,
+        origin,
+      ).blocked(canonicalId)) {
+        throw StateError('Deleted account storage cannot reopen');
+      }
       final paths = await AccountPaths.create(
         await _directory(),
         canonicalId,
@@ -160,6 +171,41 @@ final class AccountStoreManager {
       _active = null;
       await previous?._database.close();
       // Deliberately preserve the DB, pending edits, journals, and audio files.
+    });
+  }
+
+  Future<void> recoverConfirmedDeletions() => _serialize(() async {
+    if (_active != null) {
+      throw StateError('Deletion recovery requires closed account handles');
+    }
+    await AccountDeletionFiles(
+      await _directory(),
+      environment,
+      origin,
+    ).recover();
+  });
+  Future<void> applyConfirmedDeletion(AccountDeletionConfirmation proof) {
+    if (proof.userId == '00000000-0000-0000-0000-000000000000' ||
+        origin != null && proof.origin != origin!.origin) {
+      return Future<void>.error(
+        StateError('Deletion confirmation belongs to another server'),
+      );
+    }
+    if (_active?.userId == proof.userId &&
+        _active?._generation == _generation) {
+      ++_generation;
+    }
+    return _serialize(() async {
+      if (_active?.userId == proof.userId) {
+        final previous = _active;
+        _active = null;
+        await previous?._database.close();
+      }
+      await AccountDeletionFiles(
+        await _directory(),
+        environment,
+        origin,
+      ).confirm(proof);
     });
   }
 

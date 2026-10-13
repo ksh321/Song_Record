@@ -529,7 +529,10 @@ class _SongRecordAppState extends State<SongRecordApp>
                   );
                   return AccountDeletionScreen(
                     flow: flow,
-                    onAccepted: () => auth.deletionAccepted(owner),
+                    onAccepted: () => auth.deletionAccepted(
+                      owner,
+                      confirmation: flow.confirmation(owner),
+                    ),
                   );
                 }
               : null,

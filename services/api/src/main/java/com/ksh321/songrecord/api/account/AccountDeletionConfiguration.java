@@ -13,8 +13,9 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration(proxyBeanMethods=false) @Profile("!bootstrap")
 public class AccountDeletionConfiguration {
  @Bean AccountDeletion accountDeletion(JdbcTemplate db,AccountAccess access,LinkProofVerifier proofs,IdempotentMutations mutations,PlatformTransactionManager tx){return new AccountDeletion(db,access,proofs,mutations,tx,Clock.systemUTC());}
+ @Bean DeletionDeviceProofs deletionDeviceProofs(JdbcTemplate db){return new DeletionDeviceProofs(db,Clock.systemUTC());}
  @Bean @Order(3) SecurityFilterChain accountDeletionSecurity(HttpSecurity http)throws Exception{
   return http.securityMatcher("/v1/account/**").csrf(c->c.disable()).requestCache(c->c.disable()).sessionManagement(s->s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-   .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.POST,"/v1/account/deletion-reauth-challenges","/v1/account/deletion-status-preparations","/v1/account/deletion-requests").permitAll().requestMatchers(HttpMethod.GET,"/v1/account/deletion-status/*").permitAll().anyRequest().denyAll()).build();
+   .authorizeHttpRequests(a->a.requestMatchers(HttpMethod.POST,"/v1/account/deletion-reauth-challenges","/v1/account/deletion-status-preparations","/v1/account/deletion-requests","/v1/account/deletion-device-confirmations").permitAll().requestMatchers(HttpMethod.GET,"/v1/account/deletion-status/*").permitAll().anyRequest().denyAll()).build();
  }
 }

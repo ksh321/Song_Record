@@ -8,6 +8,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart' as kakao;
 
+import '../../core/domain/account_deletion_confirmation.dart';
 import 'account_actions.dart';
 import 'auth_session.dart';
 import 'identity_link.dart';
@@ -25,7 +26,12 @@ class SecureSessionVault implements SessionVault {
   Future<void> clear() => storage.delete(key: key);
 }
 
-class HttpAuthApi implements AuthApi, IdentityLinkApi, AccountActionsApi {
+class HttpAuthApi
+    implements
+        AuthApi,
+        IdentityLinkApi,
+        AccountActionsApi,
+        DeletionAwareAuthApi {
   HttpAuthApi(this.base, {this.allowLocalHttp = false}) {
     if (base.scheme != 'https' &&
         !(allowLocalHttp &&
@@ -45,6 +51,8 @@ class HttpAuthApi implements AuthApi, IdentityLinkApi, AccountActionsApi {
     String path, {
     Map<String, dynamic>? body,
     AuthSession? session,
+    String? deletionProof,
+    Duration timeout = const Duration(seconds: 20),
   }) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10);
@@ -56,6 +64,9 @@ class HttpAuthApi implements AuthApi, IdentityLinkApi, AccountActionsApi {
         );
         request.followRedirects = false;
         request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+        if (deletionProof != null) {
+          request.headers.set('X-Deletion-Device-Proof', deletionProof);
+        }
         if (session != null) {
           request.headers.set(
             HttpHeaders.authorizationHeader,
@@ -104,13 +115,30 @@ class HttpAuthApi implements AuthApi, IdentityLinkApi, AccountActionsApi {
           );
         }
         return jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
-      })().timeout(const Duration(seconds: 20));
+      })().timeout(timeout);
     } on AuthFailure {
       rethrow;
     } catch (_) {
       throw const AuthFailure('서버에 연결하지 못했어요. 인터넷 연결을 확인하고 다시 시도해 주세요.');
     } finally {
       client.close(force: true);
+    }
+  }
+
+  @override
+  Future<AccountDeletionConfirmation?> confirmDeletion(
+    AuthSession session,
+  ) async {
+    try {
+      final reply = await _request(
+        '/v1/account/deletion-device-confirmations',
+        body: {'user_id': session.userId, 'device_id': session.deviceId},
+        deletionProof: session.refreshToken,
+        timeout: const Duration(seconds: 3),
+      );
+      return AccountDeletionConfirmation.device(session.userId, base, reply);
+    } catch (_) {
+      return null; // Unknown/expired proof, ordinary 401 and network failure never authorize local removal.
     }
   }
 

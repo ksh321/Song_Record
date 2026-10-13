@@ -64,6 +64,8 @@ public final class AccountDeletion {
    long revision=db.queryForObject("SELECT revision FROM app_user WHERE id=?",Long.class,b(p.userId()));
    if(revision!=input.path("base_revision").longValue()||revision==Long.MAX_VALUE)throw conflict();
    db.update("UPDATE app_user SET status='DELETING',revision=revision+1,updated_at=? WHERE id=?",at,b(p.userId()));
+   db.update("INSERT INTO account_deletion_work(preparation_id,owner_id,accepted_at,owner_revision,updated_at) VALUES(?,?,?,?,?)",b(id),b(p.userId()),at,revision+1,at);
+   db.update("INSERT INTO account_deletion_device_proof(token_hash,owner_id,device_id,expires_at) SELECT t.token_hash,s.user_id,s.device_id,? FROM auth_refresh_token t JOIN auth_session s ON s.id=t.session_id WHERE s.user_id=?",at.plusDays(30),b(p.userId()));
    db.update("UPDATE auth_session SET revoked_at=COALESCE(revoked_at,?),updated_at=? WHERE user_id=?",at,at,b(p.userId()));
    db.update("INSERT INTO deletion_ledger(id,user_id,entity_type,entity_id,revision,purged_at) VALUES(?,?,'USER',?,?,?)",b(UUID.randomUUID()),b(p.userId()),b(p.userId()),revision+1,at);
    var job=UUID.randomUUID();

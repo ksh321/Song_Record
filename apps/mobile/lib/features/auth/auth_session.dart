@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import '../../core/domain/account_deletion_confirmation.dart';
 import 'account_actions.dart';
 
 class AuthFailure implements Exception {
@@ -59,6 +60,10 @@ abstract interface class AuthApi {
   Future<String> me(AuthSession session);
 }
 
+abstract interface class DeletionAwareAuthApi {
+  Future<AccountDeletionConfirmation?> confirmDeletion(AuthSession session);
+}
+
 abstract interface class SocialProofSource {
   Future<String> proof(String provider);
 }
@@ -74,6 +79,7 @@ class AuthController extends ChangeNotifier {
     required this.openAccount,
     required this.closeAccount,
     this.prepareLogout,
+    this.deleteAccountFiles,
     this.exportRecovery,
     DateTime Function()? now,
   }) : now = now ?? DateTime.now;
@@ -84,6 +90,8 @@ class AuthController extends ChangeNotifier {
   final Future<void> Function() closeAccount;
   final DateTime Function() now;
   final Future<void> Function()? prepareLogout;
+  final Future<void> Function(AccountDeletionConfirmation)? deleteAccountFiles;
+  final Map<String, DateTime> _deletionProbeTimes = {};
   final Future<bool> Function()? exportRecovery;
   bool _loggingOut = false;
   final Set<String> _acceptedDeletionOwners = {};
@@ -223,8 +231,26 @@ class AuthController extends ChangeNotifier {
 
   /// Called only after the dedicated deletion proof confirms acceptance for this owner.
   /// Closes account handles; physical per-account file cleanup belongs to verified deletion sync.
-  Future<void> deletionAccepted(String owner) async {
-    if (session?.userId != owner) return;
+  Future<void> deletionAccepted(
+    String owner, {
+    AccountDeletionConfirmation? confirmation,
+  }) => _applyDeletion(owner, confirmation, true);
+  Future<void> applyConfirmedDeletion(
+    AccountDeletionConfirmation confirmation,
+  ) => _applyDeletion(confirmation.userId, confirmation, true);
+  Future<void> _applyDeletion(
+    String owner,
+    AccountDeletionConfirmation? confirmation,
+    bool joinRotation,
+  ) async {
+    if (confirmation != null && confirmation.userId != owner) {
+      throw StateError('Deletion confirmation owner mismatch');
+    }
+    _acceptedDeletionOwners.add(owner);
+    if (session?.userId != owner) {
+      if (confirmation != null) await deleteAccountFiles?.call(confirmation);
+      return;
+    }
     _acceptedDeletionOwners.add(owner);
     _loggingOut = true;
     busy = true;
@@ -234,7 +260,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
     try {
       final rotating = _refreshing;
-      if (rotating != null) {
+      if (joinRotation && rotating != null) {
         try {
           await rotating;
         } catch (_) {
@@ -245,6 +271,7 @@ class AuthController extends ChangeNotifier {
     } finally {
       try {
         await closeAccount();
+        if (confirmation != null) await deleteAccountFiles?.call(confirmation);
       } finally {
         _loggingOut = false;
         busy = false;
@@ -258,6 +285,25 @@ class AuthController extends ChangeNotifier {
     final current = session;
     if (current == null) {
       throw const AuthFailure('다시 로그인해 주세요.', status: 401);
+    }
+    if (_refreshing == null && api is DeletionAwareAuthApi) {
+      final last = _deletionProbeTimes[current.userId];
+      if (last == null ||
+          now().toUtc().difference(last) >= const Duration(minutes: 1)) {
+        _deletionProbeTimes[current.userId] = now().toUtc();
+        final confirmation = await (api as DeletionAwareAuthApi)
+            .confirmDeletion(current);
+        if (confirmation != null) {
+          if (confirmation.userId != current.userId) {
+            throw const AuthFailure('계정 삭제 확인의 소유자가 다릅니다.');
+          }
+          await applyConfirmedDeletion(confirmation);
+          throw const AuthFailure('계정 탈퇴가 확인됐어요.', status: 401);
+        }
+        if (!identical(session, current)) {
+          throw const AuthFailure('계정이 바뀌었어요.', status: 401);
+        }
+      }
     }
     if (!current.refreshExpiresAt.isAfter(now().toUtc())) {
       await _requireLogin('로그인이 만료됐어요. 다시 로그인해 주세요.');
@@ -292,9 +338,19 @@ class AuthController extends ChangeNotifier {
       }
       session = next;
       return next;
-    } catch (_) {
+    } catch (error) {
       if (_acceptedDeletionOwners.contains(current.userId)) {
         throw const AuthFailure('계정 탈퇴가 접수됐어요.', status: 401);
+      }
+      if (error is AuthFailure &&
+          error.status == 401 &&
+          api is DeletionAwareAuthApi) {
+        final confirmation = await (api as DeletionAwareAuthApi)
+            .confirmDeletion(current);
+        if (confirmation != null) {
+          await _applyDeletion(current.userId, confirmation, false);
+          throw const AuthFailure('계정 탈퇴가 확인됐어요.', status: 401);
+        }
       }
       await _requireLogin('로그인 갱신을 확인하지 못했어요. 다시 로그인해 주세요.');
       throw const AuthFailure('다시 로그인해 주세요.', status: 401);

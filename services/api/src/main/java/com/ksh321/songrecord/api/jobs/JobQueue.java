@@ -16,7 +16,7 @@ import org.springframework.transaction.support.*;
 
 /** Durable queue. Only trusted domain code calls this; no public job-submission endpoint. */
 public final class JobQueue {
-    public enum Type { UPLOAD_VERIFY, ASSET_DELETE, ENTITY_PURGE, POLICY_RECALCULATE, BACKUP_RECONCILE, SNAPSHOT_BUILD, PLAYLIST_CLEANUP }
+    public enum Type { UPLOAD_VERIFY, ASSET_DELETE, ENTITY_PURGE, POLICY_RECALCULATE, BACKUP_RECONCILE, SNAPSHOT_BUILD, PLAYLIST_CLEANUP, ACCOUNT_DELETE }
     public record Lease(UUID id, UUID token, UUID userId, Type type, UUID aggregateId, String payload, int attempt) {
         @Override public String toString(){return "Lease[REDACTED]";}
     }
@@ -88,7 +88,9 @@ public final class JobQueue {
             if(rows.isEmpty())return Optional.empty();
             var lease=rows.getFirst();
             LockOrder.before(LockOrder.Rank.JOB,lease.id().toString());
-            if(lease.attempt()>maxAttempts) {
+            // Account deletion counts transport failures in its durable domain work.
+            // Waiting for an issued URL or shared backup is not a failed attempt.
+            if(type!=Type.ACCOUNT_DELETE && lease.attempt()>maxAttempts) {
                 jdbc.update("UPDATE job SET state='FAILED',lease_token=NULL,claimed_at=NULL,lease_until=NULL,last_error='ATTEMPTS_EXHAUSTED',finished_at=?,updated_at=?,revision=revision+1 WHERE id=?",now,now,bytes(lease.id()));
                 return Optional.empty();
             }
@@ -99,6 +101,11 @@ public final class JobQueue {
     }
     public boolean renew(Lease lease) {
         requireBoundary();return Boolean.TRUE.equals(tx.execute(s->{LockOrder.before(LockOrder.Rank.JOB,lease.id().toString());var now=now();return jdbc.update("UPDATE job SET lease_until=?,updated_at=?,revision=revision+1 WHERE id=? AND state='RUNNING' AND lease_token=? AND lease_until>?",now.plus(leaseDuration),now,bytes(lease.id()),bytes(lease.token()),now)==1;}));
+    }
+    public int retryLimit(){return maxAttempts;}
+    public boolean defer(Lease lease,Duration delay){
+        requireBoundary();if(lease.type()!=Type.ACCOUNT_DELETE||delay.isNegative()||delay.isZero()||delay.compareTo(Duration.ofDays(1))>0)throw new IllegalArgumentException("Invalid deletion wait");
+        return Boolean.TRUE.equals(tx.execute(s->{if(!owns(lease))return false;var at=now();return jdbc.update("UPDATE job SET state='RETRY_WAIT',run_after=?,lease_token=NULL,claimed_at=NULL,lease_until=NULL,finished_at=NULL,updated_at=?,revision=revision+1 WHERE id=? AND lease_token=?",at.plus(delay),at,bytes(lease.id()),bytes(lease.token()))==1;}));
     }
     /** Apply transactional DB effects, then fence completion. A lease lost during effects rolls them back. */
     public boolean complete(Lease lease,Runnable databaseEffects) {

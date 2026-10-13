@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../core/domain/account_deletion_confirmation.dart';
 import '../../core/domain/identifiers.dart';
 
 import '../auth/auth_session.dart';
@@ -224,6 +225,20 @@ class AccountDeletionFlow {
   final IdentityLinkProofSource proofs;
   final DeletionReceiptVault vault;
   DeletionReceipt? receipt;
+  String? _confirmedStatus;
+  AccountDeletionConfirmation confirmation(String owner) {
+    if (receipt == null ||
+        !scope.endsWith(':$owner') ||
+        _confirmedStatus == null) {
+      throw StateError('No owner-bound deletion confirmation');
+    }
+    return AccountDeletionConfirmation.receipt(
+      owner,
+      api.base,
+      _confirmedStatus!,
+    );
+  }
+
   bool busy = false;
   bool loaded = false;
   Future<void> restore() async {
@@ -298,7 +313,7 @@ class AccountDeletionFlow {
       statusOnly: true,
       statusToken: r.token,
     );
-    DeletionStatus.parse(result);
+    _confirmedStatus = DeletionStatus.parse(result).state;
     return result;
   }
 

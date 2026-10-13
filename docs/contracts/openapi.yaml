@@ -2925,6 +2925,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiErrorResponse'
+  /account/deletion-device-confirmations:
+    post:
+      operationId: confirmDeletionForOriginalDevice
+      summary: 과거 해당 기기 refresh 증명으로 삭제 사실만 확인 — 로그인·복구·파일 접근 아님
+      security: []
+      x-implementation-status: implemented
+      parameters:
+      - name: X-Deletion-Device-Proof
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^sr_r_[A-Za-z0-9_-]{43}$
+        description: 과거 기기 결합 refresh 증명. URL·로그 금지, 일반 인증 권한으로 사용하지 않음.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - user_id
+              - device_id
+              properties:
+                user_id:
+                  $ref: '#/components/schemas/Uuid'
+                device_id:
+                  $ref: '#/components/schemas/Uuid'
+      responses:
+        '200':
+          description: no-store. 서버에 보관한 삭제 증명·원장과 기기 소유 일치, 삭제 사실만 확인.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - deletion_confirmed
+                properties:
+                  deletion_confirmed:
+                    type: boolean
+                    enum:
+                    - true
+        '400':
+          $ref: '#/components/responses/Error400'
+        '404':
+          $ref: '#/components/responses/Error404'
 components:
   securitySchemes:
     BearerAuth:

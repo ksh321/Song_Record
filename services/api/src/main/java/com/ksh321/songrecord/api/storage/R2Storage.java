@@ -4,7 +4,7 @@ import java.util.Objects;
 import software.amazon.awssdk.services.s3.S3Client;
 
 /** Connection boundary only. Upload authorization/signing and verified writes follow in P12-03/04/09. */
-public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.uploads.UploadObjectInventory,com.ksh321.songrecord.api.retention.CleanupObjects {
+public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.uploads.UploadObjectInventory,com.ksh321.songrecord.api.retention.CleanupObjects,com.ksh321.songrecord.api.account.DeletionObjects {
     private final R2Settings settings;
     private final S3Client client;
     R2Storage(R2Settings settings,S3Client client){this.settings=Objects.requireNonNull(settings);this.client=Objects.requireNonNull(client);}
@@ -89,6 +89,26 @@ public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.
         do{if(System.nanoTime()>=deadline)throw new java.io.IOException("INVENTORY_TIMEOUT");String current=token;var page=client.listObjectsV2(r->r.bucket(bucket).maxKeys(1000).continuationToken(current));for(var entry:page.contents()){if(System.nanoTime()>=deadline)throw new java.io.IOException("INVENTORY_TIMEOUT");visitor.accept(new com.ksh321.songrecord.api.uploads.UploadObjectInventory.Entry(entry.key(),entry.size(),entry.lastModified()));}token=Boolean.TRUE.equals(page.isTruncated())?page.nextContinuationToken():null;if(Boolean.TRUE.equals(page.isTruncated()) && (token==null || token.equals(current)))throw new java.io.IOException("INVENTORY_INCOMPLETE");}while(token!=null);
     }
     public String temporaryBucket(){return settings.temporaryBucket;}
+    /** Server-derived exact owner prefixes only; no arbitrary path or whole-bucket delete. */
+    @Override public void clearOwner(java.util.UUID owner,Runnable leaseFence)throws Exception{
+        com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();
+        for(boolean temporary:new boolean[]{true,false}){
+            var keys=ownedKeys(owner,temporary,leaseFence);
+            for(var key:keys){leaseFence.run();try{client.deleteObject(r->r.bucket(temporary?settings.temporaryBucket:finalWriterBucket()).key(key));}catch(RuntimeException uncertain){/* A fresh complete listing decides whether DELETE committed. */}}
+            if(!ownedKeys(owner,temporary,leaseFence).isEmpty())throw new java.io.IOException("ACCOUNT_OBJECT_DELETE_UNCONFIRMED");
+        }
+    }
+    private java.util.List<String> ownedKeys(java.util.UUID owner,boolean temporary,Runnable fence)throws Exception{
+        finalWriterBucket();var prefix=(temporary?"temporary/":"recordings/")+owner+"/";var result=new java.util.ArrayList<String>();String token=null;long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(120);
+        do{fence.run();if(System.nanoTime()>=deadline)throw new java.io.IOException("ACCOUNT_INVENTORY_TIMEOUT");String prior=token;var page=client.listObjectsV2(r->r.bucket(temporary?settings.temporaryBucket:finalWriterBucket()).prefix(prefix).maxKeys(1000).continuationToken(prior));
+            for(var row:page.contents()){if(result.size()>=20000)throw new java.io.IOException("ACCOUNT_INVENTORY_LIMIT");var parts=row.key().split("/",-1);try{
+                if(parts.length!=4||!parts[1].equals(owner.toString()))throw new IllegalArgumentException();var recording=java.util.UUID.fromString(parts[2]);
+                var last=temporary?parts[3]:parts[3].substring(0,parts[3].length()-4);var attempt=java.util.UUID.fromString(last);
+                var expected=temporary?new StorageObjectKeys.Temporary(owner,recording,attempt).value():new StorageObjectKeys.Final(owner,recording,attempt).value();if(!row.key().equals(expected))throw new IllegalArgumentException();
+            }catch(RuntimeException invalid){throw new java.io.IOException("ACCOUNT_OBJECT_NAMESPACE_UNCONFIRMED");}result.add(row.key());}
+            token=Boolean.TRUE.equals(page.isTruncated())?page.nextContinuationToken():null;if(Boolean.TRUE.equals(page.isTruncated())&&(token==null||token.equals(prior)))throw new java.io.IOException("ACCOUNT_INVENTORY_INCOMPLETE");
+        }while(token!=null);return result;
+    }
     // API-role processes cannot request the final writer's bucket through this boundary.
     public String finalWriterBucket(){if(!settings.role.equals("worker"))throw new IllegalStateException("Final storage requires worker role");return settings.finalBucket;}
     @Override public void close(){client.close();}

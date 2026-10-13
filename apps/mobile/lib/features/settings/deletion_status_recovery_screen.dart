@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/domain/account_deletion_confirmation.dart';
 import '../auth/identity_link.dart';
 import 'account_deletion.dart';
 import 'account_deletion_screen.dart';
@@ -16,11 +17,13 @@ class DeletionStatusRecoveryScreen extends StatefulWidget {
     required this.base,
     required this.prefix,
     this.local = false,
+    this.onConfirmedDeletion,
     super.key,
   });
   final Uri base;
   final String prefix;
   final bool local;
+  final Future<void> Function(AccountDeletionConfirmation)? onConfirmedDeletion;
   @override
   State<DeletionStatusRecoveryScreen> createState() =>
       _DeletionStatusRecoveryScreenState();
@@ -89,7 +92,14 @@ class _DeletionStatusRecoveryScreenState
                       builder: (_) => AccountDeletionScreen(
                         flow: flow,
                         statusOnly: true,
-                        onAccepted: () async {},
+                        onAccepted: () async {
+                          final owner = scopes![i].substring(
+                            widget.prefix.length,
+                          );
+                          await widget.onConfirmedDeletion?.call(
+                            flow.confirmation(owner),
+                          );
+                        },
                       ),
                     ),
                   );

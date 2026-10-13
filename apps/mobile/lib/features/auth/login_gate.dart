@@ -124,6 +124,8 @@ class _LoginGateState extends State<LoginGate> with WidgetsBindingObserver {
                                   MaterialPageRoute(
                                     builder: (_) => DeletionStatusRecoveryScreen(
                                       base: widget.config.apiBaseUrl,
+                                      onConfirmedDeletion:
+                                          auth.applyConfirmedDeletion,
                                       prefix:
                                           '${widget.config.environment.name}:${widget.config.apiBaseUrl.origin}:',
                                       local:

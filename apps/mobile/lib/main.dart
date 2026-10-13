@@ -36,7 +36,10 @@ Future<void> main() async {
     );
     return;
   }
-  final stores = AccountStoreManager(environment: config.environment);
+  final stores = AccountStoreManager(
+    environment: config.environment,
+    origin: config.apiBaseUrl,
+  );
   final vault = SecureSessionVault(
     '${config.environment.name}:${config.apiBaseUrl}',
   );
@@ -53,6 +56,32 @@ Future<void> main() async {
   SyncController? activeSync;
   const accountChannel = MethodChannel('song_record/account');
   late final AuthController controller;
+  try {
+    await stores.recoverConfirmedDeletions();
+  } catch (_) {
+    // Keep the committed deletion intent; never reopen a partially erased account.
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    '삭제 확인된 계정의 로컬 정리가 완료되지 않았어요.\n파일 접근 상태를 확인한 뒤 다시 시도해 주세요.',
+                    textAlign: TextAlign.center,
+                  ),
+                  FilledButton(onPressed: main, child: const Text('다시 시도')),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    return;
+  }
   controller = AuthController(
     api: HttpAuthApi(
       config.apiBaseUrl,
@@ -152,6 +181,7 @@ Future<void> main() async {
       activeStore = null;
       await stores.logout();
     },
+    deleteAccountFiles: stores.applyConfirmedDeletion,
     prepareLogout: () => accountChannel.invokeMethod<void>('prepareLogout'),
     exportRecovery: () async {
       final store = activeStore;

@@ -7,8 +7,8 @@ CREATE TABLE account_deletion_challenge (
  CONSTRAINT fk_deletion_challenge_owner FOREIGN KEY(user_id) REFERENCES app_user(id)
 );
 CREATE TABLE account_deletion_status (
- id BINARY(16) PRIMARY KEY, user_id BINARY(16) NULL, session_id BINARY(16) NOT NULL,
- challenge_id BINARY(16) NOT NULL, token_hash BINARY(32) NOT NULL,
+ id BINARY(16) PRIMARY KEY, user_id BINARY(16) NULL, session_id BINARY(16) NULL,
+ challenge_id BINARY(16) NULL, token_hash BINARY(32) NOT NULL,
  state VARCHAR(32) NOT NULL DEFAULT 'PREPARED',
  prepared_at DATETIME(3) NOT NULL, prepare_expires_at DATETIME(3) NOT NULL,
  accepted_at DATETIME(3) NULL, expires_at DATETIME(3) NULL,
@@ -19,4 +19,14 @@ CREATE TABLE account_deletion_status (
  UNIQUE KEY uq_deletion_challenge_preparation(challenge_id),
  UNIQUE KEY uq_deletion_operation(user_id,operation_id),
  CONSTRAINT ck_deletion_status CHECK(state IN ('PREPARED','ACCEPTED','DELETING','BACKUP_CLEANUP','COMPLETED'))
+);
+CREATE TABLE account_deletion_work (
+ preparation_id BINARY(16) PRIMARY KEY, owner_id BINARY(16) NOT NULL UNIQUE,
+ accepted_at TIMESTAMP(3) NOT NULL, owner_revision BIGINT NOT NULL,
+ drain_until TIMESTAMP(3), service_deleted_at TIMESTAMP(3), backup_confirmed_at TIMESTAMP(3),
+ failure_count INT NOT NULL DEFAULT 0, last_error VARCHAR(64), updated_at TIMESTAMP(3) NOT NULL
+);
+CREATE TABLE account_deletion_device_proof (
+ token_hash BINARY(32) PRIMARY KEY, owner_id BINARY(16) NOT NULL,
+ device_id BINARY(16) NOT NULL, expires_at TIMESTAMP(3) NOT NULL
 );
