@@ -13,6 +13,9 @@ Assert ((Names @('docs/reference/search/plan.txt')).Count -eq 0) 'source provena
 $mobile=@(Get-CiScope @('apps/mobile/lib/main.dart'))
 Assert ((($mobile | Where-Object required).name -join ',') -eq 'CI') 'mobile workflow'
 Assert ((($mobile | Where-Object name -eq 'CI').jobs -join ',') -eq 'Scope changed files,Flutter analyze, test, and Android build') 'mobile excludes backend jobs'
+$web=@(Get-CiScope @('web/account-deletion/main.js'))
+Assert ((($web | Where-Object required).name -join ',') -eq 'CI') 'web assets use only bundled API job'
+Assert ((($web | Where-Object name -eq 'CI').jobs -join ',') -eq 'Scope changed files,Spring Boot build and test') 'web excludes unrelated jobs'
 $server=@(Get-CiScope @('services/api/src/main/Test.java'))
 Assert ((($server | Where-Object name -eq 'CI').jobs -join ',') -eq 'Scope changed files,Spring Boot build and test,MySQL migrations and constraints') 'backend jobs'
 Assert ('Idempotency MySQL' -in ($server | Where-Object required).name) 'backend database integration'

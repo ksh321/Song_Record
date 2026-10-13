@@ -72,6 +72,19 @@ public final class AccountDeletion {
    return new IdempotentMutations.Reply(202,"{\"operation_id\":\""+op+"\",\"status_path\":\"/v1/account/deletion-status/"+id+"\",\"accepted_at\":\""+wire(at)+"\",\"expires_at\":\""+wire(at.plusDays(30))+"\"}");
   });
  }
+ /** Internal web bridge: identity was already verified against its nonce/audience by the server. */
+ Map<String,Object> prepareVerified(String auth,String device,VerifiedProviderIdentity identity,Instant startedAt,byte[] nonceHash){
+  if(startedAt==null||nonceHash==null||nonceHash.length!=32||startedAt.isAfter(clock.instant())||!startedAt.plusSeconds(300).isAfter(clock.instant()))throw expired();
+  var account=access.authenticate(auth,device);
+  return tx.execute(s->{var p=lock(account);
+   if(count("SELECT COUNT(*) FROM auth_identity WHERE user_id=? AND provider=? AND provider_user_id=?",b(p.userId()),identity.provider(),identity.providerUserId())!=1)throw denied();
+   var at=LocalDateTime.ofInstant(startedAt,ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);var id=UUID.randomUUID();
+   db.update("INSERT INTO account_deletion_challenge(id,user_id,session_id,provider,nonce_hash,created_at,expires_at,verified_at) VALUES(?,?,?,?,?,?,?,?)",b(id),b(p.userId()),b(p.sessionId()),identity.provider(),nonceHash,at,at.plusMinutes(5),at);
+   var prep=UUID.randomUUID();var token=token();var now=now();
+   db.update("INSERT INTO account_deletion_status(id,user_id,session_id,challenge_id,token_hash,prepared_at,prepare_expires_at) VALUES(?,?,?,?,?,?,?)",b(prep),b(p.userId()),b(p.sessionId()),b(id),hash(token),now,now.plusMinutes(10));
+   return Map.of("preparation_id",prep.toString(),"status_token",token,"reauth_proof",id.toString(),"base_revision",db.queryForObject("SELECT revision FROM app_user WHERE id=?",Long.class,b(p.userId())),"prepare_expires_at",wire(now.plusMinutes(10)));
+  });
+ }
  /** Only the dedicated proof works after sessions are revoked. No account/target identifiers leave here. */
  public Map<String,Object> status(String preparation,String token){
   UUID id;try{id=uuid(preparation);}catch(ApiException invalid){throw denied();}checkToken(token);

@@ -34,6 +34,13 @@ public final class AccountRegistrationService {
 
     /** existingDeviceId is only an account-scoped hint, never authentication proof. */
     public Registration register(VerifiedProviderIdentity verified, UUID existingDeviceId, String displayName) {
+        return register(verified,existingDeviceId,displayName,false);
+    }
+    /** Deletion-only entry must never silently create an account for another provider subject. */
+    public Registration registerExisting(VerifiedProviderIdentity verified, String displayName) {
+        return register(verified,null,displayName,true);
+    }
+    private Registration register(VerifiedProviderIdentity verified, UUID existingDeviceId, String displayName, boolean existingOnly) {
         validate(verified, displayName);
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("Registration must own its transaction for conflict retries");
@@ -41,7 +48,7 @@ public final class AccountRegistrationService {
         // Retry only AFTER the entire failed transaction has rolled back.
         for (int attempt = 0; attempt < 3; attempt++) {
             try {
-                return transaction.execute(status -> registerOnce(verified, existingDeviceId, displayName));
+                return transaction.execute(status -> registerOnce(verified, existingDeviceId, displayName,existingOnly));
             } catch (DuplicateKeyException | PessimisticLockingFailureException conflict) {
                 if (attempt == 2) {
                     throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "AUTH_REGISTRATION_BUSY",
@@ -52,11 +59,12 @@ public final class AccountRegistrationService {
         throw new IllegalStateException("Unreachable");
     }
 
-    private Registration registerOnce(VerifiedProviderIdentity verified, UUID existingDeviceId, String name) {
+    private Registration registerOnce(VerifiedProviderIdentity verified, UUID existingDeviceId, String name,boolean existingOnly) {
         LocalDateTime now = LocalDateTime.ofInstant(clock.instant(), ZoneOffset.UTC);
         var identity = identities.find(verified);
         UUID userId;
         boolean created = identity.isEmpty();
+        if(created&&existingOnly)throw new ApiException(HttpStatus.NOT_FOUND,"DELETION_OWNER_UNVERIFIED","기존 계정의 로그인 수단으로 소유를 확인해 주세요.",false,Map.of());
         if (created) {
             userId = UUID.randomUUID();
             jdbc.update("INSERT INTO app_user (id,status,created_at,updated_at) VALUES (?,'ACTIVE',?,?)",

@@ -70,3 +70,8 @@ tasks.register('r2CleanupProbeClasspath') {
         target.text = sourceSets.test.runtimeClasspath.asPath
     }
 }
+
+// Serve the reviewed deletion page from the same origin as its restricted APIs.
+tasks.named('processResources') {
+    from('../../web/account-deletion') { include 'index.html', 'main.js', 'style.css'; into 'deletion-web' }
+}

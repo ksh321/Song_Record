@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>노래기록 · 계정 탈퇴</title><link rel="stylesheet" href="/account-deletion/style.css"><script type="module" src="/account-deletion/main.js"></script></head>
+<body><main>
+<p class="eyebrow">노래기록 · 계정 관리</p><h1>계정 탈퇴</h1>
+<p>앱을 사용할 수 없어도 기존 로그인 수단으로 계정 소유를 확인하고 탈퇴를 요청할 수 있어요. 이메일만으로 삭제하지 않습니다.</p>
+<section><h2>1. 계정 소유 확인</h2><label for="provider">노래기록에 연결한 로그인 방식</label><select id="provider"><option value="GOOGLE">Google</option><option value="KAKAO">카카오</option></select><button id="verify" disabled>기존 계정 소유 확인</button><div id="google-button"></div></section>
+<section><h2>2. 삭제 범위 확인</h2><p>내 곡·녹음·메모·태그·플레이리스트·서비스 보관 음원이 삭제됩니다. 접수 즉시 로그인·새 음원 URL·업로드가 차단돼요.</p><p>운영 백업에는 최대 7일 남을 수 있습니다. 오프라인 기기는 재접속 때 반영하며 앱 밖 ZIP·M4A 사본은 회수할 수 없어요. 기존 URL은 만료 또는 객체 삭제 전까지 남을 수 있습니다.</p><label class="consent"><input id="consent" type="checkbox" disabled>전체 계정 데이터 삭제 범위를 확인했고 탈퇴에 최종 동의합니다.</label><button id="submit" class="danger" disabled>전체 계정 삭제 접수</button></section>
+<section><h2>3. 삭제 상태 확인</h2><p>확인증은 이 브라우저의 보호 저장소에 보관합니다. 로그인·계정 복구·삭제 취소 권한은 없어요. 브라우저 데이터를 지우거나 확인증을 잃으면 재발급할 수 없습니다. 접수 후 30일 동안 상태만 확인할 수 있어요.</p><div id="receipts"></div><button id="refresh" disabled>확인증으로 상태 확인</button><p id="message" role="status" aria-live="polite">연결 설정을 확인하고 있어요.</p><dl id="times"></dl></section>
+</main></body></html>

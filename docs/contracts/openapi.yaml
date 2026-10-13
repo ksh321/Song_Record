@@ -1093,6 +1093,213 @@ paths:
         '410':
           description: 유효한 확인증의 30일 만료. STATUS_TOKEN_EXPIRED.
       security: []
+  /account/web/configuration:
+    get:
+      operationId: getDeletionWebConfiguration
+      summary: 웹 소유 확인 활성 상태와 공개 제공자 client ID 조회
+      security: []
+      x-implementation-status: implemented
+      parameters: []
+      responses:
+        '200':
+          description: no-store. 새 계정 생성 없음.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - enabled
+                - providers
+                properties:
+                  enabled:
+                    type: boolean
+                  providers:
+                    type: object
+                    additionalProperties:
+                      type: string
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429':
+          description: 소유 확인 요청 제한
+        '503':
+          description: 설정/제공자 확인 지연 — 앱 내 탈퇴 경로 안내
+  /account/web/challenges:
+    post:
+      operationId: beginDeletionWebOwnership
+      summary: 기존 계정 소유 확인 nonce/state 준비 — 삭제나 가입 아님
+      security: []
+      x-implementation-status: implemented
+      parameters: []
+      responses:
+        '200':
+          description: no-store. 새 계정 생성 없음.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - challenge_id
+                - nonce
+                - state
+                - expires_at
+                properties:
+                  challenge_id:
+                    $ref: '#/components/schemas/Uuid'
+                  nonce:
+                    type: string
+                    pattern: ^[A-Za-z0-9_-]{43}$
+                  state:
+                    type: string
+                    pattern: ^[A-Za-z0-9_-]{43}$
+                  expires_at:
+                    $ref: '#/components/schemas/UtcInstant'
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429':
+          description: 소유 확인 요청 제한
+        '503':
+          description: 설정/제공자 확인 지연 — 앱 내 탈퇴 경로 안내
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - provider
+              properties:
+                provider:
+                  type: string
+                  enum:
+                  - GOOGLE
+                  - KAKAO
+  /account/web/preparations:
+    post:
+      operationId: prepareDeletionWebOwnership
+      summary: 서명/nonce/최근성으로 기존 연결 계정만 확인 후 D11 확인증 준비
+      security: []
+      x-implementation-status: implemented
+      parameters: []
+      responses:
+        '200':
+          description: no-store. 새 계정 생성 없음.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                - preparation_id
+                - status_token
+                - reauth_proof
+                - base_revision
+                - prepare_expires_at
+                - user_id
+                - device_id
+                - access_token
+                properties:
+                  preparation_id:
+                    $ref: '#/components/schemas/Uuid'
+                  status_token:
+                    type: string
+                    pattern: ^[A-Za-z0-9_-]{43}$
+                  reauth_proof:
+                    $ref: '#/components/schemas/Uuid'
+                  base_revision:
+                    type: integer
+                    minimum: 1
+                  prepare_expires_at:
+                    $ref: '#/components/schemas/UtcInstant'
+                  user_id:
+                    $ref: '#/components/schemas/Uuid'
+                  device_id:
+                    $ref: '#/components/schemas/Uuid'
+                  access_token:
+                    type: string
+                    pattern: ^sr_a_[A-Za-z0-9_-]{43}$
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429':
+          description: 소유 확인 요청 제한
+        '503':
+          description: 설정/제공자 확인 지연 — 앱 내 탈퇴 경로 안내
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+              - challenge_id
+              - proof
+              properties:
+                challenge_id:
+                  $ref: '#/components/schemas/Uuid'
+                proof:
+                  type: string
+                  minLength: 1
+                  maxLength: 16384
+  /account/web/kakao-callback:
+    get:
+      operationId: completeDeletionWebKakaoCallback
+      summary: 고정 HTTPS callback에서 code 교환·nonce 서명 확인 후 동일 출처 팝업에 전달
+      security: []
+      x-implementation-status: implemented
+      parameters:
+      - name: state
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+      - name: code
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 2048
+      responses:
+        '200':
+          description: no-store. 새 계정 생성 없음.
+          content:
+            text/html:
+              schema:
+                type: string
+        '400':
+          $ref: '#/components/responses/Error400'
+        '401':
+          $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
+        '429':
+          description: 소유 확인 요청 제한
+        '503':
+          description: 설정/제공자 확인 지연 — 앱 내 탈퇴 경로 안내
   /storage/requests:
     post:
       operationId: submitStorageDemand
