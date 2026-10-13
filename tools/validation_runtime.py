@@ -31,6 +31,14 @@ def state():
 def containers():
  select_image()
  return {role:run(COMPOSE+['ps','-q',role]).decode().strip() for role in ('mysql','api','worker')}
+
+def start_cost_monitor():
+ # Account-encrypted key must exist; no interactive prompt or synthetic zero estimate.
+ if not (ROOT/'.local/workflow/cloudflare/analytics/analytics.dpapi').exists():return 'Cost key absent: new deployment uploads remain closed'
+ directory=ROOT/'.local/workflow/cost';directory.mkdir(parents=True,exist_ok=True)
+ with (directory/'monitor.log').open('ab') as log:
+  subprocess.Popen([sys.executable,str(ROOT/'tools/cost_monitor.py'),'watch'],cwd=ROOT,stdout=log,stderr=log,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.DETACHED_PROCESS)
+ return 'Cost monitor requested; freshness is enforced by the server, not process presence'
 def prepare():
  row=state();directory=DIRECTORY/'https';directory.mkdir(exist_ok=True)
  if not (directory/'server.p12').exists():run(['pwsh','-NoProfile','-File',str(ROOT/'infra/validation/create-certificate.ps1')],input=json.dumps({'password':row['tls_password'],'directory':str(directory)}).encode())
@@ -55,6 +63,7 @@ def connect():
  run(COMPOSE+['up','-d','--wait','--wait-timeout','90','api','worker'])
  path=DIRECTORY/'image.json';pending=path.with_suffix('.pending')
  pending.write_text(json.dumps({'tag':os.environ['VALIDATION_IMAGE_TAG']}),encoding='utf-8');pending.replace(path)
+ start_cost_monitor()
  return 'Validation API/worker configured from sealed stdin; no public deployment'
 def smoke():
  context=ssl.create_default_context(cafile=str(DIRECTORY/'https/server.crt'))
