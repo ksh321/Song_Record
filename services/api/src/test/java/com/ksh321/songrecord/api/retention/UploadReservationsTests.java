@@ -12,6 +12,7 @@ class UploadReservationsTests {
         var service=new com.ksh321.songrecord.api.uploads.UploadReservations(db,access,new org.springframework.jdbc.datasource.DataSourceTransactionManager(db.getDataSource()),java.time.Clock.systemUTC(),policy);
         var r1=RetentionCandidateDatabaseChecks.recording(db,owner,device,null,true,true,"VALIDATED");var r2=RetentionCandidateDatabaseChecks.recording(db,owner,device,null,true,true,"VALIDATED");
         var request=new com.ksh321.songrecord.api.uploads.UploadReservations.Request(r1,3,"a".repeat(64),1);var reserved=service.reserve(account,request);
+        db.update("UPDATE recording_upload SET active_slot=1"); // Preserved second slot from an earlier two-slot policy.
         UploadApprovalDatabaseChecks.assertCode(()->service.reserve(account,new com.ksh321.songrecord.api.uploads.UploadReservations.Request(r2,1,"a".repeat(64),1)),"UPLOAD_CONCURRENCY_LIMIT");
         db.update("UPDATE global_storage_usage SET temp_observed_bytes=2");UploadApprovalDatabaseChecks.assertCode(()->service.reserve(account,new com.ksh321.songrecord.api.uploads.UploadReservations.Request(r2,1,"a".repeat(64),1)),"UPLOAD_BUDGET_LOCKED");
         org.assertj.core.api.Assertions.assertThat(service.reserve(account,request)).isEqualTo(reserved);
