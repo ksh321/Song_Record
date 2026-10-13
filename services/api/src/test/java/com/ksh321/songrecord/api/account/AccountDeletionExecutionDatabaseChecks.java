@@ -25,6 +25,9 @@ public final class AccountDeletionExecutionDatabaseChecks {
    var song=RetentionCandidateDatabaseChecks.song(db,user.userId());var recording=RetentionCandidateDatabaseChecks.recording(db,user.userId(),user.deviceId(),song,true,true,"VALIDATED");
    db.update("UPDATE song SET representative_recording_id=? WHERE id=?",bytes(recording),bytes(song));
    db.update("UPDATE recording SET condition_code='GOOD',revision=revision+1 WHERE id=?",bytes(recording));
+   // History archives the prior non-null value; the first selection creates none.
+   db.update("UPDATE recording SET condition_code='NORMAL',revision=revision+1 WHERE id=?",bytes(recording));
+   assertThat(db.queryForObject("SELECT COUNT(*) FROM recording_condition_history WHERE recording_id=?",Long.class,bytes(recording))).isEqualTo(1);
    db.update("UPDATE storage_usage SET used_bytes=6291456 WHERE user_id=?",bytes(user.userId()));
    var at=LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC);
    db.update("INSERT INTO snapshot_header(id,user_id,op_id,purpose,status,schema_version,active_slot,reserved_bytes,attempt_id,build_started_at,lease_until) VALUES(?,?,?,'SYNC','BUILDING',13,0,100,?,?,?)",bytes(UUID.randomUUID()),bytes(user.userId()),bytes(UUID.randomUUID()),bytes(UUID.randomUUID()),at,at.plusMinutes(5));
