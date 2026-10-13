@@ -97,6 +97,15 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler({org.springframework.web.servlet.resource.NoResourceFoundException.class,
+            org.springframework.web.servlet.NoHandlerFoundException.class})
+    ResponseEntity<ApiErrorResponse> handleMissingResource(HttpServletRequest request) {
+        // Framework messages can contain the supplied path/query. Return neither nor a stack trace.
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).header("Cache-Control", "no-store")
+                .body(error("NOT_FOUND", "요청한 경로를 찾을 수 없습니다.", false,
+                        RequestContext.requestId(request), Map.of()));
+    }
+
     private ApiErrorResponse error(
             String code,
             String message,

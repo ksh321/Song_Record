@@ -42,7 +42,7 @@ final class DevelopmentStorageProbe {
         });
     }
     static String run(S3Client client, URI endpoint, String bucket, AnonymousGet anonymous) {
-        if (!bucket.matches("song-record-dev-(temporary|final)")) throw new IllegalArgumentException("Development bucket only");
+        if (!bucket.matches("song-record-(dev|staging-dev)-(temporary|final)")) throw new IllegalArgumentException("Development bucket only");
         String key="connection-check/"+UUID.randomUUID()+".txt";
         byte[] bytes="Song_Record development connection check".getBytes(StandardCharsets.UTF_8);
         String result="ERROR", stage="PUT";

@@ -38,6 +38,13 @@ public final class R2CredentialCheck {
                     try(var signer=new R2StorageConfiguration().r2PutSigner(env)){report.println("audio.temporary="+storage.checkDevelopmentAudio(validator,synthetic,signer));}
                     properties.clear();return;
                 }
+                if("staging".equals(properties.getProperty("diagnostic.namespace"))){
+                    if(!own.equals("dev")||!java.util.Set.of("read","development-write").contains(properties.getProperty("diagnostic.mode","read")))throw new IllegalArgumentException();
+                    for(String kind:new String[]{"temporary","final"})report.println("staging."+kind+"="+storage.checkBucketRead("song-record-staging-dev-"+kind));
+                    for(String name:new String[]{"dev","prod"})for(String kind:new String[]{"temporary","final"})report.println(name+"."+kind+"="+storage.checkBucketRead("song-record-"+name+"-"+kind));
+                    if(full)for(String kind:new String[]{"temporary","final"})report.println("write."+kind+"="+storage.checkValidationWrite(kind));
+                    properties.clear();return;
+                }
                 // Test an accessible bucket first; four DENIED results cannot pass as isolation.
                 for(String name:new String[]{own,"dev".equals(own)?"prod":"dev"})
                     for(String kind:new String[]{"temporary","final"})

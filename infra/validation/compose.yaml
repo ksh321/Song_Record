@@ -1,0 +1,73 @@
+name: song-record-validation
+services:
+  mysql:
+    image: mysql:8.4.11@sha256:85b9bf2e29cf836ecb8c2a15a935d4ba0c606631dff1dd79531a11983c638f2a
+    entrypoint: ["sh", "/opt/songrecord/start-mysql.sh"]
+    environment:
+      MYSQL_DATABASE: song_record_validation
+      MYSQL_USER: song_record_validation
+      MYSQL_PASSWORD_FILE: /run/runtime/db-password
+      MYSQL_ROOT_PASSWORD_FILE: /run/runtime/root-password
+      TZ: UTC
+    volumes:
+      - validation_db:/var/lib/mysql
+      - ./start-mysql.sh:/opt/songrecord/start-mysql.sh:ro
+    tmpfs:
+      - /run/runtime:rw,noexec,nosuid,nodev,size=1m,mode=0700
+    networks: [database]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "--silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    mem_limit: 1g
+  api:
+    image: song-record-validation-api:${VALIDATION_IMAGE_TAG:?explicit verified image tag required}
+    environment:
+      SPRING_PROFILES_ACTIVE: staging
+      SPRING_CONFIG_IMPORT: configtree:/run/runtime/
+      DB_HOST: mysql
+      DB_NAME: song_record_validation
+      DB_USER: song_record_validation
+      SONGRECORD_STORAGE_ROLE: api
+      SONGRECORD_DEPLOYMENT_PUBLIC_ORIGIN: https://localhost:18443
+    ports: ["127.0.0.1:18443:8443"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /run/runtime:rw,noexec,nosuid,nodev,size=1m,mode=0700,uid=10001,gid=10001
+      - /tmp:rw,nosuid,nodev,size=128m,uid=10001,gid=10001
+    networks: [database,egress]
+    mem_limit: 768m
+    healthcheck: &api_health
+      test: ["CMD", "python3", "-c", "import ssl,urllib.request; c=ssl.create_default_context(cafile='/run/runtime/server.crt'); urllib.request.urlopen('https://localhost:8443/actuator/health',context=c,timeout=4).read(4096)"]
+      interval: 5s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
+  worker:
+    image: song-record-validation-api:${VALIDATION_IMAGE_TAG:?explicit verified image tag required}
+    environment:
+      SPRING_PROFILES_ACTIVE: staging
+      SPRING_CONFIG_IMPORT: configtree:/run/runtime/
+      DB_HOST: mysql
+      DB_NAME: song_record_validation
+      DB_USER: song_record_validation
+      SONGRECORD_STORAGE_ROLE: worker
+      SONGRECORD_DEPLOYMENT_PUBLIC_ORIGIN: https://localhost:18443
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /run/runtime:rw,noexec,nosuid,nodev,size=1m,mode=0700,uid=10001,gid=10001
+      - /tmp:rw,nosuid,nodev,size=128m,uid=10001,gid=10001
+    networks: [database,egress]
+    mem_limit: 1536m
+    healthcheck: *api_health
+volumes:
+  validation_db:
+networks:
+  database:
+    internal: true
+  egress: {}

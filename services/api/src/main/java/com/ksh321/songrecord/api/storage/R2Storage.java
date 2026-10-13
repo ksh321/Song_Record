@@ -15,7 +15,7 @@ public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.
         }catch(RuntimeException e){throw new IllegalStateException("R2 connection check failed; credentials and bucket access require verification");}
     }
     public String checkBucketRead(String bucket) {
-        if(!bucket.matches("song-record-(dev|prod)-(temporary|final)"))throw new IllegalArgumentException("Unsupported check target");
+        if(!bucket.matches("song-record-(dev|prod|staging-dev)-(temporary|final)"))throw new IllegalArgumentException("Unsupported check target");
         try {client.listObjectsV2(r->r.bucket(bucket).maxKeys(1));return "ALLOWED";}
         catch(software.amazon.awssdk.services.s3.model.S3Exception e){return e.statusCode()==403?"DENIED":e.statusCode()==404?"MISSING":"ERROR";}
         catch(RuntimeException e){return "ERROR";}
@@ -29,6 +29,10 @@ public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.
     String checkDevelopmentSignedPut(R2PutSigner signer){
         if(!settings.environment.equals("dev") || !settings.role.equals("api"))throw new IllegalArgumentException("Development API probe only");
         return DevelopmentSignedPutProbe.run(client,signer);
+    }
+    String checkValidationWrite(String kind) {
+        if(!settings.environment.equals("dev")||!kind.matches("temporary|final"))throw new IllegalArgumentException("Isolated validation probe only");
+        return DevelopmentStorageProbe.run(client,settings.endpoint,"song-record-staging-dev-"+kind);
     }
     String checkDevelopmentAudio(com.ksh321.songrecord.api.uploads.AudioValidator validator,byte[] synthetic){
         if(!settings.environment.equals("dev") || !settings.role.equals("worker"))throw new IllegalArgumentException("Development worker probe only");

@@ -6,7 +6,7 @@ param(
     [ValidateSet('Trial','PhoneTest','Intervention','Escalation','Completion')][string]$Kind='Trial',
     [ValidatePattern('^USER-\d{3}$')][string]$ItemId,
     [ValidateRange(1,999)][int]$Revision=1,
-    [ValidateSet('Details','LoginSetup','Device','PhoneSteps','Decision')][string]$Action='Details',
+    [ValidateSet('Details','LoginSetup','CloudflareLogin','R2ValidationKeys','Device','PhoneSteps','Decision')][string]$Action='Details',
     [ValidateSet('Luna','Sol','Astra')][string]$BeforeModel='Astra',
     [ValidateSet('medium','high','xhigh','max','ultra','high/xhigh')][string]$BeforeReasoning='high',
     [ValidateSet('high','xhigh','max','unconfirmed')][string]$AfterReasoning='unconfirmed',
@@ -130,6 +130,8 @@ if ($ItemId) {
     $title="$TaskId $ItemId"
     $actionText=switch($Action) {
         LoginSetup {'로그인 설정 파일 경로 또는 없음/모름을 알려주세요.'}
+        CloudflareLogin {'열린 Cloudflare 화면에서 기존 R2 계정으로 로그인하고 로그인 완료라고 알려주세요. 암호·인증코드는 채팅에 보내지 마세요.'}
+        R2ValidationKeys {'검증용 R2 키 3개를 발급해 열린 Windows 암호화 등록 창에 입력하고 검증 키 등록 완료라고 알려주세요. 버킷·권한 표는 내가할일.md에 있습니다. 키·발급 성공 화면은 채팅에 보내지 마세요.'}
         Device {'휴대폰을 USB로 연결하고 디버깅을 허용해 주세요.'}
         PhoneSteps {'준비된 앱의 실기 순서를 확인하고 결과를 알려주세요.'}
         Decision {'기록된 선택 사항을 확인하고 결정해 주세요.'}
