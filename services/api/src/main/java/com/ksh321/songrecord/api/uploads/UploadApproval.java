@@ -15,11 +15,13 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.uuid;
 
 /** Approval policy. UploadUrls combines it with local signing in the receipt transaction. */
 public final class UploadApproval {
+    private final com.ksh321.songrecord.api.operations.OperationsPolicy policy;
     private final JdbcTemplate db; private final AccountAccess access;private final UploadReservations reservations;
     private final IdempotentMutations mutations;private final Clock clock;private final RetentionRoles roles;
     private static final JsonMapper JSON=new JsonMapper();
-    public UploadApproval(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,Clock clock,IdempotentMutations mutations){
-        this.db=db;this.access=access;this.clock=clock;this.mutations=mutations;reservations=new UploadReservations(db,access,manager,clock);roles=new RetentionRoles(new RetentionCandidates(db));
+    public UploadApproval(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,Clock clock,IdempotentMutations mutations){this(db,access,manager,clock,mutations,com.ksh321.songrecord.api.operations.OperationsPolicy.defaults());}
+    public UploadApproval(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,Clock clock,IdempotentMutations mutations,com.ksh321.songrecord.api.operations.OperationsPolicy policy){
+        this.policy=java.util.Objects.requireNonNull(policy);this.db=db;this.access=access;this.clock=clock;this.mutations=mutations;reservations=new UploadReservations(db,access,manager,clock,policy);roles=new RetentionRoles(new RetentionCandidates(db));
     }
     public IdempotentMutations.Reply authorize(String auth,String device,String operation,UUID recording,String body){
         return authorize(auth,device,operation,recording,body,(account,result)->Map.of());
@@ -73,7 +75,7 @@ public final class UploadApproval {
             if(exists)return result(reservations.reserve(account,new UploadReservations.Request(recording,size,sha,policy)));
             LocalDate day=LocalDate.ofInstant(clock.instant(),ZoneOffset.UTC);
             var daily=db.query("SELECT approved_bytes FROM upload_approval_daily WHERE user_id=? AND utc_day=? FOR UPDATE",(r,n)->r.getLong(1),bytes(owner),java.sql.Date.valueOf(day));
-            long used=daily.isEmpty()?0:daily.getFirst();if(used<0 || size>104857600-used)throw error("UPLOAD_DAILY_LIMIT",HttpStatus.TOO_MANY_REQUESTS);
+            long used=daily.isEmpty()?0:daily.getFirst();if(used<0 || size>this.policy.dailyBytes()-used)throw error("UPLOAD_DAILY_LIMIT",HttpStatus.TOO_MANY_REQUESTS);
             var pins=db.queryForList("SELECT operation_id FROM pin_slot WHERE user_id=? AND pending_recording_id=?",bytes(owner),bytes(recording));UUID pinOperation=pins.isEmpty() || pins.getFirst().get("operation_id")==null?null:uuid((byte[])pins.getFirst().get("operation_id"));
             var result=reservations.reserve(account,new UploadReservations.Request(recording,size,sha,policy,pinOperation));
             issuePermit(account);
@@ -88,7 +90,7 @@ public final class UploadApproval {
             UUID owner=access.revalidate(account).userId();Instant now=clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MILLIS),start=now.minusSeconds(60);
             db.update("DELETE FROM upload_url_issue WHERE user_id=? AND issued_at<=?",bytes(owner),java.sql.Timestamp.from(start));
             long count=db.queryForObject("SELECT COUNT(*) FROM upload_url_issue WHERE user_id=?",Long.class,bytes(owner));
-            if(count>=10)throw error("UPLOAD_RATE_LIMITED",HttpStatus.TOO_MANY_REQUESTS);
+            if(count>=policy.urlsPerMinute())throw error("UPLOAD_RATE_LIMITED",HttpStatus.TOO_MANY_REQUESTS);
             db.update("INSERT INTO upload_url_issue(user_id,id,issued_at) VALUES(?,?,?)",bytes(owner),bytes(UUID.randomUUID()),java.sql.Timestamp.from(now));return null;
         });
     }

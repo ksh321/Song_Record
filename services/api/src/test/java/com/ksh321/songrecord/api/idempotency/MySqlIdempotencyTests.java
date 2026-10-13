@@ -38,6 +38,10 @@ class MySqlIdempotencyTests {
     JdbcTemplate admin,jdbc;String database;
     IdempotentMutations service;AccountAccess.Account account;AccountAccess access;
     AtomicInteger calls=new AtomicInteger();String key=UUID.randomUUID().toString();
+    @Test void migratedMysqlConfiguredBetaLastSeatAndExistingAccountPreservation() throws Exception {
+        String name=database+"_operations_admission";admin.execute("CREATE DATABASE "+name);
+        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.auth.OperationsRegistrationDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+    }
     @BeforeEach void setup() throws Exception {
         String password=System.getenv("P07_MYSQL_PASSWORD");
         admin=new JdbcTemplate(new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/?allowPublicKeyRetrieval=true&useSSL=false","root",password));

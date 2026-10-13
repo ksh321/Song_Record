@@ -4,6 +4,20 @@ class UploadReservationsTests {
     @Test void capacityBoundariesRacesReplayRollbackAndOverflow()throws Exception {
         UploadReservationDatabaseChecks.verify(database());
     }
+    @Test void configuredReservationCapsKeepExistingAttemptsAndData() {
+        var db=database();var owner=RetentionCandidateDatabaseChecks.account(db);var device=RetentionCandidateDatabaseChecks.device(db,owner);
+        db.update("INSERT INTO user_sync_state(user_id) VALUES(?)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(owner));db.update("INSERT INTO user_entitlement(user_id) VALUES(?)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(owner));db.update("INSERT INTO storage_usage(user_id) VALUES(?)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(owner));
+        var account=org.mockito.Mockito.mock(com.ksh321.songrecord.api.auth.AccountAccess.Account.class);var access=org.mockito.Mockito.mock(com.ksh321.songrecord.api.auth.AccountAccess.class);org.mockito.Mockito.when(access.revalidate(account)).thenReturn(new com.ksh321.songrecord.api.auth.SessionService.Principal(owner,device,java.util.UUID.randomUUID()));
+        var policy=new com.ksh321.songrecord.api.operations.OperationsPolicy(20,10,1000000000L,5,100,1,1,2,1,5);
+        var service=new com.ksh321.songrecord.api.uploads.UploadReservations(db,access,new org.springframework.jdbc.datasource.DataSourceTransactionManager(db.getDataSource()),java.time.Clock.systemUTC(),policy);
+        var r1=RetentionCandidateDatabaseChecks.recording(db,owner,device,null,true,true,"VALIDATED");var r2=RetentionCandidateDatabaseChecks.recording(db,owner,device,null,true,true,"VALIDATED");
+        var request=new com.ksh321.songrecord.api.uploads.UploadReservations.Request(r1,3,"a".repeat(64),1);var reserved=service.reserve(account,request);
+        UploadApprovalDatabaseChecks.assertCode(()->service.reserve(account,new com.ksh321.songrecord.api.uploads.UploadReservations.Request(r2,1,"a".repeat(64),1)),"UPLOAD_CONCURRENCY_LIMIT");
+        db.update("UPDATE global_storage_usage SET temp_observed_bytes=2");UploadApprovalDatabaseChecks.assertCode(()->service.reserve(account,new com.ksh321.songrecord.api.uploads.UploadReservations.Request(r2,1,"a".repeat(64),1)),"UPLOAD_BUDGET_LOCKED");
+        org.assertj.core.api.Assertions.assertThat(service.reserve(account,request)).isEqualTo(reserved);
+        org.assertj.core.api.Assertions.assertThat(db.queryForObject("SELECT reserved_bytes FROM global_storage_usage",Long.class)).isEqualTo(3);
+        org.assertj.core.api.Assertions.assertThat(db.queryForObject("SELECT COUNT(*) FROM recording",Integer.class)).isEqualTo(2);
+    }
     static org.springframework.jdbc.core.JdbcTemplate database(){
         var f=new RetentionCandidatesTests();f.setup();var db=f.db;
         db.execute("CREATE TABLE user_sync_state(user_id BINARY(16) PRIMARY KEY)");

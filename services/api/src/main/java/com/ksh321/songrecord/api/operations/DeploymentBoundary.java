@@ -24,6 +24,7 @@ public final class DeploymentBoundary {
   var prefix="songrecord.storage."+storage+".";
   var buckets=name.equals("staging")?"song-record-staging-dev-":"song-record-prod-";
   if(!required(env,prefix+"temporary-bucket").equals(buckets+"temporary")||!required(env,prefix+"final-bucket").equals(buckets+"final"))throw invalid();
+  OperationsPolicy.from(env);
   required(env,"DB_PASSWORD");required(env,"TLS_KEYSTORE_PASSWORD");
  }
  private static String required(Environment e,String k){var v=e.getProperty(k);if(v==null||v.isBlank())throw invalid();return v;}

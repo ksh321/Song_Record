@@ -4,6 +4,20 @@ class UploadApprovalTests {
     @Test void eligibilityDuplicateConcurrencyDailyAndRollingMinuteLimits()throws Exception{
         UploadApprovalDatabaseChecks.verify(database());
     }
+    @Test void configuredDailyAndIssuanceLimitsResetAtUtcBoundaryWithoutDoubleCharging() {
+        var db=database();var owner=RetentionCandidateDatabaseChecks.account(db);var device=RetentionCandidateDatabaseChecks.device(db,owner);var ownerBytes=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(owner);
+        db.update("INSERT INTO user_sync_state(user_id) VALUES(?)",ownerBytes);db.update("INSERT INTO user_entitlement(user_id) VALUES(?)",ownerBytes);db.update("INSERT INTO storage_usage(user_id) VALUES(?)",ownerBytes);
+        var access=org.mockito.Mockito.mock(com.ksh321.songrecord.api.auth.AccountAccess.class);var account=org.mockito.Mockito.mock(com.ksh321.songrecord.api.auth.AccountAccess.Account.class);org.mockito.Mockito.when(access.revalidate(account)).thenReturn(new com.ksh321.songrecord.api.auth.SessionService.Principal(owner,device,java.util.UUID.randomUUID()));
+        var manager=new org.springframework.jdbc.datasource.DataSourceTransactionManager(db.getDataSource());var clock=new UploadApprovalDatabaseChecks.MutableClock();var policy=new com.ksh321.songrecord.api.operations.OperationsPolicy(20,10,1000000000L,20000000000L,6291456,1,2,536870912L,2,60);
+        var service=new com.ksh321.songrecord.api.uploads.UploadApproval(db,access,manager,clock,new com.ksh321.songrecord.api.idempotency.IdempotentMutations(db,access,manager,clock),policy);
+        var r1=RetentionCandidateDatabaseChecks.recording(db,owner,device,null,true,true,"VALIDATED");var r2=RetentionCandidateDatabaseChecks.recording(db,owner,device,null,true,true,"VALIDATED");
+        int slot=0;for(var id:java.util.List.of(r1,r2))db.update("INSERT INTO pin_slot(user_id,slot_no,pending_recording_id,operation_id,requested_at) VALUES(?,?,?,?,CURRENT_TIMESTAMP)",ownerBytes,++slot,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(id),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(java.util.UUID.randomUUID()));
+        var first=service.approve(account,r1,6291456,"a".repeat(64));org.assertj.core.api.Assertions.assertThat(service.approve(account,r1,6291456,"a".repeat(64))).isEqualTo(first);
+        UploadApprovalDatabaseChecks.assertCode(()->service.approve(account,r2,6291456,"a".repeat(64)),"UPLOAD_DAILY_LIMIT");UploadApprovalDatabaseChecks.assertCode(()->service.issuePermit(account),"UPLOAD_RATE_LIMITED");
+        org.assertj.core.api.Assertions.assertThat(db.queryForObject("SELECT approved_bytes FROM upload_approval_daily",Long.class)).isEqualTo(6291456);
+        clock.now=clock.now.plus(java.time.Duration.ofDays(1));org.assertj.core.api.Assertions.assertThat(service.approve(account,r2,6291456,"a".repeat(64)).attempt()).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(db.queryForObject("SELECT COUNT(*) FROM upload_approval_daily",Integer.class)).isEqualTo(2);
+    }
     static org.springframework.jdbc.core.JdbcTemplate database(){
         var db=UploadReservationsTests.database();
         db.execute("ALTER TABLE song ADD representative_recording_id BINARY(16)");

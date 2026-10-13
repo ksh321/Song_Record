@@ -18,6 +18,7 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.transaction.support.TransactionTemplate;
 import static org.assertj.core.api.Assertions.*;
+import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 
 class AccountRegistrationTests {
     private JdbcTemplate jdbc;
@@ -34,6 +35,10 @@ class AccountRegistrationTests {
         manager = new DataSourceTransactionManager(source);
         service = new AccountRegistrationService(jdbc, manager,
                 Clock.fixed(Instant.parse("2026-09-24T00:00:00Z"), ZoneOffset.UTC));
+    }
+    @Test void configuredBetaLastSeatIsAtomicAndExistingLoginRemainsAllowed() throws Exception {
+        jdbc.execute("CREATE TABLE global_storage_usage(id INT PRIMARY KEY)");jdbc.update("INSERT INTO global_storage_usage(id) VALUES(1)");
+        OperationsRegistrationDatabaseChecks.verify(jdbc);
     }
     private int count(String table) { return jdbc.queryForObject("SELECT COUNT(*) FROM " + table, Integer.class); }
     private void assertEmpty() {

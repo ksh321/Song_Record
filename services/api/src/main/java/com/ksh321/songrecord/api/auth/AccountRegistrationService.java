@@ -22,8 +22,13 @@ public final class AccountRegistrationService {
     private final AuthIdentityRepository identities;
     private final TransactionTemplate transaction;
     private final Clock clock;
+    private final com.ksh321.songrecord.api.operations.OperationsPolicy policy;
 
     public AccountRegistrationService(JdbcTemplate jdbc, PlatformTransactionManager manager, Clock clock) {
+        this(jdbc,manager,clock,null);
+    }
+    public AccountRegistrationService(JdbcTemplate jdbc, PlatformTransactionManager manager, Clock clock, com.ksh321.songrecord.api.operations.OperationsPolicy policy) {
+        this.policy=policy;
         this.jdbc = jdbc;
         identities = new JdbcAuthIdentityRepository(jdbc);
         this.clock = clock;
@@ -64,6 +69,12 @@ public final class AccountRegistrationService {
         var identity = identities.find(verified);
         UUID userId;
         boolean created = identity.isEmpty();
+        if(created&&!existingOnly&&policy!=null){
+            // Global-first lock also serializes last beta seat across API replicas.
+            if(jdbc.queryForList("SELECT id FROM global_storage_usage WHERE id=1 FOR UPDATE").size()!=1)throw new IllegalStateException("Operations guard missing");
+            identity=identities.find(verified);created=identity.isEmpty();
+            if(created&&jdbc.queryForObject("SELECT COUNT(*) FROM app_user",Long.class)>=policy.betaAccounts())throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,"BETA_CAPACITY_REACHED","베타 신규 가입이 잠시 닫혀 있습니다. 기존 계정은 계속 사용할 수 있습니다.",false,Map.of());
+        }
         if(created&&existingOnly)throw new ApiException(HttpStatus.NOT_FOUND,"DELETION_OWNER_UNVERIFIED","기존 계정의 로그인 수단으로 소유를 확인해 주세요.",false,Map.of());
         if (created) {
             userId = UUID.randomUUID();
@@ -73,7 +84,7 @@ public final class AccountRegistrationService {
             jdbc.update("INSERT INTO auth_identity (id,user_id,provider,provider_user_id,created_at,updated_at) VALUES (?,?,?,?,?,?)",
                     bytes(UUID.randomUUID()), bytes(userId), verified.provider(), verified.providerUserId(), now, now);
             jdbc.update("INSERT INTO user_sync_state (user_id) VALUES (?)", bytes(userId));
-            jdbc.update("INSERT INTO user_entitlement (user_id,plan_code,pinned_limit,quota_bytes) VALUES (?,'FREE',10,1000000000)", bytes(userId));
+            jdbc.update("INSERT INTO user_entitlement (user_id,plan_code,pinned_limit,quota_bytes) VALUES (?,'FREE',?,?)", bytes(userId),policy==null?10:policy.pinnedLimit(),policy==null?1000000000L:policy.personalBytes());
             jdbc.update("INSERT INTO storage_usage (user_id,used_bytes,reserved_bytes) VALUES (?,0,0)", bytes(userId));
         } else {
             userId = identity.orElseThrow().userId();

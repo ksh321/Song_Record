@@ -14,5 +14,5 @@ public class UploadWorkerConfiguration {
     @Bean @ConditionalOnProperty(name="songrecord.storage.role",havingValue="worker")
     UploadInventory uploadInventory(JdbcTemplate db,R2Storage storage,org.springframework.transaction.PlatformTransactionManager manager){return new UploadInventory(db,manager,storage,Clock.systemUTC());}
     @Bean @ConditionalOnProperty(name="songrecord.storage.role",havingValue="worker")
-    AudioValidator audioValidator(org.springframework.core.env.Environment environment){return new AudioValidator(environment.getProperty("songrecord.upload.ffmpeg","ffmpeg"),environment.getProperty("songrecord.upload.ffprobe","ffprobe"),environment.getProperty("songrecord.upload.python",System.getProperty("os.name").startsWith("Windows")?"python":"python3"));}
+    AudioValidator audioValidator(org.springframework.core.env.Environment environment){var policy=com.ksh321.songrecord.api.operations.OperationsPolicy.from(environment);ValidationBudget.configure(policy.workerConcurrency(),policy.workerSeconds());return new AudioValidator(environment.getProperty("songrecord.upload.ffmpeg","ffmpeg"),environment.getProperty("songrecord.upload.ffprobe","ffprobe"),environment.getProperty("songrecord.upload.python",System.getProperty("os.name").startsWith("Windows")?"python":"python3"));}
 }

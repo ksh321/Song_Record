@@ -1,11 +1,18 @@
 """Local validation only: account-encrypted state, private TLS, sealed stdin into tmpfs."""
-import base64,json,secrets,subprocess,sys,os,ssl,urllib.request,urllib.error
+import base64,json,secrets,subprocess,sys,os,ssl,urllib.request,urllib.error,re
 from pathlib import Path
 from r2_vault import _crypt,_secure,load
 from r2_credentials import ACCOUNT
 ROOT=Path(__file__).resolve().parents[1]
 DIRECTORY=ROOT/'.local/workflow/validation'
 COMPOSE=['docker','compose','-f',str(ROOT/'infra/validation/compose.yaml')]
+
+def select_image():
+ path=DIRECTORY/'image.json'
+ tag=os.environ.get('VALIDATION_IMAGE_TAG') or (json.loads(path.read_text())['tag'] if path.exists() else 'p24-01-local')
+ if not re.fullmatch(r'p24-\d{2}-local',tag):raise ValueError('Validation image tag invalid')
+ os.environ['VALIDATION_IMAGE_TAG']=tag
+ return tag
 def run(args,**kwargs):
  result=subprocess.run(args,capture_output=True,**kwargs)
  if result.returncode:raise RuntimeError('VALIDATION_COMMAND_FAILED: values suppressed')
@@ -22,12 +29,12 @@ def state():
  with pending.open('xb') as file:file.write(encrypted);file.flush();os.fsync(file.fileno())
  pending.replace(path);return row
 def containers():
- os.environ['VALIDATION_IMAGE_TAG']='p24-01-local'
+ select_image()
  return {role:run(COMPOSE+['ps','-q',role]).decode().strip() for role in ('mysql','api','worker')}
 def prepare():
  row=state();directory=DIRECTORY/'https';directory.mkdir(exist_ok=True)
  if not (directory/'server.p12').exists():run(['pwsh','-NoProfile','-File',str(ROOT/'infra/validation/create-certificate.ps1')],input=json.dumps({'password':row['tls_password'],'directory':str(directory)}).encode())
- os.environ['VALIDATION_IMAGE_TAG']='p24-01-local'
+ select_image()
  run(COMPOSE+['up','-d','mysql']);target=containers()['mysql'];assert target
  for name,key in (('db-password','db_password'),('root-password','root_password')):
   # Values are stdin only. Root-only tmpfs; no file on host or Docker Config.Env.
@@ -35,7 +42,7 @@ def prepare():
  run(['docker','exec','-u','0',target,'touch','/run/runtime/ready'])
  return 'Validation MySQL initialized/requested in its own volume; original developer volume unchanged'
 def connect():
- row=state();os.environ['VALIDATION_IMAGE_TAG']='p24-01-local'
+ row=state();select_image()
  db=containers()['mysql'];assert db
  info=json.loads(run(['docker','inspect',db]))[0];assert info['State'].get('Health',{}).get('Status')=='healthy'
  # Stateless owned services only: fresh tmpfs on resume; the separate DB volume is untouched.
@@ -46,6 +53,8 @@ def connect():
   run(['docker','exec','-i',targets[role],'python3','/app/inject-runtime.py'],input=json.dumps(values).encode())
   values.clear();access=secret=reader=readsecret=None
  run(COMPOSE+['up','-d','--wait','--wait-timeout','90','api','worker'])
+ path=DIRECTORY/'image.json';pending=path.with_suffix('.pending')
+ pending.write_text(json.dumps({'tag':os.environ['VALIDATION_IMAGE_TAG']}),encoding='utf-8');pending.replace(path)
  return 'Validation API/worker configured from sealed stdin; no public deployment'
 def smoke():
  context=ssl.create_default_context(cafile=str(DIRECTORY/'https/server.crt'))

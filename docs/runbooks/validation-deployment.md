@@ -24,7 +24,7 @@ AI가 아래 연결을 직접 수행한다. 사용자에게 파일 다운로드�
 1. 서버 JAR과 `infra/validation` 파일만 넣은 전용 빌드 폴더에서 이미지 생성. 검증한 공식 Java amd64 manifest를 digest로 고정한다. 원시 빌드/검사 로그와 실제 이미지 근거는 `.local/workflow/p24-01`에 보존한다.
 2. `python tools/validation_runtime.py prepare`: 암호화 실행 상태와 비공개 인증서, 독립 MySQL 준비. 기존 DB 볼륨 삭제·init 복구를 하지 않는다.
 3. 사용자 최초 R2 등록은 `tools/validation_credentials.py` 창에서 한 번만 한다. 키/발급 성공 화면을 채팅으로 받지 않는다. 권한·암호화 자동 사용 확인 뒤에만 다음 단계로 이동한다.
-4. `python tools/validation_runtime.py connect`: 검증용 stateless API/작업자만 재생성해 새 tmpfs에 주입한다. DB는 그대로 유지한다. 노트북/컨테이너 재시작 후에는 암호화 상태에서 다시 주입해야 한다. 절전 중 서버 운영을 보장하지 않는다.
+4. `python tools/validation_runtime.py connect`: 검증용 stateless API/작업자만 재생성해 새 tmpfs에 주입한다. DB는 그대로 유지한다. 마지막 정상 검증 이미지 태그를 보관해 다음 재개에서 사용한다. `VALIDATION_IMAGE_TAG`를 명시하면 검증된 P24 로컬 태그만 허용하며 이전 태그 선택은 의도적 검증 롤백으로 구분한다. 노트북/컨테이너 재시작 후에는 암호화 상태에서 다시 주입해야 한다. 절전 중 서버 운영을 보장하지 않는다.
 5. `python tools/validation_runtime.py smoke`: HTTPS health 200, 개발 전용 경로 404, 미인증 me 401, 가짜 Google/Kakao 증명 거부를 확인한다. 전체 연결 검사는 해당 작업의 한 명령 검사 기록을 따른다.
 
 현재 검증 환경에는 실제 Google/Kakao 공급자 설정이 없어 social은 503으로 닫혀 있다. 이는 가짜 인증 차단 실적이며 실제 OAuth 로그인 통과가 아니다. 실제 로그인 공급자·외부 HTTPS 도메인·운영 배포 및 서명/제출 설정은 출시 점검 전에 연결·검증해야 한다. 모바일은 staging/prod에 명시적 HTTPS 주소가 없거나 잘못되면 실행 설정을 거부하며 dev HTTP 기본값으로 대체하지 않는다.

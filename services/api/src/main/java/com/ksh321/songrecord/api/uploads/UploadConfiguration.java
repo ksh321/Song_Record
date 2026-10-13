@@ -15,7 +15,7 @@ public class UploadConfiguration {
     @Bean UploadCompletion uploadCompletion(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,IdempotentMutations mutations,com.ksh321.songrecord.api.jobs.JobQueue jobs){
         return new UploadCompletion(db,access,manager,mutations,jobs,Clock.systemUTC());
     }
-    @Bean UploadApproval uploadApproval(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,IdempotentMutations mutations){
-        return new UploadApproval(db,access,manager,Clock.systemUTC(),mutations);
+    @Bean UploadApproval uploadApproval(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,IdempotentMutations mutations,org.springframework.core.env.Environment environment){
+        return new UploadApproval(db,access,manager,Clock.systemUTC(),mutations,com.ksh321.songrecord.api.operations.OperationsPolicy.from(environment));
     }
 }

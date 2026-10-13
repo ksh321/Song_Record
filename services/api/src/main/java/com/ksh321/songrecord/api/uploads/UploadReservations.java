@@ -15,10 +15,12 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 
 /** Database-only reservation primitive; HTTP eligibility/limits are connected by P12-03. */
 public final class UploadReservations {
+    private final com.ksh321.songrecord.api.operations.OperationsPolicy policy;
     private final JdbcTemplate db; private final AccountAccess access;
     private final TransactionTemplate tx; private final StorageLocks locks; private final Clock clock;
-    public UploadReservations(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,Clock clock){
-        this.db=db;this.access=access;this.clock=clock;tx=new TransactionTemplate(manager);tx.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_READ_COMMITTED);locks=new StorageLocks(db,access,manager);
+    public UploadReservations(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,Clock clock){this(db,access,manager,clock,com.ksh321.songrecord.api.operations.OperationsPolicy.defaults());}
+    public UploadReservations(JdbcTemplate db,AccountAccess access,PlatformTransactionManager manager,Clock clock,com.ksh321.songrecord.api.operations.OperationsPolicy policy){
+        this.policy=java.util.Objects.requireNonNull(policy);this.db=db;this.access=access;this.clock=clock;tx=new TransactionTemplate(manager);tx.setIsolationLevel(org.springframework.transaction.TransactionDefinition.ISOLATION_READ_COMMITTED);locks=new StorageLocks(db,access,manager);
     }
     /** May join the command/receipt transaction. All upload policy checks execute inside these locks. */
     public <T>T locked(AccountAccess.Account account,Supplier<T> work){
@@ -44,12 +46,12 @@ public final class UploadReservations {
             if(!existing.isEmpty())return existing.getFirst();
             var global=db.queryForMap("SELECT used_bytes,reserved_bytes,primary_quota_bytes,upload_locked,temp_observed_bytes,reconciliation_locked,revision FROM global_storage_usage WHERE id=1 FOR UPDATE");
             var personal=db.queryForMap("SELECT s.used_bytes,s.reserved_bytes,s.revision,e.quota_bytes FROM storage_usage s JOIN user_entitlement e ON e.user_id=s.user_id WHERE s.user_id=? FOR UPDATE",bytes(owner));
-            if(number(global,"temp_observed_bytes")>=536870912 || Boolean.TRUE.equals(global.get("reconciliation_locked")) || (global.get("reconciliation_locked") instanceof Number flag && flag.intValue()!=0))throw error("UPLOAD_BUDGET_LOCKED",HttpStatus.SERVICE_UNAVAILABLE);
+            if(number(global,"temp_observed_bytes")>=policy.temporaryBytes() || Boolean.TRUE.equals(global.get("reconciliation_locked")) || (global.get("reconciliation_locked") instanceof Number flag && flag.intValue()!=0))throw error("UPLOAD_BUDGET_LOCKED",HttpStatus.SERVICE_UNAVAILABLE);
             if(Boolean.TRUE.equals(global.get("upload_locked")) || (global.get("upload_locked") instanceof Number n && n.intValue()!=0))throw error("UPLOAD_BUDGET_LOCKED",HttpStatus.SERVICE_UNAVAILABLE);
             if(!fits(number(personal,"used_bytes"),number(personal,"reserved_bytes"),request.size(),number(personal,"quota_bytes"))
-                || !fits(number(global,"used_bytes"),number(global,"reserved_bytes"),request.size(),number(global,"primary_quota_bytes")))throw error("QUOTA_EXCEEDED",HttpStatus.CONFLICT);
+                || !fits(number(global,"used_bytes"),number(global,"reserved_bytes"),request.size(),Math.min(number(global,"primary_quota_bytes"),policy.globalBytes())))throw error("QUOTA_EXCEEDED",HttpStatus.CONFLICT);
             var slots=db.query("SELECT active_slot FROM recording_upload WHERE user_id=? AND state IN ('RESERVED','UPLOADING','VERIFYING') FOR UPDATE",(r,n)->r.getInt(1),bytes(owner));
-            int slot=!slots.contains(0)?0:!slots.contains(1)?1:-1;if(slot<0)throw error("UPLOAD_CONCURRENCY_LIMIT",HttpStatus.CONFLICT);
+            int slot=!slots.contains(0)?0:policy.uploadConcurrency()>1&&!slots.contains(1)?1:-1;if(slot<0)throw error("UPLOAD_CONCURRENCY_LIMIT",HttpStatus.CONFLICT);
             long personalRevision=Math.incrementExact(number(personal,"revision")),globalRevision=Math.incrementExact(number(global,"revision"));
             UUID attempt=UUID.randomUUID();Instant now=clock.instant().truncatedTo(java.time.temporal.ChronoUnit.MILLIS),expiry=now.plus(Duration.ofHours(24));
             db.update("INSERT INTO recording_upload(id,user_id,recording_id,state,active_slot,expected_size,expected_sha256,temp_key,final_key,policy_revision,pin_operation_id,expires_at,created_at,updated_at) VALUES(?,?,?,'RESERVED',?,?,?,?,?,?,?,?,?,?)",

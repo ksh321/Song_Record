@@ -11,7 +11,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 @Profile("!bootstrap")
 public class AccountRegistrationConfiguration {
     @Bean
-    AccountRegistrationService accountRegistrationService(JdbcTemplate jdbc, PlatformTransactionManager manager) {
-        return new AccountRegistrationService(jdbc, manager, Clock.systemUTC());
+    AccountRegistrationService accountRegistrationService(JdbcTemplate jdbc, PlatformTransactionManager manager, org.springframework.core.env.Environment environment) {
+        return new AccountRegistrationService(jdbc, manager, Clock.systemUTC(), environment.acceptsProfiles(org.springframework.core.env.Profiles.of("staging","prod"))?com.ksh321.songrecord.api.operations.OperationsPolicy.from(environment):null);
     }
 }
