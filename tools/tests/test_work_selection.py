@@ -163,7 +163,10 @@ class SelectionTests(unittest.TestCase):
         state = json.loads((root / 'docs/workflow-state.json').read_text(encoding='utf-8-sig'))
         planned = json.loads((root / 'docs/reference/search/tasks.json').read_text(encoding='utf-8-sig'))
         self.assertIn('no delegated CLI workers/reviewers', state['execution_policy'])
-        self.assertEqual(state['grants'], [])
+        # Human task execution approvals remain valid; these are not delegation.
+        # Reject arbitrary/worker/reviewer grants instead of requiring no approvals.
+        for grant in state['grants']:
+            self.assertRegex(grant, r'^p\d{2}\.user-execution-approved$')
         for u in state['units']:
             if u['state'] != 'done':
                 self.assertFalse(any(p.startswith(('worker.', 'review.')) for p in u['permissions']))

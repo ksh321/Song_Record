@@ -12,7 +12,7 @@ from backup_store import BackupError, EncryptedStore, R2, BACKUP_BUCKET, FINAL_B
 from backup_credentials import encryption_key
 from operational_backup import Backup
 from r2_vault import load, _secure
-from manual_usage import RunLock, atomic_json
+from workflow_runtime import RunLock, atomic_json
 
 ROOT = Path(__file__).resolve().parents[1]
 DIRECTORY = ROOT / '.local/workflow/backup'

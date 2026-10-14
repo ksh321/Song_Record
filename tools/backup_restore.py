@@ -18,7 +18,7 @@ from backup_overlay import statements, require_database
 from operational_backup import Backup, PREFIX, check_file
 from backup_runtime import bounded
 from r2_vault import load, _secure, _crypt
-from manual_usage import atomic_json
+from workflow_runtime import atomic_json
 
 ROOT=Path(__file__).resolve().parents[1]
 DIRECTORY=ROOT/'.local/workflow/restore'

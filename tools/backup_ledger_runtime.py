@@ -9,7 +9,7 @@ from backup_store import R2, BACKUP_BUCKET, EncryptedStore, BackupError
 from backup_credentials import encryption_key
 from backup_ledger import Ledger, subject
 from r2_vault import load, _secure
-from manual_usage import RunLock, atomic_json
+from workflow_runtime import RunLock, atomic_json
 
 DIRECTORY=Path(__file__).resolve().parents[1]/'.local/workflow/backup-ledger'
 

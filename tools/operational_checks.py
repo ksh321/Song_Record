@@ -2,7 +2,7 @@
 import calendar, datetime as dt, hashlib, json, os, re, subprocess, sys, time
 from pathlib import Path
 from cost_monitor import atomic
-from manual_usage import RunLock
+from workflow_runtime import RunLock
 ROOT=Path(__file__).resolve().parents[1]
 DIRECTORY=ROOT/'.local/workflow/operational-checks'
 UTC=dt.timezone.utc
