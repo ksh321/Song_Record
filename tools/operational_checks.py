@@ -52,7 +52,7 @@ def notify(report):
     attempted=stamp(read(ROOT/'.local/workflow/phone/attempt.json').get('utc'))
     if attempted and dt.datetime.now(UTC)-attempted<dt.timedelta(seconds=60):return
     atomic(path,{'active':key,'status':'ATTEMPTED','phone_receipt':'UNCONFIRMED'})
-    result=subprocess.run(['pwsh','-NoProfile','-File',str(ROOT/'tools/phone-notify.ps1'),'-TaskId','P24-10','-Kind','OperationsWarning'],capture_output=True,timeout=30)
+    result=subprocess.run(['pwsh','-NoProfile','-File',str(ROOT/'tools/phone-notify.ps1'),'-TaskId','P24-10','-Kind','OperationsWarning'],capture_output=True,timeout=30,creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
     atomic(path,{'active':key,'status':'SERVER_ACCEPTED' if result.returncode==0 else 'UNCONFIRMED','phone_receipt':'UNCONFIRMED'})
 
 def once(send=True):

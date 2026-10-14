@@ -25,7 +25,7 @@ def notify(report):
  atomic(event,{'key':key,'status':'ATTEMPTED','phone_receipt':'UNCONFIRMED'})
  kind={'NOTICE':'CostNotice','WARNING':'CostWarning','LOCK':'CostLock','UNCONFIRMED':'CostUnknown'}[level]
  try:
-  p=subprocess.run(['pwsh','-NoProfile','-File',str(ROOT/'tools/phone-notify.ps1'),'-TaskId','P24-03','-Kind',kind],capture_output=True,timeout=30)
+  p=subprocess.run(['pwsh','-NoProfile','-File',str(ROOT/'tools/phone-notify.ps1'),'-TaskId','P24-03','-Kind',kind],capture_output=True,timeout=30,creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
   if p.returncode:raise ValueError()
  except Exception:raise metrics.MetricsError('PHONE_DELIVERY_UNCONFIRMED') from None
  atomic(event,{'key':key,'status':'SERVER_ACCEPTED','phone_receipt':'UNCONFIRMED'})

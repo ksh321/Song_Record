@@ -14,6 +14,7 @@ def select_image():
  os.environ['VALIDATION_IMAGE_TAG']=tag
  return tag
 def run(args,**kwargs):
+ kwargs["creationflags"]=kwargs.get("creationflags",0)|getattr(subprocess,"CREATE_NO_WINDOW",0)
  result=subprocess.run(args,capture_output=True,**kwargs)
  if result.returncode:raise RuntimeError('VALIDATION_COMMAND_FAILED: values suppressed')
  return result.stdout
@@ -21,7 +22,7 @@ def state():
  path=DIRECTORY/'runtime.dpapi'
  if path.exists():
   row=json.loads(_crypt(path.read_bytes(),'staging.api',True));assert row['scope']=='song_record_validation:v1';return row
- found=subprocess.run(['docker','volume','inspect','song-record-validation_validation_db'],capture_output=True)
+ found=subprocess.run(['docker','volume','inspect','song-record-validation_validation_db'],capture_output=True,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
  if found.returncode==0:raise RuntimeError('VALIDATION_STATE_MISSING: preserve existing volume; operator recovery required')
  _secure(DIRECTORY)
  row={'scope':'song_record_validation:v1','instance_id':secrets.token_hex(16),**{key:secrets.token_urlsafe(32) for key in ('db_password','root_password','tls_password')},**{key:base64.b64encode(secrets.token_bytes(32)).decode() for key in ('pagination','karaoke')}}

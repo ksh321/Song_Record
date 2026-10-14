@@ -21,7 +21,8 @@ DIRECTORY = ROOT / '.local/workflow/backup'
 def bounded(args, limit=MAX_BYTES, input_data=None, timeout=30):
     # stderr discarded, never serialized to a report. Bounded stdout cannot fill host disk/memory.
     process = subprocess.Popen(args, stdin=subprocess.PIPE if input_data is not None else subprocess.DEVNULL,
-                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                               stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     timer = threading.Timer(timeout, process.kill); timer.start()
     try:
         if input_data is not None:
@@ -55,7 +56,8 @@ def snapshot():
     lock = None; watchdog = None
     try:
         # Limit lock lifetime, including a hung remote Docker client. Server session ends when killed.
-        lock = subprocess.Popen(mysql, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        lock = subprocess.Popen(mysql, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         watchdog = threading.Timer(30, lock.kill); watchdog.start()
         lock.stdin.write(b"SET SESSION lock_wait_timeout=5; SET SESSION wait_timeout=30; FLUSH TABLES WITH READ LOCK; SELECT 'LOCKED';\n"); lock.stdin.flush()
         if lock.stdout.readline(32).strip() != b'LOCKED':
