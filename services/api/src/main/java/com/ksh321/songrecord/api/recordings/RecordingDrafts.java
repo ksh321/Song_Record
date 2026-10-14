@@ -68,7 +68,7 @@ public final class RecordingDrafts {
             m.put("revision",rs.getLong("revision"));m.put("link_revision",rs.getLong("link_revision"));
             for(String field:List.of("title_snapshot","artist_snapshot","version_code","key_mode","note","metadata_state","lifecycle_state","timezone_id","condition_code","condition_name_snapshot"))m.put(field,rs.getString(field));
             m.put("key_shift",rs.getObject("key_shift"));m.put("timezone_offset_minutes",rs.getInt("timezone_offset_minutes"));
-            for(String field:List.of("recorded_at","updated_at"))m.put(field,rs.getTimestamp(field).toLocalDateTime().toInstant(ZoneOffset.UTC).toString());
+            for(String field:List.of("recorded_at","updated_at"))m.put(field,rs.getObject(field, java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC).toString());
             return m;
         },bytes(owner),bytes(id));
     }

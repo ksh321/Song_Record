@@ -60,7 +60,7 @@ public final class SnapshotPages {
     private Header ready(UUID owner, UUID token,String purpose) {
         var rows = jdbc.query("SELECT status,snapshot_cursor,expires_at FROM snapshot_header WHERE user_id=? AND id=? AND purpose=?",
                 (rs,n) -> new Header(rs.getString(1), rs.getObject(2,Long.class),
-                        rs.getTimestamp(3) == null ? null : rs.getTimestamp(3).toLocalDateTime().toInstant(ZoneOffset.UTC)),
+                        rs.getTimestamp(3) == null ? null : rs.getObject(3, java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC)),
                 bytes(owner), bytes(token),purpose);
         if (rows.isEmpty()) throw failure(HttpStatus.NOT_FOUND,"SNAPSHOT_NOT_FOUND");
         var header = rows.getFirst();

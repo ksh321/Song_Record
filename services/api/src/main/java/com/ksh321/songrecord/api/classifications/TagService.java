@@ -89,7 +89,7 @@ public final class TagService {
     }
     private static Map<String,Object> wire(ResultSet rs)throws SQLException{
         var result=new LinkedHashMap<String,Object>();var b=java.nio.ByteBuffer.wrap(rs.getBytes("id"));result.put("id",new UUID(b.getLong(),b.getLong()).toString());result.put("name",rs.getString("name"));result.put("revision",rs.getLong("revision"));
-        for(String key:List.of("archived_at","updated_at")){var t=rs.getTimestamp(key);result.put(key,t==null?null:t.toLocalDateTime().toInstant(ZoneOffset.UTC).toString());}return result;
+        for(String key:List.of("archived_at","updated_at")){var t=rs.getObject(key, java.time.LocalDateTime.class);result.put(key,t==null?null:t.toInstant(ZoneOffset.UTC).toString());}return result;
     }
     private static JsonNode parse(String body,Set<String> fields){CanonicalRequest.canonical(body);var root=JSON.readTree(body);if(!root.isObject() || root.size()!=fields.size())throw invalid();for(var e:root.properties())if(!fields.contains(e.getKey()))throw invalid();return root;}
     private static String text(JsonNode node){if(node==null || !node.isTextual())throw invalid();return node.asText();}

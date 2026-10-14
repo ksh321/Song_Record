@@ -183,7 +183,7 @@ public final class PlaylistService {
             for(String field:List.of("id","user_id","playlist_id","song_id","hidden_by_batch_id")){var b=rs.getBytes(field);value.put(field,b==null?null:asUuid(b).toString());}
             for(String field:List.of("candidate_brand","candidate_number","entry_key"))value.put(field,rs.getString(field));
             var candidate=rs.getString("candidate_snapshot");value.put("candidate_snapshot",candidate==null?null:JSON.readValue(candidate,Map.class));value.put("position",rs.getLong("position"));
-            for(String field:List.of("created_at","updated_at"))value.put(field,rs.getTimestamp(field).toLocalDateTime().toInstant(ZoneOffset.UTC).toString());return value;
+            for(String field:List.of("created_at","updated_at"))value.put(field,rs.getObject(field, java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC).toString());return value;
         },bytes(owner),bytes(id));return Map.of("playlist",parent,"items",items);
     }
     /** Caller owns the new Song transaction and account sync lock. Parents lock in ID order. */
@@ -279,7 +279,7 @@ public final class PlaylistService {
         jdbc.queryForList("SELECT last_change_seq FROM user_sync_state WHERE user_id=? FOR UPDATE",bytes(account.principal().userId()));
         var rows=jdbc.query("SELECT id,name,revision,deleted_at,updated_at FROM playlist WHERE user_id=? AND id=? AND deleted_at IS NOT NULL",(rs,n)->wire(rs),bytes(account.principal().userId()),bytes(id));
         if(!rows.isEmpty())return rows.getFirst();
-        var proofs=jdbc.query("SELECT revision,purged_at FROM deletion_ledger WHERE user_id=? AND entity_type='PLAYLIST' AND entity_id=? AND object_generation IS NULL",(rs,n)->Map.<String,Object>of("id",id.toString(),"revision",rs.getLong(1),"deleted_at",rs.getTimestamp(2).toLocalDateTime().toInstant(ZoneOffset.UTC).toString()),bytes(account.principal().userId()),bytes(id));
+        var proofs=jdbc.query("SELECT revision,purged_at FROM deletion_ledger WHERE user_id=? AND entity_type='PLAYLIST' AND entity_id=? AND object_generation IS NULL",(rs,n)->Map.<String,Object>of("id",id.toString(),"revision",rs.getLong(1),"deleted_at",rs.getObject(2, java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC).toString()),bytes(account.principal().userId()),bytes(id));
         return proofs.isEmpty()?null:proofs.getFirst();
     }
     /** Maintenance owns USER_SYNC and every parent aggregate before invoking this. */
@@ -358,7 +358,7 @@ public final class PlaylistService {
     }
     private static Map<String,Object> wire(ResultSet rs)throws SQLException{
         var result=new LinkedHashMap<String,Object>();var b=java.nio.ByteBuffer.wrap(rs.getBytes("id"));result.put("id",new UUID(b.getLong(),b.getLong()).toString());result.put("name",rs.getString("name"));result.put("revision",rs.getLong("revision"));
-        for(String key:List.of("deleted_at","updated_at")){var t=rs.getTimestamp(key);result.put(key,t==null?null:t.toLocalDateTime().toInstant(ZoneOffset.UTC).toString());}return result;
+        for(String key:List.of("deleted_at","updated_at")){var t=rs.getObject(key, java.time.LocalDateTime.class);result.put(key,t==null?null:t.toInstant(ZoneOffset.UTC).toString());}return result;
     }
     private static JsonNode parse(String body,Set<String> fields){CanonicalRequest.canonical(body);var root=JSON.readTree(body);if(!root.isObject() || root.size()!=fields.size())throw invalid();for(var e:root.properties())if(!fields.contains(e.getKey()))throw invalid();return root;}
     private static String text(JsonNode node){if(node==null || !node.isTextual())throw invalid();return node.asText();}

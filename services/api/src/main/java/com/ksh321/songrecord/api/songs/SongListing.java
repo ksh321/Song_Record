@@ -79,7 +79,7 @@ public final class SongListing {
         @Override public Comparator<PageCursor.Tuple> order(){return SongListRules.tupleOrder(query);}
     }
     private static LocalDateTime timestamp(String value){return LocalDateTime.ofInstant(Instant.parse(value),ZoneOffset.UTC);}
-    private static Instant instant(ResultSet rs,String column)throws SQLException{var value=rs.getTimestamp(column);return value==null?null:value.toLocalDateTime().toInstant(ZoneOffset.UTC);}
+    private static Instant instant(ResultSet rs,String column)throws SQLException{var value=rs.getObject(column, java.time.LocalDateTime.class);return value==null?null:value.toInstant(ZoneOffset.UTC);}
     private static Map<String,Object> snapshot(ResultSet rs)throws SQLException{
         var map=new LinkedHashMap<String,Object>();map.put("id",uuid(rs.getBytes("id")).toString());map.put("revision",rs.getLong("revision"));
         for(String name:List.of("source_type","tj_number","title","artist","version_code","note","lifecycle_state"))map.put(name,rs.getString(name));

@@ -12,7 +12,7 @@ public final class ChartStoredValidation {
         var rows=jdbc.query("SELECT s.brand,s.period,s.provider,s.source_url,s.fetched_at,s.revision,s.state,p.payload FROM chart_snapshot s JOIN chart_collection_payload p ON p.snapshot_id=s.id WHERE s.id=?",(rs,n)->{
             var scope=ChartScope.parse(rs.getString("brand"),rs.getString("period"));
             if(!"STAGING".equals(rs.getString("state")) || !ChartScope.PROVIDER.equals(rs.getString("provider")) || !scope.sourceUri().toString().equals(rs.getString("source_url")))throw new IllegalStateException("Invalid staged chart metadata");
-            return new Staged(id,scope,rs.getTimestamp("fetched_at").toLocalDateTime().toInstant(ZoneOffset.UTC),rs.getLong("revision"),validation.validate(scope,rs.getBytes("payload")));
+            return new Staged(id,scope,rs.getObject("fetched_at", java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC),rs.getLong("revision"),validation.validate(scope,rs.getBytes("payload")));
         },ChartStaging.bytes(Objects.requireNonNull(id)));
         if(rows.size()!=1)throw new IllegalStateException("Missing staged chart payload");return rows.getFirst();
     }

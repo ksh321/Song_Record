@@ -69,7 +69,7 @@ public final class SnapshotQueries {
     }
     private Header header(UUID owner,UUID token,String purpose) {
         var rows=jdbc.query("SELECT status,schema_version,snapshot_cursor,captured_at,ready_at,expires_at,manifest_hash FROM snapshot_header WHERE user_id=? AND id=? AND purpose=?",
-                (rs,n)->new Header(rs.getString(1),rs.getInt(2),rs.getObject(3,Long.class),instant(rs.getTimestamp(4)),instant(rs.getTimestamp(5)),instant(rs.getTimestamp(6)),rs.getString(7)),bytes(owner),bytes(token),purpose);
+                (rs,n)->new Header(rs.getString(1),rs.getInt(2),rs.getObject(3,Long.class),instant(rs.getObject(4,LocalDateTime.class)),instant(rs.getObject(5,LocalDateTime.class)),instant(rs.getObject(6,LocalDateTime.class)),rs.getString(7)),bytes(owner),bytes(token),purpose);
         if(rows.isEmpty()) {
             if(!jdbc.queryForList("SELECT id FROM snapshot_header WHERE user_id=? AND id=?",bytes(owner),bytes(token)).isEmpty())throw failure(HttpStatus.NOT_FOUND,"SNAPSHOT_NOT_FOUND");
             var issued=jdbc.query("SELECT 1 FROM mutation_receipt WHERE user_id=? AND response_status=202 AND JSON_UNQUOTE(JSON_EXTRACT(response_body,?))=? LIMIT 1",
@@ -81,7 +81,7 @@ public final class SnapshotQueries {
         if(header.status.equals("FAILED"))throw failure(HttpStatus.CONFLICT,"SNAPSHOT_FAILED");
         return header;
     }
-    private static Instant instant(java.sql.Timestamp value){return value==null?null:value.toLocalDateTime().toInstant(ZoneOffset.UTC);}
+    private static Instant instant(LocalDateTime value){return value==null?null:value.toInstant(ZoneOffset.UTC);}
     private static byte[] bytes(UUID id){return ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();}
     private static ApiException invalid(){return failure(HttpStatus.BAD_REQUEST,"VALIDATION_ERROR");}
     private static ApiException failure(HttpStatus status,String code){return new ApiException(status,code,"스냅샷 상태와 조회 조건을 확인해 주세요.",false,Map.of());}

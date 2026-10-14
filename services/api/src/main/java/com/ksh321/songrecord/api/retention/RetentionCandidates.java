@@ -42,7 +42,7 @@ public final class RetentionCandidates {
               AND u.status = 'ACTIVE' AND s.lifecycle_state = 'ACTIVE'
               AND r.lifecycle_state = 'ACTIVE' AND r.metadata_state = 'SAVED'
             """ + (representativeOnly ? " AND s.representative_recording_id = r.id" : "") + " ORDER BY r.id", (rs, row) -> new Candidate(uuid(rs.getBytes("id")), uuid(rs.getBytes("origin_device_id")),
-                rs.getTimestamp("recorded_at").toLocalDateTime().toInstant(ZoneOffset.UTC),
+                rs.getObject("recorded_at", java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC),
                 rs.getString("tier"), rs.getLong("revision"), rs.getLong("link_revision"),
                 new FileSpec(rs.getString("sha256"), rs.getLong("size_bytes"), rs.getInt("duration_ms"),
                     rs.getString("codec"), rs.getInt("sample_rate"), rs.getInt("channels"),

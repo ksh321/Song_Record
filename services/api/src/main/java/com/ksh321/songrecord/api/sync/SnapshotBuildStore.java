@@ -78,7 +78,7 @@ public final class SnapshotBuildStore {
                     (rs,n)->{
                         if(!rs.getString(5).equals(purpose)||rs.getInt(6)!=schemaVersion)
                             throw error(HttpStatus.CONFLICT,"IDEMPOTENCY_CONFLICT");
-                        return new Attempt(uuid(rs.getBytes(1)),uuid(rs.getBytes(2)),rs.getTimestamp(3).toLocalDateTime().toInstant(ZoneOffset.UTC),rs.getString(4));
+                        return new Attempt(uuid(rs.getBytes(1)),uuid(rs.getBytes(2)),rs.getObject(3, java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC),rs.getString(4));
                     },bytes(owner),bytes(opId));
             if(!existing.isEmpty())return existing.getFirst();
             var slots=jdbc.query("SELECT active_slot FROM snapshot_header WHERE user_id=? AND active_slot IS NOT NULL FOR UPDATE",
@@ -125,9 +125,9 @@ public final class SnapshotBuildStore {
             UUID owner=authority.requireActive();capacity();
             var rows=jdbc.query("SELECT attempt_id,status,lease_until,attempt_count FROM snapshot_header WHERE user_id=? AND id=? AND purpose IN ('SYNC','EXPORT') FOR UPDATE",
                     (rs,n)->{
-                        var lease=rs.getTimestamp(3);
+                        var lease=rs.getObject(3, java.time.LocalDateTime.class);
                         if(!uuid(rs.getBytes(1)).equals(old.attemptId)||!rs.getString(2).equals("BUILDING")||lease==null
-                                ||(!ownedJob&&now().isBefore(lease.toLocalDateTime().toInstant(ZoneOffset.UTC))))
+                                ||(!ownedJob&&now().isBefore(lease.toInstant(ZoneOffset.UTC))))
                             throw error(HttpStatus.CONFLICT,"SNAPSHOT_ATTEMPT_STALE");
                         return rs.getInt(4);
                     },bytes(owner),bytes(old.id));
@@ -145,8 +145,8 @@ public final class SnapshotBuildStore {
     BuildState current(SnapshotAuthority authority,UUID snapshot) {
         authority.requireSnapshot(snapshot);UUID owner=authority.requireActive();
         var rows=jdbc.query("SELECT attempt_id,build_started_at,status,snapshot_cursor,lease_until FROM snapshot_header WHERE user_id=? AND id=? AND purpose IN ('SYNC','EXPORT')",
-                (rs,n)->new BuildState(new Attempt(snapshot,uuid(rs.getBytes(1)),rs.getTimestamp(2).toLocalDateTime().toInstant(ZoneOffset.UTC),rs.getString(3)),
-                        rs.getObject(4)!=null,rs.getTimestamp(5)==null?null:rs.getTimestamp(5).toLocalDateTime().toInstant(ZoneOffset.UTC)),bytes(owner),bytes(snapshot));
+                (rs,n)->new BuildState(new Attempt(snapshot,uuid(rs.getBytes(1)),rs.getObject(2, java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC),rs.getString(3)),
+                        rs.getObject(4)!=null,rs.getTimestamp(5)==null?null:rs.getObject(5, java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC)),bytes(owner),bytes(snapshot));
         if(rows.isEmpty())throw error(HttpStatus.NOT_FOUND,"SNAPSHOT_NOT_FOUND");
         return rows.getFirst();
     }
@@ -225,10 +225,10 @@ public final class SnapshotBuildStore {
         Objects.requireNonNull(attempt);
         var rows=jdbc.query("SELECT attempt_id,status,reserved_bytes,build_started_at,lease_until FROM snapshot_header WHERE user_id=? AND id=? AND purpose IN ('SYNC','EXPORT') FOR UPDATE",
                 (rs,n)->{
-                    Instant start=rs.getTimestamp(4).toLocalDateTime().toInstant(ZoneOffset.UTC);
-                    var lease=rs.getTimestamp(5);
+                    Instant start=rs.getObject(4, java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC);
+                    var lease=rs.getObject(5, java.time.LocalDateTime.class);
                     if(!uuid(rs.getBytes(1)).equals(attempt.attemptId)||!start.equals(attempt.startedAt)||now().isBefore(start)||!rs.getString(2).equals("BUILDING")
-                            ||lease==null||!now().isBefore(lease.toLocalDateTime().toInstant(ZoneOffset.UTC)))
+                            ||lease==null||!now().isBefore(lease.toInstant(ZoneOffset.UTC)))
                         throw error(HttpStatus.CONFLICT,"SNAPSHOT_ATTEMPT_STALE");
                     return rs.getLong(3);
                 },bytes(owner),bytes(attempt.id));

@@ -73,7 +73,7 @@ public final class StorageRequests {
   public List<KeysetPages.Entry<Map<String,Object>>> fetch(JdbcTemplate db,UUID owner,PageCursor.Tuple after,int maximum){
    var args=new ArrayList<Object>();args.add(bytes(owner));args.add(Timestamp.valueOf(cutoff));String suffix="";
    if(after!=null){var time=Timestamp.valueOf(LocalDateTime.parse(after.values().getFirst()));suffix=" AND (received_at<? OR (received_at=? AND id<?))";args.add(time);args.add(time);args.add(bytes(after.id()));}args.add(maximum);
-   return db.query("SELECT * FROM storage_request_body WHERE user_id=? AND received_at>?"+suffix+" ORDER BY received_at DESC,id DESC LIMIT ?",(r,n)->new KeysetPages.Entry<>(wire(r),new PageCursor.Tuple(List.of(r.getTimestamp("received_at").toLocalDateTime().toString()),uuid(r.getBytes("id")))),args.toArray());
+   return db.query("SELECT * FROM storage_request_body WHERE user_id=? AND received_at>?"+suffix+" ORDER BY received_at DESC,id DESC LIMIT ?",(r,n)->new KeysetPages.Entry<>(wire(r),new PageCursor.Tuple(List.of(r.getObject("received_at", java.time.LocalDateTime.class).toString()),uuid(r.getBytes("id")))),args.toArray());
   }
   public Comparator<PageCursor.Tuple> order(){return Comparator.comparing((PageCursor.Tuple p)->p.values().getFirst()).thenComparing(p->p.id().toString()).reversed();}
  }
@@ -90,7 +90,7 @@ public final class StorageRequests {
  private boolean expired(LocalDateTime at){return !at.plusDays(90).isAfter(now());}
  private static void requireOwner(Map<String,Object> row,UUID owner){if(!Arrays.equals((byte[])row.get("user_id"),bytes(owner)))throw missing();}
  private static Map<String,Object> wire(ResultSet r)throws SQLException{
-  var at=java.time.format.DateTimeFormatter.ISO_INSTANT.format(r.getTimestamp("received_at").toLocalDateTime().toInstant(ZoneOffset.UTC));var types=new ArrayList<String>();if(r.getBoolean("pin_limit"))types.add("PIN_LIMIT");if(r.getBoolean("storage_quota"))types.add("STORAGE_QUOTA");
+  var at=java.time.format.DateTimeFormatter.ISO_INSTANT.format(r.getObject("received_at", java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC));var types=new ArrayList<String>();if(r.getBoolean("pin_limit"))types.add("PIN_LIMIT");if(r.getBoolean("storage_quota"))types.add("STORAGE_QUOTA");
   return Map.of("id",uuid(r.getBytes("id")).toString(),"types",types,"status","RECEIVED","revision",1,"received_at",at,"updated_at",at);
  }
  private static IdempotentMutations.Reply reply(int status,Map<String,Object> value){return new IdempotentMutations.Reply(status,JSON.writeValueAsString(value));}

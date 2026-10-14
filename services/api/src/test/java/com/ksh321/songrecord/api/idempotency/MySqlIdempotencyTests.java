@@ -19,40 +19,47 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 /** CI-only, real InnoDB and V6 receipt DDL. Authentication itself is covered by IdempotencyTests. */
 @EnabledIfEnvironmentVariable(named="P07_MYSQL_CI", matches="true")
 class MySqlIdempotencyTests {
+    private static String mysqlBase() {
+        String configured = System.getenv("P10_MYSQL_PORT");
+        int port = configured == null ? 3306 : Integer.parseInt(configured);
+        if (port < 1 || port > 65535) throw new IllegalArgumentException("Invalid disposable MySQL port");
+        return "jdbc:mysql://127.0.0.1:" + port + "/";
+    }
+
     @Test void mysqlAccountDeletionExecutionHonorsOwnershipForeignKeysAndBackupBoundary() throws Exception {
         String name=database+"_deletion_exec";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.account.AccountDeletionExecutionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.account.AccountDeletionExecutionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     @Test void mysqlDeletionWebOwnerProofUsesSameAtomicAccountDeletion() throws Exception {
         String name=database+"_deletion_web";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.account.DeletionWebDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.account.DeletionWebDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     @Test void mysqlAccountDeletionAcceptanceRevokesSessionsAndNewIssuance() throws Exception {
         String name=database+"_account_delete";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.account.AccountDeletionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.account.AccountDeletionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     @Test void mysqlStorageDemandLedgerAndConcurrentUniqueUsers() throws Exception {
         String name=database+"_storage_demand";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.account.StorageRequestDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.account.StorageRequestDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     JdbcTemplate admin,jdbc;String database;
     IdempotentMutations service;AccountAccess.Account account;AccountAccess access;
     AtomicInteger calls=new AtomicInteger();String key=UUID.randomUUID().toString();
     @Test void migratedMysqlConfiguredBetaLastSeatAndExistingAccountPreservation() throws Exception {
         String name=database+"_operations_admission";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.auth.OperationsRegistrationDatabaseChecks.verify(new JdbcTemplate(ds));com.ksh321.songrecord.api.operations.CostGateDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.auth.OperationsRegistrationDatabaseChecks.verify(new JdbcTemplate(ds));com.ksh321.songrecord.api.operations.CostGateDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     @Test void mysqlOperationsAuditAndUniqueDemandUseMigratedSchema() throws Exception {
         String name=database+"_operations_observation";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();var db=new JdbcTemplate(ds);com.ksh321.songrecord.api.operations.OperationsObservationDatabaseChecks.verify(db);com.ksh321.songrecord.api.operations.OperationsObservationDatabaseChecks.verifyTriggers(db);
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();var db=new JdbcTemplate(ds);com.ksh321.songrecord.api.operations.OperationsObservationDatabaseChecks.verify(db);com.ksh321.songrecord.api.operations.OperationsObservationDatabaseChecks.verifyTriggers(db);
             com.ksh321.songrecord.api.operations.BackupFenceDatabaseChecks.verify(db);}finally{admin.execute("DROP DATABASE "+name);}
     }
     @BeforeEach void setup() throws Exception {
         String password=System.getenv("P07_MYSQL_PASSWORD");
-        admin=new JdbcTemplate(new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/?allowPublicKeyRetrieval=true&useSSL=false","root",password));
+        admin=new JdbcTemplate(new DriverManagerDataSource(mysqlBase() + "?allowPublicKeyRetrieval=true&useSSL=false","root",password));
         database="p07_test_"+UUID.randomUUID().toString().replace("-","");
         admin.execute("CREATE DATABASE "+database);
-        jdbc=new JdbcTemplate(new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+database+"?allowPublicKeyRetrieval=true&useSSL=false","root",password));
+        jdbc=new JdbcTemplate(new DriverManagerDataSource(mysqlBase()+database+"?allowPublicKeyRetrieval=true&useSSL=false","root",password));
         jdbc.execute("CREATE TABLE app_user(id BINARY(16) PRIMARY KEY) ENGINE=InnoDB");
         String migration=Files.readString(Path.of("src/main/resources/db/migration/V6__sync_and_deletion_jobs.sql"));
         int start=migration.indexOf("CREATE TABLE mutation_receipt (");
@@ -69,7 +76,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlDeletionPreviewUsesMigratedAssetsAndInvalidatesChangedScope() throws Exception {
         String name=database+"_delete_preview";admin.execute("CREATE DATABASE "+name);
         try {
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));
             org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();
             var db=new JdbcTemplate(ds);var manager=new DataSourceTransactionManager(ds);
             UUID owner=com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.account(db);
@@ -640,7 +647,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlFlywayDiscoversJavaBackfillAndPreservesPopulatedV9Data() throws Exception {
         String name=database+"_upgrade";admin.execute("CREATE DATABASE "+name);
         try {
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
             org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").target("9").load().migrate();
             var db=new JdbcTemplate(ds);UUID user=UUID.randomUUID(),song=UUID.randomUUID();
             db.update("INSERT INTO app_user(id) VALUES(?)",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(user));
@@ -919,7 +926,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlRecordingListingMatchesRulesOnFullyMigratedDatabase() throws Exception {
         String name=database+"_lists";admin.execute("CREATE DATABASE "+name);
         try {
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
             var db=new JdbcTemplate(ds);var principal=access.revalidate(account);byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
             db.update("INSERT INTO app_user(id) VALUES(?)",owner);db.update("INSERT INTO user_sync_state(user_id) VALUES(?)",owner);db.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'test',UTC_TIMESTAMP(3))",device,owner);
@@ -932,7 +939,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlRecordingEditingIsAtomicAndPreservesHistoricalNames() throws Exception {
         String name=database+"_edits";admin.execute("CREATE DATABASE "+name);
         try {
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
             var db=new JdbcTemplate(ds);var principal=access.revalidate(account);
             when(account.principal()).thenReturn(principal);when(access.authenticate("Bearer test",principal.deviceId().toString())).thenReturn(account);
@@ -954,7 +961,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlRecordingRatingIsAtomicAndIndependentOfSongTier() throws Exception {
         String name=database+"_ratings";admin.execute("CREATE DATABASE "+name);
         try {
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
             var db=new JdbcTemplate(ds);var principal=access.revalidate(account);
             when(account.principal()).thenReturn(principal);when(access.authenticate("Bearer test",principal.deviceId().toString())).thenReturn(account);
@@ -977,7 +984,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlRecordingRelinkClearsCompositeForeignKeysAtomically() throws Exception {
         String name=database+"_relinks";admin.execute("CREATE DATABASE "+name);
         try {
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
             var db=new JdbcTemplate(ds);var principal=access.revalidate(account);
             when(account.principal()).thenReturn(principal);when(access.authenticate("Bearer test",principal.deviceId().toString())).thenReturn(account);
@@ -1000,7 +1007,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlTagsPreserveHistoricalNamesAndEnforceActiveUniqueness() throws Exception {
         String name=database+"_tags";admin.execute("CREATE DATABASE "+name);
         try {
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
             var db=new JdbcTemplate(ds);var principal=access.revalidate(account);
             when(account.principal()).thenReturn(principal);when(access.authenticate("Bearer test",principal.deviceId().toString())).thenReturn(account);
@@ -1024,7 +1031,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlConditionsPreserveV15DataAndEnforceD06AfterUpgrade() throws Exception {
         String name=database+"_conditions";admin.execute("CREATE DATABASE "+name);
         try {
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").target("15").load();flyway.migrate();flyway.validate();
             var db=new JdbcTemplate(ds);var principal=access.revalidate(account);
             when(account.principal()).thenReturn(principal);when(access.authenticate("Bearer test",principal.deviceId().toString())).thenReturn(account);
@@ -1075,7 +1082,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlStorageRestrictionsDoNotBlockRecordingMetadata() throws Exception {
         String name=database+"_metadata_boundary";admin.execute("CREATE DATABASE "+name);
         try {
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
             var db=new JdbcTemplate(ds);var principal=access.revalidate(account);
             when(account.principal()).thenReturn(principal);when(access.authenticate("Bearer test",principal.deviceId().toString())).thenReturn(account);
@@ -1098,10 +1105,19 @@ class MySqlIdempotencyTests {
             assertThat(flyway.migrate().migrationsExecuted).isZero();
         } finally {admin.execute("DROP DATABASE "+name);}
     }
+    @Test void mysqlRetentionCandidatesKeepUtcWhenJvmUsesKoreaTime() {
+        var original = java.util.TimeZone.getDefault();
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Seoul"));
+            mysqlRetentionCandidatesRespectAccountSongAndCompletedFileBoundaries();
+        } finally {
+            java.util.TimeZone.setDefault(original);
+        }
+    }
     @Test void mysqlRetentionCandidatesRespectAccountSongAndCompletedFileBoundaries() {
         String name=database+"_retention_candidates";admin.execute("CREATE DATABASE "+name);
         try {
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();
             flyway.migrate();flyway.validate();
             com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.verify(new JdbcTemplate(ds));
@@ -1120,7 +1136,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlUploadReservationsEnforcePersonalAndGlobalCapacityAtomically() throws Exception {
         String name=database+"_upload_capacity";admin.execute("CREATE DATABASE "+name);
         try {
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
             com.ksh321.songrecord.api.retention.UploadReservationDatabaseChecks.verify(new JdbcTemplate(ds));
         }finally{admin.execute("DROP DATABASE "+name);}
@@ -1128,7 +1144,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlUploadApprovalChecksCurrentPolicyAndSharedLimits() throws Exception {
         String name=database+"_upload_approval";admin.execute("CREATE DATABASE "+name);
         try {
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
             com.ksh321.songrecord.api.retention.UploadApprovalDatabaseChecks.verify(new JdbcTemplate(ds));
         }finally{admin.execute("DROP DATABASE "+name);}
@@ -1136,7 +1152,7 @@ class MySqlIdempotencyTests {
     @Test void mysqlUploadCompletionAndVerificationBytes()throws Exception{
         String name="p1206_"+java.util.UUID.randomUUID().toString().replace("-","");admin.execute("CREATE DATABASE "+name);
         try{
-            var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));
             var flyway=org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load();flyway.migrate();flyway.validate();
             com.ksh321.songrecord.api.retention.UploadCompletionDatabaseChecks.verify(new JdbcTemplate(ds));
         }finally{admin.execute("DROP DATABASE "+name);}
@@ -1144,44 +1160,44 @@ class MySqlIdempotencyTests {
 
     @Test void mysqlVerifiedUploadFinalization()throws Exception {
         String name=database+"_upload_finalization";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.UploadFinalizationDatabaseChecks.verify(new JdbcTemplate(ds));com.ksh321.songrecord.api.retention.UploadRecoveryDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.UploadFinalizationDatabaseChecks.verify(new JdbcTemplate(ds));com.ksh321.songrecord.api.retention.UploadRecoveryDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     @Test void mysqlUploadObjectInventoryGuard()throws Exception {
         String name=database+"_upload_inventory";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.UploadInventoryDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.UploadInventoryDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     @Test void mysqlFailedUploadPreservesPreviousServerFiles()throws Exception {
         String name=database+"_upload_failures";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.UploadFailureDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.UploadFailureDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
 
     @Test void mysqlCleanupConfirmationIdentityAndExpiry() throws Exception {
         String name=database+"_cleanup_confirm";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.CleanupConfirmationDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.CleanupConfirmationDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     @Test void mysqlCleanupAuthorizationSerializesPinsAndDeletion() throws Exception {
         String name=database+"_cleanup_confirm";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.CleanupAuthorizationDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.CleanupAuthorizationDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     @Test void mysqlCleanupDeletionConfirmsAbsenceAndDebitsOnce() throws Exception {
         String name=database+"_cleanup_delete";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.CleanupDeletionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.CleanupDeletionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     @Test void mysqlPinReplacementProtectsCurrentAtTenAndHonorsQuota() throws Exception {
         String name=database+"_pin_replace";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.PinReplacementDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.PinReplacementDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     @Test void mysqlPinCompletionKeepsOldRolesAndFencesStaleFailure() throws Exception {
         String name=database+"_pin_complete";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.PinCompletionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.PinCompletionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     @Test void mysqlCleanupCandidateReasons() throws Exception {
         String name=database+"_cleanup_candidates";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.CleanupCandidateDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.CleanupCandidateDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
     @Test void mysqlAutomaticReplacementProtection()throws Exception {
         String name=database+"_replacement_protection";admin.execute("CREATE DATABASE "+name);
-        try {var ds=new DriverManagerDataSource("jdbc:mysql://127.0.0.1:3306/"+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.ReplacementProtectionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.retention.ReplacementProtectionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
     }
 
 }

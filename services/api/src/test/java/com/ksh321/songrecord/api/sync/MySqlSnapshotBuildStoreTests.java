@@ -79,6 +79,34 @@ class MySqlSnapshotBuildStoreTests {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM snapshot_entry",Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT row_count FROM snapshot_header",Long.class)).isZero();
     }
+    @Test void utcConnectionInKoreaJvmKeepsLeaseAndHeaderExpiry() {
+        var original=TimeZone.getDefault();
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+            source.setUrl(source.getUrl()+"&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true");
+            var attempt=store.begin(account,UUID.randomUUID(),1);
+            store.capture(account,attempt,7,now);
+            store.append(account,attempt,List.of(entry(1)));
+            var published=store.publish(account,attempt,counts(1));
+            when(access.authenticate("test-auth","test-device")).thenReturn(account);
+            var clock=Clock.fixed(now,ZoneOffset.UTC);
+            var pages=new SnapshotPages(jdbc,access,new SnapshotPageCursor(new byte[32],clock),clock);
+            var query=new SnapshotQueries(jdbc,access,pages,clock);
+            var result=query.get("test-auth","test-device",attempt.id().toString(),new org.springframework.util.LinkedMultiValueMap<>());
+            assertThat(result.body().get("expires_at")).isEqualTo(published.expiresAt().toString());
+            var expiredClock=Clock.fixed(published.expiresAt(),ZoneOffset.UTC);
+            var expired=new SnapshotQueries(jdbc,access,pages,expiredClock);
+            code("SNAPSHOT_EXPIRED",()->expired.get("test-auth","test-device",attempt.id().toString(),new org.springframework.util.LinkedMultiValueMap<>()));
+        } finally {TimeZone.setDefault(original);}
+    }
+    @Test void utcConnectionInKoreaJvmRejectsExpiredLease() {
+        var original=TimeZone.getDefault();
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("Asia/Seoul"));
+            source.setUrl(source.getUrl()+"&connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true");
+            staleAttemptExpiredLeaseAndOtherAccountCannotAppend();
+        } finally {TimeZone.setDefault(original);}
+    }
     @Test void staleAttemptExpiredLeaseAndOtherAccountCannotAppend(){
         var attempt=store.begin(account,UUID.randomUUID(),1);store.capture(account,attempt,7,now);
         var stale=new SnapshotBuildStore.Attempt(attempt.id(),UUID.randomUUID(),attempt.startedAt(),"BUILDING");
