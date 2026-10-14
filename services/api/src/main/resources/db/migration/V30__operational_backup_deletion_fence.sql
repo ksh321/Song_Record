@@ -1,0 +1,20 @@
+CREATE TABLE operational_backup_fence (
+ id BINARY(16) NOT NULL PRIMARY KEY,
+ user_id BINARY(16) NOT NULL,
+ entity_type VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+ entity_id BINARY(16) NOT NULL,
+ object_generation BINARY(16) NULL,
+ generation_key BINARY(16) GENERATED ALWAYS AS (COALESCE(object_generation,UNHEX('00000000000000000000000000000000'))) STORED,
+ state VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'REQUESTED',
+ revision BIGINT NOT NULL DEFAULT 1,
+ backup_ack_revision BIGINT NOT NULL DEFAULT 0,
+ requested_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ backup_absent_at DATETIME(3) NULL,
+ UNIQUE KEY uq_backup_fence_subject(user_id,entity_type,entity_id,generation_key),
+ CONSTRAINT ck_backup_fence_type CHECK(entity_type IN ('USER','SONG','RECORDING','RECORDING_ASSET')),
+ CONSTRAINT ck_backup_fence_state CHECK(state IN ('REQUESTED','COMMITTED','CANCELLED')),
+ CONSTRAINT ck_backup_fence_revision CHECK(revision>0 AND backup_ack_revision BETWEEN 0 AND revision),
+ CONSTRAINT ck_backup_fence_generation CHECK((entity_type='RECORDING_ASSET' AND object_generation IS NOT NULL) OR (entity_type<>'RECORDING_ASSET' AND object_generation IS NULL)),
+ CONSTRAINT ck_backup_fence_owner CHECK(entity_type<>'USER' OR entity_id=user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

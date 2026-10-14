@@ -9,7 +9,7 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 /** Reviewed owner tables only; FK metadata orders deletions without disabling constraints. */
 public final class DeletionDatabase {
  private static final Set<String> PERSONAL=Set.of("account_deletion_challenge","auth_identity","auth_session","change_log","cloud_cleanup","cloud_hold","condition_definition","deletion_batch_work","deletion_item","export_session","mutation_receipt","pin_slot","playlist_item","recording_asset","recording_condition_history","recording_file_spec","recording_query_key","recording_tag","recording_time_correction","recording_upload","song_cloud_selection","song_query_key","song_source","storage_request_body","storage_request_operation","storage_usage","upload_approval_daily","upload_url_issue","deletion_batch","playlist","recording","snapshot_header","storage_request_ledger","tag","user_entitlement","user_sync_state","device","song");
- private static final Set<String> CONTROL=Set.of("deletion_ledger","job","account_deletion_status");
+ private static final Set<String> CONTROL=Set.of("deletion_ledger","job","account_deletion_status","operational_backup_fence");
  private final JdbcTemplate db;
  public DeletionDatabase(JdbcTemplate db){this.db=db;}
  public List<String> order(){return db.execute((ConnectionCallback<List<String>>) c->{

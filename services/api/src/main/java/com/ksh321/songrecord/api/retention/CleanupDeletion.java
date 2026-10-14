@@ -6,10 +6,12 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.*;
 public final class CleanupDeletion {
  private final JdbcTemplate db;private final TransactionTemplate tx;private final JobQueue queue;private final CleanupObjects objects;private final Clock clock;
  public CleanupDeletion(JdbcTemplate db,PlatformTransactionManager manager,JobQueue queue,CleanupObjects objects,Clock clock){this.db=db;this.queue=queue;this.objects=objects;this.clock=clock;tx=new TransactionTemplate(manager);tx.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);tx.setTimeout(30);}
+ private com.ksh321.songrecord.api.operations.BackupDeletionFence backupFence=com.ksh321.songrecord.api.operations.BackupDeletionFence.NONE;
+ public CleanupDeletion(JdbcTemplate db,PlatformTransactionManager manager,JobQueue queue,CleanupObjects objects,Clock clock,com.ksh321.songrecord.api.operations.BackupDeletionFence fence){this(db,manager,queue,objects,clock);backupFence=fence;}
  public Runnable prepare(JobQueue.Lease lease)throws Exception{
   LockOrder.requireOutsideTransaction();Snapshot snapshot=inspect(lease);boolean exists=objects.existsFinal(snapshot.key());
-  if(exists){if(!queue.renew(lease))throw lost();snapshot=inspect(lease);if(snapshot.protectedCopy()){Snapshot captured=snapshot;return ()->cancel(lease,captured);}try{objects.deleteFinal(snapshot.key());}catch(Exception unavailable){/* The DELETE might already have committed. HEAD decides; no provider messages are persisted. */}if(objects.existsFinal(snapshot.key()))throw new java.io.IOException("CLEANUP_DELETE_UNCONFIRMED");}
-  Snapshot captured=snapshot;return ()->finish(lease,captured);
+  if(exists){if(!queue.renew(lease))throw lost();snapshot=inspect(lease);if(snapshot.protectedCopy()){Snapshot captured=snapshot;return ()->cancel(lease,captured);}backupFence.generation(snapshot.key());try{objects.deleteFinal(snapshot.key());}catch(com.ksh321.songrecord.api.operations.BackupDeletionFence.Awaiting pending){throw pending;}catch(Exception unavailable){/* The DELETE might already have committed. HEAD decides; no provider messages are persisted. */}if(objects.existsFinal(snapshot.key()))throw new java.io.IOException("CLEANUP_DELETE_UNCONFIRMED");}
+  if(!exists)backupFence.generation(snapshot.key());backupFence.committed(snapshot.key());Snapshot captured=snapshot;return ()->finish(lease,captured);
  }
  private Snapshot inspect(JobQueue.Lease lease){return tx.execute(s->{
   requireLease(lease);UUID owner=Objects.requireNonNull(lease.userId());LockOrder.before(LockOrder.Rank.USER_SYNC,owner.toString());db.queryForMap("SELECT user_id FROM user_sync_state WHERE user_id=? FOR UPDATE",bytes(owner));
@@ -30,6 +32,7 @@ public final class CleanupDeletion {
   completeState(lease,"SUCCEEDED",null,now);RetentionAssetEvents.publish(db,captured.key().owner(),captured.key().recording(),next,clock);
  }
  private void cancel(JobQueue.Lease lease,Snapshot captured){
+  backupFence.cancel(captured.key());
   UUID owner=captured.key().owner(),id=captured.key().recording();LockOrder.before(LockOrder.Rank.USER_SYNC,owner.toString());db.queryForMap("SELECT user_id FROM user_sync_state WHERE user_id=? FOR UPDATE",bytes(owner));requireLease(lease);var current=asset(captured.key());validateIdentity(current,captured);long next=PinSlots.increment(((Number)current.get("cloud_revision")).longValue());var now=CleanupConfirmations.stamp(clock.instant());
   db.update("UPDATE recording_asset SET cloud_state='STORED',cloud_revision=?,updated_at=? WHERE user_id=? AND recording_id=?",next,now,bytes(owner),bytes(id));String reason=db.queryForList("SELECT id FROM recording WHERE user_id=? AND id=? AND song_id IS NULL",bytes(owner),bytes(id)).isEmpty()?"WAITING_LOCAL_CONFIRM":"ORPHAN_KEEP";
   if(db.queryForList("SELECT id FROM cloud_hold WHERE user_id=? AND recording_id=? AND reason=? AND related_operation_id IS NULL",bytes(owner),bytes(id),reason).isEmpty())db.update("INSERT INTO cloud_hold(id,user_id,recording_id,reason) VALUES(?,?,?,?)",bytes(UUID.randomUUID()),bytes(owner),bytes(id),reason);completeState(lease,"CANCELLED","PROTECTION_CHANGED",now);RetentionAssetEvents.publish(db,owner,id,next,clock);

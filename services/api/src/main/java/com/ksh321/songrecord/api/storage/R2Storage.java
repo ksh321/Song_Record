@@ -7,6 +7,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.uploads.UploadObjectInventory,com.ksh321.songrecord.api.retention.CleanupObjects,com.ksh321.songrecord.api.account.DeletionObjects {
     private final R2Settings settings;
     private final S3Client client;
+    private volatile com.ksh321.songrecord.api.operations.BackupDeletionFence backupFence=com.ksh321.songrecord.api.operations.BackupDeletionFence.NONE;
+    public void backupFence(com.ksh321.songrecord.api.operations.BackupDeletionFence fence){backupFence=Objects.requireNonNull(fence);}
     R2Storage(R2Settings settings,S3Client client){this.settings=Objects.requireNonNull(settings);this.client=Objects.requireNonNull(client);}
     public void verifyConnection(){
         try {
@@ -80,7 +82,9 @@ public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.
         catch(RuntimeException e){throw new java.io.IOException("CLEANUP_OBJECT_UNAVAILABLE");}
     }
     @Override public void deleteFinal(StorageObjectKeys.Final key)throws java.io.IOException{
-        com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();try{client.deleteObject(r->r.bucket(finalWriterBucket()).key(key.value()));}catch(RuntimeException e){throw new java.io.IOException("CLEANUP_DELETE_UNCONFIRMED");}
+        com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();finalWriterBucket();
+        backupFence.generation(key);
+        try{client.deleteObject(r->r.bucket(finalWriterBucket()).key(key.value()));backupFence.committed(key);}catch(RuntimeException e){throw new java.io.IOException("CLEANUP_DELETE_UNCONFIRMED");}
     }
     private static byte[] boundedBytes(java.io.InputStream input)throws java.io.IOException{
         long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(60);var output=new java.io.ByteArrayOutputStream();var buffer=new byte[32768];
@@ -95,7 +99,8 @@ public final class R2Storage implements AutoCloseable,com.ksh321.songrecord.api.
     public String temporaryBucket(){return settings.temporaryBucket;}
     /** Server-derived exact owner prefixes only; no arbitrary path or whole-bucket delete. */
     @Override public void clearOwner(java.util.UUID owner,Runnable leaseFence)throws Exception{
-        com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();
+        com.ksh321.songrecord.api.locking.LockOrder.requireOutsideTransaction();finalWriterBucket();
+        backupFence.authorize(owner,"USER",owner,null);
         for(boolean temporary:new boolean[]{true,false}){
             var keys=ownedKeys(owner,temporary,leaseFence);
             for(var key:keys){leaseFence.run();try{client.deleteObject(r->r.bucket(temporary?settings.temporaryBucket:finalWriterBucket()).key(key));}catch(RuntimeException uncertain){/* A fresh complete listing decides whether DELETE committed. */}}

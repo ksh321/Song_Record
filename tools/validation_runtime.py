@@ -55,6 +55,15 @@ def start_backup_monitor():
  with (directory/'monitor.log').open('ab') as log:
   subprocess.Popen([str(python),str(ROOT/'tools/backup_runtime.py'),'watch'],cwd=ROOT,stdout=log,stderr=log,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.DETACHED_PROCESS)
  return 'Private daily backup monitor requested'
+
+def start_backup_ledger_monitor():
+ if int(select_image()[4:6])<6:return 'Backup ledger image pending'
+ directory=ROOT/'.local/workflow/backup-ledger';directory.mkdir(parents=True,exist_ok=True)
+ python=Path.home()/'.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
+ if not python.is_file():raise RuntimeError('BACKUP_CRYPTO_RUNTIME_UNAVAILABLE')
+ with (directory/'monitor.log').open('ab') as log:
+  subprocess.Popen([str(python),str(ROOT/'tools/backup_ledger_runtime.py'),'watch'],cwd=ROOT,stdout=log,stderr=log,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.DETACHED_PROCESS)
+ return 'Private deletion outbox monitor requested'
 def prepare():
  row=state();directory=DIRECTORY/'https';directory.mkdir(exist_ok=True)
  if not (directory/'server.p12').exists():run(['pwsh','-NoProfile','-File',str(ROOT/'infra/validation/create-certificate.ps1')],input=json.dumps({'password':row['tls_password'],'directory':str(directory)}).encode())
@@ -81,6 +90,7 @@ def connect():
  pending.write_text(json.dumps({'tag':os.environ['VALIDATION_IMAGE_TAG']}),encoding='utf-8');pending.replace(path)
  start_cost_monitor()
  start_operations_monitor()
+ start_backup_ledger_monitor()
  start_backup_monitor()
  return 'Validation API/worker configured from sealed stdin; no public deployment'
 def smoke():

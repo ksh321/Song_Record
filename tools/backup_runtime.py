@@ -63,6 +63,10 @@ def snapshot():
         engines = bounded(mysql, 4096, b"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='song_record_validation' AND table_type='BASE TABLE' AND engine<>'InnoDB';\n", 8)
         if engines.strip() != b'0':
             raise BackupError('NONTRANSACTIONAL_DB_TABLE')
+        pending = bounded(mysql, 256, b"SELECT COUNT(*) FROM app_user WHERE status='DELETING';\n", 8)
+        if pending.strip() != b'0':
+            raise BackupError('BACKUP_ACCOUNT_PURGE_PENDING')
+        subjects = bounded(mysql, 4 * 1024 * 1024, b"SELECT BIN_TO_UUID(id) FROM app_user ORDER BY id;\n", 8).decode('ascii').splitlines()
         query = b"SELECT BIN_TO_UUID(a.user_id),BIN_TO_UUID(a.recording_id),BIN_TO_UUID(a.generation),a.object_key,a.sha256,a.verified_size FROM recording_asset a WHERE a.cloud_state IN ('STORED','DELETING') ORDER BY a.recording_id;\n"
         rows = bounded(mysql, 32 * 1024 * 1024, query, 8)
         files = []
@@ -78,7 +82,7 @@ def snapshot():
         lock.stdin.write(b'UNLOCK TABLES;\n'); lock.stdin.close()
         if lock.wait(timeout=3) != 0:
             raise BackupError('SNAPSHOT_LOCK_RELEASE_FAILED')
-        return dump, files
+        return dump, files, subjects
     except BackupError:
         raise
     except Exception:
@@ -107,7 +111,7 @@ def once():
                 transport.put_verified('operational/v1/recovery-key.enc', wrapped)
             backup = EncryptedStore(transport, encryption_key())
             source = R2(*load('staging.playback'), FINAL_BUCKET)
-            result = Backup(backup, source, snapshot, row['instance_id']).once()
+            result = Backup(backup, source, snapshot, row['instance_id'], require_ledger=True).once()
             result.update(observed_utc=dt.datetime.now(dt.timezone.utc).isoformat(), environment='staging',
                           source_deletion=False, restore_test='P24-07_PENDING', ledger_reapply='P24-06_PENDING')
             atomic_json(DIRECTORY / 'latest.json', result)

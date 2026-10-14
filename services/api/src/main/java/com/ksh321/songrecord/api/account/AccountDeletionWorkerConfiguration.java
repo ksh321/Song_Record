@@ -12,8 +12,8 @@ import java.nio.file.Path;
 @Configuration(proxyBeanMethods=false) @Profile("!bootstrap")
 @ConditionalOnProperty(name="songrecord.account-deletion.worker.enabled",havingValue="true")
 public class AccountDeletionWorkerConfiguration {
- @Bean PrivateDeletionArtifacts deletionArtifacts(@Value("${songrecord.account-deletion.ledger-directory}")String ledger,@Value("${songrecord.account-deletion.backup-directory}")String backups,@Value("${songrecord.storage.environment}")String environment)throws Exception{return new PrivateDeletionArtifacts(Path.of(ledger),Path.of(backups),environment);}
- @Bean AccountDeletionWorker accountDeletionWorker(JdbcTemplate db,PlatformTransactionManager tx,JobQueue jobs,R2Storage storage,PrivateDeletionArtifacts artifacts){storage.finalWriterBucket();return new AccountDeletionWorker(db,tx,jobs,storage,artifacts,Clock.systemUTC());}
+ @Bean DeletionArtifacts deletionArtifacts(@Value("${songrecord.account-deletion.ledger-directory:}")String ledger,@Value("${songrecord.account-deletion.backup-directory:}")String backups,@Value("${songrecord.storage.environment}")String environment,org.springframework.beans.factory.ObjectProvider<com.ksh321.songrecord.api.operations.BackupDeletionFence> fences)throws Exception{var fence=fences.getIfAvailable();return fence==null?new PrivateDeletionArtifacts(Path.of(ledger),Path.of(backups),environment):new com.ksh321.songrecord.api.operations.BackupDeletionArtifacts(fence);}
+ @Bean AccountDeletionWorker accountDeletionWorker(JdbcTemplate db,PlatformTransactionManager tx,JobQueue jobs,R2Storage storage,DeletionArtifacts artifacts){storage.finalWriterBucket();return new AccountDeletionWorker(db,tx,jobs,storage,artifacts,Clock.systemUTC());}
  @Bean Maintenance accountDeletionMaintenance(AccountDeletionWorker worker){return new Maintenance(worker);}
  static final class Maintenance {
   private final AccountDeletionWorker worker;Maintenance(AccountDeletionWorker worker){this.worker=worker;}

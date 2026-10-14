@@ -10,6 +10,18 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 class R2StorageTests {
+    @Test void remoteBackupFencePendingDoesNotSendDeleteOrConsumeProviderFailure()throws Exception{
+        var client=mock(S3Client.class);var fence=mock(com.ksh321.songrecord.api.operations.BackupDeletionFence.class);
+        var key=new StorageObjectKeys.Final(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID());
+        doThrow(new com.ksh321.songrecord.api.operations.BackupDeletionFence.Awaiting()).when(fence).generation(key);
+        doThrow(new com.ksh321.songrecord.api.operations.BackupDeletionFence.Awaiting()).when(fence).authorize(key.owner(),"USER",key.owner(),null);
+        try(var storage=new R2Storage(R2Settings.from(environment("dev","worker")),client)){
+            storage.backupFence(fence);
+            assertThatThrownBy(()->storage.deleteFinal(key)).isInstanceOf(com.ksh321.songrecord.api.operations.BackupDeletionFence.Awaiting.class);
+            assertThatThrownBy(()->storage.clearOwner(key.owner(),()->{})).isInstanceOf(com.ksh321.songrecord.api.operations.BackupDeletionFence.Awaiting.class);
+            verifyNoInteractions(client);
+        }
+    }
     @Test void cleanupAbsenceRequiresAccessibleBucketAndNeverTreatsForbiddenAsMissing()throws Exception {
         var client=mock(S3Client.class);var key=new StorageObjectKeys.Final(UUID.randomUUID(),UUID.randomUUID(),UUID.randomUUID());
         when(client.headObject(any(java.util.function.Consumer.class)))

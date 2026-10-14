@@ -7,6 +7,7 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
+import xml.etree.ElementTree as ET
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from r2_credentials import ACCOUNT
@@ -99,8 +100,30 @@ class R2:
         if not key.startswith('operational/v1/'):
             raise BackupError('BACKUP_DELETE_SCOPE')
         status, _ = self.request('DELETE', key)
-        if status != 204:
+        if status != 204 or self.get(key) is not None:
             raise BackupError('BACKUP_DELETE_FAILED')
+
+    def list_objects(self, prefix):
+        rows=[];token=None;seen=set();tokens=set();pages=0
+        while True:
+            pages+=1
+            if pages>101:raise BackupError('BACKUP_INVENTORY_LIMIT')
+            query={'list-type':'2','prefix':prefix,'max-keys':'1000'}
+            if token:query['continuation-token']=token
+            status,raw=self.request('GET',query=query)
+            if status!=200:raise BackupError('BACKUP_INVENTORY_UNAVAILABLE')
+            try:
+                tree=ET.fromstring(raw);ns={'s':'http://s3.amazonaws.com/doc/2006-03-01/'}
+                for item in tree.findall('s:Contents',ns):
+                    key=item.findtext('s:Key',namespaces=ns);stamp=item.findtext('s:LastModified',namespaces=ns)
+                    if not key or not key.startswith(prefix) or key in seen:raise ValueError()
+                    seen.add(key);rows.append({'key':key,'at':stamp})
+                if len(rows)>100000:raise ValueError()
+                if tree.findtext('s:IsTruncated',namespaces=ns)!='true':return rows
+                previous=token;token=tree.findtext('s:NextContinuationToken',namespaces=ns)
+                if not token or token==previous or token in tokens:raise ValueError()
+                tokens.add(token)
+            except Exception:raise BackupError('BACKUP_INVENTORY_INVALID') from None
 
 
 class EncryptedStore:

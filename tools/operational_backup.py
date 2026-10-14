@@ -34,8 +34,9 @@ def check_file(row):
 
 
 class Backup:
-    def __init__(self, store, source, snapshot, instance):
+    def __init__(self, store, source, snapshot, instance, require_ledger=False):
         self.store, self.source, self.snapshot, self.instance = store, source, snapshot, instance
+        self.require_ledger=require_ledger
 
     def catalog(self):
         data = self.store.get(INDEX)
@@ -85,6 +86,9 @@ class Backup:
             files = row['files']
             if len(files) > 100000 or len({f['key'] for f in files}) != len(files):
                 raise ValueError()
+            if self.require_ledger:
+                from backup_ledger import Ledger
+                files=Ledger(self.store,self.instance).require_restore(files)
             for file in files:
                 data = self.store.get(check_file(file))
                 if data is None or len(data) != file['size'] or digest(data) != file['sha256']:
@@ -107,13 +111,25 @@ class Backup:
             row = self.verify(existing)
             return {'status': 'PASS', 'day': day, 'files': len(row['files']), 'reused_point': True, 'points': len(catalog['points'])}
         # Snapshot implementation returns bytes and the exact matching DB file list.
-        sql, files = self.snapshot()
+        captured = self.snapshot()
+        sql, files = captured[:2]
+        subjects = captured[2] if len(captured)>2 else None
         if not sql or len(sql) > MAX_BYTES or len(files) > 100000:
             raise BackupError('SNAPSHOT_LIMIT')
         if len({f['key'] for f in files}) != len(files):
             raise BackupError('DUPLICATE_FILE_LIST')
         copied = 0
-        for file in files:
+        effective_files=files
+        if self.require_ledger:
+            from backup_ledger import Ledger
+            effective_files=Ledger(self.store,self.instance).require_restore(files)
+        inventory_path=PREFIX+'file-inventory.enc'
+        inventory_raw=self.store.get(inventory_path)
+        inventory=json.loads(inventory_raw) if inventory_raw is not None else []
+        mapped={check_file(file):file for file in inventory}
+        for file in effective_files:mapped[check_file(file)]=file
+        self.store.put(inventory_path,encoded(list(mapped.values())))
+        for file in effective_files:
             path = check_file(file)
             cached = self.store.get(path)
             if cached is None:
@@ -129,6 +145,7 @@ class Backup:
         self.store.put(base + 'database.enc', sql)
         manifest = {'schema': 1, 'instance': self.instance, 'day': day, 'created_utc': now.isoformat(),
                     'database_sha256': digest(sql), 'files': files, 'snapshot_method': 'mysql_global_read_lock_innodb'}
+        if subjects is not None:manifest['subjects']=subjects
         raw = encoded(manifest)
         self.store.put(base + 'manifest.enc', raw)
         point = {'id': ident, 'day': day, 'manifest_hash': digest(raw)}
