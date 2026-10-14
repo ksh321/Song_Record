@@ -45,6 +45,16 @@ def start_operations_monitor():
  with (directory/'monitor.log').open('ab') as log:
   subprocess.Popen([sys.executable,str(ROOT/'tools/operations_monitor.py'),'watch'],cwd=ROOT,stdout=log,stderr=log,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.DETACHED_PROCESS)
  return 'Private operations monitor requested'
+
+def start_backup_monitor():
+ directory=ROOT/'.local/workflow/backup'
+ if not (directory/'master.dpapi').exists() or not (ROOT/'.local/workflow/cloudflare/credentials/staging.backup.dpapi').exists():return 'Backup registration pending'
+ # Reuse the installed desktop dependency runtime with cryptography; no package/API purchase.
+ python=Path.home()/'.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
+ if not python.is_file():raise RuntimeError('BACKUP_CRYPTO_RUNTIME_UNAVAILABLE')
+ with (directory/'monitor.log').open('ab') as log:
+  subprocess.Popen([str(python),str(ROOT/'tools/backup_runtime.py'),'watch'],cwd=ROOT,stdout=log,stderr=log,creationflags=subprocess.CREATE_NO_WINDOW|subprocess.DETACHED_PROCESS)
+ return 'Private daily backup monitor requested'
 def prepare():
  row=state();directory=DIRECTORY/'https';directory.mkdir(exist_ok=True)
  if not (directory/'server.p12').exists():run(['pwsh','-NoProfile','-File',str(ROOT/'infra/validation/create-certificate.ps1')],input=json.dumps({'password':row['tls_password'],'directory':str(directory)}).encode())
@@ -71,6 +81,7 @@ def connect():
  pending.write_text(json.dumps({'tag':os.environ['VALIDATION_IMAGE_TAG']}),encoding='utf-8');pending.replace(path)
  start_cost_monitor()
  start_operations_monitor()
+ start_backup_monitor()
  return 'Validation API/worker configured from sealed stdin; no public deployment'
 def smoke():
  context=ssl.create_default_context(cafile=str(DIRECTORY/'https/server.crt'))

@@ -9,7 +9,7 @@ class ValidationRuntimeTests(unittest.TestCase):
    root=Path(d);(root/'https').mkdir();(root/'https/server.p12').write_bytes(b'synthetic-pfx');(root/'https/server.crt').write_text('synthetic-public-certificate')
    row={key:'synthetic-only' for key in ('db_password','tls_password','pagination','karaoke')}
    with patch.object(v,'DIRECTORY',root),patch.object(v,'state',return_value=row),patch.object(v,'containers',return_value={'mysql':'db','api':'api','worker':'worker'}),patch.object(v,'load',return_value=('synthetic-access','synthetic-secret')),patch.object(v,'run',return_value=b'[{"State":{"Health":{"Status":"healthy"}}}]') as call:
-    with patch.object(v,'start_cost_monitor'),patch.object(v,'start_operations_monitor'):v.connect()
+    with patch.object(v,'start_cost_monitor'),patch.object(v,'start_operations_monitor'),patch.object(v,'start_backup_monitor'):v.connect()
    calls=call.call_args_list
    self.assertEqual(calls[1].args[0],v.COMPOSE+['up','-d','--force-recreate','api','worker'])
    self.assertEqual(calls[-1].args[0],v.COMPOSE+['up','-d','--wait','--wait-timeout','90','api','worker'])

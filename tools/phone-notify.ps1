@@ -6,7 +6,7 @@ param(
     [ValidateSet('Trial','PhoneTest','Intervention','Escalation','Completion','CostNotice','CostWarning','CostLock','CostUnknown')][string]$Kind='Trial',
     [ValidatePattern('^USER-\d{3}$')][string]$ItemId,
     [ValidateRange(1,999)][int]$Revision=1,
-    [ValidateSet('Details','LoginSetup','CloudflareLogin','R2ValidationKeys','CloudflareMetrics','CloudflareMetricsRetry','Device','PhoneSteps','Decision')][string]$Action='Details',
+    [ValidateSet('Details','LoginSetup','CloudflareLogin','R2ValidationKeys','BackupKeys','CloudflareMetrics','CloudflareMetricsRetry','Device','PhoneSteps','Decision')][string]$Action='Details',
     [ValidateSet('Luna','Sol','Astra')][string]$BeforeModel='Astra',
     [ValidateSet('medium','high','xhigh','max','ultra','high/xhigh')][string]$BeforeReasoning='high',
     [ValidateSet('high','xhigh','max','unconfirmed')][string]$AfterReasoning='unconfirmed',
@@ -136,6 +136,7 @@ if ($ItemId) {
         LoginSetup {'로그인 설정 파일 경로 또는 없음/모름을 알려주세요.'}
         CloudflareLogin {'열린 Cloudflare 화면에서 기존 R2 계정으로 로그인하고 로그인 완료라고 알려주세요. 암호·인증코드는 채팅에 보내지 마세요.'}
         R2ValidationKeys {'검증용 R2 키 3개를 발급해 열린 Windows 암호화 등록 창에 입력하고 검증 키 등록 완료라고 알려주세요. 버킷·권한 표는 내가할일.md에 있습니다. 키·발급 성공 화면은 채팅에 보내지 마세요.'}
+        BackupKeys {'R2에서 비공개 Standard 버킷 song-record-staging-backup을 만들고, 이 버킷 하나만 선택한 Object Read & Write 전용 키 song-record-staging-backup을 발급하세요. 열린 백업 전용 키 암호화 등록 창에 Access Key ID·Secret Access Key와 별도 보관할 복구 암호를 입력한 뒤 권한 확인 후 암호화 등록을 누르세요. 완료 문구만 회신하고 키·암호·성공 화면은 채팅에 보내지 마세요. 세부 절차는 내가할일.md에 있습니다.'}
         CloudflareMetrics {'열린 Cloudflare 검토 화면에서 song-record-r2-cost-read·Account Analytics Read 1개·90일을 확인해 토큰 생성 후 PC 비용 분석 키 암호화 등록 창에 입력하세요. 완료 문구가 나오면 분석 키 등록 완료라고 알려주세요. 키·발급 화면은 채팅에 보내지 마세요.'}
         CloudflareMetricsRetry {'수정된 PC 비용 분석 키 등록 창에 기존 발급 토큰 값 하나를 다시 붙여넣고 조회 확인 후 Windows 암호화 등록을 누르세요. 이름/Token ID가 아닙니다. 완료/실패 상태 문구만 회신하고 키는 보내지 마세요. 기존 값을 보관하지 못했다면 토큰 값 없음이라고 알려주세요.'}
         Device {'휴대폰을 USB로 연결하고 디버깅을 허용해 주세요.'}

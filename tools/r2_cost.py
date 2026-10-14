@@ -11,6 +11,7 @@ FREE=set('DeleteObject DeleteBucket AbortMultipartUpload'.split())
 # Keep the count separate and conservatively budget at Standard's higher request rate, never as free.
 MANAGEMENT_UNCLASSIFIED={'GetBucketSippyConfiguration','GetBucketNotificationConfiguration'}
 BUCKETS={f'song-record-{env}-{kind}':kind for env in ('dev','prod','staging-dev') for kind in ('temporary','final')}
+BUCKETS['song-record-staging-backup']='backup'
 PRICE_SOURCE='https://raw.githubusercontent.com/cloudflare/cloudflare-docs/production/src/content/docs/r2/pricing.mdx'
 
 def check_pricing(now):
@@ -90,5 +91,5 @@ def estimate(snapshot,fx,registry=None):
  'r2_estimate_to_date_usd':str(usd(observed_gbm,a+unclassified,b)),'r2_projected_month_usd':str(projected_usd),'r2_projected_month_krw':krw,'fx':fx,
  'level':'LOCK' if krw>=70000 else 'WARNING' if krw>=60000 else 'NOTICE' if krw>=50000 else 'NORMAL',
  'estimate_assumptions':'Account-wide free tier once; Standard only; hourly samples of daily peaks, per-bucket historical peaks persist; requests continue at cycle-average pace; not invoice/cap.',
- 'separate_costs':{'server':'Laptop validation: no new paid server','mysql':'Laptop Docker: no new paid DB','backup':'No operational backup created yet: P24-05 pending','monitoring':'Local scripts: no new paid monitor','tax':'Excluded: actual invoice tax unconfirmed','fx':'ECB dated spot reference; card settlement FX differs'},
+ 'separate_costs':{'server':'Laptop validation: no new paid server','mysql':'Laptop Docker: no new paid DB','backup':'Backup R2 storage and requests included; missing provider samples are unconfirmed, not zero','monitoring':'Local scripts: no new paid monitor','tax':'Excluded: actual invoice tax unconfirmed','fx':'ECB dated spot reference; card settlement FX differs'},
  'invoice_actual_krw':None,'unknown_buckets_fail_closed':True}
