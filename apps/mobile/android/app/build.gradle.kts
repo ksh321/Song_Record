@@ -1,7 +1,24 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Private properties are created only for a local release build, never committed.
+val releasePropertiesPath = providers.environmentVariable("SONGRECORD_SIGNING_PROPERTIES").orNull
+val releaseProperties = Properties()
+if (releasePropertiesPath != null) {
+    val source = file(releasePropertiesPath)
+    require(source.isFile) { "Song_Record release signing configuration is unavailable" }
+    source.inputStream().use { releaseProperties.load(it) }
+    require(listOf("storeFile", "storePassword", "keyAlias", "keyPassword").all {
+        !releaseProperties.getProperty(it).isNullOrBlank()
+    }) { "Song_Record release signing configuration is incomplete" }
+    require(file(releaseProperties.getProperty("storeFile")).isFile) {
+        "Song_Record release keystore is unavailable"
+    }
 }
 
 android {
@@ -64,11 +81,30 @@ android {
         }
     }
 
+    signingConfigs {
+        if (releasePropertiesPath != null) {
+            create("upload") {
+                storeFile = file(releaseProperties.getProperty("storeFile"))
+                storePassword = releaseProperties.getProperty("storePassword")
+                keyAlias = releaseProperties.getProperty("keyAlias")
+                keyPassword = releaseProperties.getProperty("keyPassword")
+            }
+        }
+    }
     buildTypes {
         release {
-            // P24 배포 준비에서 운영 서명 설정으로 교체한다.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (releasePropertiesPath != null) signingConfigs.getByName("upload") else null
         }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val packagesProduction = allTasks.any { it.name in setOf(
+        "assembleProdRelease", "bundleProdRelease", "packageProdRelease",
+        "signProdReleaseBundle", "validateSigningProdRelease"
+    ) }
+    require(!packagesProduction || releasePropertiesPath != null) {
+        "Song_Record production release requires a private upload key; debug signing is prohibited"
     }
 }
 
