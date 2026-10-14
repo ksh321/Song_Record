@@ -250,7 +250,7 @@
     },
     {
       "path": "docs/decisions/D01-implementation-stack.md",
-      "sha256_utf8": "8a6fed50fb2237c451e307dc592bc4fbb2ec00f655ca0e10e0a3dd086299a9ea"
+      "sha256_utf8": "d237273315d0e6b4b5dd64edc5dc5dc8c48640c5067907c858cf36dab4a0ac58"
     },
     {
       "path": "docs/decisions/D02-sort-order.md",
@@ -294,7 +294,7 @@
     },
     {
       "path": "docs/decisions/D12-popular-periods.md",
-      "sha256_utf8": "b979e082b5bda187e3abdc3a8153f9705159a6e444b58b5f6e577435c319882d"
+      "sha256_utf8": "e536f1ed154e1c380ef0aae1e108fbfa7ebb8f93cb862a2709a6868121dcea62"
     }
   ]
 }

@@ -1,0 +1,5 @@
+# Fixture manifests contain byte hashes of JSON. Keep those bytes portable.
+/fixtures/*.json text eol=lf
+/fixtures/**/*.json text eol=lf
+/docs/contracts/*.md text eol=lf
+/docs/decisions/*.md text eol=lf
