@@ -19,6 +19,7 @@ def once():
  atomic(DIRECTORY/'latest.json',report);return report
 def watch():
  import msvcrt
+ from operational_checks import once as check_operational_evidence
  DIRECTORY.mkdir(parents=True,exist_ok=True)
  with (DIRECTORY/'monitor.lock').open('a+b') as lock:
   lock.seek(0);lock.write(b'0');lock.flush();lock.seek(0)
@@ -28,6 +29,8 @@ def watch():
   while True:
    try:once()
    except Exception:atomic(DIRECTORY/'failure.json',{'status':'FAIL','diagnostic':'OPERATIONS_OBSERVATION_UNCONFIRMED','observed_utc':dt.datetime.now(dt.timezone.utc).isoformat()})
+   try:check_operational_evidence()
+   except Exception:atomic(ROOT/'.local/workflow/operational-checks/failure.json',{'status':'UNCONFIRMED','values_suppressed':True})
    time.sleep(60)
 if __name__=='__main__':
  try:

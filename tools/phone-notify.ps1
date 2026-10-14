@@ -3,7 +3,7 @@
 param(
     [ValidateSet('Init','Subscribe','Send','Confirm')][string]$Mode='Send',
     [ValidatePattern('^(WORKFLOW-\d{2}|P\d{2}-\d{2}[a-z]?)(-[A-Z0-9]+)?$')][string]$TaskId='WORKFLOW-02',
-    [ValidateSet('Trial','PhoneTest','Intervention','Escalation','Completion','CostNotice','CostWarning','CostLock','CostUnknown')][string]$Kind='Trial',
+    [ValidateSet('Trial','PhoneTest','Intervention','Escalation','Completion','CostNotice','CostWarning','CostLock','CostUnknown','OperationsWarning')][string]$Kind='Trial',
     [ValidatePattern('^USER-\d{3}$')][string]$ItemId,
     [ValidateRange(1,999)][int]$Revision=1,
     [ValidateSet('Details','LoginSetup','CloudflareLogin','R2ValidationKeys','BackupKeys','CloudflareMetrics','CloudflareMetricsRetry','Device','PhoneSteps','Decision')][string]$Action='Details',
@@ -62,7 +62,7 @@ if ($Kind -eq 'Completion') {
     $completionRecord=Join-Path $completionDir ($CompletionKey+'.json')
     if (Test-Path $completionRecord) { throw 'Completion already attempted; do not duplicate even if UNKNOWN.' }
 }
-if ($Kind -notin @('Trial','Completion','CostNotice','CostWarning','CostLock','CostUnknown') -and -not $ItemId) { throw 'User action notifications require an item ID recorded in 내가할일.md.' }
+if ($Kind -notin @('Trial','Completion','CostNotice','CostWarning','CostLock','CostUnknown','OperationsWarning') -and -not $ItemId) { throw 'User action notifications require an item ID recorded in 내가할일.md.' }
 if ($ItemId) {
     $todo=Join-Path (Split-Path $PSScriptRoot -Parent) '내가할일.md'
     if (-not (Test-Path $todo)) {
@@ -108,6 +108,7 @@ if (Test-Path $attempt) {
 }
 # Fixed templates only: no logs, URLs, free text, account names or credentials.
 $message=switch($Kind) {
+    OperationsWarning {'운영 백업·삭제 원장·관측 또는 월간 복구 점검에 실패·기한 초과가 있습니다. 현재 대화에 운영 점검 오류 확인이라고 알려 주세요. 키를 다시 입력하지 마세요. 자세한 근거는 보호된 operational-checks/latest.json에 저장했습니다.'}
     CostNotice {'R2 예상 월 비용이 5만원 이상입니다. 비용 감시 기록에서 사용량을 확인해 주세요. 실제 청구 상한을 보장하지 않습니다.'}
     CostWarning {'R2 예상 월 비용이 6만원 이상입니다. 저장·요청 증가를 확인하고 불필요한 사용을 줄여 주세요. 실제 청구 상한을 보장하지 않습니다.'}
     CostLock {'R2 예상 월 비용이 7만원 이상으로 신규 업로드 예약을 잠갔습니다. 기존 저장·읽기 비용은 계속 발생합니다. 비용 감시 기록을 확인해 주세요.'}
