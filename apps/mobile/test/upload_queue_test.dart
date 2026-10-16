@@ -11,6 +11,136 @@ import '../tool/upload_verification_fixture.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('confirmed pins cannot resume another target, unverified original, or issued attempt', () async {
+    final root = await Directory.systemTemp.createTemp(
+      'sr-pin-recheck-fences-',
+    );
+    final f = UploadFixture(root);
+    try {
+      await f.open();
+      await f.seed(10);
+      f.transport.approvalStatus = 409;
+      await f.dispatcher.dispatch();
+      expect(await f.store.resumePinnedUploads({uploadFixtureId(11)}), 0);
+      await f.sql(
+        "UPDATE local_recording_files SET local_state='CORRUPT',verified_at=NULL",
+        [],
+      );
+      expect(await f.store.resumePinnedUploads({uploadFixtureId(10)}), 0);
+      await f.sql(
+        "UPDATE local_recording_files SET local_state='SAVED',verified_at=?",
+        [f.now.millisecondsSinceEpoch],
+      );
+      await f.sql('UPDATE local_upload_queue SET attempt_id=?', [
+        uploadFixtureId(900),
+      ]);
+      expect(await f.store.resumePinnedUploads({uploadFixtureId(10)}), 0);
+      expect(f.transport.putCount, 0);
+      expect(await f.preserved(10), isTrue);
+    } finally {
+      await f.manager.logout();
+      await root.delete(recursive: true);
+    }
+  });
+  test('fresh confirmed pins resume a pre-pin rejection once after restart', () async {
+    final root = await Directory.systemTemp.createTemp('sr-later-pin-');
+    final f = UploadFixture(root);
+    try {
+      await f.open();
+      await f.seed(10);
+      f.transport.approvalStatus = 409;
+      await f.dispatcher.dispatch();
+      expect((await f.store.uploadStatus()).single['reason'], 'HTTP_409');
+      final rejectedAt = f.now;
+      f.now = f.now.add(const Duration(minutes: 1));
+      await f.sql(
+        "INSERT INTO metadata_copies(user_id,entity_type,entity_id,server_revision,server_payload,updated_at) VALUES(?,'PIN_SLOT',?,1,?,?)",
+        [
+          f.owner,
+          uploadFixtureId(2010),
+          jsonEncode({'pending_recording_id': uploadFixtureId(10)}),
+          f.now.millisecondsSinceEpoch,
+        ],
+      );
+      await f.reopen();
+      expect(await f.store.resumePinnedUploads({uploadFixtureId(10)}), 1);
+      // One retry is justified by a later server-acknowledged pin, not a wake.
+      await f.dispatcher.dispatch();
+      expect(f.transport.order.length, 2);
+      await f.dispatcher.dispatch();
+      expect(f.transport.order.length, 2);
+      expect(await f.store.nextUploadAt(), isNull);
+      expect(f.transport.putCount, 0);
+      expect(await f.preserved(10), isTrue);
+      expect(f.now.isAfter(rejectedAt), isTrue);
+      for (var revision = 2; revision <= 4; revision++) {
+        f.now = f.now.add(const Duration(minutes: 1));
+        await f.sql(
+          "UPDATE metadata_copies SET server_revision=?,updated_at=? WHERE entity_type='PIN_SLOT'",
+          [revision, f.now.millisecondsSinceEpoch],
+        );
+        await f.store.resumePinnedUploads({uploadFixtureId(10)});
+        await f.dispatcher.dispatch();
+      }
+      expect(f.transport.order.length, 4); // Initial + three bounded rechecks.
+      await f.reopen();
+      await f.dispatcher.dispatch();
+      expect(f.transport.order.length, 4);
+      expect((await f.store.uploadStatus()).single['automatic_retries'], 3);
+    } finally {
+      await f.manager.logout();
+      await root.delete(recursive: true);
+    }
+  });
+  test('a later pin recovers upload while an old pin and auth block remain stopped', () async {
+    final root = await Directory.systemTemp.createTemp('sr-pin-fence-');
+    final f = UploadFixture(root);
+    try {
+      await f.open();
+      await f.seed(10, pinned: true);
+      f.transport.approvalStatus = 409;
+      await f.dispatcher.dispatch();
+      f.now = f.now.add(const Duration(minutes: 1));
+      f.transport.approvalStatus = 201;
+      await f.dispatcher.dispatch();
+      expect(f.transport.order.length, 1);
+      await f.sql(
+        "UPDATE metadata_copies SET server_revision=2,updated_at=? WHERE entity_type='PIN_SLOT'",
+        [f.now.millisecondsSinceEpoch],
+      );
+      expect(await f.store.resumePinnedUploads({uploadFixtureId(10)}), 1);
+      expect(await f.dispatcher.dispatch(), 1);
+      expect(f.transport.putCount, 1);
+      expect((await f.store.uploadStatus()).single['phase'], 'UPLOADED');
+      expect(await f.preserved(10), isTrue);
+      await f.seed(11);
+      f.transport.approvalStatus = 401;
+      await f.dispatcher.dispatch();
+      f.now = f.now.add(const Duration(minutes: 1));
+      await f.sql(
+        "INSERT INTO metadata_copies(user_id,entity_type,entity_id,server_revision,server_payload,updated_at) VALUES(?,'PIN_SLOT',?,1,?,?)",
+        [
+          f.owner,
+          uploadFixtureId(2011),
+          jsonEncode({'pending_recording_id': uploadFixtureId(11)}),
+          f.now.millisecondsSinceEpoch,
+        ],
+      );
+      f.transport.approvalStatus = 201;
+      expect(await f.store.resumePinnedUploads({uploadFixtureId(11)}), 0);
+      await f.dispatcher.dispatch();
+      expect(
+        (await f.store.uploadStatus())
+            .where((r) => r['recording_id'] == uploadFixtureId(11))
+            .single['reason'],
+        'AUTH',
+      );
+      expect(f.transport.putCount, 1);
+    } finally {
+      await f.manager.logout();
+      await root.delete(recursive: true);
+    }
+  });
   test('completion authentication failure blocks followup without claiming a stored file', () async {
     final root = await Directory.systemTemp.createTemp('sr-complete-auth-');
     final f = UploadFixture(root);

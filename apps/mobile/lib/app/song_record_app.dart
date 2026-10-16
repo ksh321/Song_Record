@@ -680,11 +680,23 @@ class _SongRecordAppState extends State<SongRecordApp>
                 final pins = await api.get('/v1/pins') as Map<String, dynamic>;
                 final recordings = await store.savedRecordings();
                 guard();
-                return StorageView(
+                final view = StorageView(
                   usage,
                   (pins['items'] as List).cast<Map<String, dynamic>>(),
                   recordings,
                 );
+                final confirmed = <String>{
+                  for (final slot in view.slots)
+                    for (final key in [
+                      'current_recording_id',
+                      'pending_recording_id',
+                    ])
+                      if (slot[key] case final String id) id,
+                };
+                final resumed = await store.resumePinnedUploads(confirmed);
+                guard();
+                if (resumed > 0) syncController?.wake();
+                return view;
               },
               command: (method, path, body, id) async {
                 await api.pinCommand(method, path, body, id);

@@ -452,3 +452,16 @@ USER-123 ntfy 서버접수 완료·폰수신 미확인. 선택기 check-stop WAI
 - 최종 한 명령 검사: tools unittest discover312PASS/skip0, Flutter analyze문제0·전체1212PASS/skip0/실패0. 서버829PASS/조건부1SKIP/실제MySQL92PASS의 전체 source hash와 실제 signed beta APK9644f087603784006ed02322a83bc1a019dd6701414064f003042c02a468fefc의230개 source hash·산출물 hash 재대조 PASS. 앱/도구 검사는 새로 실제 실행, 서버는 변경 없는 검증 소스 결속을 확인했으며 불필요하게 재실행하지 않았다.
 - 사설 결과 집계기가 Flutter 로그의 JSON 배열행에서 실패했으나3개 실제 명령 exit0·완료 로그는 보존됐다. dict 이벤트만 처리하도록 집계만 교정, 원래 exec session45331 실제 종료코드·312 OK/분석문제0/마지막 done success·검증 소스 hash/수정시각 대조 후 보고서를 수집했다. 테스트 삭제·약화·재실행·통과 추정 없음. 원래 before hash 메모리는 종료돼 원래 before/after 비교라고 쓰지 않고 current signed/server hash·실행 전 source mtime 검증 방식을 final-integration-checks.json에 명시했다.
 - 실제 원격 main은 git ls-remote로 b6b860bbebbe4cead554e2db57602ed2f44aeba3 확인, 같은 값을 이번 push BaseCommit으로 보존한다. 현재 모델 별도 최종 소스/기존검토 지문·실제검사/복구·보존·원본p01086/87·R120/121 대조 진행. 사용자 AGENTS/이전 작업·사용량 도구 변경은 선별 커밋에서 제외한다. 아직 최종SHA·필수CI·P25-06완료/원수finish·P25-07착수는 아니다.
+
+### P25-06 선별 커밋·푸시와 필수CI 대기
+- 최종 현재 모델 별도 검토 승인, 선별119개 파일 커밋·푸시: 98c726b9594f4d11c47301b2cb6f754b86ca3b53. 실제 재조회 BaseCommit b6b860bbebbe4cead554e2db57602ed2f44aeba3. staged diff cb58ca9e787c2fd8a36f8694d44fc1020b9a3781613e543ae6ffd470fc1239f4·검증/서명 지문 결속, 보호 보관함12개 기록·실제 비공개 주소/알림 주소와 후보 대조 PASS. 미커밋 사용자 행동 문서의 주소1곳을 설명 문구로 대체했고 기존HEAD에는 없었다. 비밀값 발견·원격 노출·키 교체는 없다.
+- Git index.lock은2026-10-15 생성/0바이트였다. 첫 넓은 프로세스 조회 권한 검토가 시간 초과돼 Git 프로세스 이름/PID만 조회하는 좁은 방식으로 재시도했고0대를 확인했다. 배타적 파일 열기·크기/시각 대조 후 정확한 낡은 잠금만 .local 아래 보존 이동, 인덱스/사용자 파일 보존. 이후 정상 stage/commit 성공. 데이터 삭제나 서버 보호 우회가 아니다.
+- 진행/행동 기록은 이번 P25-06 부분만 index에 반영하고 앞선 P단계 기록·AGENTS·누적 workflow-state·사용량 도구 변경은 작업 폴더에 보존했다. 기존 기준 workflow-state에는 정확한 P25-06 unit이 없어 무관한 전체 상태를 임의 덮어쓰지 않았다. storage_verification.dart는 줄바꿈 정규화 후 실질 차이0이라 커밋에서 제외됐고 byte 정규화 대조로 확인했다. 사용자 변경 유실·git add .·강제 푸시 없음.
+- 필수CI는 변경 전체 범위에 따라 CI(앱/서버/MySQL), API contract, Idempotency MySQL 3개 workflow다. Development workflow는 NOT_APPLICABLE이며 통과 실적으로 세지 않는다. 정확한 SHA/기준을 기존 숨김 watcher PID13004에 전달했고 실제 상태WAIT/오류0, 알림NONE·프로세스 실행을 확인했다. 아직CI완료/작업완료·원수finish가 아니며 진행 중 감시를 중복 실행하지 않는다.
+
+
+### P25-06 완료 — 본인1명 비공개 베타 준비
+- 최종 제품SHA98c726b9594f4d11c47301b2cb6f754b86ca3b53, 실제 push범위 BaseCommit b6b860bbebbe4cead554e2db57602ed2f44aeba3. 필수 CI38830126917(범위/Flutter분석·1212검사·Android dev APK/서버/MySQL), API contract38830126921, Idempotency MySQL38830126919 모두PASS. 필수 job누락/취소/skipped없음. Development workflow는NOT_APPLICABLE로 제외하며 통과 실적 아님. 기존 감시의 CI완료 알림 SERVER_ACCEPTED 확인, 폰 실수신은 미확인이고 중복 완료 알림을 보내지 않았다.
+- 최종 로컬 도구312PASS/앱1212PASS·분석문제0, 검증된 서버829PASS/조건부1SKIP·실제MySQL92PASS의494개 소스 입력과커밋 결속, 서명 APK의230입력 중229개 커밋 소스 일치·Flutter 생성 플러그인 등록1개 원래 해시 보존/구분. Windows CRLF→Git LF 정규화는 명시했고 APK/원래빌드manifest/서명/빌드 기준SHA를 고쳐 쓰거나 재빌드한 것으로 기록하지 않았다.
+- 실제 Google/카카오 모바일·웹 소유 확인/재실행, 서버 보관/원격10초 재생, 새 음원1개 포함 암호화 백업·격리DB 복원·해시/디코딩·임시본 정리, 최대20·고정10/용량·비용/감시·삭제 원장/30일관측·탈퇴 참조 정리의 근거를 원본p01086/87·R120/121과 대조했다. USER164 범위는 본인1명의 제한 접속이며 P25-06 준비 완료를 전체 인터넷 공개·지인초대·무료 과금상한·개인계정 시험삭제로 확대하지 않는다.
+- R2 처리국가/일반 공개 고지·공개 시행일/공개 URL·추가 제조사/새 물리기기·복원본 물리 재생 등 출시 전 미완료는 보존. 기존 P25-03 예외를 전체 실기 통과로 바꾸지 않는다. 원수finish 뒤 같은 대화의 실제 turn으로P25-07 begin을 실행하고 반복사용을 시작한다. P25-07·08은 아직 완료가 아니다.

@@ -611,6 +611,8 @@ final class AccountStore {
     bool retry = false,
   }) => _run(() => _uploads.settle(work, phase, reason, retry: retry));
   Future<void> cancelUpload(String id) => _run(() => _uploads.cancel(id));
+  Future<int> resumePinnedUploads(Set<String> confirmed) =>
+      _run(() => _uploads.resumePinned(confirmed));
   Future<void> retryUpload(String id) => _run(() => _uploads.retry(id));
   Future<DateTime?> nextUploadAt() => _run(_uploads.next);
   Future<List<Map<String, Object?>>> uploadStatus() => _run(_uploads.status);

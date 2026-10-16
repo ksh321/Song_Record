@@ -157,6 +157,34 @@ final class UploadQueueStore {
     }
   });
 
+  /// Called only with targets from a fresh, validated, account-bound pins GET.
+  /// Rechecks server policy; never grants PUT or resets the retry budget.
+  Future<int> resumePinned(Set<String> confirmed) => db.transaction(() async {
+    if (confirmed.isEmpty) return 0;
+    final ids = confirmed.map((id) => "'${UuidValue(id).value}'").join(',');
+    final blocked = await _blockedRecordings();
+    return db.customUpdate(
+      """UPDATE local_upload_queue AS q
+      SET phase='PENDING',reason=NULL,next_attempt_at=NULL,
+          automatic_retries=automatic_retries+1,updated_at=?
+      WHERE q.phase='BLOCKED' AND q.reason='HTTP_409'
+      AND q.recording_id IN ($ids) AND q.user_id=?
+      AND q.attempt_id IS NULL AND q.claim_id IS NULL AND q.automatic_retries<3
+      AND EXISTS(SELECT 1 FROM local_recording_files f JOIN metadata_copies m
+        ON m.entity_type='RECORDING' AND m.entity_id=f.recording_id AND m.user_id=f.user_id
+        WHERE f.recording_id=q.recording_id AND f.user_id=q.user_id
+        AND f.local_state='SAVED' AND f.verified_at IS NOT NULL
+        AND f.size_bytes=q.expected_size AND f.sha256=q.sha256
+        AND m.tombstone=0 AND m.server_revision>0
+        AND json_extract(m.server_payload,'\$.metadata_state')='SAVED'
+        AND json_extract(m.server_payload,'\$.lifecycle_state')='ACTIVE'
+        AND json_extract(m.server_payload,'\$.file.sha256')=q.sha256
+        AND json_extract(m.server_payload,'\$.file.size_bytes')=q.expected_size
+        ${_exclude(blocked)})""",
+      variables: [Variable(now), Variable(db.userId)],
+    );
+  });
+
   Future<UploadWork?> claim() => db.transaction(() async {
     final blocked = await _blockedRecordings();
     if ((await db
