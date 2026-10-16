@@ -1,5 +1,5 @@
 """Account-wide Standard R2 estimates from provider aggregates; never an invoice/billing cap."""
-import calendar,datetime as dt,json,subprocess
+import calendar,datetime as dt,json,subprocess,os
 from decimal import Decimal,ROUND_CEILING
 from pathlib import Path
 from cloudflare_metrics import MetricsError
@@ -12,6 +12,8 @@ FREE=set('DeleteObject DeleteBucket AbortMultipartUpload'.split())
 MANAGEMENT_UNCLASSIFIED={'GetBucketSippyConfiguration','GetBucketNotificationConfiguration'}
 BUCKETS={f'song-record-{env}-{kind}':kind for env in ('dev','prod','staging-dev') for kind in ('temporary','final')}
 BUCKETS['song-record-staging-backup']='backup'
+BUCKETS['song-record-experiment-backup']='backup'
+BUCKETS.update({f'song-record-experiment-{kind}':kind for kind in ('temporary','final')})
 PRICE_SOURCE='https://raw.githubusercontent.com/cloudflare/cloudflare-docs/production/src/content/docs/r2/pricing.mdx'
 
 def check_pricing(now):
@@ -41,6 +43,14 @@ def usd(storage_gb_month,a,b):
  return units(storage_gb_month,10,1)*D('.015')+units(a,1000000,1000000)*D('4.50')+units(b,10000000,1000000)*D('.36')
 
 def exchange(now):
+ if os.name!='nt':
+  import urllib.request
+  try:
+   client=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+   with client.open('https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml',timeout=20) as reply:raw=reply.read(200001)
+   if len(raw)>200000:raise ValueError()
+   return exchange_xml(raw,now)
+  except Exception:raise MetricsError('FX_UNCONFIRMED') from None
  # Windows certificate store, no insecure TLS fallback or API key. Output is public FX only.
  command="[xml]$r=(Invoke-WebRequest -Uri 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml' -TimeoutSec 20).Content; $r.DocumentElement.Cube.Cube | ForEach-Object { @{date=$_.time; USD=($_.Cube | Where-Object currency -eq 'USD').rate; KRW=($_.Cube | Where-Object currency -eq 'KRW').rate} | ConvertTo-Json -Compress }"
  p=subprocess.run(['pwsh','-NoProfile','-Command',command],capture_output=True,timeout=30)
@@ -51,6 +61,18 @@ def exchange(now):
   if not 0<=age<=7 or not D(100)<=rate<=D(10000):raise ValueError()
  except Exception:raise MetricsError('FX_UNCONFIRMED') from None
  return {'source':'ECB EUR cross rate','date':row['date'],'krw_per_usd':str(rate)}
+
+def exchange_xml(raw,now):
+ import xml.etree.ElementTree as ET
+ try:
+  root=ET.fromstring(raw);rows=[r for r in root.iter() if 'time' in r.attrib]
+  if len(rows)!=1:raise ValueError()
+  day=rows[0].attrib['time'];age=(now.date()-dt.date.fromisoformat(day)).days
+  rates={r.attrib['currency']:D(r.attrib['rate']) for r in rows[0] if 'currency' in r.attrib}
+  rate=rates['KRW']/rates['USD']
+  if not 0<=age<=7 or not rate.is_finite() or not D(100)<=rate<=D(10000):raise ValueError()
+ except Exception:raise MetricsError('FX_UNCONFIRMED') from None
+ return {'source':'ECB EUR cross rate','date':day,'krw_per_usd':str(rate)}
 
 def estimate(snapshot,fx,registry=None):
  registry=registry or BUCKETS

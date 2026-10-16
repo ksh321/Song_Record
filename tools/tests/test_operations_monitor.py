@@ -11,4 +11,7 @@ class OperationsMonitorTests(unittest.TestCase):
  def test_truncated_log_coverage_is_not_zero_failures(self):
   with patch.object(m.runtime,'containers',return_value={'api':'private-api','worker':'private-worker'}),patch.object(m.runtime,'run',side_effect=[b'{}',b'line\n'*20000]):
    with self.assertRaisesRegex(RuntimeError,'COVERAGE_UNCONFIRMED'):m.once()
+ def test_retention_failure_is_reported_separately_without_raw_log(self):
+  with tempfile.TemporaryDirectory() as d,patch.object(m,'DIRECTORY',Path(d)),patch.object(m.runtime,'containers',return_value={'api':'private-api','worker':'private-worker'}),patch.object(m.runtime,'run',side_effect=[b'{"observed_utc":"2026-10-15T00:00:00Z"}',b'normal\n',b'operations_retention_failed private synthetic content\n']):
+   result=m.once();self.assertEqual(result['status'],'FAIL');self.assertEqual(result['observation_retention_failures_last_hour'],1);self.assertEqual(result['observation_write_failures_last_hour'],0);self.assertNotIn('synthetic content',(Path(d)/'latest.json').read_text())
 if __name__=='__main__':unittest.main()

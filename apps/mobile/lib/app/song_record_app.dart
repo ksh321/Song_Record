@@ -38,6 +38,8 @@ import 'package:song_record/features/sync/sync_controller.dart';
 import 'package:song_record/network/health_client.dart';
 import 'package:song_record/routing/app_routes.dart';
 
+import '../core/audio/audio_player.dart';
+import '../core/audio/playback_http.dart';
 import '../core/database/account_store.dart';
 import '../core/database/local_models.dart';
 import '../core/sync/snapshot_transport.dart';
@@ -45,6 +47,8 @@ import '../features/backup/export/export_controller.dart';
 import '../features/backup/export/export_screen.dart';
 import '../features/playlists/playlist_library.dart';
 import '../features/playlists/playlist_library_screen.dart';
+import '../features/recorder/recording_audio_panel.dart';
+import '../features/recorder/recording_detail_screen.dart';
 import '../features/settings/account_deletion.dart';
 import '../features/settings/account_deletion_screen.dart';
 import '../features/trash/trash_screens.dart';
@@ -343,6 +347,52 @@ class _SongRecordAppState extends State<SongRecordApp>
     }
 
     return MaterialApp(
+      builder: (context, child) => RecordingAudioAccess(
+        store: () {
+          final store = accountStore?.call();
+          return authController?.phase == AuthPhase.ready &&
+                  store?.userId == authController?.session?.userId
+              ? store
+              : null;
+        },
+        createPlayer: (store) {
+          final auth = authController!;
+          final epoch = auth.accountEpoch;
+          void guard() {
+            store.requireActive();
+            if (auth.phase != AuthPhase.ready ||
+                auth.accountEpoch != epoch ||
+                accountStore?.call() != store ||
+                auth.session?.userId != store.userId) {
+              throw StateError('Playback account changed');
+            }
+          }
+
+          return AudioPlayback(
+            store,
+            HttpPlaybackUrls(
+              config.apiBaseUrl,
+              () async {
+                guard();
+                final session = await auth.validSession();
+                guard();
+                return session;
+              },
+              allowLocalHttp:
+                  kDebugMode && config.environment == AppEnvironment.dev,
+            ),
+            AndroidAudioPlayer(),
+            requireCurrent: guard,
+            accountChanges: auth,
+          );
+        },
+        changes: Listenable.merge([authController, syncController]),
+        refresh: () {
+          final sync = syncController;
+          if (sync != null) unawaited(sync.wake());
+        },
+        child: child ?? const SizedBox.shrink(),
+      ),
       title: '노래기록',
       debugShowCheckedModeBanner: config.environment != AppEnvironment.prod,
       initialRoute: AppRoutes.home,
@@ -414,6 +464,31 @@ class _SongRecordAppState extends State<SongRecordApp>
                   },
                 ),
           songsBuilder: (context, findSong) => MySongsScreen(
+            onOpenRecording: (id) {
+              final repository = localRepository?.call();
+              if (repository == null ||
+                  authController?.phase != AuthPhase.ready ||
+                  authController?.session?.userId != repository.userId) {
+                return;
+              }
+              Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => RecordingDetailScreen(
+                    id: id,
+                    repository: repository,
+                    isCurrent: (repo) =>
+                        authController?.phase == AuthPhase.ready &&
+                        authController?.session?.userId == repo.userId &&
+                        repo.userId == localRepository?.call()?.userId,
+                    wakeSync: () {
+                      final sync = syncController;
+                      if (sync != null) unawaited(sync.wake());
+                    },
+                    trash: trashActions(),
+                  ),
+                ),
+              );
+            },
             trash: trashActions(),
             auth: authController,
             watchUnlinked: () {

@@ -54,6 +54,10 @@ class MySqlIdempotencyTests {
         try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();var db=new JdbcTemplate(ds);com.ksh321.songrecord.api.operations.OperationsObservationDatabaseChecks.verify(db);com.ksh321.songrecord.api.operations.OperationsObservationDatabaseChecks.verifyTriggers(db);
             com.ksh321.songrecord.api.operations.BackupFenceDatabaseChecks.verify(db);}finally{admin.execute("DROP DATABASE "+name);}
     }
+    @Test void mysqlThirtyDayObservationRetentionUsesExactCutoffAndBoundedBatch() throws Exception {
+        String name=database+"_operations_retention";admin.execute("CREATE DATABASE "+name);
+        try {var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false&connectionTimeZone=UTC","root",System.getenv("P07_MYSQL_PASSWORD"));org.flywaydb.core.Flyway.configure().dataSource(ds).locations("classpath:db/migration").load().migrate();com.ksh321.songrecord.api.operations.OperationsRetentionDatabaseChecks.verify(new JdbcTemplate(ds));}finally{admin.execute("DROP DATABASE "+name);}
+    }
     @BeforeEach void setup() throws Exception {
         String password=System.getenv("P07_MYSQL_PASSWORD");
         admin=new JdbcTemplate(new DriverManagerDataSource(mysqlBase() + "?allowPublicKeyRetrieval=true&useSSL=false","root",password));

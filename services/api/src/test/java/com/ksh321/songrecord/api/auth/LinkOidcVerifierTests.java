@@ -35,6 +35,18 @@ class LinkOidcVerifierTests {
     @Test void verifiesSignedIdentityAndNonce() throws Exception {
         assertEquals(new VerifiedProviderIdentity("KAKAO","123"),verifier.verify(sign(valid(),key),nonceHash,NOW));
     }
+    @Test void acceptsOnlyOneExactlyRegisteredAudienceAndPreservesNonceAndSignatureChecks() throws Exception {
+        var beta=new LinkOidcVerifier("KAKAO",Set.of("native-app-key","beta-native-key"),Set.of("https://kauth.kakao.com"),
+            new ImmutableJWKSet<>(new JWKSet(key.toPublicJWK())),Clock.fixed(NOW,ZoneOffset.UTC));
+        assertEquals(new VerifiedProviderIdentity("KAKAO","123"),beta.verify(sign(valid(),key),nonceHash,NOW));
+        assertEquals(new VerifiedProviderIdentity("KAKAO","123"),beta.verify(sign(valid().audience("beta-native-key"),key),nonceHash,NOW));
+        for(var audience:List.of(List.of("unknown"),List.of("native-app-key","beta-native-key"),List.of("beta-native-key","unknown")))
+            assertThrows(com.ksh321.songrecord.api.web.ApiException.class,()->beta.verify(sign(valid().audience(audience),key),nonceHash,NOW));
+        assertThrows(com.ksh321.songrecord.api.web.ApiException.class,()->beta.verify(sign(valid().audience("beta-native-key").claim("nonce","wrong"),key),nonceHash,NOW));
+        var other=new RSAKeyGenerator(2048).keyID("test").generate();
+        assertThrows(com.ksh321.songrecord.api.web.ApiException.class,()->beta.verify(sign(valid().audience("beta-native-key"),other),nonceHash,NOW));
+        assertThrows(com.ksh321.songrecord.api.web.ApiException.class,()->verifier.verify(sign(valid().audience("beta-native-key"),key),nonceHash,NOW));
+    }
     record Case(String name,Consumer<JWTClaimsSet.Builder> change) {}
     @TestFactory Stream<DynamicTest> rejectsInvalidSignedClaims() {
         return Stream.of(

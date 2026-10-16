@@ -21,6 +21,11 @@ final class UploadNetworkFailure implements Exception {
 }
 
 abstract interface class UploadTransport {
+  Future<UploadResponse> complete(
+    UploadWork work,
+    AuthSession session,
+    UploadGuard guard,
+  );
   Future<UploadResponse> authorize(
     UploadWork work,
     AuthSession session,
@@ -57,6 +62,9 @@ final class HttpUploadTransport implements UploadTransport {
   }
   final Uri base;
   final Duration timeout;
+  @override
+  Future<UploadResponse> complete(UploadWork w, AuthSession s, UploadGuard g) =>
+      _post('/v1/uploads/${w.attemptId}/complete', w.attemptId!, null, s, g);
   @override
   Future<UploadResponse> authorize(
     UploadWork w,

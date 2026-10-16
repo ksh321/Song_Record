@@ -44,6 +44,20 @@ def statements(database, tables, entries):
     def columns(table):return set(tables.get(table,{}).get('columns',[]))
     def add(table,text):
         if present(table):sql.append(text)
+    if present('operations_observation') and not {'actor_id','target_id','previous_target_id','job_id'}<=columns('operations_observation'):
+        raise BackupError('RESTORE_OBSERVATION_SCHEMA_UNCONFIRMED')
+    observation_owners=set()
+    def clear_observation_actor(user):
+        if not {'actor_id','target_id','previous_target_id','job_id'}<=columns('operations_observation'):return
+        jobs=f' OR job_id IN (SELECT id FROM job WHERE user_id={user})' if {'id','user_id'}<=columns('job') else ''
+        sql.append(f'DELETE FROM operations_observation WHERE actor_id={user}'+jobs+';')
+    def clear_observation_targets(user):
+        if not {'target_id','previous_target_id'}<=columns('operations_observation'):return
+        reviewed=PERSONAL|CONTROL
+        selections=[f'SELECT id FROM `{table}` WHERE user_id={user}' for table in sorted(reviewed) if {'id','user_id'}<=columns(table)]
+        for column in ('target_id','previous_target_id'):
+            linked=f' OR {column} IN ('+' UNION ALL '.join(selections)+')' if selections else ''
+            sql.append(f'UPDATE operations_observation SET {column}=NULL WHERE {column}={user}'+linked+';')
     for row in rows:
         owner,kind,entity,generation=subject(row)
         user,target=binary(owner),binary(entity)
@@ -53,6 +67,8 @@ def statements(database, tables, entries):
             sql.append(f'UPDATE pin_slot SET pending_recording_id=NULL WHERE user_id={user} AND pending_recording_id={target} AND current_recording_id IS NOT NULL AND current_recording_id<>{target}'+extra+';')
             sql.append(f'DELETE FROM pin_slot WHERE user_id={user} AND (current_recording_id={target} OR pending_recording_id={target})'+extra+';')
         if kind=='USER':
+            observation_owners.add(user)
+            clear_observation_actor(user);clear_observation_targets(user)
             add('song',f'UPDATE song SET representative_recording_id=NULL WHERE user_id={user};')
             for table in sequence:sql.append(f'DELETE FROM `{table}` WHERE user_id={user};')
             add('app_user',f'DELETE FROM app_user WHERE id={user};')
@@ -91,6 +107,8 @@ def statements(database, tables, entries):
             gen='NULL' if generation is None else binary(generation)
             identity='object_generation IS NULL' if generation is None else 'object_generation='+gen
             sql.append(f"INSERT INTO deletion_ledger(id,user_id,entity_type,entity_id,object_generation,revision,purged_at) SELECT {binary(str(uuid.uuid4()))},{user},'{kind}',{target},{gen},{row['revision']},'{stamp}' WHERE NOT EXISTS(SELECT 1 FROM deletion_ledger WHERE user_id={user} AND entity_type='{kind}' AND entity_id={target} AND {identity});")
+    # Replay inserts can emit new audit rows through the permanent-ledger trigger.
+    for user in sorted(observation_owners):clear_observation_actor(user)
     # Restored counters reflect actual remaining assets, never the deleted copy's old byte count.
     if present('recording_asset'):
         add('storage_usage',"UPDATE storage_usage s SET used_bytes=(SELECT COALESCE(SUM(a.verified_size),0) FROM recording_asset a WHERE a.user_id=s.user_id AND a.cloud_state IN ('STORED','DELETING')),revision=revision+1;")

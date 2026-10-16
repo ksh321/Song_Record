@@ -1,0 +1,13 @@
+[Unit]
+Description=Song Record independent encrypted experiment DB and final-file backup
+After=docker.service song-record-experiment.service
+Requires=docker.service
+ConditionPathExists=/etc/song-record-experiment/backup-experiment.json
+ConditionPathExists=!/etc/song-record-experiment/user-requested-pause
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/song-record-experiment/operations/backup.py
+TimeoutStartSec=900

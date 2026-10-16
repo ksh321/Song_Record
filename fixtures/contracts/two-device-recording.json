@@ -79,7 +79,16 @@
     "timezone_offset_minutes": 540.0,
     "title_snapshot": "offline input",
     "updated_at": "2026-09-24T00:00:00Z",
-    "version_code": "NORMAL"
+    "version_code": "NORMAL",
+    "file": {
+      "capture_integrity": "VALIDATED",
+      "channels": 1,
+      "codec": "AAC_LC",
+      "duration_ms": 1000.0,
+      "sample_rate": 48000.0,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size_bytes": 100.0
+    }
   },
   "create_response": {
     "artist_snapshot": null,
@@ -220,7 +229,16 @@
             "timezone_offset_minutes": 540.0,
             "title_snapshot": "offline input",
             "updated_at": "2026-09-24T00:00:00Z",
-            "version_code": "NORMAL"
+            "version_code": "NORMAL",
+            "file": {
+              "capture_integrity": "VALIDATED",
+              "channels": 1,
+              "codec": "AAC_LC",
+              "duration_ms": 1000.0,
+              "sample_rate": 48000.0,
+              "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "size_bytes": 100.0
+            }
           },
           "entity_type": "RECORDING",
           "revision": 3

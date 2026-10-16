@@ -30,6 +30,78 @@ final class UploadQueueStore {
       "UPDATE local_upload_queue SET phase='RETRY',claim_id=NULL,next_attempt_at=NULL,reason='INTERRUPTED',updated_at=? WHERE phase='SENDING'",
       [now],
     );
+    await db.customStatement(
+      "UPDATE local_upload_queue SET claim_id=NULL WHERE phase='UPLOADED' AND claim_id IS NOT NULL",
+    );
+  }
+
+  // PUT is durable independently of completion acknowledgement. Never re-PUT
+  // after a lost completion response; the attempt UUID is its stable receipt key.
+  Future<UploadWork?> claimCompletion() => db.transaction(() async {
+    final blocked = await _blockedRecordings();
+    final rows = await db
+        .customSelect(
+          """SELECT q.* FROM local_upload_queue q
+      JOIN metadata_copies m ON m.entity_type='RECORDING' AND m.entity_id=q.recording_id
+      WHERE q.phase='UPLOADED' AND q.attempt_id IS NOT NULL AND q.claim_id IS NULL
+      AND (q.reason IS NULL OR (q.reason='COMPLETION_RETRY' AND q.next_attempt_at<=? AND q.automatic_retries<3))
+      AND m.tombstone=0 AND json_extract(m.server_payload,'\$.lifecycle_state')='ACTIVE'
+      ${_exclude(blocked)} ORDER BY q.created_at,q.rowid LIMIT 1""",
+          variables: [Variable(now)],
+        )
+        .get();
+    if (rows.isEmpty) return null;
+    final r = rows.single, claim = UuidValue.random().value;
+    await db.customStatement(
+      'UPDATE local_upload_queue SET claim_id=?,attempt_count=attempt_count+1,automatic_retries=automatic_retries+?,updated_at=? WHERE recording_id=?',
+      [
+        claim,
+        r.readNullable<String>('reason') == 'COMPLETION_RETRY' ? 1 : 0,
+        now,
+        r.read<String>('recording_id'),
+      ],
+    );
+    return UploadWork(
+      r.read<String>('recording_id'),
+      r.read<String>('operation_id'),
+      r.read<String>('attempt_id'),
+      null,
+      claim,
+      r.read<int>('expected_size'),
+      r.read<String>('sha256'),
+    );
+  });
+
+  Future<bool> completionCurrent(UploadWork w) async =>
+      (await db
+              .customSelect(
+                "SELECT 1 FROM local_upload_queue WHERE recording_id=? AND phase='UPLOADED' AND claim_id=?",
+                variables: [Variable(w.recordingId), Variable(w.claimId)],
+              )
+              .get())
+          .isNotEmpty;
+
+  Future<void> settleCompletion(
+    UploadWork w,
+    String reason, {
+    bool retry = false,
+    bool stored = false,
+  }) async {
+    if (!await completionCurrent(w)) return;
+    final row = await db
+        .customSelect(
+          'SELECT automatic_retries FROM local_upload_queue WHERE recording_id=?',
+          variables: [Variable(w.recordingId)],
+        )
+        .getSingle();
+    final count = row.read<int>('automatic_retries');
+    final next = retry && count < 3
+        ? now + const [60000, 300000, 900000][count]
+        : null;
+    await db.customStatement(
+      'UPDATE local_upload_queue SET phase=?,claim_id=NULL,reason=?,next_attempt_at=?,updated_at=? WHERE recording_id=?',
+      [stored ? 'STORED' : 'UPLOADED', reason, next, now, w.recordingId],
+    );
   }
 
   Future<Set<String>> _blockedRecordings() async {
@@ -193,6 +265,16 @@ final class UploadQueueStore {
   }
 
   Future<DateTime?> next() => db.transaction(() async {
+    // Canonical, validated change-feed/snapshot evidence is authoritative.
+    // A 202 completion response alone never reaches this state.
+    await db.customStatement("""UPDATE local_upload_queue AS q
+      SET phase='STORED',reason='SERVER_CONFIRMED',next_attempt_at=NULL
+      WHERE q.phase='UPLOADED' AND q.claim_id IS NULL AND EXISTS(
+        SELECT 1 FROM metadata_copies a WHERE a.entity_type='RECORDING_ASSET'
+        AND a.entity_id=q.recording_id AND a.user_id=q.user_id AND a.tombstone=0
+        AND json_extract(a.server_payload,'\$.cloud_state')='STORED'
+        AND json_extract(a.server_payload,'\$.verified_size')=q.expected_size
+        AND json_extract(a.server_payload,'\$.sha256')=q.sha256)""");
     final blocked = await _blockedRecordings();
     // Ineligible PENDING records must not create a busy timer loop.
     final r = await db
@@ -205,7 +287,41 @@ final class UploadQueueStore {
           variables: [Variable(now)],
         )
         .getSingle();
-    final value = r.readNullable<int>('value');
+    final completion = await db
+        .customSelect(
+          """SELECT MIN(CASE WHEN q.reason IS NULL THEN ? ELSE q.next_attempt_at END) AS value
+      FROM local_upload_queue q JOIN metadata_copies m ON m.entity_type='RECORDING' AND m.entity_id=q.recording_id
+      WHERE q.phase='UPLOADED' AND q.attempt_id IS NOT NULL AND q.claim_id IS NULL
+      AND (q.reason IS NULL OR(q.reason='COMPLETION_RETRY' AND q.automatic_retries<3))
+      AND m.tombstone=0 AND json_extract(m.server_payload,'\$.lifecycle_state')='ACTIVE'
+      ${_exclude(blocked)}""",
+          variables: [Variable(now)],
+        )
+        .getSingle();
+    final values = [
+      r.readNullable<int>('value'),
+      completion.readNullable<int>('value'),
+      // At most three foreground receives after verification acceptance.
+      // Deadlines survive restart; lifecycle wakes still receive after expiry.
+      // These are metadata reads, not completion retries or repeated PUTs.
+      (await db
+              .customSelect(
+                """SELECT MIN(CASE
+        WHEN ?<q.updated_at+5000 THEN q.updated_at+5000
+        WHEN ?<q.updated_at+30000 THEN q.updated_at+30000
+        WHEN ?<q.updated_at+120000 THEN q.updated_at+120000
+        ELSE NULL END) AS value
+        FROM local_upload_queue q JOIN metadata_copies m
+          ON m.entity_type='RECORDING' AND m.entity_id=q.recording_id
+        WHERE q.phase='UPLOADED' AND q.reason='VERIFICATION_ACCEPTED'
+          AND m.tombstone=0
+          AND json_extract(m.server_payload,'\$.lifecycle_state')='ACTIVE'""",
+                variables: [Variable(now), Variable(now), Variable(now)],
+              )
+              .getSingle())
+          .readNullable<int>('value'),
+    ].whereType<int>().toList()..sort();
+    final value = values.isEmpty ? null : values.first;
     return value == null
         ? null
         : DateTime.fromMillisecondsSinceEpoch(value, isUtc: true);

@@ -4,6 +4,12 @@ from unittest.mock import patch
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 import validation_runtime as v
 class ValidationRuntimeTests(unittest.TestCase):
+ def test_resume_uses_last_healthy_image_and_rejects_unrecognized_tag(self):
+  with tempfile.TemporaryDirectory() as d,patch.object(v,'DIRECTORY',Path(d)),patch.dict(v.os.environ,{},clear=True):
+   (Path(d)/'image.json').write_text('{"tag":"p24-02-local"}')
+   self.assertEqual(v.select_image(),'p24-02-local')
+   v.os.environ['VALIDATION_IMAGE_TAG']='other-image'
+   with self.assertRaises(ValueError):v.select_image()
  def test_connect_recreates_only_stateless_roles_and_waits_for_verified_tls_health(self):
   with tempfile.TemporaryDirectory() as d:
    root=Path(d);(root/'https').mkdir();(root/'https/server.p12').write_bytes(b'synthetic-pfx');(root/'https/server.crt').write_text('synthetic-public-certificate')

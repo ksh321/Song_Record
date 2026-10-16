@@ -7,15 +7,15 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 import static org.assertj.core.api.Assertions.*;
 public final class OperationsObservationDatabaseChecks {
  public static void verify(JdbcTemplate db){
-  var now=Instant.parse("2026-10-13T00:00:00Z");var writer=new OperationsRecorder(db,new DataSourceTransactionManager(db.getDataSource()));var owner=UUID.randomUUID();var target=UUID.randomUUID();
+  var now=Instant.parse("2026-10-13T00:00:00Z");var writer=new OperationsRecorder(db,new DataSourceTransactionManager(db.getDataSource()));var owner=com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.account(db);var target=UUID.randomUUID();
   for(int i=0;i<3;i++){
    writer.record(owner,target,"USER",OperationsContext.Action.RECORDING_SAVED,OperationsContext.Result.SUCCESS,200,1,now);
    writer.record(owner,target,"USER",OperationsContext.Action.PIN,OperationsContext.Result.PIN_LIMIT_REACHED,409,2,now);
    writer.record(owner,target,"USER",OperationsContext.Action.OTHER,OperationsContext.Result.QUOTA_EXCEEDED,409,2,now);
   }
   writer.record(owner,UUID.randomUUID(),"USER",OperationsContext.Action.RECORDING_SAVED,OperationsContext.Result.SUCCESS,200,2,now);
-  writer.record(UUID.randomUUID(),target,"USER",OperationsContext.Action.SONG_READ,OperationsContext.Result.SUCCESS,200,2,now.minus(Duration.ofDays(31)));
-  writer.record(UUID.randomUUID(),target,"USER",OperationsContext.Action.RECORDING_SAVED,OperationsContext.Result.FAILURE,500,2,now);
+  writer.record(com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.account(db),target,"USER",OperationsContext.Action.SONG_READ,OperationsContext.Result.SUCCESS,200,2,now.minus(Duration.ofDays(31)));
+  writer.record(com.ksh321.songrecord.api.retention.RetentionCandidateDatabaseChecks.account(db),target,"USER",OperationsContext.Action.RECORDING_SAVED,OperationsContext.Result.FAILURE,500,2,now);
   db.update("INSERT INTO operations_observation(id,actor_id,actor_kind,action,result,status_code,duration_ms,observed_at) VALUES(?,?,'USER','PIN_SLOTS_TEN','SUCCESS',0,0,?)",bytes(UUID.randomUUID()),bytes(owner),java.sql.Timestamp.from(now));
   var row=OperationsMetrics.demand(db,now);
   assertThat(row.get("server_observed_active_accounts")).isEqualTo(1L);assertThat(row.get("pin_limit_accounts")).isEqualTo(1L);assertThat(row.get("quota_accounts")).isEqualTo(1L);assertThat(row.get("second_recording_save_accounts")).isEqualTo(1L);assertThat(row.get("actual_playback_accounts")).isNull();

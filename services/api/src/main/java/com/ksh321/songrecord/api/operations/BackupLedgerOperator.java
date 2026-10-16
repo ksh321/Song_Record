@@ -9,7 +9,7 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.*;
 public final class BackupLedgerOperator {
  public static void main(String[] args){try{
   if(args.length!=1||!Set.of("snapshot","ack","authorize-fixture","retire").contains(args[0]))throw new IllegalArgumentException();
-  var source=new DriverManagerDataSource("jdbc:mysql://mysql:3306/song_record_validation?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true","song_record_validation",Files.readString(Path.of("/run/runtime/DB_PASSWORD")).strip());
+  var source=PrivateOperationsDataSource.open();
   var db=new JdbcTemplate(source);var json=new tools.jackson.databind.json.JsonMapper();
   if(args[0].equals("snapshot")){
    var entries=new ArrayList<Map<String,Object>>();var pending=new ArrayList<Map<String,Object>>();

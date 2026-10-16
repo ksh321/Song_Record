@@ -1,0 +1,11 @@
+[Unit]
+Description=Monthly experiment restore verification without AI
+
+[Timer]
+OnCalendar=*-*-01 04:30:00 UTC
+Persistent=true
+RandomizedDelaySec=30min
+Unit=song-record-restore.service
+
+[Install]
+WantedBy=timers.target

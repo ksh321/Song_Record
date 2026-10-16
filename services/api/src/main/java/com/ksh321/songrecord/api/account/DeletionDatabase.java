@@ -31,7 +31,8 @@ public final class DeletionDatabase {
   db.queryForMap("SELECT id FROM snapshot_capacity WHERE id=1 FOR UPDATE");
   LockOrder.before(LockOrder.Rank.USER_SYNC,owner.toString());db.queryForList("SELECT user_id FROM user_sync_state WHERE user_id=? FOR UPDATE",bytes(owner));
   var users=db.queryForList("SELECT status FROM app_user WHERE id=? FOR UPDATE",bytes(owner));if(users.size()!=1||!"DELETING".equals(users.getFirst().get("status")))throw new IllegalStateException("DELETION_OWNER_AUTHORITY_LOST");
-  var order=order();var usage=db.queryForMap("SELECT used_bytes,reserved_bytes FROM storage_usage WHERE user_id=? FOR UPDATE",bytes(owner));
+  var order=order();var observations=new DeletionObservations(db,order);observations.beforePurge(owner);
+  var usage=db.queryForMap("SELECT used_bytes,reserved_bytes FROM storage_usage WHERE user_id=? FOR UPDATE",bytes(owner));
   long used=((Number)usage.get("used_bytes")).longValue(),reserved=((Number)usage.get("reserved_bytes")).longValue();
   if(db.update("UPDATE global_storage_usage SET used_bytes=used_bytes-?,reserved_bytes=reserved_bytes-?,revision=revision+1,updated_at=? WHERE id=1 AND used_bytes>=? AND reserved_bytes>=?",used,reserved,now,used,reserved)!=1)throw new IllegalStateException("ACCOUNT_STORAGE_ACCOUNTING_UNCONFIRMED");
   db.update("UPDATE song SET representative_recording_id=NULL,revision=revision+1,updated_at=GREATEST(updated_at,?) WHERE user_id=? AND representative_recording_id IS NOT NULL",now,bytes(owner));
@@ -45,7 +46,10 @@ public final class DeletionDatabase {
   db.update("DELETE FROM job WHERE user_id=? AND id<>?",bytes(owner),bytes(currentJob));
   db.update("UPDATE account_deletion_status SET user_id=NULL,session_id=NULL,challenge_id=NULL,operation_id=NULL,request_hash=NULL WHERE user_id=?",bytes(owner));
   if(db.update("DELETE FROM app_user WHERE id=? AND status='DELETING'",bytes(owner))!=1)throw new IllegalStateException("ACCOUNT_DELETE_UNCONFIRMED");
+  // Purge updates may emit DB-trigger audit rows; remove those before committing too.
+  observations.clearDirect(owner);
+  if(observations.hasDirectReferences(owner))throw new IllegalStateException("ACCOUNT_OBSERVATION_ROWS_REMAIN");
   for(var table:order)if(db.queryForObject("SELECT COUNT(*) FROM "+table+" WHERE user_id=?",Long.class,bytes(owner))!=0)throw new IllegalStateException("ACCOUNT_ROWS_REMAIN");
  }
- public boolean purged(UUID owner){if(!db.queryForList("SELECT id FROM app_user WHERE id=?",bytes(owner)).isEmpty())return false;for(var table:order())if(db.queryForObject("SELECT COUNT(*) FROM "+table+" WHERE user_id=?",Long.class,bytes(owner))!=0)return false;return true;}
+ public boolean purged(UUID owner){if(!db.queryForList("SELECT id FROM app_user WHERE id=?",bytes(owner)).isEmpty())return false;var tables=order();for(var table:tables)if(db.queryForObject("SELECT COUNT(*) FROM "+table+" WHERE user_id=?",Long.class,bytes(owner))!=0)return false;return !new DeletionObservations(db,tables).hasDirectReferences(owner);}
 }

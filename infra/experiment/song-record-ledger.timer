@@ -1,0 +1,10 @@
+[Unit]
+Description=Check experiment deletion outbox every thirty seconds without AI
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=30s
+Unit=song-record-ledger.service
+
+[Install]
+WantedBy=timers.target

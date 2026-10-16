@@ -19,10 +19,13 @@ public final class DeploymentBoundary {
   if(!"validate".equals(env.getProperty("spring.jpa.hibernate.ddl-auto"))||!env.getProperty("spring.flyway.validate-on-migrate",Boolean.class,false))throw invalid();
   if(!env.getProperty("songrecord.storage.enabled",Boolean.class,false))throw invalid();
   var role=required(env,"songrecord.storage.role");if(!Set.of("api","worker").contains(role))throw invalid();
-  if(role.equals("api")&&(env.getProperty("songrecord.upload.scheduling-enabled",Boolean.class,false)||env.getProperty("songrecord.account-deletion.worker.enabled",Boolean.class,false)))throw invalid();
+  if(role.equals("api")&&(env.getProperty("songrecord.upload.scheduling-enabled",Boolean.class,false)||env.getProperty("songrecord.account-deletion.worker.enabled",Boolean.class,false)||env.getProperty("songrecord.operations.retention.enabled",Boolean.class,false)))throw invalid();
   var storage=required(env,"songrecord.storage.environment");if(!storage.equals(name.equals("staging")?"dev":"prod"))throw invalid();
   var prefix="songrecord.storage."+storage+".";
-  var buckets=name.equals("staging")?"song-record-staging-dev-":"song-record-prod-";
+  var scope=env.getProperty("songrecord.deployment.storage-scope","default");
+  if(!Set.of("default","experiment").contains(scope))throw invalid();
+  if(scope.equals("experiment")&&(!name.equals("staging")||!"song_record_experiment".equals(required(env,"DB_NAME"))||!"song_record_experiment".equals(required(env,"DB_USER"))))throw invalid();
+  var buckets=scope.equals("experiment")?"song-record-experiment-":name.equals("staging")?"song-record-staging-dev-":"song-record-prod-";
   if(!required(env,prefix+"temporary-bucket").equals(buckets+"temporary")||!required(env,prefix+"final-bucket").equals(buckets+"final"))throw invalid();
   OperationsPolicy.from(env);
   required(env,"DB_PASSWORD");required(env,"TLS_KEYSTORE_PASSWORD");

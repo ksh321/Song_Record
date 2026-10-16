@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/audio/audio_player.dart';
@@ -18,11 +18,13 @@ class PlayerFake implements AudioPlayerPort {
   int plays = 0, pauses = 0, stops = 0;
   int? seekAt;
   Completer<int>? pending;
+  Completer<void>? loading;
   @override
   Stream<PlayerEvent> get events => stream.stream;
   @override
   Future<int> load(Map<String, Object> source) async {
     sources.add(source);
+    loading?.complete();
     if (fail) throw StateError('fixture');
     return pending == null ? 10000 : pending!.future;
   }
@@ -104,6 +106,40 @@ void main() {
     await manager.logout();
     await root.delete(recursive: true);
   });
+  test(
+    'account invalidation immediately stops playback and rejects late load',
+    () async {
+      flow.dispose();
+      final changes = ChangeNotifier();
+      var current = true;
+      flow = AudioPlayback(
+        store,
+        urls,
+        port,
+        clock: () => now,
+        requireCurrent: () {
+          if (!current) throw StateError('changed');
+        },
+        accountChanges: changes,
+      );
+      port.pending = Completer<int>();
+      port.loading = Completer<void>();
+      final started = flow.start(id);
+      await port.loading!.future.timeout(const Duration(seconds: 5));
+      final stops = port.stops;
+      current = false;
+      changes.notifyListeners();
+      expect(port.stops, stops + 1);
+      expect(flow.phase, PlaybackPhase.unavailable);
+      port.pending!.complete(10000);
+      await started;
+      expect(port.plays, 0);
+      current = true;
+      await flow.start(id);
+      expect(port.plays, 0);
+      changes.dispose();
+    },
+  );
   Future<void> local() async => store.preserveDownloadedAudio(
     owner,
     id,

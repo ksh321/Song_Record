@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.*;
 class OperationsTests {
  @Test void countsUniqueAccountsDistinctSavedTargetsAndCommittedEventsOnly(){
   var db=new JdbcTemplate(new DriverManagerDataSource("jdbc:h2:mem:obs_"+UUID.randomUUID()+";MODE=MySQL;DB_CLOSE_DELAY=-1","sa",""));
+  db.execute("CREATE TABLE app_user(id BINARY(16) PRIMARY KEY,status VARCHAR(16) DEFAULT 'ACTIVE')");
   db.execute("CREATE TABLE operations_observation(id BINARY(16) PRIMARY KEY,actor_id BINARY(16),target_id BINARY(16),actor_kind VARCHAR(16),action VARCHAR(32),result VARCHAR(32),status_code INT,duration_ms BIGINT,observed_at TIMESTAMP,sync_change_backlog BIGINT)");OperationsObservationDatabaseChecks.verify(db);
  }
  @Test void requestBodyAndUrlSecretsNeverReachRecorderAndThreadStateClears()throws Exception{

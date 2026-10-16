@@ -22,6 +22,24 @@ final class UploadFixtureTransport implements UploadTransport {
   bool failNetwork = false;
   int approvalStatus = 201, putStatus = 200, putCount = 0;
   final order = <String>[];
+  int completionStatus = 202, completionCount = 0;
+  @override
+  Future<UploadResponse> complete(
+    UploadWork w,
+    AuthSession s,
+    UploadGuard g,
+  ) async {
+    await g();
+    completionCount++;
+    return UploadResponse(
+      completionStatus,
+      jsonEncode({
+        'attempt_id': w.attemptId,
+        'state': completionStatus == 200 ? 'COMMITTED' : 'VERIFYING',
+      }),
+    );
+  }
+
   Future<void> Function()? beforeReply;
   @override
   Future<UploadResponse> authorize(

@@ -9,13 +9,14 @@ def once():
  if not target:raise RuntimeError('OPERATIONS_API_UNAVAILABLE')
  raw=runtime.run(['docker','exec',target,'java','-Dloader.main=com.ksh321.songrecord.api.operations.OperationsOperator','-cp','/app/api.jar','org.springframework.boot.loader.launch.PropertiesLauncher'])
  if len(raw)>1000000:raise RuntimeError('OPERATIONS_SNAPSHOT_TOO_LARGE')
- report=json.loads(raw);failures=0
+ report=json.loads(raw);failures=0;retention_failures=0
  for role in ('api','worker'):
   # Values stay in process memory; only fixed failure markers are counted.
   logs=runtime.run(['docker','logs','--since','1h','--tail','20000',targets[role]])
   if len(logs)>4000000 or logs.count(b'\n')>=20000:raise RuntimeError('OPERATIONS_LOG_COVERAGE_UNCONFIRMED')
   failures+=sum(logs.count(marker) for marker in (b'operations_observation_failed',b'operations_job_observation_failed',b'operations_job_observer_failed'))
- report['observation_write_failures_last_hour']=failures;report['status']='PASS' if failures==0 else 'FAIL'
+  retention_failures+=logs.count(b'operations_retention_failed')
+ report['observation_write_failures_last_hour']=failures;report['observation_retention_failures_last_hour']=retention_failures;report['status']='PASS' if failures==retention_failures==0 else 'FAIL'
  atomic(DIRECTORY/'latest.json',report);return report
 def watch():
  import msvcrt

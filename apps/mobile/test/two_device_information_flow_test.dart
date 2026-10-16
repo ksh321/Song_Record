@@ -238,6 +238,10 @@ void main() {
       received = (await a.readMetadata(LocalEntity.recording, id))!;
       expect(received.revision, 3);
       expect(jsonDecode(received.serverJson!)['tier'], 'A');
+      expect(
+        jsonDecode(received.serverJson!)['file'],
+        (fixture['save_response'] as Map)['file'],
+      );
       expect(jsonDecode(received.serverJson!)['note'], 'retained note');
       expect((await a.readChangeFeedPosition())!.cursor, 3);
       expect(await audioA.readAsBytes(), [1, 3, 5, 7]);

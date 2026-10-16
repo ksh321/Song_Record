@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.util.Base64
 
 plugins {
     id("com.android.application")
@@ -19,6 +20,17 @@ if (releasePropertiesPath != null) {
     require(file(releaseProperties.getProperty("storeFile")).isFile) {
         "Song_Record release keystore is unavailable"
     }
+}
+
+// Flutter supplies the same public SDK setting to Dart and the Android callback.
+val dartDefines = providers.gradleProperty("dart-defines").orNull.orEmpty()
+    .split(',').filter { it.isNotEmpty() }.associate {
+        val entry = String(Base64.getDecoder().decode(it), Charsets.UTF_8)
+        entry.substringBefore('=') to entry.substringAfter('=', "")
+    }
+val stagingKakaoKey = dartDefines["KAKAO_NATIVE_APP_KEY"].orEmpty()
+require(stagingKakaoKey.isEmpty() || Regex("[a-fA-F0-9]{32}").matches(stagingKakaoKey)) {
+    "Song_Record public Kakao SDK configuration is invalid"
 }
 
 android {
@@ -73,7 +85,17 @@ android {
         create("staging") {
             dimension = "environment"
             applicationIdSuffix = ".staging"
+            manifestPlaceholders["kakaoScheme"] =
+                if (stagingKakaoKey.isEmpty()) "kakao-unconfigured" else "kakao$stagingKakaoKey"
             resValue("string", "app_name", "노래기록 STAGING")
+        }
+        // Same staging service environment, separate installation/signing identity.
+        create("beta") {
+            dimension = "environment"
+            applicationIdSuffix = ".beta"
+            manifestPlaceholders["kakaoScheme"] =
+                if (stagingKakaoKey.isEmpty()) "kakao-unconfigured" else "kakao$stagingKakaoKey"
+            resValue("string", "app_name", "노래기록 베타")
         }
         create("prod") {
             dimension = "environment"
@@ -99,12 +121,14 @@ android {
 }
 
 gradle.taskGraph.whenReady {
-    val packagesProduction = allTasks.any { it.name in setOf(
+    val packagesSignedRelease = allTasks.any { it.name in setOf(
         "assembleProdRelease", "bundleProdRelease", "packageProdRelease",
-        "signProdReleaseBundle", "validateSigningProdRelease"
+        "signProdReleaseBundle", "validateSigningProdRelease",
+        "assembleBetaRelease", "bundleBetaRelease", "packageBetaRelease",
+        "signBetaReleaseBundle", "validateSigningBetaRelease"
     ) }
-    require(!packagesProduction || releasePropertiesPath != null) {
-        "Song_Record production release requires a private upload key; debug signing is prohibited"
+    require(!packagesSignedRelease || releasePropertiesPath != null) {
+        "Song_Record beta/production release requires a private upload key; debug signing is prohibited"
     }
 }
 

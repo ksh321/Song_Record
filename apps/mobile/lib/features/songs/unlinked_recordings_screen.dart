@@ -9,9 +9,15 @@ import 'my_song_detail.dart';
 typedef UnlinkedWatch = Stream<List<Map<String, dynamic>>> Function();
 
 class UnlinkedRecordingsScreen extends StatefulWidget {
-  const UnlinkedRecordingsScreen({required this.watch, this.auth, super.key});
+  const UnlinkedRecordingsScreen({
+    required this.watch,
+    this.auth,
+    this.onOpenRecording,
+    super.key,
+  });
   final UnlinkedWatch watch;
   final AuthController? auth;
+  final ValueChanged<String>? onOpenRecording;
   @override
   State<UnlinkedRecordingsScreen> createState() =>
       _UnlinkedRecordingsScreenState();
@@ -82,7 +88,12 @@ class _UnlinkedRecordingsScreenState extends State<UnlinkedRecordingsScreen> {
                     for (final r in recordings)
                       Padding(
                         padding: const EdgeInsets.only(top: AppSpacing.sm),
-                        child: RecordingRow(recording: r),
+                        child: RecordingRow(
+                          recording: r,
+                          onTap: widget.onOpenRecording == null
+                              ? null
+                              : () => widget.onOpenRecording!(r.id.value),
+                        ),
                       ),
                   ],
                 );

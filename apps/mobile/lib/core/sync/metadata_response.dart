@@ -277,8 +277,24 @@ Map<String, Object?> decodeMetadataSnapshot(
           'tag_ids',
           'tags',
           'tier',
+          'file',
         },
       );
+      if (value.containsKey('file')) {
+        require(
+          value['metadata_state'] == 'SAVED' &&
+              validRecordingFileSpec(value['file']),
+        );
+        final baseline = m.basePayload == null
+            ? null
+            : decodeWireJson(m.basePayload!);
+        if (baseline is Map<String, dynamic> && baseline.containsKey('file')) {
+          require(
+            canonicalJson(value['file'] as Map<String, dynamic>) ==
+                canonicalJson(baseline['file'] as Map<String, dynamic>),
+          );
+        }
+      }
       for (final key in [
         'metadata_state',
         'version_code',

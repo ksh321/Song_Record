@@ -1,0 +1,74 @@
+# Include inside http only after verifying the default IP server still restricts
+# app API access to the two previously approved client IP addresses.
+# This draft is not loaded by any runtime until the exact public scope is approved.
+server {
+ listen 0.0.0.0:443 ssl;
+ server_name song-record-beta-ksh321.duckdns.org;
+ ssl_certificate /etc/letsencrypt/live/experiment-domain/fullchain.pem;
+ ssl_certificate_key /etc/letsencrypt/live/experiment-domain/privkey.pem;
+ ssl_protocols TLSv1.2 TLSv1.3;
+ client_max_body_size 1m;
+ add_header X-Content-Type-Options nosniff always;
+ add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+ location = / { return 302 /privacy-policy/; }
+ location = /privacy-policy { return 308 /privacy-policy/; }
+ location = /privacy-policy/ {
+  rewrite ^ /privacy-policy/index.html last;
+ }
+ location = /privacy-policy/index.html {
+  limit_except GET { deny all; }
+  alias /config/beta-web/index.html;
+  default_type text/html;
+  add_header Content-Security-Policy "default-src 'none'; style-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'" always;
+  add_header X-Content-Type-Options nosniff always;
+  add_header Cache-Control no-store always;
+ }
+ location = /privacy-policy/style.css {
+  limit_except GET { deny all; }
+  alias /config/beta-web/style.css;
+  default_type text/css;
+  add_header X-Content-Type-Options nosniff always;
+ }
+
+ # The existing backend still verifies provider proof, nonce, owner, device,
+ # explicit deletion consent and protected status receipt. No login shortcut.
+ location ~ ^/account-deletion(?:/(?:index\.html|main\.js|style\.css))?$ {
+  limit_except GET { deny all; }
+  limit_req zone=experiment burst=20 nodelay;
+  include /config/beta-deletion-upstream.conf;
+ }
+ location = /v1/account/web/configuration {
+  limit_except GET { deny all; }
+  limit_req zone=experiment burst=20 nodelay;
+  include /config/beta-deletion-upstream.conf;
+ }
+ location = /v1/account/web/kakao-callback {
+  limit_except GET { deny all; }
+  limit_req zone=experiment burst=20 nodelay;
+  include /config/beta-deletion-upstream.conf;
+ }
+ location = /v1/account/web/challenges {
+  limit_except POST { deny all; }
+  limit_req zone=experiment burst=20 nodelay;
+  include /config/beta-deletion-upstream.conf;
+ }
+ location = /v1/account/web/preparations {
+  limit_except POST { deny all; }
+  limit_req zone=experiment burst=20 nodelay;
+  include /config/beta-deletion-upstream.conf;
+ }
+ location = /v1/account/deletion-requests {
+  limit_except POST { deny all; }
+  limit_req zone=experiment burst=20 nodelay;
+  include /config/beta-deletion-upstream.conf;
+ }
+ location ~ "^/v1/account/deletion-status/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" {
+  limit_except GET { deny all; }
+  limit_req zone=experiment burst=20 nodelay;
+  include /config/beta-deletion-upstream.conf;
+ }
+ # Auth sessions, registrations, uploads, downloads, app API, admin and DB
+ # have no route on this new public web hostname.
+ location / { return 404; }
+}

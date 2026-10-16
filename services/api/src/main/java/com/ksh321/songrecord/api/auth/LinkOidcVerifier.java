@@ -14,13 +14,19 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 /** Per-request nonce, exact audience, recent issuance and trusted keys; no email matching. */
 public final class LinkOidcVerifier {
     private final DefaultJWTProcessor<SecurityContext> processor = new DefaultJWTProcessor<>();
-    private final String provider, audience;
+    private final String provider;
+    private final Set<String> audiences;
     private final Set<String> issuers;
     private final Clock clock;
     public LinkOidcVerifier(String provider, String audience, Set<String> issuers,
                             JWKSource<SecurityContext> keys, Clock clock) {
-        if (audience == null || audience.isBlank()) throw new IllegalArgumentException("OIDC audience required");
-        this.provider=provider; this.audience=audience; this.issuers=issuers; this.clock=clock;
+        this(provider,Set.of(audience),issuers,keys,clock);
+    }
+    public LinkOidcVerifier(String provider, Set<String> audiences, Set<String> issuers,
+                            JWKSource<SecurityContext> keys, Clock clock) {
+        if (audiences == null || audiences.isEmpty() || audiences.size()>2 || audiences.stream().anyMatch(a->a==null || a.isBlank()))
+            throw new IllegalArgumentException("Exact OIDC audiences required");
+        this.provider=provider; this.audiences=Set.copyOf(audiences); this.issuers=Set.copyOf(issuers); this.clock=clock;
         processor.setJWSKeySelector(new JWSVerificationKeySelector<>(JWSAlgorithm.RS256,keys));
         // All claim checks below use the injected clock and the specific challenge.
         processor.setJWTClaimsSetVerifier((claims, context)->{});
@@ -33,7 +39,7 @@ public final class LinkOidcVerifier {
                     || token.getHeader().getKeyID().isBlank()) throw ProofErrors.invalid();
             var c=processor.process(token,null); var now=clock.instant();
             String nonce=c.getStringClaim("nonce");
-            if(!issuers.contains(c.getIssuer()==null?"":c.getIssuer()) || !c.getAudience().equals(java.util.List.of(audience))
+            if(!issuers.contains(c.getIssuer()==null?"":c.getIssuer()) || c.getAudience().size()!=1 || !audiences.contains(c.getAudience().get(0))
                     || c.getSubject()==null || c.getSubject().isBlank() || c.getSubject().length()>255
                     || c.getIssueTime()==null || c.getExpirationTime()==null
                     || !c.getExpirationTime().toInstant().isAfter(now)

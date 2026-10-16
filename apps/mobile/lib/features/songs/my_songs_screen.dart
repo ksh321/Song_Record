@@ -26,10 +26,12 @@ class MySongsScreen extends StatefulWidget {
     this.prepareEdit,
     this.prepareRepresentative,
     this.watchUnlinked,
+    this.onOpenRecording,
     this.trash,
     super.key,
   });
   final UnlinkedWatch? watchUnlinked;
+  final ValueChanged<String>? onOpenRecording;
   final MySongsWatch watch;
   final VoidCallback onFindSong;
   final AuthController? auth;
@@ -279,6 +281,7 @@ class _MySongsScreenState extends State<MySongsScreen> {
                       builder: (_) => UnlinkedRecordingsScreen(
                         watch: widget.watchUnlinked!,
                         auth: widget.auth,
+                        onOpenRecording: widget.onOpenRecording,
                       ),
                     ),
                   ),

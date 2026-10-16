@@ -71,7 +71,10 @@ final class AudioPlayback extends ChangeNotifier {
     this.urls,
     this.player, {
     DateTime Function()? clock,
+    this.requireCurrent,
+    this.accountChanges,
   }) : clock = clock ?? DateTime.now {
+    accountChanges?.addListener(_accountChanged);
     subscription = player.events.listen(
       _event,
       onError: (_) {
@@ -84,6 +87,22 @@ final class AudioPlayback extends ChangeNotifier {
   final PlaybackUrlProvider urls;
   final AudioPlayerPort player;
   final DateTime Function() clock;
+  final VoidCallback? requireCurrent;
+  final Listenable? accountChanges;
+  bool _invalidated = false;
+  void _accountChanged() {
+    if (_closed || _invalidated) return;
+    try {
+      store.requireActive();
+      requireCurrent?.call();
+    } catch (_) {
+      _invalidated = true;
+      _token++;
+      unawaited(_stop());
+      _set(PlaybackPhase.unavailable);
+    }
+  }
+
   late final StreamSubscription<PlayerEvent> subscription;
   PlaybackPhase phase = PlaybackPhase.idle;
   int position = 0, duration = 0, _token = 0;
@@ -92,7 +111,10 @@ final class AudioPlayback extends ChangeNotifier {
   bool _renewing = false, _closed = false;
   Future<void> _guard(int token) async {
     store.requireActive();
-    if (_closed || token != _token) throw StateError('Playback superseded');
+    requireCurrent?.call();
+    if (_closed || _invalidated || token != _token) {
+      throw StateError('Playback superseded');
+    }
   }
 
   void _set(PlaybackPhase next) {
@@ -247,6 +269,8 @@ final class AudioPlayback extends ChangeNotifier {
     if (_closed || event.token != _token) return;
     try {
       store.requireActive();
+      requireCurrent?.call();
+      if (_invalidated) throw StateError('Playback account changed');
     } catch (_) {
       unawaited(_stop());
       _fail();
@@ -299,6 +323,7 @@ final class AudioPlayback extends ChangeNotifier {
 
   @override
   void dispose() {
+    accountChanges?.removeListener(_accountChanged);
     _closed = true;
     _token++;
     unawaited(subscription.cancel());

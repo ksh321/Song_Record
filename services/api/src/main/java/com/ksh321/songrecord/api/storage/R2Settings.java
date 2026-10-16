@@ -7,10 +7,11 @@ import org.springframework.core.env.Environment;
 final class R2Settings {
     final String environment,role,temporaryBucket,finalBucket,accessKey,secretKey;
     final URI endpoint;
-    private R2Settings(String env,String role,String account,String temporary,String target,String access,String secret) {
+    private R2Settings(String env,String role,String account,String temporary,String target,String access,String secret,boolean experiment) {
         if(!env.matches("dev|prod") || !role.matches("api|worker|playback") || !account.matches("[a-f0-9]{32}"))throw invalid();
         if(!temporary.matches("[a-z0-9][a-z0-9-]{1,61}[a-z0-9]") || !target.matches("[a-z0-9][a-z0-9-]{1,61}[a-z0-9]")
-            || !temporary.endsWith("-"+env+"-temporary") || !target.endsWith("-"+env+"-final"))throw invalid();
+            || !(experiment ? temporary.equals("song-record-experiment-temporary") && target.equals("song-record-experiment-final")
+                : temporary.endsWith("-"+env+"-temporary") && target.endsWith("-"+env+"-final")))throw invalid();
         if(access.isBlank() || secret.isBlank())throw invalid();
         this.environment=env;this.role=role;temporaryBucket=temporary;finalBucket=target;accessKey=access;secretKey=secret;
         endpoint=URI.create("https://"+account+".r2.cloudflarestorage.com");
@@ -20,7 +21,7 @@ final class R2Settings {
         if(!name.matches("dev|prod") || !role.matches("api|worker|playback"))throw invalid();
         String prefix="songrecord.storage."+name+".";
         return new R2Settings(name,role,required(env,prefix+"account-id"),required(env,prefix+"temporary-bucket"),
-            required(env,prefix+"final-bucket"),required(env,prefix+role+".access-key"),required(env,prefix+role+".secret-key"));
+            required(env,prefix+"final-bucket"),required(env,prefix+role+".access-key"),required(env,prefix+role+".secret-key"),experimentScope(env,name));
     }
     static R2Settings playbackFrom(Environment env) {
         String name=required(env,"songrecord.storage.environment");
@@ -29,7 +30,16 @@ final class R2Settings {
         // Dedicated final reader: no fallback to an uploader or worker.
         return new R2Settings(name,"playback",required(env,prefix+"account-id"),
             required(env,prefix+"temporary-bucket"),required(env,prefix+"final-bucket"),
-            required(env,prefix+"playback.access-key"),required(env,prefix+"playback.secret-key"));
+            required(env,prefix+"playback.access-key"),required(env,prefix+"playback.secret-key"),experimentScope(env,name));
+    }
+    private static boolean experimentScope(Environment env,String name){
+        var scope=env.getProperty("songrecord.deployment.storage-scope","default");
+        if(scope.equals("default"))return false;
+        if(!scope.equals("experiment")||!name.equals("dev")||!"staging".equals(env.getProperty("songrecord.deployment.environment"))
+            ||!env.acceptsProfiles(org.springframework.core.env.Profiles.of("staging"))
+            ||env.acceptsProfiles(org.springframework.core.env.Profiles.of("dev","prod","bootstrap","candidate-fixtures","test","development"))
+            ||!"song_record_experiment".equals(env.getProperty("DB_NAME"))||!"song_record_experiment".equals(env.getProperty("DB_USER")))throw invalid();
+        return true;
     }
     private static String required(Environment e,String k){String v=e.getProperty(k);if(v==null)throw invalid();return v;}
     private static IllegalStateException invalid(){return new IllegalStateException("R2 configuration missing or invalid; inspect server-only environment/role settings");}

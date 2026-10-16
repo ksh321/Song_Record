@@ -14,7 +14,7 @@ public final class CostOperator {
             if(args.length!=0)throw new IllegalArgumentException();
             var values=new Properties();values.load(System.in);
             if(!values.stringPropertyNames().equals(java.util.Set.of("observed","krw")))throw new IllegalArgumentException();
-            var source=new DriverManagerDataSource("jdbc:mysql://mysql:3306/song_record_validation?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true","song_record_validation",Files.readString(Path.of("/run/runtime/DB_PASSWORD")).strip());
+            var source=PrivateOperationsDataSource.open();
             CostGate.observe(new JdbcTemplate(source),new DataSourceTransactionManager(source),Instant.now(),Instant.parse(values.getProperty("observed")),Long.parseLong(values.getProperty("krw")));
             System.out.println("COST_GATE_APPLIED");
         } catch(Exception error) { System.err.println("COST_GATE_UNCONFIRMED: values suppressed");System.exit(2); }

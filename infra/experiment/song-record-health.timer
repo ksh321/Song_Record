@@ -1,0 +1,11 @@
+[Unit]
+Description=Check experiment monitor freshness every five minutes without AI
+
+[Timer]
+OnBootSec=4min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=song-record-health.service
+
+[Install]
+WantedBy=timers.target

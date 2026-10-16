@@ -589,6 +589,17 @@ final class AccountStore {
   }
 
   Future<UploadWork?> claimUpload() => _run(_uploads.claim);
+  Future<UploadWork?> claimUploadCompletion() => _run(_uploads.claimCompletion);
+  Future<bool> uploadCompletionCurrent(UploadWork w) =>
+      _run(() => _uploads.completionCurrent(w));
+  Future<void> settleUploadCompletion(
+    UploadWork w,
+    String reason, {
+    bool retry = false,
+    bool stored = false,
+  }) => _run(
+    () => _uploads.settleCompletion(w, reason, retry: retry, stored: stored),
+  );
   Future<bool> uploadCurrent(UploadWork work) =>
       _run(() => _uploads.current(work));
   Future<bool> saveUploadTicket(UploadWork work, String attempt) =>
@@ -896,6 +907,18 @@ final class AccountStore {
       current |= value['current_recording_id'] == id;
       pending |= value['pending_recording_id'] == id;
     }
+    final mapping = await readMappingEligibility(_database);
+    final pendingRows = await _database
+        .customSelect(
+          "SELECT op_id FROM local_mutations WHERE entity_type='RECORDING' AND entity_id=? AND queue_state<>'ACKED'",
+          variables: [Variable(id)],
+        )
+        .get();
+    final pendingInformation = pendingRows.any(
+      (row) =>
+          !mapping.superseded.contains(row.read<String>('op_id')) ||
+          mapping.blocked.contains(row.read<String>('op_id')),
+    );
     requireActive();
     return {
       'record':
@@ -904,14 +927,7 @@ final class AccountStore {
       'draft':
           (record?.localJson != null &&
               record?.localJson != record?.serverJson) ||
-          (await _database
-                      .customSelect(
-                        "SELECT COUNT(*) AS n FROM local_mutations WHERE entity_type='RECORDING' AND entity_id=? AND queue_state<>'ACKED'",
-                        variables: [Variable(id)],
-                      )
-                      .getSingle())
-                  .read<int>('n') >
-              0,
+          pendingInformation,
       'deleted': record?.tombstone ?? false,
       'asset': asset?.tombstone == true
           ? null

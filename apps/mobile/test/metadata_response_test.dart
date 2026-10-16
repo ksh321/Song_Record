@@ -18,6 +18,7 @@ MutationRequest request({
   String? payload,
   String? method,
   String? path,
+  String? basePayload,
 }) {
   final wire =
       body ??
@@ -37,6 +38,7 @@ MutationRequest request({
       baseRevision: operation == LocalOperation.create ? 0 : 5,
       payload: payload ?? wire,
       attemptCount: 0,
+      basePayload: basePayload,
     ),
     method: method ?? (operation == LocalOperation.create ? 'POST' : 'PATCH'),
     path: path ?? '/v1/songs',
@@ -107,6 +109,58 @@ MutationResponse creation({
 }
 
 void main() {
+  test(
+    'saved recording file projection is accepted only when valid and unchanged',
+    () {
+      final file = <String, Object?>{
+        'sha256': 'a' * 64,
+        'size_bytes': 100,
+        'duration_ms': 1000,
+        'codec': 'AAC_LC',
+        'sample_rate': 48000,
+        'channels': 1,
+        'capture_integrity': 'VALIDATED',
+      };
+      final baseline = recording(revision: 5)
+        ..addAll({
+          'metadata_state': 'SAVED',
+          'title_snapshot': 'test',
+          'artist_snapshot': 'test',
+          'key_mode': 'ORIGINAL',
+          'key_shift': 0,
+          'file': file,
+        });
+      final response = Map<String, Object?>.from(baseline)
+        ..addAll({'revision': 6, 'tier': 'A'});
+      final r = request(
+        entity: LocalEntity.recording,
+        operation: LocalOperation.patch,
+        path: '/v1/recordings/${id(10)}/tier',
+        body: jsonEncode({'base_revision': 5, 'tier': 'A'}),
+        basePayload: jsonEncode(baseline),
+      );
+      expect(
+        decodeMetadataSnapshot(
+          r,
+          MutationResponse(200, jsonEncode(response)),
+        )['file'],
+        file,
+      );
+      for (final bad in [
+        <String, Object?>{...file, 'sha256': 'b' * 64},
+        <String, Object?>{...file, 'size_bytes': -1},
+        <String, Object?>{...file, 'unexpected': true},
+      ]) {
+        expect(
+          () => decodeMetadataSnapshot(
+            r,
+            MutationResponse(200, jsonEncode({...response, 'file': bad})),
+          ),
+          throwsFormatException,
+        );
+      }
+    },
+  );
   test('canonical receipt retains wire identity and exact envelope text', () {
     final r = request();
     final body =

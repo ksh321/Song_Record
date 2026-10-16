@@ -61,7 +61,7 @@ final class UploadDispatcher {
         if (response.status == 401 || response.status == 403) {
           await store.settleUpload(work, 'BLOCKED', 'AUTH');
           onAuthenticationBlocked?.call();
-          break;
+          return uploaded;
         }
         if (response.status != 200 && response.status != 201) {
           final retry = response.status >= 500;
@@ -129,6 +129,68 @@ final class UploadDispatcher {
       } on StateError {
         store.requireActive();
         await store.settleUpload(work, 'BLOCKED', 'FILE_OR_STATE_CHANGED');
+      }
+    }
+    for (var i = 0; i < limit; i++) {
+      final auth = await session();
+      store.requireActive();
+      if (auth.userId != store.userId) {
+        throw StateError('Upload account mismatch');
+      }
+      final work = await store.claimUploadCompletion();
+      if (work == null) break;
+      Future<void> guard() async {
+        store.requireActive();
+        if (!await store.uploadCompletionCurrent(work)) {
+          throw const UploadCancelled();
+        }
+      }
+
+      try {
+        final response = await transport.complete(work, auth, guard);
+        await guard();
+        if (response.status == 401 || response.status == 403) {
+          await store.settleUploadCompletion(work, 'COMPLETION_AUTH');
+          onAuthenticationBlocked?.call();
+          break;
+        }
+        if (response.status >= 500) {
+          await store.settleUploadCompletion(
+            work,
+            'COMPLETION_RETRY',
+            retry: true,
+          );
+          continue;
+        }
+        if (response.status != 200 && response.status != 202) {
+          await store.settleUploadCompletion(
+            work,
+            'COMPLETION_HTTP_${response.status}',
+          );
+          continue;
+        }
+        final body = jsonDecode(response.body);
+        if (body is! Map<String, dynamic> ||
+            body['attempt_id'] != work.attemptId ||
+            !(response.status == 202 && body['state'] == 'VERIFYING' ||
+                response.status == 200 && body['state'] == 'COMMITTED')) {
+          throw const FormatException('Invalid completion response');
+        }
+        await store.settleUploadCompletion(
+          work,
+          'VERIFICATION_ACCEPTED',
+          stored: body['state'] == 'COMMITTED',
+        );
+      } on UploadCancelled {
+        // The account/claim fence retains the original and prevents stale writes.
+      } on UploadNetworkFailure {
+        await store.settleUploadCompletion(
+          work,
+          'COMPLETION_RETRY',
+          retry: true,
+        );
+      } on FormatException {
+        await store.settleUploadCompletion(work, 'COMPLETION_INVALID_RESPONSE');
       }
     }
     return uploaded;

@@ -1,0 +1,11 @@
+[Unit]
+Description=Verify the daily experiment backup hourly without AI
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+Persistent=true
+Unit=song-record-backup.service
+
+[Install]
+WantedBy=timers.target

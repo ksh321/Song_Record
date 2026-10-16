@@ -92,6 +92,12 @@ public final class RecordingEditing {
     }
     public Map<String,Object> snapshot(UUID owner,UUID recording){
         var result=new LinkedHashMap<>(drafts.snapshot(owner,recording));
+        // Later metadata revisions must retain the immutable specification acknowledged at save.
+        // The account predicate is required even though recording IDs are globally unique.
+        var files=jdbc.query("SELECT sha256,size_bytes,duration_ms,codec,sample_rate,channels,capture_integrity FROM recording_file_spec WHERE user_id=? AND recording_id=?",(rs,n)->Map.<String,Object>of(
+            "sha256",rs.getString("sha256"),"size_bytes",rs.getLong("size_bytes"),"duration_ms",rs.getLong("duration_ms"),
+            "codec",rs.getString("codec"),"sample_rate",rs.getInt("sample_rate"),"channels",rs.getInt("channels"),"capture_integrity",rs.getString("capture_integrity")),bytes(owner),bytes(recording));
+        if(!files.isEmpty())result.put("file",files.getFirst());
         jdbc.query("SELECT tier,condition_code,condition_name_snapshot FROM recording WHERE user_id=? AND id=?",rs->{for(String k:List.of("tier","condition_code","condition_name_snapshot"))result.put(k,rs.getString(k));},bytes(owner),bytes(recording));
         var tags=jdbc.query("SELECT tag_id,name_snapshot FROM recording_tag WHERE user_id=? AND recording_id=? ORDER BY tag_id",(rs,n)->{var b=java.nio.ByteBuffer.wrap(rs.getBytes(1));return Map.of("id",new UUID(b.getLong(),b.getLong()).toString(),"name_snapshot",rs.getString(2));},bytes(owner),bytes(recording));
         result.put("tag_ids",tags.stream().map(t->t.get("id")).toList());result.put("tags",tags);return result;

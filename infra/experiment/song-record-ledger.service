@@ -1,0 +1,13 @@
+[Unit]
+Description=Mirror experiment deletion outbox into the independent encrypted backup ledger
+After=docker.service song-record-experiment.service
+Requires=docker.service
+ConditionPathExists=/etc/song-record-experiment/backup-experiment.json
+ConditionPathExists=!/etc/song-record-experiment/user-requested-pause
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/bin/python3 /opt/song-record-experiment/operations/ledger.py
+TimeoutStartSec=180

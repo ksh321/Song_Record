@@ -26,6 +26,9 @@ class OverlayTests(unittest.TestCase):
     def test_unknown_user_owned_table_fails_closed(self):
         self.tables['unreviewed']={'columns':['user_id'],'parents':[]}
         with self.assertRaises(BackupError):statements(self.db,self.tables,[self.row])
+    def test_partial_observation_schema_cannot_silently_skip_erasure(self):
+        self.tables['operations_observation']={'columns':['actor_id','target_id'],'parents':[]}
+        with self.assertRaisesRegex(BackupError,'RESTORE_OBSERVATION_SCHEMA_UNCONFIRMED'):statements(self.db,self.tables,[self.row])
     def test_owner_children_deleted_before_owner_without_cross_owner_predicate(self):
         row={**self.row,'type':'USER','entity':self.owner};row.pop('generation')
         sql=statements(self.db,self.tables,[row]).decode()

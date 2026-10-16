@@ -103,6 +103,7 @@ void main() {
     'small unlinked count entry opens saved snapshot list independent of song query and view',
     (tester) async {
       final r = {...fixture.recording(30), 'song_id': null};
+      String? opened;
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.dark(),
@@ -111,6 +112,7 @@ void main() {
               watch: () => Stream.value([MySong(fixture.song())]),
               onFindSong: () {},
               watchUnlinked: () => Stream.value([r]),
+              onOpenRecording: (id) => opened = id,
             ),
           ),
         ),
@@ -129,6 +131,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('곡 미연결 녹음 1개'), findsOneWidget);
       expect(find.textContaining('녹음 당시 제목'), findsOneWidget);
+      await tester.tap(find.textContaining('녹음 당시 제목'));
+      await tester.pump();
+      expect(opened, fixture.id(30));
       expect(tester.takeException(), isNull);
     },
   );

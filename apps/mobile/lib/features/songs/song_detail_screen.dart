@@ -11,6 +11,7 @@ import '../../core/widgets/recording_roles_card.dart';
 import '../../core/widgets/recording_row.dart';
 import '../../core/widgets/selection_sheet.dart';
 import '../auth/auth_session.dart';
+import '../recorder/recording_audio_panel.dart';
 import '../trash/trash_screens.dart';
 import '../trash/trash_workflow.dart';
 import 'my_song_detail.dart';
@@ -353,6 +354,7 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
         Text(view.dateLabel),
         Text(view.durationLabel),
         Text(view.fileAvailability.label),
+        RecordingAudioPanel(view.id.value),
         const SizedBox(height: AppSpacing.md),
         const Text('녹음 당시 메모'),
         Text(snapshot.note.isEmpty ? '작성한 메모가 없어요.' : snapshot.note),

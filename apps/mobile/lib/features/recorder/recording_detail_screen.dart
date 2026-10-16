@@ -8,6 +8,7 @@ import '../../core/sync/local_repository.dart';
 import '../../core/theme/app_tokens.dart';
 import '../trash/trash_screens.dart';
 import '../trash/trash_workflow.dart';
+import 'recording_audio_panel.dart';
 import 'recording_input_screen.dart';
 import 'recording_relink_screen.dart';
 
@@ -68,6 +69,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               Text(row['artist_snapshot'] as String),
+              RecordingAudioPanel(widget.id),
               Text(
                 '키: ${formatMusicalKey(MusicalKey(mode: KeyMode.values.firstWhere((k) => k.name.toUpperCase() == row['key_mode']), shift: row['key_shift'] as int))} · 버전: ${formatVersionCode(VersionCode.values.firstWhere((v) => v.name.toUpperCase() == row['version_code']))}',
               ),

@@ -52,7 +52,14 @@ class RecordingEditingTests {
         for(String key:List.of("title_snapshot","artist_snapshot","key_mode","key_shift","version_code")){var b=new LinkedHashMap<String,Object>();b.put("base_revision",2);b.put(key,null);assertThat(edit(b).getStatus()).as(key).isEqualTo(400);}
         assertThat(edit(Map.of("base_revision",2,"metadata_state","DRAFT")).getStatus()).isEqualTo(409);
         assertThat(edit(Map.of("base_revision",2,"metadata_state","SAVED","file",file)).getStatus()).isEqualTo(409);
-        assertThat(edit(Map.of("base_revision",2,"metadata_state","SAVED","note","edited")).getStatus()).isEqualTo(200);
+        var edited=edit(Map.of("base_revision",2,"metadata_state","SAVED","note","edited"));
+        assertThat(edited.getStatus()).isEqualTo(200);
+        var retained=json.readTree(edited.getContentAsString()).get("file");
+        assertThat(retained.size()).isEqualTo(7);
+        for(String key:List.of("size_bytes","duration_ms","sample_rate","channels"))assertThat(retained.get(key).asLong()).isEqualTo(((Number)file.get(key)).longValue());
+        for(String key:List.of("sha256","codec","capture_integrity"))assertThat(retained.get(key).asText()).isEqualTo(file.get(key));
+        var conflict=edit(Map.of("base_revision",2,"note","stale"));
+        assertThat(conflict.getContentAsString()).contains("REVISION_CONFLICT","\"file\"","a".repeat(64));
         assertThat(setup.setup.count("recording_file_spec")).isEqualTo(1);
     }
     @Test void ownerAuthArchivedStateAndOtherAccountsTags()throws Exception{

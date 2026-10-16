@@ -50,6 +50,28 @@ void main() {
         expect(observed['path'], '/v1/recordings/${work.recordingId}/uploads');
         expect(observed['auth'], 'Bearer synthetic-only');
         expect(observed['operation'], work.operationId);
+        final completion = UploadWork(
+          work.recordingId,
+          work.operationId,
+          uploadFixtureId(40),
+          null,
+          work.claimId,
+          work.size,
+          work.sha256,
+        );
+        final completeResponse = await transport.complete(
+          completion,
+          auth,
+          () async {},
+        );
+        expect(completeResponse.status, 302);
+        expect(calls, 2);
+        expect(
+          observed['path'],
+          '/v1/uploads/${completion.attemptId}/complete',
+        );
+        expect(observed['operation'], completion.attemptId);
+        expect(observed['auth'], 'Bearer synthetic-only');
       } finally {
         await server.close(force: true);
       }

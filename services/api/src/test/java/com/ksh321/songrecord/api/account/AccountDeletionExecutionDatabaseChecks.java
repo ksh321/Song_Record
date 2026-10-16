@@ -21,8 +21,10 @@ public final class AccountDeletionExecutionDatabaseChecks {
   var a=registrations.register(ia,null,"synthetic A");var b=registrations.register(ib,null,"synthetic B");
   var sessions=new SessionService(db,tx,clock,Duration.ofMinutes(15),Duration.ofDays(30));var tokens=sessions.issue(a);var bt=sessions.issue(b);
   var access=new AccountAccess(sessions);var deletion=new AccountDeletion(db,access,(provider,proof,nonce,started)->ia,new IdempotentMutations(db,access,tx,clock),tx,clock);
+  var recordings=new HashMap<UUID,UUID>();
   for(var user:List.of(a,b)){
    var song=RetentionCandidateDatabaseChecks.song(db,user.userId());var recording=RetentionCandidateDatabaseChecks.recording(db,user.userId(),user.deviceId(),song,true,true,"VALIDATED");
+   recordings.put(user.userId(),recording);
    db.update("UPDATE song SET representative_recording_id=? WHERE id=?",bytes(recording),bytes(song));
    db.update("UPDATE recording SET condition_code='GOOD',revision=revision+1 WHERE id=?",bytes(recording));
    // History archives the prior non-null value; the first selection creates none.
@@ -40,11 +42,20 @@ public final class AccountDeletionExecutionDatabaseChecks {
    String auth="Bearer "+tokens.accessToken(),device=a.deviceId().toString();var challenge=deletion.challenge(auth,device,"GOOGLE");var prepared=deletion.prepare(auth,device,(String)challenge.get("challenge_id"),"synthetic verified proof");
    var body=json.writeValueAsString(Map.of("preparation_id",prepared.get("preparation_id"),"reauth_proof",prepared.get("reauth_proof"),"base_revision",prepared.get("base_revision"),"scope","ALL_ACCOUNT_DATA","confirmed",true));
    deletion.accept(auth,device,UUID.randomUUID().toString(),(String)prepared.get("status_token"),body);
-   var keys=new HashSet<>(List.of(a.userId(),b.userId()));var jobs=new JobQueue(db,access,tx,clock,Duration.ofMinutes(2),5);
+   var ownerJob=(byte[])db.queryForMap("SELECT id FROM job WHERE user_id=? AND type='ACCOUNT_DELETE'",bytes(a.userId())).get("id");
+   var crossAudit=UUID.randomUUID();var otherAudit=UUID.randomUUID();
+   db.update("INSERT INTO operations_observation(id,actor_id,target_id,job_id,actor_kind,action,result,status_code,duration_ms,observed_at) VALUES(?,?,?,?,'WORKER','JOB_CLAIM','SUCCESS',0,0,CURRENT_TIMESTAMP)",bytes(UUID.randomUUID()),bytes(UUID.randomUUID()),bytes(recordings.get(a.userId())),ownerJob);
+   db.update("INSERT INTO operations_observation(id,actor_id,target_id,previous_target_id,actor_kind,action,result,status_code,duration_ms,observed_at) VALUES(?,?,?,?,'USER','OTHER','FAILURE',404,1,CURRENT_TIMESTAMP)",bytes(crossAudit),bytes(b.userId()),bytes(recordings.get(a.userId())),bytes(recordings.get(a.userId())));
+   db.update("INSERT INTO operations_observation(id,actor_id,target_id,actor_kind,action,result,status_code,duration_ms,observed_at) VALUES(?,?,?,'USER','SONG_READ','SUCCESS',200,1,CURRENT_TIMESTAMP)",bytes(otherAudit),bytes(b.userId()),bytes(recordings.get(b.userId())));
+   var observationWriter=new com.ksh321.songrecord.api.operations.OperationsRecorder(db,tx);
+   var keys=new HashSet<>(List.of(a.userId(),b.userId()));var jobs=new JobQueue(db,access,tx,clock,Duration.ofMinutes(2),5,observationWriter::job);
    var worker=new AccountDeletionWorker(db,tx,jobs,(owner,fence)->{assertThat(owner).isEqualTo(a.userId());fence.run();keys.remove(owner);},artifacts,clock);
    assertThat(worker.runOnce()).isTrue();assertThat(keys).contains(a.userId());clock.at=clock.at.plusSeconds(121);assertThat(worker.runOnce()).isTrue();
    assertThat(deletion.status((String)prepared.get("preparation_id"),(String)prepared.get("status_token"))).containsEntry("status","COMPLETED");
    assertThat(new DeletionDatabase(db).purged(a.userId())).isTrue();assertThat(keys).containsExactly(b.userId());
+   assertThat(db.queryForObject("SELECT COUNT(*) FROM operations_observation WHERE actor_id=? OR target_id=? OR previous_target_id=? OR job_id=?",Long.class,bytes(a.userId()),bytes(recordings.get(a.userId())),bytes(recordings.get(a.userId())),ownerJob)).isZero();
+   var cross=db.queryForMap("SELECT target_id,previous_target_id FROM operations_observation WHERE id=?",bytes(crossAudit));assertThat(cross.get("target_id")).isNull();assertThat(cross.get("previous_target_id")).isNull();
+   assertThat((byte[])db.queryForMap("SELECT target_id FROM operations_observation WHERE id=?",bytes(otherAudit)).get("target_id")).isEqualTo(bytes(recordings.get(b.userId())));
    assertThat(db.queryForObject("SELECT used_bytes FROM global_storage_usage WHERE id=1",Long.class)).isEqualTo(6291456);
    assertThat(db.queryForObject("SELECT reserved_bytes FROM snapshot_capacity WHERE id=1",Long.class)).isEqualTo(100);
    sessions.authenticate(bt.accessToken(),b.deviceId());assertThat(db.queryForObject("SELECT COUNT(*) FROM recording_file_spec WHERE user_id=?",Long.class,bytes(b.userId()))).isEqualTo(1);

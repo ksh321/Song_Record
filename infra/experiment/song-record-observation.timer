@@ -1,0 +1,11 @@
+[Unit]
+Description=Observe Song Record experiment every five minutes without AI
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=song-record-observation.service
+
+[Install]
+WantedBy=timers.target
