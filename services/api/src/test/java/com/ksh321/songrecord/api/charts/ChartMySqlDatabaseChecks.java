@@ -18,6 +18,20 @@ public final class ChartMySqlDatabaseChecks {
         var ky=new ChartScope(Brand.KY,ChartScope.Period.DAILY);var kyTicket=publication.begin(ky);var kyId=staging.stage(ky,raw.replace("tj","kumyoung").getBytes(StandardCharsets.UTF_8),Instant.now().minusSeconds(1));assertThat(publication.publish(ky,kyTicket,kyId)).isTrue();
         assertThatThrownBy(()->jdbc.update("UPDATE chart_publication SET snapshot_id=NULL WHERE brand='TJ' AND period='MONTHLY'")).isInstanceOf(org.springframework.dao.DataAccessException.class);
         assertThatThrownBy(()->jdbc.update("UPDATE chart_publication SET published_attempt_id=? WHERE brand='TJ' AND period='MONTHLY'",ChartStaging.bytes(UUID.randomUUID()))).isInstanceOf(org.springframework.dao.DataAccessException.class);
-assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(changes);
+        var failLive=new java.util.concurrent.atomic.AtomicBoolean(false);
+        try(var live=ChartCollection.approvedLive((s,left)->{
+            if(failLive.get() && s.equals(scope))throw new ChartCollection.CollectionFailure(ChartCollection.Failure.NETWORK);
+            return raw.replace("\"tj\"","\""+s.providerBrand()+"\"").getBytes(StandardCharsets.UTF_8);
+        },(s,p,t)->{var id=staging.stage(s,p,t);validation.validate(id);return id;},Clock.systemUTC(),new ChartCollection.Lifecycle(){
+            public UUID begin(ChartScope s){return publication.begin(s);}
+            public void success(ChartScope s,UUID a,UUID id){publication.publish(s,a,id);}
+        })){
+            var scheduler=new LiveChartCollectionScheduling(live,21600000,5000);scheduler.tick();
+            var query=new ChartQuery(jdbc,manager);
+            for(var brand:Brand.values())for(var period:ChartScope.Period.values())assertThat(query.read(new ChartScope(brand,period)).items()).hasSize(1);
+            var previous=query.read(scope);failLive.set(true);scheduler.tick();var retained=query.read(scope);
+            assertThat(retained.revision()).isEqualTo(previous.revision());assertThat(retained.fetchedAt()).isEqualTo(previous.fetchedAt());assertThat(retained.stale()).isTrue();
+        }
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(changes);
     }
 }

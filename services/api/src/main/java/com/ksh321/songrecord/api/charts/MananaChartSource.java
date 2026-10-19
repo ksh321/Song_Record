@@ -9,7 +9,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.Flow;
 import static com.ksh321.songrecord.api.charts.ChartCollection.*;
 
-/** Bounded read-only transport. Never registered for production persistence before terms approval. */
+/** Bounded read-only transport. Persistence is separately opt-in; see D12's free-service decision. */
 public final class MananaChartSource implements Source {
     private final URI base;private final HttpClient client;
     public MananaChartSource(){this(URI.create("https://api.manana.kr/"));}

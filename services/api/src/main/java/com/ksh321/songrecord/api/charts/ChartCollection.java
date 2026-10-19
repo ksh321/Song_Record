@@ -6,7 +6,7 @@ import java.util.concurrent.*;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /** Trusted background tick only; no user-request handler calls a provider. */
-public final class ChartCollection {
+public final class ChartCollection implements AutoCloseable {
     @FunctionalInterface public interface Source {byte[] fetch(ChartScope scope,Duration remaining);}
     @FunctionalInterface public interface Sink {UUID stage(ChartScope scope,byte[] payload,Instant fetchedAt);}
     public interface Lifecycle {UUID begin(ChartScope scope);void success(ChartScope scope,UUID attempt,UUID staged);}
@@ -15,18 +15,22 @@ public final class ChartCollection {
     public static final class CollectionFailure extends RuntimeException {
         private final Failure kind;public CollectionFailure(Failure kind){super(kind.name());this.kind=kind;}public Failure kind(){return kind;}
     }
-    private final Source source;private final Sink staging;private final Clock clock;private final boolean fixture;
+    private final Source source;private final Sink staging;private final Clock clock;private final boolean fixture, liveStorageApproved;
     private final Semaphore slots=new Semaphore(2), fetchSlots=new Semaphore(2);
     private final Duration budget;private final Lifecycle lifecycle;
     private final ExecutorService fetching=Executors.newVirtualThreadPerTaskExecutor();
     public ChartCollection(Source source,Sink staging,Clock clock,boolean fixture){this(source,staging,clock,fixture,Duration.ofSeconds(30),NO_PUBLICATION);}
     ChartCollection(Source source,Sink staging,Clock clock,boolean fixture,Duration budget){this(source,staging,clock,fixture,budget,NO_PUBLICATION);}
     public ChartCollection(Source source,Sink staging,Clock clock,boolean fixture,Lifecycle lifecycle){this(source,staging,clock,fixture,Duration.ofSeconds(30),lifecycle);}
-    private ChartCollection(Source source,Sink staging,Clock clock,boolean fixture,Duration budget,Lifecycle lifecycle){this.source=source;this.staging=staging;this.clock=clock;this.fixture=fixture;this.budget=budget;this.lifecycle=Objects.requireNonNull(lifecycle);}
+    private ChartCollection(Source source,Sink staging,Clock clock,boolean fixture,Duration budget,Lifecycle lifecycle){this(source,staging,clock,fixture,budget,lifecycle,false);}
+    private ChartCollection(Source source,Sink staging,Clock clock,boolean fixture,Duration budget,Lifecycle lifecycle,boolean liveStorageApproved){this.source=source;this.staging=staging;this.clock=clock;this.fixture=fixture;this.budget=budget;this.lifecycle=Objects.requireNonNull(lifecycle);this.liveStorageApproved=liveStorageApproved;}
+    /** Trusted configuration calls this only after explicit live-storage activation. */
+    public static ChartCollection approvedLive(Source source,Sink staging,Clock clock,Lifecycle lifecycle){return new ChartCollection(source,staging,clock,false,Duration.ofSeconds(30),lifecycle,true);}
+    @Override public void close(){fetching.shutdownNow();}
     public UUID run(ChartScope scope){
         Objects.requireNonNull(scope);
-        // Until an approved provider-storage contract exists, no live payload is persisted.
-        if(!fixture)throw new CollectionFailure(Failure.LIVE_STORAGE_NOT_APPROVED);
+        // Unconfigured callers remain closed; approved live operation never pretends to be a fixture.
+        if(!fixture && !liveStorageApproved)throw new CollectionFailure(Failure.LIVE_STORAGE_NOT_APPROVED);
         if(TransactionSynchronizationManager.isActualTransactionActive())throw new IllegalStateException("Provider fetch inside database transaction");
         if(!slots.tryAcquire())throw new CollectionFailure(Failure.BUSY);
         // Reserve the staging transaction limit inside the total 30-second job budget.

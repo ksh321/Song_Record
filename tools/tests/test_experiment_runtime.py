@@ -49,6 +49,26 @@ class ExperimentRuntimeTests(unittest.TestCase):
             self.assertEqual(values['songrecord.deployment.storage-scope'],'experiment')
         with self.assertRaises(ValueError):runtime.settings('playback',state,roles,provider,'',b'')
 
+class ChartSettingsTests(unittest.TestCase):
+    def policy(self):return {'scope':'experiment.charts:v1','enabled':True,'storage_approved':True,'interval_seconds':21600}
+    def test_default_is_closed_and_only_worker_collects(self):
+        self.assertEqual(runtime.chart_settings('worker',None)['songrecord.charts.live-enabled'],'false')
+        row=self.policy()
+        self.assertEqual(runtime.chart_settings('api',row)['songrecord.charts.live-enabled'],'false')
+        worker=runtime.chart_settings('worker',row)
+        for key in ['live-enabled','storage-approved','scheduling-enabled']:self.assertEqual(worker['songrecord.charts.'+key],'true')
+        self.assertEqual(worker['songrecord.charts.live-fixed-delay-ms'],'21600000')
+    def test_unapproved_or_unbounded_configuration_is_rejected(self):
+        for field,value in [('scope','prod'),('storage_approved',False),('enabled','true'),('interval_seconds',True),('interval_seconds',299),('interval_seconds',86401)]:
+            row=self.policy();row[field]=value
+            with self.subTest(field=field,value=value),self.assertRaises(ValueError):runtime.chart_settings('worker',row)
+        row=self.policy();row['unknown']=True
+        with self.assertRaises(ValueError):runtime.chart_settings('worker',row)
+    def test_disabled_policy_does_not_start_scheduler(self):
+        row=self.policy();row['enabled']=False
+        self.assertEqual(runtime.chart_settings('worker',row)['songrecord.charts.scheduling-enabled'],'false')
+
+
 class WebOwnershipSettingsTests(unittest.TestCase):
     def provider(self):
         return {'auth.google.enabled':'true','auth.google.server-client-id':'660802266773-native.apps.googleusercontent.com','auth.kakao.enabled':'true','auth.kakao.app-id':'1586938','auth.kakao.native-app-key':'1'*32}

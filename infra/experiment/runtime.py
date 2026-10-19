@@ -79,7 +79,25 @@ def observation_settings(role,policy):
     return {'songrecord.operations.retention.enabled':str(role=='worker' and policy['enabled']).lower()}
 
 
-def settings(role,state,roles,provider,certificate,pkcs,policy=None,web=None,observation=None):
+def chart_settings(role,policy):
+    if role not in ('api','worker'):raise ValueError('EXPERIMENT_ROLE_REJECTED')
+    active=False;approved=False;interval=21600
+    if policy is not None:
+        if (set(policy)!={'scope','enabled','storage_approved','interval_seconds'}
+                or policy['scope']!='experiment.charts:v1'
+                or type(policy['enabled']) is not bool or type(policy['storage_approved']) is not bool
+                or type(policy['interval_seconds']) is not int or not 300<=policy['interval_seconds']<=86400
+                or policy['enabled'] and not policy['storage_approved']):
+            raise ValueError('EXPERIMENT_CHART_POLICY_REJECTED')
+        approved=role=='worker' and policy['storage_approved']
+        active=approved and policy['enabled'];interval=policy['interval_seconds']
+    return {'songrecord.charts.live-enabled':str(active).lower(),
+            'songrecord.charts.storage-approved':str(approved).lower(),
+            'songrecord.charts.scheduling-enabled':str(active).lower(),
+            'songrecord.charts.live-fixed-delay-ms':str(interval*1000)}
+
+
+def settings(role,state,roles,provider,certificate,pkcs,policy=None,web=None,observation=None,charts=None):
     if role not in ('api','worker'):raise ValueError('EXPERIMENT_ROLE_REJECTED')
     policy={'upload':False,'account_deletion':False} if policy is None else policy;validate_policy(policy)
     own=roles['roles']['experiment.'+role];reader=roles['roles']['experiment.playback'];prefix='songrecord.storage.dev.'
@@ -101,6 +119,7 @@ def settings(role,state,roles,provider,certificate,pkcs,policy=None,web=None,obs
             'songrecord.account-deletion.worker.enabled':str(role=='worker' and policy['account_deletion']).lower()}
     result.update(provider)
     result.update(observation_settings(role,observation))
+    result.update(chart_settings(role,charts))
     extra=web_settings(web,provider)
     if role=='api':result.update(extra)
     return result
@@ -116,6 +135,8 @@ def start():
     web=private_json(VAULT/'web-ownership.json') if (VAULT/'web-ownership.json').exists() else None
     policy=private_json(VAULT/'worker-policy.json') if (VAULT/'worker-policy.json').exists() else {'upload':False,'account_deletion':False}
     observation=private_json(VAULT/'observation-policy.json') if (VAULT/'observation-policy.json').exists() else None
+    charts=private_json(VAULT/'chart-policy.json') if (VAULT/'chart-policy.json').exists() else None
+    chart_settings('worker',charts)
     validate_policy(policy)
     if any(policy.values()) and private_json(VAULT/'application-storage.json')!={'scope':'experiment','final_bucket':'song-record-experiment-final'}:
         raise ValueError('EXPERIMENT_WORKER_POLICY_REJECTED')
@@ -143,7 +164,7 @@ def start():
             observed=run(['docker','exec',target,'cat','/run/runtime/songrecord.deployment.storage-scope'],timeout=15).strip()
             if observed!=b'experiment':raise ValueError('EXPERIMENT_APP_RECREATE_REQUIRED')
             continue
-        values=settings(role,state,roles,provider,(VAULT/'server.crt').read_text(),(VAULT/'server.p12').read_bytes(),policy,web,observation)
+        values=settings(role,state,roles,provider,(VAULT/'server.crt').read_text(),(VAULT/'server.p12').read_bytes(),policy,web,observation,charts)
         run(['docker','exec','-i',target,'python3','/app/inject-runtime.py'],json.dumps(values).encode());values.clear()
     STEP='WAIT_FOR_APP_HEALTH'
     run(COMPOSE+['up','-d','--wait','--wait-timeout','150','api','worker'])
