@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/ui_controls.dart';
@@ -64,7 +65,7 @@ class _State extends State<RecordingClassificationPicker> {
   );
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('컨디션과 태그')),
+    appBar: appPageBar(context, title: const Text('컨디션과 태그')),
     body: SafeArea(
       child: ListView(
         padding: AppLayout.bodyPadding,

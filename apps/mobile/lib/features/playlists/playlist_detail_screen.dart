@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/sync/local_repository.dart';
 import '../../core/widgets/app_icon.dart';
@@ -380,7 +381,10 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(parent?['name'] as String? ?? '플레이리스트')),
+    appBar: appPageBar(
+      context,
+      title: Text(parent?['name'] as String? ?? '플레이리스트'),
+    ),
     body: SafeArea(
       child: RefreshIndicator(
         onRefresh: reload,

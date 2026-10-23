@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/widgets/ui_controls.dart';
 import '../auth/auth_session.dart';
@@ -87,7 +88,8 @@ class _SongActionEntryState extends State<SongActionEntry> {
       ),
     );
     return Scaffold(
-      appBar: AppBar(
+      appBar: appPageBar(
+        context,
         title: Text(
           widget.action == SongAction.playlistAdd ? '플레이리스트 추가' : '곡 삭제',
         ),

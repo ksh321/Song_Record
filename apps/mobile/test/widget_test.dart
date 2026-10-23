@@ -13,7 +13,7 @@ void main() {
     apiBaseUrl: Uri.parse('http://127.0.0.1:8080'),
   );
 
-  testWidgets('실제 앱에 초기 블루와 어두운 배경을 적용한다', (tester) async {
+  testWidgets('실제 앱에 초기 회색과 어두운 배경을 적용한다', (tester) async {
     await tester.pumpWidget(
       SongRecordApp(
         config: config,
@@ -26,7 +26,7 @@ void main() {
     final theme = Theme.of(tester.element(find.byType(NavigationBar)));
     expect(theme.brightness, Brightness.dark);
     expect(theme.scaffoldBackgroundColor, AppColors.background);
-    expect(theme.colorScheme.primary, AppAccent.blue.background);
+    expect(theme.colorScheme.primary, AppAccent.neutral.background);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

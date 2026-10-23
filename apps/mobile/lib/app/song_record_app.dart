@@ -465,6 +465,191 @@ class _SongRecordAppState extends State<SongRecordApp>
       );
     }
 
+    Widget buildSettings(BuildContext context) => SettingsScreen(
+      deletionBuilder: authController?.phase == AuthPhase.ready
+          ? (_) {
+              final store = accountStore?.call(), auth = authController;
+              if (store == null ||
+                  auth?.phase != AuthPhase.ready ||
+                  store.userId != auth?.session?.userId ||
+                  auth!.proofs is! IdentityLinkProofSource) {
+                return const Scaffold(
+                  body: SafeArea(
+                    child: Center(child: Text('최근 계정 재인증을 사용할 수 없어요.')),
+                  ),
+                );
+              }
+              final epoch = auth.accountEpoch, owner = store.userId;
+              void guard() {
+                store.requireActive();
+                if (auth.phase != AuthPhase.ready ||
+                    auth.accountEpoch != epoch ||
+                    auth.session?.userId != owner ||
+                    accountStore?.call() != store) {
+                  throw StateError('Deletion account changed');
+                }
+              }
+
+              final api = AccountDeletionApi(
+                config.apiBaseUrl,
+                auth.validSession,
+                guard,
+                local: kDebugMode && config.environment == AppEnvironment.dev,
+              );
+              final flow = AccountDeletionFlow(
+                '${config.environment.name}:${config.apiBaseUrl.origin}:$owner',
+                api,
+                auth.proofs as IdentityLinkProofSource,
+                const SecureDeletionReceiptVault(),
+              );
+              return AccountDeletionScreen(
+                flow: flow,
+                onAccepted: () => auth.deletionAccepted(
+                  owner,
+                  confirmation: flow.confirmation(owner),
+                ),
+              );
+            }
+          : null,
+      importBuilder: (_) {
+        final store = accountStore?.call(), auth = authController;
+        if (store == null ||
+            auth?.phase != AuthPhase.ready ||
+            store.userId != auth?.session?.userId) {
+          return const Scaffold(
+            body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
+          );
+        }
+        final epoch = auth!.accountEpoch;
+        void guard() {
+          store.requireActive();
+          if (auth.phase != AuthPhase.ready ||
+              auth.accountEpoch != epoch ||
+              accountStore?.call() != store ||
+              auth.session?.userId != store.userId) {
+            throw StateError('Import account changed');
+          }
+        }
+
+        return ImportEntryScreen(
+          store: store,
+          accountChanges: auth,
+          synchronize: syncController?.wake,
+          requireCurrent: guard,
+          session: auth.validSession,
+          transport: HttpSnapshotTransport(
+            config.apiBaseUrl,
+            allowLocalHttp:
+                kDebugMode && config.environment == AppEnvironment.dev,
+          ),
+        );
+      },
+      storageBuilder: (_) {
+        final store = accountStore?.call(), auth = authController;
+        if (store == null ||
+            auth?.phase != AuthPhase.ready ||
+            store.userId != auth?.session?.userId) {
+          return const Scaffold(
+            body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
+          );
+        }
+        final epoch = auth!.accountEpoch;
+        void guard() {
+          store.requireActive();
+          if (auth.phase != AuthPhase.ready ||
+              auth.accountEpoch != epoch ||
+              accountStore?.call() != store ||
+              auth.session?.userId != store.userId) {
+            throw StateError('Storage account changed');
+          }
+        }
+
+        final api = SettingsApi(
+          config.apiBaseUrl,
+          auth.validSession,
+          guard,
+          local: kDebugMode && config.environment == AppEnvironment.dev,
+        );
+        return StorageScreen(
+          requestBuilder: demandScreen,
+          requireCurrent: guard,
+          accountChanges: auth,
+          load: () async {
+            final usage = await api.get('/v1/storage') as Map<String, dynamic>;
+            final pins = await api.get('/v1/pins') as Map<String, dynamic>;
+            final recordings = await store.savedRecordings();
+            guard();
+            final view = StorageView(
+              usage,
+              (pins['items'] as List).cast<Map<String, dynamic>>(),
+              recordings,
+            );
+            final confirmed = <String>{
+              for (final slot in view.slots)
+                for (final key in [
+                  'current_recording_id',
+                  'pending_recording_id',
+                ])
+                  if (slot[key] case final String id) id,
+            };
+            final resumed = await store.resumePinnedUploads(confirmed);
+            guard();
+            if (resumed > 0) syncController?.wake();
+            return view;
+          },
+          command: (method, path, body, id) async {
+            await api.pinCommand(method, path, body, id);
+            guard();
+            syncController?.wake();
+          },
+        );
+      },
+      classificationBuilder: classificationBuilder,
+      backupBuilder: (context) {
+        final store = accountStore?.call(), auth = authController;
+        if (store == null ||
+            auth?.phase != AuthPhase.ready ||
+            store.userId != auth?.session?.userId) {
+          return const Scaffold(body: Center(child: Text('로그인이 필요해요.')));
+        }
+        void guard() {
+          store.requireActive();
+          if (auth!.phase != AuthPhase.ready ||
+              auth.session?.userId != store.userId ||
+              accountStore?.call() != store) {
+            throw StateError('The backup account changed');
+          }
+        }
+
+        final localHttp =
+            kDebugMode && config.environment == AppEnvironment.dev;
+        return ExportScreen(
+          controller: ExportController.forStore(
+            store: store,
+            recorder: recorderGateway,
+            transport: HttpSnapshotTransport(
+              config.apiBaseUrl,
+              allowLocalHttp: localHttp,
+            ),
+            session: auth!.validSession,
+            base: config.apiBaseUrl,
+            requireCurrent: guard,
+            allowLocalHttp: localHttp,
+          ),
+        );
+      },
+      trashBuilder: (context) {
+        final actions = trashActions();
+        return actions == null
+            ? const Scaffold(body: Center(child: Text('로그인이 필요해요.')))
+            : TrashScreen(actions: actions, auth: authController);
+      },
+      showDevelopmentTools: config.environment == AppEnvironment.dev,
+      identityLink: identityLink,
+      authController: authController,
+      syncController: syncController,
+    );
+
     return AppAppearance(
       light: lightMode,
       child: ValueListenableBuilder<bool>(
@@ -536,6 +721,7 @@ class _SongRecordAppState extends State<SongRecordApp>
           initialRoute: AppRoutes.home,
           routes: {
             AppRoutes.home: (context) => AppShell(
+              settingsBuilder: buildSettings,
               recorderGateway: recorderGateway,
               manualBuilder: prepareRegistration == null
                   ? null
@@ -761,196 +947,7 @@ class _SongRecordAppState extends State<SongRecordApp>
                 load: searchLoad,
               ),
             ),
-            AppRoutes.settings: (context) => SettingsScreen(
-              deletionBuilder: authController?.phase == AuthPhase.ready
-                  ? (_) {
-                      final store = accountStore?.call(), auth = authController;
-                      if (store == null ||
-                          auth?.phase != AuthPhase.ready ||
-                          store.userId != auth?.session?.userId ||
-                          auth!.proofs is! IdentityLinkProofSource) {
-                        return const Scaffold(
-                          body: SafeArea(
-                            child: Center(child: Text('최근 계정 재인증을 사용할 수 없어요.')),
-                          ),
-                        );
-                      }
-                      final epoch = auth.accountEpoch, owner = store.userId;
-                      void guard() {
-                        store.requireActive();
-                        if (auth.phase != AuthPhase.ready ||
-                            auth.accountEpoch != epoch ||
-                            auth.session?.userId != owner ||
-                            accountStore?.call() != store) {
-                          throw StateError('Deletion account changed');
-                        }
-                      }
-
-                      final api = AccountDeletionApi(
-                        config.apiBaseUrl,
-                        auth.validSession,
-                        guard,
-                        local:
-                            kDebugMode &&
-                            config.environment == AppEnvironment.dev,
-                      );
-                      final flow = AccountDeletionFlow(
-                        '${config.environment.name}:${config.apiBaseUrl.origin}:$owner',
-                        api,
-                        auth.proofs as IdentityLinkProofSource,
-                        const SecureDeletionReceiptVault(),
-                      );
-                      return AccountDeletionScreen(
-                        flow: flow,
-                        onAccepted: () => auth.deletionAccepted(
-                          owner,
-                          confirmation: flow.confirmation(owner),
-                        ),
-                      );
-                    }
-                  : null,
-              importBuilder: (_) {
-                final store = accountStore?.call(), auth = authController;
-                if (store == null ||
-                    auth?.phase != AuthPhase.ready ||
-                    store.userId != auth?.session?.userId) {
-                  return const Scaffold(
-                    body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
-                  );
-                }
-                final epoch = auth!.accountEpoch;
-                void guard() {
-                  store.requireActive();
-                  if (auth.phase != AuthPhase.ready ||
-                      auth.accountEpoch != epoch ||
-                      accountStore?.call() != store ||
-                      auth.session?.userId != store.userId) {
-                    throw StateError('Import account changed');
-                  }
-                }
-
-                return ImportEntryScreen(
-                  store: store,
-                  accountChanges: auth,
-                  synchronize: syncController?.wake,
-                  requireCurrent: guard,
-                  session: auth.validSession,
-                  transport: HttpSnapshotTransport(
-                    config.apiBaseUrl,
-                    allowLocalHttp:
-                        kDebugMode && config.environment == AppEnvironment.dev,
-                  ),
-                );
-              },
-              storageBuilder: (_) {
-                final store = accountStore?.call(), auth = authController;
-                if (store == null ||
-                    auth?.phase != AuthPhase.ready ||
-                    store.userId != auth?.session?.userId) {
-                  return const Scaffold(
-                    body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
-                  );
-                }
-                final epoch = auth!.accountEpoch;
-                void guard() {
-                  store.requireActive();
-                  if (auth.phase != AuthPhase.ready ||
-                      auth.accountEpoch != epoch ||
-                      accountStore?.call() != store ||
-                      auth.session?.userId != store.userId) {
-                    throw StateError('Storage account changed');
-                  }
-                }
-
-                final api = SettingsApi(
-                  config.apiBaseUrl,
-                  auth.validSession,
-                  guard,
-                  local: kDebugMode && config.environment == AppEnvironment.dev,
-                );
-                return StorageScreen(
-                  requestBuilder: demandScreen,
-                  requireCurrent: guard,
-                  accountChanges: auth,
-                  load: () async {
-                    final usage =
-                        await api.get('/v1/storage') as Map<String, dynamic>;
-                    final pins =
-                        await api.get('/v1/pins') as Map<String, dynamic>;
-                    final recordings = await store.savedRecordings();
-                    guard();
-                    final view = StorageView(
-                      usage,
-                      (pins['items'] as List).cast<Map<String, dynamic>>(),
-                      recordings,
-                    );
-                    final confirmed = <String>{
-                      for (final slot in view.slots)
-                        for (final key in [
-                          'current_recording_id',
-                          'pending_recording_id',
-                        ])
-                          if (slot[key] case final String id) id,
-                    };
-                    final resumed = await store.resumePinnedUploads(confirmed);
-                    guard();
-                    if (resumed > 0) syncController?.wake();
-                    return view;
-                  },
-                  command: (method, path, body, id) async {
-                    await api.pinCommand(method, path, body, id);
-                    guard();
-                    syncController?.wake();
-                  },
-                );
-              },
-              classificationBuilder: classificationBuilder,
-              backupBuilder: (context) {
-                final store = accountStore?.call(), auth = authController;
-                if (store == null ||
-                    auth?.phase != AuthPhase.ready ||
-                    store.userId != auth?.session?.userId) {
-                  return const Scaffold(
-                    body: Center(child: Text('로그인이 필요해요.')),
-                  );
-                }
-                void guard() {
-                  store.requireActive();
-                  if (auth!.phase != AuthPhase.ready ||
-                      auth.session?.userId != store.userId ||
-                      accountStore?.call() != store) {
-                    throw StateError('The backup account changed');
-                  }
-                }
-
-                final localHttp =
-                    kDebugMode && config.environment == AppEnvironment.dev;
-                return ExportScreen(
-                  controller: ExportController.forStore(
-                    store: store,
-                    recorder: recorderGateway,
-                    transport: HttpSnapshotTransport(
-                      config.apiBaseUrl,
-                      allowLocalHttp: localHttp,
-                    ),
-                    session: auth!.validSession,
-                    base: config.apiBaseUrl,
-                    requireCurrent: guard,
-                    allowLocalHttp: localHttp,
-                  ),
-                );
-              },
-              trashBuilder: (context) {
-                final actions = trashActions();
-                return actions == null
-                    ? const Scaffold(body: Center(child: Text('로그인이 필요해요.')))
-                    : TrashScreen(actions: actions, auth: authController);
-              },
-              showDevelopmentTools: config.environment == AppEnvironment.dev,
-              identityLink: identityLink,
-              authController: authController,
-              syncController: syncController,
-            ),
+            AppRoutes.settings: buildSettings,
             if (config.environment == AppEnvironment.dev)
               AppRoutes.health: (context) =>
                   HealthScreen(config: config, healthLoader: loadHealth),

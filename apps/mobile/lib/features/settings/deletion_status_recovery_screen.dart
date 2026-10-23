@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/domain/account_deletion_confirmation.dart';
 import '../../core/widgets/app_icon.dart';
@@ -55,7 +56,7 @@ class _DeletionStatusRecoveryScreenState
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('저장된 탈퇴 확인증')),
+    appBar: appPageBar(context, title: const Text('저장된 탈퇴 확인증')),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(20),

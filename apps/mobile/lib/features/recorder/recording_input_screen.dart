@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/domain/condition_types.dart';
 import '../../core/domain/identifiers.dart';
@@ -467,7 +468,8 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
         if (!didPop) unawaited(exit());
       },
       child: Scaffold(
-        appBar: AppBar(
+        appBar: appPageBar(
+          context,
           title: Text(widget.editing ? '녹음 정보 수정' : '녹음 정보 입력'),
           leading: IconButton(
             onPressed: busy ? null : exit,

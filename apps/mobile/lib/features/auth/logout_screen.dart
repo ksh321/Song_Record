@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/widgets/app_icon.dart';
 import 'auth_session.dart';
@@ -85,7 +86,8 @@ class _LogoutScreenState extends State<LogoutScreen> {
   Widget build(BuildContext context) => PopScope(
     canPop: !_busy,
     child: Scaffold(
-      appBar: AppBar(
+      appBar: appPageBar(
+        context,
         title: const Text('로그아웃'),
         automaticallyImplyLeading: !_busy,
       ),
@@ -100,7 +102,7 @@ class _LogoutScreenState extends State<LogoutScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              '로컬 복구 파일에는 현재 계정의 기기 내 정보와 실제 남아 있는 파일만 포함돼요. 서버 백업 및 앱에서의 ZIP 가져오기는 아직 제공하지 않아요. 미완료 녹음 파일은 재생이 보장되지 않아요.',
+              '이 화면의 복구 파일에는 이 기기에 남아 있는 기록과 파일만 담겨요. 전체 백업은 설정의 백업 내보내기를 이용해 주세요. 미완료 녹음 파일은 재생이 보장되지 않아요.',
             ),
             const SizedBox(height: 24),
             OutlinedButton.icon(

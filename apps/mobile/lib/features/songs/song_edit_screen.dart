@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/domain/song_types.dart';
 import '../../core/theme/app_tokens.dart';
@@ -95,7 +96,8 @@ class _SongEditScreenState extends State<SongEditScreen> {
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: Scaffold(
-      appBar: AppBar(
+      appBar: appPageBar(
+        context,
         title: const Text('곡 정보 수정'),
         leading: IconButton(
           tooltip: '취소',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/files/recording_file_status.dart';
 import '../../core/widgets/ui_controls.dart';
@@ -207,7 +208,7 @@ class _RecordingFilterScreenState extends State<RecordingFilterScreen> {
       }
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('녹음 필터')),
+      appBar: appPageBar(context, title: const Text('녹음 필터')),
       body: SafeArea(
         child: Column(
           children: [

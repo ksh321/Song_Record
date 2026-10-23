@@ -15,6 +15,7 @@ import '../../core/widgets/selection_sheet.dart';
 import '../../core/widgets/song_badges.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../../routing/app_routes.dart';
+import '../../routing/tab_navigation.dart';
 import '../auth/auth_session.dart';
 import '../recorder/recording_audio_panel.dart';
 import '../trash/trash_screens.dart';
@@ -201,10 +202,17 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
           IconButton(
             tooltip: '설정',
             icon: const AppIcon(Icons.settings_outlined, size: 22),
-            onPressed: () => Navigator.of(
-              context,
-              rootNavigator: true,
-            ).pushNamed(AppRoutes.settings),
+            onPressed: () {
+              final tabs = TabNavigation.maybeOf(context);
+              if (tabs != null) {
+                tabs.openSettings();
+              } else {
+                Navigator.of(
+                  context,
+                  rootNavigator: true,
+                ).pushNamed(AppRoutes.settings);
+              }
+            },
           ),
           const SizedBox(width: 20),
         ],

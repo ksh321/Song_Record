@@ -200,18 +200,9 @@ class MusicalKeyBadge extends StatelessWidget {
     final keyValue = value;
     final light = Theme.of(context).brightness == Brightness.light;
     final (background, foreground) = switch (keyValue?.mode) {
-      KeyMode.male =>
-        light
-            ? (const Color(0xFFE1EFFF), const Color(0xFF15538A))
-            : (const Color(0xFF174A7E), const Color(0xFFD4E9FF)),
-      KeyMode.female =>
-        light
-            ? (const Color(0xFFFCE5F0), const Color(0xFF98345F))
-            : (const Color(0xFF6E3051), const Color(0xFFFFE0EF)),
-      _ =>
-        light
-            ? (const Color(0xFFE6E6E6), const Color(0xFF333333))
-            : (const Color(0xFF303030), Colors.white),
+      KeyMode.male => AppKeyColors.male(light),
+      KeyMode.female => AppKeyColors.female(light),
+      _ => AppKeyColors.neutral(light),
     };
     return Container(
       width: 44,

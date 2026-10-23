@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import 'account_deletion.dart';
 import 'deletion_status.dart';
@@ -78,7 +79,7 @@ class _AccountDeletionScreenState extends State<AccountDeletionScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('계정 탈퇴')),
+    appBar: appPageBar(context, title: const Text('계정 탈퇴')),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(20),

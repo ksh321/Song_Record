@@ -20,11 +20,12 @@ import 'package:song_record/features/charts/popular_chart_screen.dart';
 import 'package:song_record/features/playlists/playlist_library.dart';
 import 'package:song_record/features/playlists/playlist_library_screen.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
-import 'package:song_record/features/recorder/recorder_panel.dart';
 import 'package:song_record/features/recorder/recording_classification_picker.dart';
 import 'package:song_record/features/recorder/recording_list.dart';
+import 'package:song_record/features/recorder/recording_workspace.dart';
 import 'package:song_record/features/search/karaoke_search.dart';
 import 'package:song_record/features/search/karaoke_search_screen.dart';
+import 'package:song_record/features/settings/classification_screen.dart';
 import 'package:song_record/features/settings/settings_screen.dart';
 import 'package:song_record/features/settings/storage_screen.dart';
 import 'package:song_record/features/songs/my_song.dart';
@@ -159,9 +160,51 @@ void main() {
         'storage',
         'edit',
         'classification',
+        'personal',
+        'accent',
+        'conditions',
+        'tags',
+        'rename',
       ]) {
         final boundary = GlobalKey();
+        final palette = ValueNotifier(AppAccent.purple);
+        Widget personalization(BuildContext context) => ClassificationScreen(
+          load: () async => (
+            tags: [
+              for (var i = 0; i < 3; i++)
+                {
+                  'id': id(100 + i),
+                  'name': ['고음', '호흡', '발음'][i],
+                  'revision': 1,
+                  'archived_at': null,
+                },
+            ],
+            conditions: [
+              for (var i = 0; i < 3; i++)
+                {
+                  'id': id(200 + i),
+                  'code': ['GOOD', 'NORMAL', 'BAD'][i],
+                  'name': ['좋음', '보통', '피곤함'][i],
+                  'revision': 1,
+                  'archived_at': null,
+                },
+            ],
+          ),
+          command: (_, _, _, _) async {},
+          requireCurrent: () {},
+          accent: palette,
+          saveAccent: (a) async => palette.value = a,
+        );
         final home = switch (screen) {
+          'personal' ||
+          'accent' ||
+          'conditions' ||
+          'tags' ||
+          'rename' => AppShell(
+            recorderGateway: const DemoRecorder(),
+            settingsBuilder: personalization,
+            tabBuilder: (_, _) => const SizedBox(),
+          ),
           'detail' => SongDetailScreen(watch: () => Stream.value(detail)),
           'recordings' => Scaffold(
             appBar: AppBar(title: const Text('전체 녹음')),
@@ -268,11 +311,10 @@ void main() {
                   ],
                 ),
               ),
-              AppTab.recording => ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: const [
-                  RecorderPanel(gateway: DemoRecorder(), diagnostics: false),
-                ],
+              AppTab.recording => RecordingWorkspace(
+                gateway: const DemoRecorder(),
+                repository: () => null,
+                isCurrent: (_) => true,
               ),
               _ => const SizedBox(),
             },
@@ -313,6 +355,30 @@ void main() {
         } else {
           await mount();
         }
+        if ([
+          'personal',
+          'accent',
+          'conditions',
+          'tags',
+          'rename',
+        ].contains(screen)) {
+          await tester.tap(find.byTooltip('설정'));
+          await tester.pumpAndSettle();
+          if (screen != 'personal') {
+            await tester.tap(
+              find.text(switch (screen) {
+                'accent' => '강조색',
+                'conditions' => '컨디션 관리',
+                _ => '태그 관리',
+              }),
+            );
+            await tester.pumpAndSettle();
+          }
+          if (screen == 'rename') {
+            await tester.tap(find.byTooltip('이름 변경').first);
+            await tester.pumpAndSettle();
+          }
+        }
         if (['search', 'charts', 'record'].contains(screen)) {
           final label = {
             'search': '검색',
@@ -341,6 +407,7 @@ void main() {
         });
         await tester.pumpWidget(const SizedBox());
         await tester.pumpAndSettle();
+        palette.dispose();
       }
       appearance.dispose();
     }

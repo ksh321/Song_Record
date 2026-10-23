@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../../core/widgets/ui_controls.dart';
 import 'import_outcome.dart';
@@ -63,7 +64,7 @@ class _State extends State<ImportApplyPreview> {
               try {
                 guard();
                 return Scaffold(
-                  appBar: AppBar(title: const Text('가져오기 결과')),
+                  appBar: appPageBar(context, title: const Text('가져오기 결과')),
                   body: ImportOutcomeView(result: result),
                 );
               } catch (_) {
@@ -88,7 +89,7 @@ class _State extends State<ImportApplyPreview> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('가져오기 미리보기')),
+    appBar: appPageBar(context, title: const Text('가져오기 미리보기')),
     body: SafeArea(
       child: ListView(
         padding: AppLayout.bodyPadding,

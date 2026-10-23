@@ -10,6 +10,7 @@ class TabNavigation extends ChangeNotifier {
   TabNavigation._(this._openSettings);
 
   final VoidCallback _openSettings;
+  void openSettings() => _openSettings();
   final _navigatorKey = GlobalKey<NavigatorState>();
   String? _selectedPlaylistId;
   String? _subtitle;
@@ -78,7 +79,48 @@ class TabNavigator extends StatefulWidget {
   State<TabNavigator> createState() => TabNavigatorState();
 }
 
+class _TabRouteObserver extends NavigatorObserver {
+  Route<dynamic>? top;
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    top = route;
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    top = previousRoute;
+  }
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (top == route) top = previousRoute;
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (top == oldRoute) top = newRoute;
+  }
+}
+
 class TabNavigatorState extends State<TabNavigator> {
+  final _routes = _TabRouteObserver();
+  bool get allowsTabChange =>
+      _routes.top?.popDisposition != RoutePopDisposition.doNotPop;
+  void returnToSettings() {
+    if (!allowsTabChange) return;
+    _navigation._navigatorKey.currentState?.popUntil(
+      (route) => route.settings.name == '/settings' || route.isFirst,
+    );
+  }
+
+  Future<T?> openScreen<T>(WidgetBuilder builder, {String? name}) =>
+      _navigation._navigatorKey.currentState!.push<T>(
+        MaterialPageRoute<T>(
+          builder: builder,
+          settings: RouteSettings(name: name),
+        ),
+      );
+
   /// Close detail/picker routes without recreating the root or recorder.
   void popToRoot() {
     _navigation._navigatorKey.currentState?.popUntil((route) => route.isFirst);
@@ -108,6 +150,7 @@ class TabNavigatorState extends State<TabNavigator> {
         },
         child: Navigator(
           key: _navigation._navigatorKey,
+          observers: [_routes],
           onGenerateRoute: (settings) => MaterialPageRoute<void>(
             settings: settings,
             builder: (context) => _TabPage(

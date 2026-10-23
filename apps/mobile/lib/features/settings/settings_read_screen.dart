@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/widgets/ui_controls.dart';
 
@@ -97,7 +98,7 @@ class _State extends State<SettingsReadScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(widget.title)),
+    appBar: appPageBar(context, title: Text(widget.title)),
     body: SafeArea(
       top: false,
       child: ListView(

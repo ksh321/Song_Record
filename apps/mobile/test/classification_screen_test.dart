@@ -81,7 +81,8 @@ void main() {
         ),
       );
       await t.pumpAndSettle();
-      await t.scrollUntilVisible(find.byTooltip('태그 삭제'), 300);
+      await t.tap(find.text('태그 관리'));
+      await t.pumpAndSettle();
       await t.tap(find.byTooltip('태그 삭제'));
       await t.pumpAndSettle();
       await t.tap(find.text('취소'));
@@ -99,6 +100,10 @@ void main() {
       expect(find.text('연습'), findsNothing);
       expect(find.text('등록한 태그가 없어요.'), findsOneWidget);
       expect(find.byTooltip('이름 변경'), findsNothing);
+      await t.tap(find.byTooltip('이전 화면'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('컨디션 관리'));
+      await t.pumpAndSettle();
       expect(find.byTooltip('컨디션 이름 변경'), findsWidgets);
       await t.pumpWidget(const SizedBox());
       accent.dispose();
@@ -123,18 +128,15 @@ void main() {
       ),
     );
     await t.pumpAndSettle();
-    await t.scrollUntilVisible(find.text('태그 만들기'), 300);
-    await t.tap(find.text('태그 만들기'));
+    await t.tap(find.text('태그 관리'));
     await t.pumpAndSettle();
     final raw = List.filled(51, '😀').join();
     await t.enterText(find.byType(TextField), raw);
-    await t.tap(find.text('저장'));
+    await t.tap(find.text('추가'));
     await t.pumpAndSettle();
     expect(sent, 0);
     expect(find.textContaining('1~50자로'), findsOneWidget);
     expect(t.widget<TextField>(find.byType(TextField)).controller!.text, raw);
-    await t.tap(find.text('취소'));
-    await t.pumpAndSettle();
     await t.pumpWidget(const SizedBox());
     accent.dispose();
   });
@@ -175,11 +177,10 @@ void main() {
         ),
       );
       await t.pumpAndSettle();
-      await t.scrollUntilVisible(find.text('컨디션 만들기'), 200);
-      await t.tap(find.text('컨디션 만들기'));
+      await t.tap(find.text('컨디션 관리'));
       await t.pumpAndSettle();
       await t.enterText(find.byType(TextField), '목이 편함');
-      await t.tap(find.text('저장'));
+      await t.tap(find.text('추가'));
       await t.pumpAndSettle();
       expect(find.text('목이 편함'), findsOneWidget);
       await t.tap(find.byTooltip('컨디션 이름 변경'));
@@ -213,11 +214,51 @@ void main() {
         ),
       ),
     );
+    await t.tap(find.text('태그 관리'));
+    await t.pump();
     active = false;
     n.notifyListeners();
     result.complete(data());
     await t.pumpAndSettle();
     expect(find.text('연습'), findsNothing);
+    await t.pumpWidget(const SizedBox());
+    n.dispose();
+    accent.dispose();
+  });
+  testWidgets('account switch clears an unsent inline classification name', (
+    t,
+  ) async {
+    final n = ChangeNotifier(), accent = ValueNotifier(AppAccent.blue);
+    var active = true, sent = 0;
+    await t.pumpWidget(
+      MaterialApp(
+        home: ClassificationScreen(
+          load: () async => data(),
+          requireCurrent: () {
+            if (!active) throw StateError('changed');
+          },
+          accountChanges: n,
+          accent: accent,
+          saveAccent: (_) async {},
+          command: (_, _, _, _) async {
+            sent++;
+          },
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+    await t.tap(find.text('태그 관리'));
+    await t.pumpAndSettle();
+    await t.enterText(find.byType(TextField), '보내지 않은 이름');
+    active = false;
+    n.notifyListeners();
+    await t.pumpAndSettle();
+    expect(
+      t.widget<TextField>(find.byType(TextField)).controller!.text,
+      isEmpty,
+    );
+    expect(find.text('연습'), findsNothing);
+    expect(sent, 0);
     await t.pumpWidget(const SizedBox());
     n.dispose();
     accent.dispose();

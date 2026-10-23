@@ -14,6 +14,7 @@ class AppShell extends StatefulWidget {
   const AppShell({
     required this.recorderGateway,
     this.tabBuilder,
+    this.settingsBuilder,
     this.searchBuilder,
     this.chartBuilder,
     this.manualBuilder,
@@ -25,6 +26,7 @@ class AppShell extends StatefulWidget {
 
   final RecorderGateway recorderGateway;
   final WidgetBuilder? searchBuilder;
+  final WidgetBuilder? settingsBuilder;
   final WidgetBuilder? recordingBuilder;
   final WidgetBuilder? playlistsBuilder;
   final WidgetBuilder? chartBuilder;
@@ -45,10 +47,14 @@ class _AppShellState extends State<AppShell> {
   final _tabKeys = {
     for (final tab in AppTab.values) tab: GlobalKey<TabNavigatorState>(),
   };
-  bool _settingsOpen = false;
+  final Set<AppTab> _settingsTabs = {};
 
   void _selectTab(int index) {
     final tab = AppTab.values[index];
+    if (_settingsTabs.contains(_selectedTab) &&
+        !(_tabKeys[_selectedTab]?.currentState?.allowsTabChange ?? true)) {
+      return;
+    }
     FocusManager.instance.primaryFocus?.unfocus();
     if (tab == _selectedTab) {
       _tabKeys[tab]?.currentState?.popToRoot();
@@ -61,13 +67,25 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _openSettings() async {
-    if (_settingsOpen) return;
+    final settingsTab = _selectedTab;
+    if (_settingsTabs.contains(settingsTab)) {
+      _tabKeys[settingsTab]?.currentState?.returnToSettings();
+      return;
+    }
     FocusManager.instance.primaryFocus?.unfocus();
-    _settingsOpen = true;
+    _settingsTabs.add(settingsTab);
     try {
-      await Navigator.of(context).pushNamed<void>(AppRoutes.settings);
+      final builder = widget.settingsBuilder;
+      if (builder == null) {
+        await Navigator.of(context).pushNamed<void>(AppRoutes.settings);
+      } else {
+        await _tabKeys[settingsTab]?.currentState?.openScreen<void>(
+          builder,
+          name: AppRoutes.settings,
+        );
+      }
     } finally {
-      _settingsOpen = false;
+      _settingsTabs.remove(settingsTab);
     }
   }
 

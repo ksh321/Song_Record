@@ -192,7 +192,7 @@
     ['블루','#2C67C5'],['그린','#38813B'],['옐로','#FFC928'],['핑크','#EC4899'],
     ['오렌지','#FF851B'],['퍼플','#7849D1'],['기본값','#737373']
   ];
-  const tokens = {bg:'#111111',surface:'#232323',raised:'#303030',line:'#383838',text:'#E7E7E7',muted:'#A8A8A8',accent:'#2C67C5',onAccent:'#FFFFFF',danger:'#E7A2A2'};
+  const tokens = {bg:'#111111',surface:'#232323',raised:'#303030',line:'#383838',text:'#E7E7E7',muted:'#A8A8A8',accent:'#737373',onAccent:'#FFFFFF',danger:'#E7A2A2'};
   const tabs = [['songs','내 곡','music'],['charts','인기 차트','chart'],['record','녹음','mic'],['playlists','플레이리스트','list'],['search','검색','search']];
   const btn = (label,to,kind='primary') => ({type:'button',label,to,kind});
   const row = (title,sub,to,icon='music') => ({type:'row',title,sub,to,icon});
@@ -1349,10 +1349,11 @@
 
 (function(){
   const P=PROJECT,R=RENDER,map=new Map(P.screens.map(s=>[s.id,s]));
-  let current='songs',mode='prototype',accent=0,history=[],hotspots=false;
+  const defaultAccent=P.palettes.findIndex(([name])=>name==='기본값');
+  let current='songs',mode='prototype',accent=defaultAccent,history=[],hotspots=false;
   let filter='',group='all';
   const $=s=>document.querySelector(s);
-  function setAccent(i){accent=Number(i);if(!P.palettes[accent])accent=0;const c=P.palettes[accent][1];document.documentElement.style.setProperty('--accent',c);document.querySelectorAll('[data-accent]').forEach(b=>b.setAttribute('aria-pressed',Number(b.dataset.accent)===accent));try{localStorage.setItem('song-record-v2-accent',String(accent))}catch{}}
+  function setAccent(i){accent=Number(i);if(!P.palettes[accent])accent=defaultAccent;const c=P.palettes[accent][1];document.documentElement.style.setProperty('--accent',c);document.querySelectorAll('[data-accent]').forEach(b=>b.setAttribute('aria-pressed',Number(b.dataset.accent)===accent));try{localStorage.setItem('song-record-v2-accent',String(accent))}catch{}}
   function go(id,reset=false,options={}){
     const screen=FLOW.screenMap.get(id)||map.get(id);if(!screen)throw Error('Missing screen '+id);map.set(id,screen);
     const origin=FLOW.screenMap.get(current);if(!options.restore&&(origin?.name==='마이크 권한'&&screen.editLayout==='capturing'||origin?.editLayout==='capturing'&&screen.name==='녹음 정보 입력'))options.replace=true;
@@ -1391,7 +1392,7 @@
   window.addEventListener('resize',scaleTiles);
   window.addEventListener('popstate',event=>{const stack=event.state?.bplayStack;const id=new URLSearchParams(location.hash.slice(1)).get('screen');if(Array.isArray(stack)&&stack.length){FLOW.nav.entries=stack;go(stack[stack.length-1].id,false,{restore:true})}else if(id&&FLOW.screenMap.has(id))go(id,true,{restore:true})});
   const seed=new URLSearchParams(location.hash.slice(1)).get('screen');if(map.has(seed))current=seed;
-  try{accent=Number(localStorage.getItem('song-record-v2-accent'))||0;if(localStorage.getItem('song-record-v2-palette-version')!=='no-white'){if(accent===6)accent=0;else if(accent===7)accent=6;localStorage.setItem('song-record-v2-palette-version','no-white');}}catch{}
+  try{const saved=localStorage.getItem('song-record-v2-accent');const parsed=saved===null||saved.trim()===''?defaultAccent:Number(saved);accent=Number.isInteger(parsed)&&P.palettes[parsed]?parsed:defaultAccent;if(saved!==null&&localStorage.getItem('song-record-v2-palette-version')!=='no-white'){if(parsed===6||parsed===7)accent=defaultAccent;}localStorage.setItem('song-record-v2-palette-version','no-white');}catch{}
   $('.brand-mark').innerHTML=R.icon('music',20);
   $('#screen-count').textContent=P.screens.length+' 화면·상태 · 설계서 v1.11';FLOW.current=current;FLOW.nav.visit(current,{reset:true});window.history.replaceState({bplayStack:FLOW.nav.entries},'',location.href);render();
   window.Prototype={go,back,returnTo,render,map,links:allLinks,get state(){return {screen:current,mode,accent,history:history.slice()}}};

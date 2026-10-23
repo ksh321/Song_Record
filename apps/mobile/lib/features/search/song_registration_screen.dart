@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/domain/input_validation.dart';
 import '../../core/domain/song_types.dart';
@@ -106,7 +107,8 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: Scaffold(
-      appBar: AppBar(
+      appBar: appPageBar(
+        context,
         title: Text(widget.candidate == null ? '직접 등록' : '내 곡 등록'),
         leading: IconButton(
           tooltip: '취소',

@@ -260,6 +260,94 @@ void main() {
       await gateway.dispose();
     }
   });
+  testWidgets(
+    'settings subpages retain tabs, settings return and per-tab history',
+    (t) async {
+      final gateway = _ShellRecorderGateway();
+      await t.pumpWidget(
+        MaterialApp(
+          home: AppShell(
+            recorderGateway: gateway,
+            tabBuilder: (_, tab) => Text('root ${tab.name}'),
+            settingsBuilder: (context) => Scaffold(
+              appBar: AppBar(title: const Text('설정 검증')),
+              body: TextButton(
+                onPressed: () => Navigator.of(context).push<void>(
+                  MaterialPageRoute(
+                    builder: (inner) => Scaffold(
+                      body: TextButton(
+                        onPressed: () => TabNavigation.of(inner).openSettings(),
+                        child: const Text('설정으로 돌아가기'),
+                      ),
+                    ),
+                  ),
+                ),
+                child: const Text('하위 화면 열기'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      await t.tap(find.byTooltip('설정'));
+      await t.pumpAndSettle();
+      expect(find.byType(NavigationBar), findsOneWidget);
+      await t.tap(find.text('하위 화면 열기'));
+      await t.pumpAndSettle();
+      await _selectTab(t, '검색');
+      expect(find.text('root search'), findsOneWidget);
+      await _selectTab(t, '내 곡');
+      expect(find.text('설정으로 돌아가기'), findsOneWidget);
+      await t.tap(find.text('설정으로 돌아가기'));
+      await t.pumpAndSettle();
+      expect(find.text('설정 검증'), findsOneWidget);
+      await t.pageBack();
+      await t.pumpAndSettle();
+      expect(find.text('root songs'), findsOneWidget);
+      await t.pumpWidget(const SizedBox());
+      await gateway.dispose();
+    },
+  );
+
+  testWidgets('a busy protected subpage cannot be left by a tab tap', (
+    t,
+  ) async {
+    final gateway = _ShellRecorderGateway();
+    final unlocked = ValueNotifier(false);
+    await t.pumpWidget(
+      MaterialApp(
+        home: AppShell(
+          recorderGateway: gateway,
+          tabBuilder: (_, tab) => Text('root ${tab.name}'),
+          settingsBuilder: (_) => ValueListenableBuilder<bool>(
+            valueListenable: unlocked,
+            builder: (_, allow, _) => PopScope(
+              canPop: allow,
+              child: Scaffold(
+                body: TextButton(
+                  onPressed: () => unlocked.value = true,
+                  child: const Text('보호 작업 완료'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+    await t.tap(find.byTooltip('설정'));
+    await t.pumpAndSettle();
+    await _selectTab(t, '검색');
+    expect(find.text('보호 작업 완료'), findsOneWidget);
+    expect(find.text('root search'), findsNothing);
+    await t.tap(find.text('보호 작업 완료'));
+    await t.pumpAndSettle();
+    await _selectTab(t, '검색');
+    expect(find.text('root search'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    unlocked.dispose();
+    await gateway.dispose();
+  });
 }
 
 Future<void> _selectTab(WidgetTester tester, String label) async {

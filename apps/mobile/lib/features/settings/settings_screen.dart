@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 import 'package:song_record/routing/app_routes.dart';
 
 import '../../core/theme/app_appearance.dart';
@@ -46,12 +47,10 @@ class SettingsScreen extends StatelessWidget {
       IconData icon,
       WidgetBuilder? builder, {
       String? subtitle,
-    }) => ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-      leading: FeatureIcon(icon, size: 34),
-      title: Text(title),
-      subtitle: subtitle == null ? null : Text(subtitle),
-      trailing: const AppIcon(Icons.chevron_right, size: 16),
+    }) => AppFeatureRow(
+      title: title,
+      icon: icon,
+      subtitle: subtitle,
       onTap: builder == null ? null : () => open(builder),
     );
     Widget section(String title, List<Widget> rows) => Column(
@@ -81,7 +80,9 @@ class SettingsScreen extends StatelessWidget {
       ],
     );
     return Scaffold(
-      appBar: AppBar(
+      appBar: appPageBar(
+        context,
+        showSettings: false,
         title: const Text('설정'),
         actions: const [ThemeToggle()],
         leading: IconButton(
@@ -180,8 +181,10 @@ class SettingsScreen extends StatelessWidget {
                 leading: const FeatureIcon(Icons.monitor_heart_outlined),
                 title: const Text('서버 연결 확인'),
                 trailing: const AppIcon(Icons.chevron_right),
-                onTap: () =>
-                    Navigator.of(context).pushNamed<void>(AppRoutes.health),
+                onTap: () => Navigator.of(
+                  context,
+                  rootNavigator: true,
+                ).pushNamed<void>(AppRoutes.health),
               ),
             ],
           ],

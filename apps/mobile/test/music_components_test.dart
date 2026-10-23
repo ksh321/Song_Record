@@ -292,7 +292,7 @@ void main() {
           matching: find.byType(DecoratedBox),
         ),
       );
-      expect((box.decoration as BoxDecoration).color, const Color(0xFF6E3051));
+      expect((box.decoration as BoxDecoration).color, const Color(0xFF4B3279));
       expect(find.text('여 +1'), findsOneWidget);
     }
   });

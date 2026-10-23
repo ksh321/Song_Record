@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_icon.dart';
@@ -103,7 +104,10 @@ class _DeleteScreenState extends State<DeleteScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(widget.recording ? '녹음 삭제' : '곡 삭제')),
+    appBar: appPageBar(
+      context,
+      title: Text(widget.recording ? '녹음 삭제' : '곡 삭제'),
+    ),
     body: SafeArea(
       child: ListView(
         padding: AppLayout.bodyPadding,
@@ -361,7 +365,8 @@ class _TrashScreenState extends State<TrashScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
+    appBar: appPageBar(
+      context,
       title: const Text('휴지통'),
       actions: [
         IconButton(

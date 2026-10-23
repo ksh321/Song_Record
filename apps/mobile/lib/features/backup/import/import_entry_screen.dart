@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../../core/database/account_store.dart';
 import '../../../core/domain/identifiers.dart';
@@ -271,7 +272,7 @@ class _State extends State<ImportEntryScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('백업 가져오기')),
+    appBar: appPageBar(context, title: const Text('백업 가져오기')),
     body: SafeArea(
       top: false,
       child: ListView(

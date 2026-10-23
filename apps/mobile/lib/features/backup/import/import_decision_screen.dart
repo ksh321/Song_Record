@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/ui_controls.dart';
@@ -100,7 +101,8 @@ class _ImportDecisionScreenState extends State<ImportDecisionScreen> {
           if (!didPop) cancel();
         },
         child: Scaffold(
-          appBar: AppBar(
+          appBar: appPageBar(
+            context,
             title: const Text('백업 가져오기'),
             leading: BackButton(onPressed: cancel),
           ),
@@ -184,7 +186,7 @@ class ImportErrorList extends StatelessWidget {
   final List<ImportValidationIssue> issues;
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text('파일 검사 오류 ${issues.length}개')),
+    appBar: appPageBar(context, title: Text('파일 검사 오류 ${issues.length}개')),
     body: SafeArea(
       top: false,
       child: ListView.builder(

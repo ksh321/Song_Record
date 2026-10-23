@@ -19,8 +19,8 @@ abstract final class AppColors {
   static const deleteText = Color(0xFFDD868A);
   static const dangerBorder = Color(0xFF674747);
   static const keyOriginalBackground = Color(0xFF303030);
-  static const keyMaleBackground = Color(0xFF213556);
-  static const keyFemaleBackground = Color(0xFF46272D);
+  static const keyMaleBackground = Color(0xFF174A7E);
+  static const keyFemaleBackground = Color(0xFF4B3279);
   static const keyForeground = Color(0xFFFFFFFF);
   static const compactRowBackground = Color(0xFF202020);
   static const compactRowBorder = Color(0xFF353535);
@@ -28,6 +28,18 @@ abstract final class AppColors {
   static const sheetBorder = Color(0xFF414141);
   static const sheetScrim = Color.fromRGBO(0, 0, 0, 0.48);
   static const focusOutline = Color(0xFFEEEEEE);
+}
+
+abstract final class AppKeyColors {
+  static (Color, Color) male(bool light) => light
+      ? (const Color(0xFFE1EFFF), const Color(0xFF15538A))
+      : (AppColors.keyMaleBackground, const Color(0xFFD4E9FF));
+  static (Color, Color) female(bool light) => light
+      ? (const Color(0xFFEEE5FF), const Color(0xFF6336A1))
+      : (AppColors.keyFemaleBackground, const Color(0xFFEDE1FF));
+  static (Color, Color) neutral(bool light) => light
+      ? (const Color(0xFFE6E6E6), const Color(0xFF333333))
+      : (AppColors.keyOriginalBackground, AppColors.keyForeground);
 }
 
 enum AppAccent {
@@ -42,8 +54,8 @@ enum AppAccent {
 
   const AppAccent(this.id, this.label, this.background, this.foreground);
 
-  // The option labelled "기본값" is grey. The initial selection is blue.
-  static const initial = blue;
+  // Fresh installations and the option labelled "기본값" both use grey.
+  static const initial = neutral;
 
   final String id;
   final String label;

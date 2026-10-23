@@ -2,12 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:song_record/core/sync/local_repository.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/files/recording_catalog.dart';
 import '../../core/widgets/app_icon.dart';
-import '../../core/widgets/feature_icon.dart';
 import '../../core/widgets/ui_controls.dart';
-import '../../routing/tab_navigation.dart';
 import '../trash/trash_workflow.dart';
 import 'completed_capture_handoff.dart';
 import 'recorder_gateway.dart';
@@ -95,12 +94,12 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
     IconData icon,
     VoidCallback open,
   ) => Card(
-    child: ListTile(
-      leading: FeatureIcon(icon),
-      title: Text(title),
-      subtitle: Text(subtitle),
-      trailing: const AppIcon(Icons.chevron_right),
+    child: AppFeatureRow(
+      title: title,
+      subtitle: subtitle,
+      icon: icon,
       onTap: open,
+      grouped: false,
     ),
   );
 
@@ -108,7 +107,7 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
     Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => Scaffold(
-          appBar: AppBar(title: Text(title)),
+          appBar: appPageBar(context, title: Text(title)),
           body: SafeArea(
             child: SingleChildScrollView(
               padding: AppLayout.bodyPadding,
@@ -124,13 +123,21 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
   Widget build(BuildContext context) => ListView(
     padding: AppLayout.bodyPadding,
     children: [
-      const TabHeaderSubtitle('한 번에 최대 6분'),
       RecorderPanel(
         gateway: widget.gateway,
         diagnostics: false,
         onCompleted: _persist,
       ),
-      const SizedBox(height: 64),
+      const SizedBox(height: 20),
+      Text(
+        '한 번에 최대 6분',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 11,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+      const SizedBox(height: 60),
       StreamBuilder<List<Map<String, dynamic>>>(
         stream: _pending,
         builder: (context, snapshot) => _entry(

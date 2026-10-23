@@ -145,8 +145,8 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 .phone .phone-nav{height:70px;padding:8px 6px 2px;gap:2px}.phone .tab{gap:5px;color:var(--muted)}.phone .tab>span{width:50px;height:31px;border-radius:18px}.phone .tab.active>span,.phone.v4-light .tab.active>span{background:var(--accent);color:var(--on-accent)}.phone .tab small{font-size:9px;line-height:1.5}.phone .tab.active small{color:var(--text);font-weight:700}
 
 /* Single source for every tier and key badge color. Edit tokens here only. */
-.phone{--tier-default-bg:#d5d9e0;--tier-default-fg:#535b68;--tier-s-bg:#f6d879;--tier-s-fg:#614500;--tier-a-bg:#f2b079;--tier-a-fg:#703900;--tier-b-bg:#a4cfad;--tier-b-fg:#285735;--tier-c-bg:#a4bdd5;--tier-c-fg:#314e6b;--tier-d-bg:#b7b0c2;--tier-d-fg:#4c435b;--tier-unset-bg:#d5d9e0;--tier-unset-fg:#535b68;--key-neutral-bg:#303030;--key-neutral-fg:#fff;--key-male-bg:#174a7e;--key-male-fg:#d4e9ff;--key-female-bg:#6e3051;--key-female-fg:#ffe0ef}
-.phone.v4-light{--tier-unset-bg:#eee;--tier-unset-fg:#666;--key-neutral-bg:#e6e6e6;--key-neutral-fg:#333;--key-male-bg:#e1efff;--key-male-fg:#15538a;--key-female-bg:#fce5f0;--key-female-fg:#98345f}
+.phone{--tier-default-bg:#d5d9e0;--tier-default-fg:#535b68;--tier-s-bg:#f6d879;--tier-s-fg:#614500;--tier-a-bg:#f2b079;--tier-a-fg:#703900;--tier-b-bg:#a4cfad;--tier-b-fg:#285735;--tier-c-bg:#a4bdd5;--tier-c-fg:#314e6b;--tier-d-bg:#b7b0c2;--tier-d-fg:#4c435b;--tier-unset-bg:#d5d9e0;--tier-unset-fg:#535b68;--key-neutral-bg:#303030;--key-neutral-fg:#fff;--key-male-bg:#174a7e;--key-male-fg:#d4e9ff;--key-female-bg:#4b3279;--key-female-fg:#ede1ff}
+.phone.v4-light{--tier-unset-bg:#eee;--tier-unset-fg:#666;--key-neutral-bg:#e6e6e6;--key-neutral-fg:#333;--key-male-bg:#e1efff;--key-male-fg:#15538a;--key-female-bg:#eee5ff;--key-female-fg:#6336a1}
 .phone .tier{background:var(--tier-badge-bg,var(--tier-default-bg));color:var(--tier-badge-fg,var(--tier-default-fg))}
 .phone .tier[data-tier="S"]{--tier-badge-bg:var(--tier-s-bg);--tier-badge-fg:var(--tier-s-fg)}
 .phone .tier[data-tier="A"]{--tier-badge-bg:var(--tier-a-bg);--tier-badge-fg:var(--tier-a-fg)}

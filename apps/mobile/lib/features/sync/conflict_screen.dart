@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/database/local_models.dart';
 import '../../core/sync/canonical_conflict_plan.dart';
@@ -162,7 +163,7 @@ class _ConflictScreenState extends State<ConflictScreen> {
     return PopScope(
       canPop: !_busy,
       child: Scaffold(
-        appBar: AppBar(title: const Text('동기화 충돌')),
+        appBar: appPageBar(context, title: const Text('동기화 충돌')),
         body: SafeArea(
           child: ListView(
             padding: AppLayout.bodyPadding,
@@ -308,7 +309,7 @@ class _CanonicalConflictScreenState extends State<CanonicalConflictScreen> {
     return PopScope(
       canPop: !_busy,
       child: Scaffold(
-        appBar: AppBar(title: const Text('같은 곡의 개인 편집')),
+        appBar: appPageBar(context, title: const Text('같은 곡의 개인 편집')),
         body: SafeArea(
           child: ListView(
             padding: AppLayout.bodyPadding,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/content_state.dart';
@@ -154,7 +155,7 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
             arguments: origin,
           ),
           builder: (route) => Scaffold(
-            appBar: AppBar(title: const Text('TJ에서 찾기')),
+            appBar: appPageBar(context, title: const Text('TJ에서 찾기')),
             body: KaraokeSearchScreen(
               load: widget.searchLoad!,
               auth: widget.auth,

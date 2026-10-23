@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/database/local_models.dart';
 import '../../core/sync/canonical_conflict_plan.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/feature_icon.dart';
 import '../../core/widgets/ui_controls.dart';
 import 'conflict_screen.dart';
 import 'sync_controller.dart';
@@ -88,7 +90,7 @@ class _SyncScreenState extends State<SyncScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('동기화 상태')),
+    appBar: appPageBar(context, title: const Text('동기화 상태')),
     body: SafeArea(
       child: ListenableBuilder(
         listenable: widget.controller,
@@ -97,10 +99,51 @@ class _SyncScreenState extends State<SyncScreen> {
           return ListView(
             padding: AppLayout.bodyPadding,
             children: [
-              const Text('이 기기의 전송 대기 정보'),
+              AppPanel(
+                child: Column(
+                  children: [
+                    FeatureIcon(
+                      state.busy ? Icons.sync : Icons.cloud_outlined,
+                      size: 42,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      state.busy
+                          ? '변경사항을 확인하고 있어요'
+                          : state.needsResume
+                          ? '연결을 기다리고 있어요'
+                          : !state.loaded
+                          ? '동기화 상태 확인 중'
+                          : state.items.isEmpty && state.canonicalItems.isEmpty
+                          ? '대기 중인 변경이 없어요'
+                          : '확인이 필요한 변경이 있어요',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              FilledButton(
+                onPressed: state.busy || !state.maySend ? null : state.resume,
+                child: const Text('다시 동기화'),
+              ),
               const SizedBox(height: AppSpacing.sm),
-              const Text(
-                '재시도를 요청하면 전송 가능한 다른 대기 정보도 함께 처리해요. 파일 전송과 충돌 해결은 별도예요.',
+              const ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: Text('정보와 녹음 파일', style: TextStyle(fontSize: 12)),
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 14),
+                    child: Text(
+                      '곡·메모 등 정보의 동기화와 녹음 파일의 서버 보관은 별개예요. 녹음 파일은 각 녹음 상세에서 확인해 주세요. 다시 동기화를 누르면 전송 가능한 대기 정보도 함께 처리해요.',
+                      style: TextStyle(fontSize: 12, height: 1.85),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpacing.md),
               if (state.message != null) Text(state.message!),

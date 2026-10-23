@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'app_icon.dart';
+import 'feature_icon.dart';
 
 /// Final, computed UI03 CSS values. Shared by every product screen.
 abstract final class AppLayout {
@@ -454,5 +455,73 @@ class AppLabeledFormField extends StatelessWidget {
         ),
       ),
     ],
+  );
+}
+
+/// HTML .item geometry shared by settings, personalization and recording links.
+class AppFeatureRow extends StatelessWidget {
+  const AppFeatureRow({
+    required this.title,
+    required this.icon,
+    this.subtitle,
+    this.onTap,
+    this.grouped = true,
+    super.key,
+  });
+  final String title;
+  final String? subtitle;
+  final IconData icon;
+  final VoidCallback? onTap;
+  final bool grouped;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    enabled: onTap != null,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(minHeight: grouped ? 66 : 78),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: grouped ? 12 : 16,
+          ),
+          child: Row(
+            children: [
+              FeatureIcon(icon, size: grouped ? 30 : 40),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: grouped ? 13 : 15,
+                        fontWeight: FontWeight.w600,
+                        height: 1.45,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle!,
+                        style: TextStyle(
+                          fontSize: grouped ? 11 : 12,
+                          height: 1.7,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const AppIcon(Icons.chevron_right, size: 16),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 }

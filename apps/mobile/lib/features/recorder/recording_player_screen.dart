@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/audio/audio_player.dart';
 import '../../core/widgets/app_icon.dart';
@@ -43,7 +44,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('녹음 재생')),
+    appBar: appPageBar(context, title: const Text('녹음 재생')),
     body: SafeArea(
       child: AnimatedBuilder(
         animation: player,

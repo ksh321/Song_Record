@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../auth/auth_session.dart';
 import '../charts/popular_chart.dart';
@@ -41,7 +42,7 @@ class _PlaylistDiscoveryScreenState extends State<PlaylistDiscoveryScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('목록에 추가할 곡 찾기')),
+    appBar: appPageBar(context, title: const Text('목록에 추가할 곡 찾기')),
     body: SafeArea(
       child: Column(
         children: [

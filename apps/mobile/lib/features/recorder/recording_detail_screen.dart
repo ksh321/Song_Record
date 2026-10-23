@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/database/local_models.dart';
 import '../../core/domain/song_types.dart';
@@ -40,7 +41,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
   );
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('녹음 상세')),
+    appBar: appPageBar(context, title: const Text('녹음 상세')),
     body: SafeArea(
       child: FutureBuilder<MetadataCopy?>(
         future: future,

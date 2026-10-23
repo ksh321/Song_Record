@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/sync/local_repository.dart';
 import '../../core/theme/app_tokens.dart';
@@ -206,7 +207,7 @@ class _RecordingSongPickerState extends State<RecordingSongPicker> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('녹음의 곡 선택')),
+    appBar: appPageBar(context, title: const Text('녹음의 곡 선택')),
     body: SafeArea(
       child: StreamBuilder<List<Map<String, dynamic>>>(
         stream: songs,

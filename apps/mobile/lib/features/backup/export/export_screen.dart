@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../../core/theme/app_tokens.dart';
 import '../../../core/widgets/app_icon.dart';
@@ -69,7 +70,8 @@ class _State extends State<ExportScreen> {
       return PopScope(
         canPop: !controller.busy,
         child: Scaffold(
-          appBar: AppBar(
+          appBar: appPageBar(
+            context,
             title: const Text('백업 내보내기'),
             leading: IconButton(
               tooltip: '뒤로가기',

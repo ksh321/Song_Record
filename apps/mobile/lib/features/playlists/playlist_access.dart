@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/ui_controls.dart';
@@ -60,7 +61,7 @@ class _AddSongToPlaylistState extends State<AddSongToPlaylistScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('플레이리스트 추가')),
+    appBar: appPageBar(context, title: const Text('플레이리스트 추가')),
     body: FutureBuilder<List<Map<String, dynamic>>>(
       future: lists,
       builder: (context, snapshot) {

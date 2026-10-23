@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "source": {
     "file": "docs/prototypes/song-record-v2/preview.css",
-    "sha256": "bcf9676cb51d3a5332c6c028b6f4eb383629b310f0cd2cd5ba46c26348a791d2",
-    "basis": "Final computed CSS in user-approved UI03 HTML, including cascading overrides; 2026-10-23 parity correction",
+    "sha256": "4d4cf0935d14dd935c6918290296522d0f1b0c365dc5c13722910d3dd3d3fe7e",
+    "basis": "Final computed CSS in user-approved UI03 HTML, including cascading overrides; 2026-10-23 parity correction; 2026-10-23 user male blue/female purple defaults and recording spacing follow-up; fresh default accent grey; existing saved choices preserved",
     "units": "CSS px mapped to Flutter logical pixels; native text scaling preserved"
   },
   "theme": "dark",
-  "defaultAccentId": "blue",
+  "defaultAccentId": "default",
   "colors": {
     "bg": "#121212",
     "surface": "#222222",
@@ -15,7 +15,7 @@
     "line": "#3B3B3B",
     "text": "#EEEEEE",
     "muted": "#AAAAAA",
-    "accent": "#2C67C5",
+    "accent": "#737373",
     "on-accent": "#FFFFFF",
     "danger": "#FF9B9F"
   },
@@ -74,8 +74,8 @@
     "deleteText": "#DD868A",
     "dangerBorder": "#674747",
     "keyOriginalBackground": "#303030",
-    "keyMaleBackground": "#213556",
-    "keyFemaleBackground": "#46272D",
+    "keyMaleBackground": "#174A7E",
+    "keyFemaleBackground": "#4B3279",
     "keyForeground": "#FFFFFF",
     "compactRowBackground": "#202020",
     "compactRowBorder": "#353535",
@@ -253,5 +253,35 @@
     "file": "apps/mobile/assets/fonts/ReferenceKR.ttf",
     "origin": "https://android.googlesource.com/platform/frameworks/base/+/android-4.1.1_r1/data/fonts/DroidSansFallback.ttf",
     "notice": "apps/mobile/assets/fonts/NOTICE.txt"
+  },
+  "keyBadges": {
+    "dark": {
+      "male": [
+        "#174A7E",
+        "#D4E9FF"
+      ],
+      "female": [
+        "#4B3279",
+        "#EDE1FF"
+      ],
+      "neutral": [
+        "#303030",
+        "#FFFFFF"
+      ]
+    },
+    "light": {
+      "male": [
+        "#E1EFFF",
+        "#15538A"
+      ],
+      "female": [
+        "#EEE5FF",
+        "#6336A1"
+      ],
+      "neutral": [
+        "#E6E6E6",
+        "#333333"
+      ]
+    }
   }
 }

@@ -694,3 +694,13 @@
   });
   P.render();
 })();
+
+// Supplemental screens are registered by this file after the base HTML model.
+// Restore their deep link only once every renderer and screen has been installed.
+(() => {
+  const requested = new URLSearchParams(location.hash.slice(1)).get('screen');
+  if (requested && window.FLOW?.screenMap.has(requested) &&
+      window.Prototype?.state.screen !== requested) {
+    window.Prototype.go(requested, true);
+  }
+})();

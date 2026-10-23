@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/content_state.dart';
@@ -48,7 +49,7 @@ class _UnlinkedRecordingsScreenState extends State<UnlinkedRecordingsScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('곡 미연결 녹음')),
+    appBar: appPageBar(context, title: const Text('곡 미연결 녹음')),
     body: SafeArea(
       child: invalidated || tag() != scope
           ? const ContentState(

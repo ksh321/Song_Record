@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/feature_icon.dart';
@@ -333,7 +334,9 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: widget.embedded ? null : AppBar(title: const Text('플레이리스트')),
+    appBar: widget.embedded
+        ? null
+        : appPageBar(context, title: const Text('플레이리스트')),
     body: SafeArea(
       top: !widget.embedded,
       child: ListView(

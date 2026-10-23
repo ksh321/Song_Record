@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/feature_icon.dart';
@@ -327,7 +328,8 @@ class _StorageState extends State<StorageScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
+    appBar: appPageBar(
+      context,
       title: const Text('보관량과 고정'),
       actions: [
         IconButton(

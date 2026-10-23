@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/domain/identifiers.dart';
 import 'storage_request_outbox.dart';
@@ -71,14 +72,14 @@ class _DemandState extends State<StorageRequestScreen> {
         widget.outbox.guard();
       } catch (_) {
         return Scaffold(
-          appBar: AppBar(title: const Text('추가 보관 요청')),
+          appBar: appPageBar(context, title: const Text('추가 보관 요청')),
           body: const SafeArea(
             child: Center(child: Text('로그인 상태가 바뀌었어요. 설정을 다시 열어 주세요.')),
           ),
         );
       }
       return Scaffold(
-        appBar: AppBar(title: const Text('추가 보관 요청')),
+        appBar: appPageBar(context, title: const Text('추가 보관 요청')),
         body: SafeArea(
           child: ListView(
             padding: const EdgeInsets.all(20),

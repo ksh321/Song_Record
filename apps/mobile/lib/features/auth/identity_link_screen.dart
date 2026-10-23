@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/widgets/app_icon.dart';
 import 'auth_session.dart';
@@ -145,7 +146,8 @@ class _IdentityLinkScreenState extends State<IdentityLinkScreen> {
   Widget build(BuildContext context) => PopScope(
     canPop: !_busy,
     child: Scaffold(
-      appBar: AppBar(
+      appBar: appPageBar(
+        context,
         title: const Text('로그인 계정 연결'),
         automaticallyImplyLeading: !_busy,
       ),
