@@ -4,6 +4,7 @@ import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/content_state.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/song_row.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../auth/auth_session.dart';
 import '../search/karaoke_search.dart';
 import '../search/karaoke_search_screen.dart';
@@ -214,46 +215,28 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
       return ListView(
         key: const PageStorageKey('popular-chart'),
         primary: false,
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: AppLayout.bodyPadding,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final brand in KaraokeBrand.values)
-                ChoiceChip(
-                  label: Text(brand == KaraokeBrand.tj ? 'TJ' : '금영'),
-                  selected: controller.scope.brand == brand,
-                  onSelected: (_) => controller.change(brand: brand),
-                ),
-            ],
+          AppBrandTabs<KaraokeBrand>(
+            options: const {KaraokeBrand.tj: 'TJ', KaraokeBrand.ky: '금영'},
+            selected: controller.scope.brand,
+            onChanged: (v) => controller.change(brand: v),
           ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final period in ChartPeriod.values)
-                ChoiceChip(
-                  label: Text(period.label),
-                  selected: controller.scope.period == period,
-                  onSelected: (_) => controller.change(period: period),
-                ),
-            ],
+          const SizedBox(height: 14),
+          AppOptions<ChartPeriod>(
+            pills: true,
+            equalWidth: true,
+            options: {for (final p in ChartPeriod.values) p: p.label},
+            selected: controller.scope.period,
+            onChanged: (v) => controller.change(period: v),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           if (chart != null) ...[
-            ExpansionTile(
-              title: const Text('출처 정보'),
-              children: [
-                const Text('출처: MANANA'),
-                SelectableText(
-                  chart.scope.sourceUrl,
-                  key: PageStorageKey('chart-source-${chart.scope.sourceUrl}'),
-                  style: AppTypography.supporting,
-                ),
-              ],
+            Text(
+              '${controller.scope.period.label} 인기곡',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
+            const SizedBox(height: 16),
             if (chart.stale)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
@@ -261,7 +244,7 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
               ),
             for (final item in chart.items)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: EdgeInsets.zero,
                 child: SongRow.candidate(
                   candidate: CandidateSongViewData(
                     brand: chart.scope.brand == KaraokeBrand.tj
@@ -280,6 +263,22 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
                       : () => _select(chart, item),
                 ),
               ),
+            ExpansionTile(
+              title: const Text(
+                '출처 정보',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+              ),
+              tilePadding: EdgeInsets.zero,
+              minTileHeight: 44,
+              children: [
+                const Text('출처: MANANA'),
+                SelectableText(
+                  chart.scope.sourceUrl,
+                  key: PageStorageKey('chart-source-${chart.scope.sourceUrl}'),
+                  style: AppTypography.supporting,
+                ),
+              ],
+            ),
           ] else if (controller.phase == ChartPhase.loading)
             const ContentState(
               phase: ContentPhase.loading,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/ui_controls.dart';
 import 'import_roles.dart';
 
 class ImportRoleSelection extends StatefulWidget {
@@ -35,7 +35,7 @@ class _ImportRoleSelectionState extends State<ImportRoleSelection> {
     };
     return SafeArea(
       child: ListView.builder(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: AppLayout.bodyPadding,
         itemCount: candidates.length + 2,
         itemBuilder: (context, index) {
           if (index == 0) {

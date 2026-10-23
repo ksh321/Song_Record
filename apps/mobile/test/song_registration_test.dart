@@ -160,7 +160,13 @@ void main() {
         find.byKey(const ValueKey('song-note')),
         '오프라인 메모',
       );
+      await tester.scrollUntilVisible(
+        find.text('저장'),
+        180,
+        scrollable: find.byType(Scrollable).last,
+      );
       await tester.ensureVisible(find.text('저장'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('저장'));
       await tester.pumpAndSettle();
       expect(prepared, 1);
@@ -174,7 +180,13 @@ void main() {
         '오프라인 메모',
       );
       expect(submitted!.manualApproval, same(approval));
+      await tester.scrollUntilVisible(
+        find.text('저장'),
+        180,
+        scrollable: find.byType(Scrollable).last,
+      );
       await tester.ensureVisible(find.text('저장'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('저장'));
       await tester.pumpAndSettle();
       expect(prepared, 1);

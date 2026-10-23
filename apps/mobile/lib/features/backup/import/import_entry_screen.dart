@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../core/database/account_store.dart';
 import '../../../core/domain/identifiers.dart';
 import '../../../core/sync/snapshot_transport.dart';
-import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/ui_controls.dart';
 import '../../auth/auth_session.dart';
 import '../export/export_preparation.dart';
 import 'import_application.dart';
@@ -275,7 +275,7 @@ class _State extends State<ImportEntryScreen> {
     body: SafeArea(
       top: false,
       child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: AppLayout.bodyPadding,
         children: [
           const Text(
             '이 계정에서 만든 백업 파일을 선택해 주세요. 파일과 기존 기록을 자동으로 확인한 뒤 가져올 내용을 보여드려요.',

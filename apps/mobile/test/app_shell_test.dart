@@ -2,14 +2,55 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:song_record/app/app_shell.dart';
 import 'package:song_record/app/song_record_app.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 import 'package:song_record/features/recorder/recorder_panel.dart';
 import 'package:song_record/features/settings/settings_screen.dart';
 import 'package:song_record/network/health_client.dart';
+import 'package:song_record/routing/tab_navigation.dart';
 
 void main() {
+  testWidgets(
+    'production screen builders keep detail inside its tab navigator',
+    (tester) async {
+      final gateway = _ShellRecorderGateway();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AppShell(
+            recorderGateway: gateway,
+            songsBuilder: (context, findSong) {
+              expect(TabNavigation.maybeOf(context), isNotNull);
+              return TextButton(
+                onPressed: () => Navigator.of(context).push<void>(
+                  MaterialPageRoute(
+                    builder: (_) => const Scaffold(body: Text('상세 내용')),
+                  ),
+                ),
+                child: const Text('상세 열기'),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.tap(find.text('상세 열기'));
+      await tester.pumpAndSettle();
+      expect(find.text('상세 내용'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text('내 곡'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('상세 열기'), findsOneWidget);
+      expect(find.text('상세 내용'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await gateway.dispose();
+    },
+  );
   AppConfig config(AppEnvironment environment) => AppConfig(
     environment: environment,
     apiBaseUrl: Uri.parse('http://127.0.0.1:8080'),
@@ -125,6 +166,7 @@ void main() {
     await _selectTab(tester, '녹음');
     final recorderState = tester.state(find.byType(RecorderPanel));
     await tester.ensureVisible(find.text('녹음 시작'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('녹음 시작'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -158,6 +200,7 @@ void main() {
     expect(find.textContaining('shell-recording'), findsNothing);
 
     await tester.ensureVisible(find.text('녹음 완료'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('녹음 완료'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -191,6 +234,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(healthCalls, 0);
       if (environment == AppEnvironment.dev) {
+        await tester.scrollUntilVisible(
+          find.text('서버 연결 확인'),
+          150,
+          scrollable: find.descendant(
+            of: find.byType(SettingsScreen),
+            matching: find.byType(Scrollable),
+          ),
+        );
+        await tester.ensureVisible(find.text('서버 연결 확인'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('서버 연결 확인'));
         await tester.pumpAndSettle();
         expect(healthCalls, 1);

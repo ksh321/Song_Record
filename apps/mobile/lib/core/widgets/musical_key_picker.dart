@@ -245,8 +245,12 @@ class _KeySheetState extends State<_KeySheet> {
                                           ? FontWeight.w700
                                           : FontWeight.normal,
                                       color: _shift == value
-                                          ? Theme.of(context).colorScheme.onSurface
-                                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                                          ? Theme.of(context)
+                                                .colorScheme
+                                                .onSurface
+                                          : Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
                                     ),
                                   ),
                                 ),

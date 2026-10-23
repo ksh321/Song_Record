@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../widgets/app_icon.dart';
+
 class AppAppearance extends InheritedNotifier<ValueNotifier<bool>> {
   const AppAppearance({
     required ValueNotifier<bool> light,
@@ -20,7 +22,10 @@ class ThemeToggle extends StatelessWidget {
     if (value == null) return const SizedBox.shrink();
     return IconButton(
       tooltip: value.value ? '다크 모드 켜기' : '다크 모드 끄기',
-      icon: const Icon(Icons.dark_mode_outlined),
+      icon: const AppIcon(Icons.dark_mode_outlined, size: 20),
+      color: Theme.of(context).brightness == Brightness.dark
+          ? Theme.of(context).colorScheme.primary
+          : Theme.of(context).colorScheme.onSurface,
       onPressed: () async {
         value.value = !value.value;
         try {

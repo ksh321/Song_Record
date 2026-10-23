@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/sheet_safe_area.dart';
 
+import 'app_icon.dart';
+
 /// A null route result means cancellation. A result containing null means
 /// an explicit choice of an unset value (for example, a tier).
 class SelectionResult<T> {
@@ -85,7 +87,7 @@ Future<SelectionResult<T>?> showSelectionSheet<T>({
                           style: AppTypography.supporting,
                         ),
                   trailing: option.value == selected
-                      ? const Icon(Icons.check, semanticLabel: '선택됨')
+                      ? const AppIcon(Icons.check, semanticLabel: '선택됨')
                       : null,
                   onTap: () =>
                       Navigator.of(sheetContext)

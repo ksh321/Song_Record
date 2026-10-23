@@ -10,6 +10,8 @@ class MusicRowSurface extends StatelessWidget {
     this.enabled = true,
     this.selected = false,
     this.compact = false,
+    this.flat = false,
+    this.padding,
     super.key,
   });
 
@@ -19,6 +21,8 @@ class MusicRowSurface extends StatelessWidget {
   final bool enabled;
   final bool selected;
   final bool compact;
+  final bool flat;
+  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
@@ -30,11 +34,19 @@ class MusicRowSurface extends StatelessWidget {
       enabled: enabled && onTap != null,
       selected: selected,
       child: Material(
-        color: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: radius,
-          side: BorderSide(color: Theme.of(context).colorScheme.outline),
-        ),
+        color: flat
+            ? Colors.transparent
+            : Theme.of(context).colorScheme.surface,
+        shape: flat
+            ? Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+              )
+            : RoundedRectangleBorder(
+                borderRadius: radius,
+                side: BorderSide(color: Theme.of(context).colorScheme.outline),
+              ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: enabled ? onTap : null,
@@ -42,9 +54,13 @@ class MusicRowSurface extends StatelessWidget {
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: minHeight),
             child: Padding(
-              padding: const EdgeInsets.all(
-                AppDimensions.compactSongRowPadding,
-              ),
+              padding:
+                  padding ??
+                  (flat
+                      ? const EdgeInsets.symmetric(vertical: 14)
+                      : const EdgeInsets.all(
+                          AppDimensions.compactSongRowPadding,
+                        )),
               child: child,
             ),
           ),

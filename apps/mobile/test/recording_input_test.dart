@@ -282,7 +282,8 @@ void main() {
       );
       await t.pump();
       expect(find.textContaining('티어'), findsNothing);
-      expect(find.text('키: 원키'), findsOneWidget);
+      expect(find.text('키'), findsOneWidget);
+      expect(find.text('원키'), findsOneWidget);
       await t.tap(find.text('녹음 저장'));
       await t.pump();
       expect(find.textContaining('곡명·가수는'), findsOneWidget);

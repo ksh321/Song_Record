@@ -6,6 +6,11 @@ import build_beta as build
 
 
 class BuildBetaTests(unittest.TestCase):
+    def test_font_and_license_are_bound_to_the_verified_artifact(self):
+        sources=build._source_hashes()
+        self.assertIn('apps/mobile/assets/fonts/ReferenceKR.ttf',sources)
+        self.assertIn('apps/mobile/assets/fonts/NOTICE.txt',sources)
+
     def test_only_explicit_staging_https_and_public_provider_fields(self):
         row={'APP_ENV':'staging','API_BASE_URL':'https://example.test','GOOGLE_SERVER_CLIENT_ID':'660802266773-example.apps.googleusercontent.com','KAKAO_NATIVE_APP_KEY':'1'*32}
         build.validate_defines(row)

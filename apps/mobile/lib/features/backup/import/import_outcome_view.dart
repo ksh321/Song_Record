@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/ui_controls.dart';
 import 'import_outcome.dart';
 
 class ImportOutcomeView extends StatelessWidget {
@@ -9,7 +9,7 @@ class ImportOutcomeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SafeArea(
     child: ListView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: AppLayout.bodyPadding,
       children: [
         Text(result.complete ? '가져오기 확인 완료' : '가져오기 확인 · 남은 항목이 있습니다'),
         for (final entry in {

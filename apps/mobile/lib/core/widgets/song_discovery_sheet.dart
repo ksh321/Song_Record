@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/sheet_safe_area.dart';
 
+import 'app_icon.dart';
 import 'feature_icon.dart';
 
 enum SongDiscoveryDestination { charts, search, mySongs, manual }
@@ -167,7 +168,7 @@ class _DiscoveryCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               const Align(
                 alignment: Alignment.centerRight,
-                child: Icon(Icons.chevron_right, size: 14),
+                child: AppIcon(Icons.chevron_right, size: 14),
               ),
             ],
           ),

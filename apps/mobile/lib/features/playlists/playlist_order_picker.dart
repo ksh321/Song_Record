@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/widgets/app_icon.dart';
+
 class PlaylistOrderPicker extends StatefulWidget {
   const PlaylistOrderPicker({
     super.key,
@@ -45,14 +47,14 @@ class _PlaylistOrderPickerState extends State<PlaylistOrderPicker> {
                           IconButton(
                             tooltip: '${i + 1}번 위로',
                             onPressed: i == 0 ? null : () => move(i, i - 1),
-                            icon: const Icon(Icons.arrow_upward),
+                            icon: const AppIcon(Icons.arrow_upward),
                           ),
                           IconButton(
                             tooltip: '${i + 1}번 아래로',
                             onPressed: i == ids.length - 1
                                 ? null
                                 : () => move(i, i + 1),
-                            icon: const Icon(Icons.arrow_downward),
+                            icon: const AppIcon(Icons.arrow_downward),
                           ),
                         ],
                       ),

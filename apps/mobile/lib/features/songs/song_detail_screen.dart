@@ -4,13 +4,17 @@ import 'package:flutter/material.dart';
 
 import '../../core/domain/identifiers.dart';
 import '../../core/domain/song_types.dart';
+import '../../core/theme/app_appearance.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/content_state.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/recording_roles_card.dart';
 import '../../core/widgets/recording_row.dart';
 import '../../core/widgets/selection_sheet.dart';
 import '../../core/widgets/song_badges.dart';
+import '../../core/widgets/ui_controls.dart';
+import '../../routing/app_routes.dart';
 import '../auth/auth_session.dart';
 import '../recorder/recording_audio_panel.dart';
 import '../trash/trash_screens.dart';
@@ -193,35 +197,16 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
       appBar: AppBar(
         title: Text(widget.recordingId == null ? '곡 상세' : '녹음 정보'),
         actions: [
-          if (widget.recordingId == null &&
-              value?.song != null &&
-              !changedAccount)
-            PopupMenuButton<String>(
-              tooltip: '곡 메뉴',
-              icon: const Icon(Icons.more_vert),
-              itemBuilder: (_) => const [
-                PopupMenuItem(value: 'playlist', child: Text('플레이리스트 추가')),
-                PopupMenuItem(value: 'delete', child: Text('곡 삭제')),
-              ],
-              onSelected: (action) => Navigator.of(context).push<void>(
-                MaterialPageRoute(
-                  builder: (_) => action == 'delete' && widget.trash != null
-                      ? DeleteScreen(
-                          actions: widget.trash!,
-                          id: value!.song!.view.id.value,
-                          title: value.song!.view.title,
-                          auth: widget.auth,
-                        )
-                      : SongActionEntry(
-                          action: action == 'delete'
-                              ? SongAction.delete
-                              : SongAction.playlistAdd,
-                          detail: value!,
-                          auth: widget.auth,
-                        ),
-                ),
-              ),
-            ),
+          const ThemeToggle(),
+          IconButton(
+            tooltip: '설정',
+            icon: const AppIcon(Icons.settings_outlined, size: 22),
+            onPressed: () => Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pushNamed(AppRoutes.settings),
+          ),
+          const SizedBox(width: 20),
         ],
       ),
       body: SafeArea(
@@ -255,37 +240,132 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
 
   Widget song(MySongDetail detail) {
     final view = detail.song!.view;
+    final value = detail;
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: AppLayout.bodyPadding,
       children: [
-        Text(view.title, style: Theme.of(context).textTheme.headlineSmall),
-        const SizedBox(height: AppSpacing.sm),
-        Text(view.artist),
-        if (widget.prepareEdit != null)
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () => Navigator.of(context).push<bool>(
-                MaterialPageRoute(
-                  builder: (_) => SongEditScreen(
-                    draft: SongEditDraft(detail),
-                    prepare: widget.prepareEdit!,
-                    auth: widget.auth,
-                  ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+          child: Column(
+            children: [
+              Text(
+                view.title,
+                style: const TextStyle(
+                  fontSize: 22,
+                  height: 1.5,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              child: const Text('곡 수정'),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                '${view.artist} · ${view.tjNumber == null ? '직접 등록' : 'TJ ${view.tjNumber!.value}'}',
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.8,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
-        const SizedBox(height: AppSpacing.md),
-        Text(formatVersionCode(view.version)),
-        Text(
-          '대표 키: ${view.musicalKey == null ? '미정' : formatMusicalKey(view.musicalKey!)}',
         ),
-        Text('곡 티어: ${formatSongTier(view.tier)}'),
-        const SizedBox(height: AppSpacing.md),
-        Text(view.tjNumber == null ? 'TJ 번호 없음' : 'TJ ${view.tjNumber!.value}'),
-        const SizedBox(height: AppSpacing.md),
+        Align(
+          alignment: Alignment.centerRight,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.recordingId == null &&
+                  value.song != null &&
+                  !changedAccount)
+                PopupMenuButton<String>(
+                  tooltip: '곡 메뉴',
+                  icon: const AppIcon(Icons.more_vert),
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'playlist', child: Text('플레이리스트 추가')),
+                    PopupMenuItem(value: 'delete', child: Text('곡 삭제')),
+                  ],
+                  onSelected: (action) => Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      builder: (_) => action == 'delete' && widget.trash != null
+                          ? DeleteScreen(
+                              actions: widget.trash!,
+                              id: value.song!.view.id.value,
+                              title: value.song!.view.title,
+                              auth: widget.auth,
+                            )
+                          : SongActionEntry(
+                              action: action == 'delete'
+                                  ? SongAction.delete
+                                  : SongAction.playlistAdd,
+                              detail: value,
+                              auth: widget.auth,
+                            ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        AppPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text('곡 정보', style: TextStyle(fontSize: 13)),
+                  ),
+                  if (widget.prepareEdit != null)
+                    TextButton.icon(
+                      icon: const AppIcon(Icons.edit_outlined, size: 14),
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(0, 36),
+                        padding: EdgeInsets.zero,
+                      ),
+                      onPressed: () => Navigator.of(context).push<bool>(
+                        MaterialPageRoute(
+                          builder: (_) => SongEditScreen(
+                            draft: SongEditDraft(detail),
+                            prepare: widget.prepareEdit!,
+                            auth: widget.auth,
+                          ),
+                        ),
+                      ),
+                      label: const Text('곡 수정'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(
+                      child: _info('버전', formatVersionCode(view.version)),
+                    ),
+                    VerticalDivider(
+                      width: 24,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                    Expanded(
+                      child: _info(
+                        '대표 키',
+                        view.musicalKey == null
+                            ? '미정'
+                            : formatMusicalKey(view.musicalKey!),
+                      ),
+                    ),
+                    VerticalDivider(
+                      width: 24,
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                    Expanded(child: _info('곡 티어', formatSongTier(view.tier))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
         SongSuitabilityChoice(
           value: view.isSuitable,
           onChanged: savingSuitability || widget.prepareEdit == null
@@ -310,8 +390,26 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
                   }
                 },
         ),
-        const Text('메모'),
-        Text(view.note.isEmpty ? '작성한 메모가 없어요.' : view.note),
+        AppPanel(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '메모',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                view.note.isEmpty ? '아직 작성하지 않았어요.' : view.note,
+                style: const TextStyle(fontSize: 15, height: 1.6),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: AppSpacing.lg),
         RecordingRolesCard(
           songId: view.id,
@@ -355,6 +453,21 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
     );
   }
 
+  Widget _info(String label, String value) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+      const SizedBox(height: 7),
+      Text(value, style: const TextStyle(fontSize: 14, height: 1.5)),
+    ],
+  );
+
   Widget recording(MySongDetail detail) {
     RecordingViewData? view;
     for (final r in detail.recordings) {
@@ -368,7 +481,7 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
     }
     final snapshot = view.snapshot;
     return ListView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: AppLayout.bodyPadding,
       children: [
         Text(snapshot.title, style: Theme.of(context).textTheme.headlineSmall),
         Text(snapshot.artist),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/widgets/app_icon.dart';
 import 'auth_session.dart';
 
 class LogoutScreen extends StatefulWidget {
@@ -106,7 +107,7 @@ class _LogoutScreenState extends State<LogoutScreen> {
               onPressed: _busy || widget.auth.exportRecovery == null
                   ? null
                   : _export,
-              icon: const Icon(Icons.save_alt),
+              icon: const AppIcon(Icons.save_alt),
               label: const Text('로컬 복구 파일 저장'),
             ),
             const SizedBox(height: 12),

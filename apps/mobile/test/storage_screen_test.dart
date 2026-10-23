@@ -50,6 +50,8 @@ void main() {
         ),
       );
       await t.pumpAndSettle();
+      await t.tap(find.text('고정한 녹음'));
+      await t.pumpAndSettle();
       await t.scrollUntilVisible(find.text('고정 대기 취소'), 300);
       await t.tap(find.text('고정 대기 취소'));
       await t.pumpAndSettle();
@@ -63,6 +65,9 @@ void main() {
       expect(commands.single['method'], 'DELETE');
       expect(commands.single['path'], '/v1/pins/1');
       expect(commands.single['body'], {'base_revision': 7});
+      await t.scrollUntilVisible(find.text('서버 사본 정리'), -250);
+      await t.tap(find.text('서버 사본 정리'));
+      await t.pumpAndSettle();
       expect(find.textContaining('공간 확보를 약속'), findsOneWidget);
     },
   );
@@ -82,6 +87,8 @@ void main() {
           ),
         ),
       );
+      await t.pumpAndSettle();
+      await t.tap(find.text('고정한 녹음'));
       await t.pumpAndSettle();
       await t.scrollUntilVisible(find.text('교체 대기 취소'), 300);
       await t.tap(find.text('교체 대기 취소'));

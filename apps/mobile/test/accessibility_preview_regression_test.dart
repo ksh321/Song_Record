@@ -48,8 +48,8 @@ void main() {
     visible.value = true;
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    await tester.ensureVisible(find.text('자동 보관 기준'));
-    await tester.tap(find.text('자동 보관 기준'));
+    await tester.ensureVisible(find.text('서버 자동 보관 기준'));
+    await tester.tap(find.text('서버 자동 보관 기준'));
     await tester.pumpAndSettle();
     final description = find.textContaining('대표·최신·최저 티어 녹음을 자동 보관해요.');
     expect(description, findsOneWidget);

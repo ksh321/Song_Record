@@ -3,9 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/content_state.dart';
 import '../../core/widgets/song_row.dart';
 import '../../core/widgets/sort_sheet.dart';
+import '../../core/widgets/ui_controls.dart';
+import '../../routing/tab_navigation.dart';
 import '../auth/auth_session.dart';
 import '../trash/trash_workflow.dart';
 import 'my_song.dart';
@@ -151,9 +154,10 @@ class _MySongsScreenState extends State<MySongsScreen> {
   }
 
   Widget songRow(MySong song) => Padding(
-    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+    padding: EdgeInsets.zero,
     child: SongRow.registered(
       song: song.view,
+      flat: true,
       onTap: widget.watchDetail == null
           ? null
           : () {
@@ -191,53 +195,74 @@ class _MySongsScreenState extends State<MySongsScreen> {
     return ListView(
       controller: scroll,
       primary: false,
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: AppLayout.bodyPadding,
       children: [
+        TabHeaderSubtitle(
+          loading || failure != null ? null : '등록된 곡 ${songs.length}개',
+        ),
+        const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerRight,
-          child: FilledButton.icon(
+          child: AppCompactAction(
+            label: '내 곡 등록',
             onPressed: widget.onFindSong,
-            icon: const Icon(Icons.add),
-            label: const Text('내 곡 등록'),
           ),
         ),
         const SizedBox(height: 12),
-        TextField(
-          key: ValueKey(scope),
-          decoration: const InputDecoration(
-            labelText: '내 곡 검색',
-            hintText: '곡명 또는 가수',
+        AppSearchField(
+          fieldKey: ValueKey(scope),
+          hint: '내 곡에서 곡명 또는 가수 검색',
+          onChanged: (value) => setState(() => query = value),
+        ),
+        const SizedBox(height: 16),
+        AppOptions<bool>(
+          options: const {false: '전체 목록', true: '티어별 보기'},
+          selected: grouped,
+          onChanged: (v) => setState(() => grouped = v),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: InkWell(
+            onTap: () => setState(() => suitableOnly = !suitableOnly),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 17,
+                  height: 23,
+                  child: Checkbox(
+                    value: suitableOnly,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                    onChanged: (v) => setState(() => suitableOnly = v ?? false),
+                  ),
+                ),
+                const SizedBox(width: 7),
+                AppIcon(
+                  Icons.favorite,
+                  size: 17,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: 7),
+                const Expanded(
+                  child: Text('나에게 어울리는 곡만', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
           ),
-          onChanged: (value) => setState(() {
-            query = value;
-          }),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        SegmentedButton<bool>(
-          segments: const [
-            ButtonSegment(value: false, label: Text('전체 목록')),
-            ButtonSegment(value: true, label: Text('티어별 보기')),
-          ],
-          selected: {grouped},
-          onSelectionChanged: (selected) =>
-              setState(() => grouped = selected.single),
-        ),
-        CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          controlAffinity: ListTileControlAffinity.leading,
-          title: const Text('나에게 어울리는 곡만'),
-          value: suitableOnly,
-          onChanged: (v) => setState(() => suitableOnly = v ?? false),
         ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
               loading || failure != null ? '—곡' : '${pages.total}곡',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
               key: const ValueKey('my-song-count'),
             ),
             TextButton.icon(
-              icon: const Icon(Icons.sort),
+              icon: const AppIcon(Icons.sort),
               label: Text(sort.label),
               onPressed: () async {
                 final result = await SortSheet.songs(
@@ -251,7 +276,6 @@ class _MySongsScreenState extends State<MySongsScreen> {
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.lg),
         if (loading)
           const ContentState(
             phase: ContentPhase.loading,
@@ -292,7 +316,7 @@ class _MySongsScreenState extends State<MySongsScreen> {
           ),
         if (widget.watchUnlinked != null)
           TextButton.icon(
-            icon: const Icon(Icons.chevron_right, size: 16),
+            icon: const AppIcon(Icons.chevron_right, size: 16),
             label: Text('곡 미연결 녹음 (${unlinkedCount ?? '—'})'),
             onPressed: unlinkedCount == null
                 ? null

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/ui_controls.dart';
 import 'import_conflicts.dart';
 
 String _entity(String entity) => switch (entity) {
@@ -47,7 +48,7 @@ class ImportConflictPreviewList extends StatelessWidget {
   final ImportConflictPreview preview;
   @override
   Widget build(BuildContext context) => ListView.builder(
-    padding: const EdgeInsets.all(AppSpacing.lg),
+    padding: AppLayout.bodyPadding,
     itemCount: preview.conflicts.length + 1,
     itemBuilder: (context, index) {
       if (index == 0) {

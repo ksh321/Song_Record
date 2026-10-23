@@ -48,7 +48,7 @@ def _command(args,*,cwd=None,env=None,timeout=120):
 
 def _source_hashes():
     sources={}
-    for folder in ['lib','android/app/src']:
+    for folder in ['lib','android/app/src','assets']:
         for path in sorted((MOBILE/folder).rglob('*')):
             if path.is_file():sources[str(path.relative_to(ROOT)).replace('\\','/')]=hashlib.sha256(path.read_bytes()).hexdigest()
     for relative in ['pubspec.yaml','pubspec.lock','android/app/build.gradle.kts','android/gradle/wrapper/gradle-wrapper.properties']:

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/files/recording_file_status.dart';
+import '../../core/widgets/ui_controls.dart';
 
 enum RecordingFileFilter {
   localOnly('이 기기에만 있음'),
@@ -212,7 +213,7 @@ class _RecordingFilterScreenState extends State<RecordingFilterScreen> {
           children: [
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: AppLayout.bodyPadding,
                 children: [
                   const Text('조건은 모두 함께 적용됩니다. 기간은 한국 시간 기준이에요.'),
                   TextField(

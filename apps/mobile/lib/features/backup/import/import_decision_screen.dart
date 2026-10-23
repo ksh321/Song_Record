@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/ui_controls.dart';
 import 'import_decision.dart';
 import 'import_validation.dart';
 
@@ -106,7 +107,7 @@ class _ImportDecisionScreenState extends State<ImportDecisionScreen> {
           body: SafeArea(
             top: false,
             child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+              padding: AppLayout.bodyPadding,
               children: [
                 const Text('검사와 미리보기 단계에서는 기존 정보와 정상 파일을 변경하지 않습니다.'),
                 if (progress?.value != null) ...[

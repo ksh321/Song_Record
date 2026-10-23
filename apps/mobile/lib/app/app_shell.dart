@@ -8,6 +8,8 @@ import 'package:song_record/features/recorder/recorder_panel.dart';
 import 'package:song_record/routing/app_routes.dart';
 import 'package:song_record/routing/tab_navigation.dart';
 
+import '../core/widgets/app_icon.dart';
+
 class AppShell extends StatefulWidget {
   const AppShell({
     required this.recorderGateway,
@@ -69,9 +71,9 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
-  Future<void> _findSong() async {
+  Future<void> _findSong(BuildContext context) async {
     final result = await showSongDiscoverySheet(context: context);
-    if (!mounted || result == null) {
+    if (!mounted || !context.mounted || result == null) {
       return;
     }
     switch (result.destination) {
@@ -113,7 +115,7 @@ class _AppShellState extends State<AppShell> {
                         openSettings: _openSettings,
                         rootBuilder: (context) =>
                             widget.tabBuilder?.call(context, tab) ??
-                            _buildTab(tab),
+                            _buildTab(tab, context),
                       )
                     : const SizedBox.shrink(),
               ),
@@ -121,8 +123,10 @@ class _AppShellState extends State<AppShell> {
         ],
       ),
       bottomNavigationBar: DecoratedBox(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.line)),
+        decoration: BoxDecoration(
+          border: Border(
+            top: BorderSide(color: Theme.of(context).colorScheme.outline),
+          ),
         ),
         child: NavigationBar(
           animationDuration:
@@ -138,8 +142,8 @@ class _AppShellState extends State<AppShell> {
             for (final tab in AppTab.values)
               NavigationDestination(
                 key: ValueKey('tab-${tab.name}'),
-                icon: Icon(tab.icon),
-                selectedIcon: Icon(tab.selectedIcon),
+                icon: AppIcon(tab.icon, size: 22),
+                selectedIcon: AppIcon(tab.selectedIcon, size: 22),
                 label: tab.label,
                 tooltip: tab.label,
               ),
@@ -149,9 +153,9 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  Widget _buildTab(AppTab tab) {
+  Widget _buildTab(AppTab tab, BuildContext context) {
     if (tab == AppTab.songs && widget.songsBuilder != null) {
-      return widget.songsBuilder!(context, _findSong);
+      return widget.songsBuilder!(context, () => _findSong(context));
     }
     if (tab == AppTab.charts && widget.chartBuilder != null) {
       return widget.chartBuilder!(context);
@@ -181,7 +185,10 @@ class _AppShellState extends State<AppShell> {
             message: '기능을 준비하고 있어요.',
           ),
           if (tab == AppTab.songs)
-            FilledButton(onPressed: _findSong, child: const Text('새 곡 찾기')),
+            FilledButton(
+              onPressed: () => _findSong(context),
+              child: const Text('새 곡 찾기'),
+            ),
         ],
       ],
     );

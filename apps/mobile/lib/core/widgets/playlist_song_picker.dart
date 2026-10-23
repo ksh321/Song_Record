@@ -5,6 +5,8 @@ import 'package:song_record/core/widgets/content_state.dart';
 import 'package:song_record/core/widgets/music_view_data.dart';
 import 'package:song_record/core/widgets/song_row.dart';
 
+import 'app_icon.dart';
+
 enum SongListPhase { ready, loading, error, waiting }
 
 /// The caller supplies only the current account's ACTIVE registered songs and
@@ -120,7 +122,7 @@ class _PlaylistSongPickerState extends State<PlaylistSongPicker> {
                 controller: _query,
                 decoration: const InputDecoration(
                   labelText: '곡명 또는 가수 검색',
-                  prefixIcon: Icon(Icons.search),
+                  prefixIcon: AppIcon(Icons.search),
                 ),
                 onChanged: (_) => setState(() {}),
               ),

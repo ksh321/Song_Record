@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/ui_controls.dart';
 import 'import_candidates.dart';
 
 /// onTjSearch must open the existing TJ search flow with a fresh provider proof.
@@ -15,7 +16,7 @@ class ImportCandidateHolds extends StatelessWidget {
   final void Function(ImportCandidateHold hold) onTjSearch;
   @override
   Widget build(BuildContext context) => ListView.builder(
-    padding: const EdgeInsets.all(AppSpacing.lg),
+    padding: AppLayout.bodyPadding,
     itemCount: holds.length,
     itemBuilder: (context, index) {
       final hold = holds[index];

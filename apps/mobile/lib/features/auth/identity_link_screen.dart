@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/widgets/app_icon.dart';
 import 'auth_session.dart';
 import 'identity_link.dart';
 
@@ -174,7 +175,7 @@ class _IdentityLinkScreenState extends State<IdentityLinkScreen> {
                                     _providers!.length <= 1 ? '마지막 수단' : '해제',
                                   ),
                                 )
-                              : const Icon(
+                              : const AppIcon(
                                   Icons.check_circle_outline,
                                   semanticLabel: '연결됨',
                                 ))

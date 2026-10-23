@@ -68,7 +68,10 @@ final class MetadataDispatcher {
         store.requireActive();
         if (response.status == 200 || response.status == 201) {
           if (isPlaylistLibraryOrder(request)) {
-            if (await store.acknowledgePlaylistLibraryOrder(request, response)) {
+            if (await store.acknowledgePlaylistLibraryOrder(
+              request,
+              response,
+            )) {
               acknowledged++;
             }
             continue;

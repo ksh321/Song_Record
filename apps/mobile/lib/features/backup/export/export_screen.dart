@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/app_icon.dart';
+import '../../../core/widgets/ui_controls.dart';
 import 'export_controller.dart';
 import 'export_manifest.dart';
 import 'export_zip.dart';
@@ -71,7 +73,7 @@ class _State extends State<ExportScreen> {
             title: const Text('백업 내보내기'),
             leading: IconButton(
               tooltip: '뒤로가기',
-              icon: const Icon(Icons.arrow_back),
+              icon: const AppIcon(Icons.arrow_back),
               onPressed: controller.busy
                   ? null
                   : () => Navigator.maybePop(context),
@@ -80,7 +82,7 @@ class _State extends State<ExportScreen> {
           body: SafeArea(
             top: false,
             child: ListView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+              padding: AppLayout.bodyPadding,
               children: [
                 const Text(backupPrivacyNotice),
                 CheckboxListTile(

@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_svg: 2.3.0
   google_sign_in: 7.2.0
   kakao_flutter_sdk_user: 2.0.1
   flutter_secure_storage: 10.3.4
@@ -31,3 +32,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/verification/playback-tone.m4a
+    - assets/fonts/NOTICE.txt
+
+  fonts:
+    - family: ReferenceKR
+      fonts:
+        - asset: assets/fonts/ReferenceKR.ttf

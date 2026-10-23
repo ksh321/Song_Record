@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/domain/song_types.dart';
 import '../../core/files/recording_file_status.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/recording_row.dart';
 import '../songs/my_song_detail.dart';
@@ -70,7 +71,7 @@ class _RecordingListState extends State<RecordingList> {
             for (final value in RecordingSort.values)
               ListTile(
                 title: Text(value.label),
-                trailing: value == sort ? const Icon(Icons.check) : null,
+                trailing: value == sort ? const AppIcon(Icons.check) : null,
                 onTap: () => Navigator.pop(context, value),
               ),
           ],
@@ -126,12 +127,12 @@ class _RecordingListState extends State<RecordingList> {
             ),
             TextButton.icon(
               onPressed: chooseFilter,
-              icon: const Icon(Icons.filter_list),
+              icon: const AppIcon(Icons.filter_list),
               label: Text('필터 ${filter.count}'),
             ),
             TextButton.icon(
               onPressed: chooseSort,
-              icon: const Icon(Icons.sort),
+              icon: const AppIcon(Icons.sort),
               label: Text(sort.label),
             ),
           ],

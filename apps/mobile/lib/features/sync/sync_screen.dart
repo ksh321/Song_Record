@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/database/local_models.dart';
 import '../../core/sync/canonical_conflict_plan.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/ui_controls.dart';
 import 'conflict_screen.dart';
 import 'sync_controller.dart';
 
@@ -94,7 +95,7 @@ class _SyncScreenState extends State<SyncScreen> {
         builder: (context, _) {
           final state = widget.controller;
           return ListView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: AppLayout.bodyPadding,
             children: [
               const Text('이 기기의 전송 대기 정보'),
               const SizedBox(height: AppSpacing.sm),

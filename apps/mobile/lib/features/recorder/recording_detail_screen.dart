@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import '../../core/database/local_models.dart';
 import '../../core/domain/song_types.dart';
 import '../../core/sync/local_repository.dart';
-import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/ui_controls.dart';
+import '../songs/my_song_detail.dart';
 import '../trash/trash_screens.dart';
 import '../trash/trash_workflow.dart';
 import 'recording_audio_panel.dart';
@@ -64,23 +65,73 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
             return const Center(child: Text('활성 저장 녹음이 아니에요.'));
           }
           return ListView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: AppLayout.bodyPadding,
             children: [
-              Text(
-                row['title_snapshot'] as String,
-                style: Theme.of(context).textTheme.headlineSmall,
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 24,
+                  horizontal: 12,
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      row['title_snapshot'] as String,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      row['artist_snapshot'] as String,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              Text(row['artist_snapshot'] as String),
               RecordingAudioPanel(widget.id),
-              Text(
-                '키: ${formatMusicalKey(MusicalKey(mode: KeyMode.values.firstWhere((k) => k.name.toUpperCase() == row['key_mode']), shift: row['key_shift'] as int))} · 버전: ${formatVersionCode(VersionCode.values.firstWhere((v) => v.name.toUpperCase() == row['version_code']))}',
+              const SizedBox(height: 14),
+              AppPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      '녹음 정보',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '키: ${formatMusicalKey(MusicalKey(mode: KeyMode.values.firstWhere((k) => k.name.toUpperCase() == row['key_mode']), shift: row['key_shift'] as int))} · 버전: ${formatVersionCode(VersionCode.values.firstWhere((v) => v.name.toUpperCase() == row['version_code']))}',
+                    ),
+                    const SizedBox(height: 10),
+                    Text('녹음 티어: ${row['tier'] ?? '미정'}'),
+                    const SizedBox(height: 10),
+                    Text('녹음 시각: ${MySongDetail.recordingView(row).dateLabel}'),
+                  ],
+                ),
               ),
-              Text('녹음 티어: ${row['tier'] ?? '미정'}'),
-              Text('녹음 시각: ${row['recorded_at']}'),
-              Text('컨디션: ${row['condition_name_snapshot'] ?? '미선택'}'),
-              Text(
-                '태그: ${(row['tags'] as List? ?? []).whereType<Map<String, dynamic>>().map((t) => t['name_snapshot']).join(', ')}',
+              const SizedBox(height: 14),
+              AppPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('컨디션과 태그', style: TextStyle(fontSize: 12)),
+                    const SizedBox(height: 8),
+                    Text('컨디션: ${row['condition_name_snapshot'] ?? '미선택'}'),
+                    Text(
+                      '태그: ${(row['tags'] as List? ?? []).whereType<Map<String, dynamic>>().map((t) => t['name_snapshot']).join(', ')}',
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(height: 14),
               Text(row['song_id'] == null ? '곡 미연결 녹음' : '등록된 내 곡에 연결됨'),
               TextButton(
                 onPressed: () async {
@@ -122,8 +173,22 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                   ),
                   child: const Text('녹음 삭제'),
                 ),
-              const Text('녹음 당시 메모'),
-              Text(row['note'] as String? ?? ''),
+              const SizedBox(height: 14),
+              AppPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('녹음 당시 메모', style: TextStyle(fontSize: 12)),
+                    const SizedBox(height: 8),
+                    Text(
+                      (row['note'] as String? ?? '').isEmpty
+                          ? '아직 작성하지 않았어요.'
+                          : row['note'] as String,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
               FilledButton(
                 onPressed: () async {
                   await Navigator.push<void>(

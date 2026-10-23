@@ -6,6 +6,8 @@ import 'package:song_record/core/widgets/music_view_data.dart';
 import 'package:song_record/core/widgets/song_badges.dart';
 import 'package:song_record/core/widgets/song_row.dart';
 
+import 'app_icon.dart';
+
 class RecordingRow extends StatelessWidget {
   const RecordingRow({
     required this.recording,
@@ -29,6 +31,7 @@ class RecordingRow extends StatelessWidget {
       onTap: onTap,
       selected: selected,
       compact: true,
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -37,8 +40,13 @@ class RecordingRow extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  '${recording.dateLabel}${snapshot.songId == null ? ' · 곡 미연결' : ''}',
-                  style: AppTypography.supporting,
+                  '${recording.compactDateLabel}${snapshot.songId == null ? ' · 곡 미연결' : ''}',
+                  semanticsLabel:
+                      '${recording.dateLabel}${snapshot.songId == null ? ' · 곡 미연결' : ''}',
+                  style: AppTypography.supporting.copyWith(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
               Tooltip(
@@ -50,12 +58,16 @@ class RecordingRow extends StatelessWidget {
                       ? null
                       : onPlay,
                   style: FilledButton.styleFrom(
-                    minimumSize: const Size(48, 30),
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: const Size(62, 24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
                     visualDensity: VisualDensity.compact,
-                    tapTargetSize: MaterialTapTargetSize.padded,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: const StadiumBorder(),
                   ),
-                  icon: const Icon(Icons.play_arrow, size: 16),
+                  icon: const AppIcon(Icons.play_arrow, size: 16),
                   label: Text(
                     recording.durationLabel,
                     style: const TextStyle(fontSize: 11),
@@ -69,25 +81,35 @@ class RecordingRow extends StatelessWidget {
               TierBadge(formatRecordingTier(recording.tier), size: 28),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  snapshot.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.songTitle,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  snapshot.artist,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.supporting,
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        snapshot.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.songTitle.copyWith(height: 1.4),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        snapshot.artist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.supporting.copyWith(
+                          fontSize: 11,
+                          height: 1.4,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 8),
               MusicalKeyBadge(value: snapshot.key),
-              if (selected) const Icon(Icons.check, size: 18),
+              if (selected) const AppIcon(Icons.check, size: 18),
             ],
           ),
         ],

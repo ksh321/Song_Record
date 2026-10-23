@@ -481,6 +481,8 @@ void main() {
       expect(find.text('자동 보관 대상 3개'), findsOneWidget);
       expect(find.text('최신 녹음'), findsOneWidget);
       expect(find.text('최저 티어 녹음'), findsOneWidget);
+      await tester.ensureVisible(find.text('대표 녹음'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('대표 녹음'));
       await tester.pumpAndSettle();
       expect(find.text('대표 녹음 선택'), findsOneWidget);

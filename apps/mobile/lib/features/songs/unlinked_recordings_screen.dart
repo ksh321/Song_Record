@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/content_state.dart';
 import '../../core/widgets/recording_row.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../auth/auth_session.dart';
 import 'my_song_detail.dart';
 
@@ -82,7 +83,7 @@ class _UnlinkedRecordingsScreenState extends State<UnlinkedRecordingsScreen> {
                   );
                 }
                 return ListView(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  padding: AppLayout.bodyPadding,
                   children: [
                     Text('곡 미연결 녹음 ${recordings.length}개'),
                     for (final r in recordings)

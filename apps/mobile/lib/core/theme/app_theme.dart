@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:song_record/core/theme/accessible_page_transitions.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 
+import '../widgets/app_icon.dart';
+import '../widgets/ui_controls.dart';
+
 abstract final class AppTheme {
   static ThemeData preview({
     AppAccent accent = AppAccent.initial,
@@ -12,8 +15,8 @@ abstract final class AppTheme {
     final foreground = light ? const Color(0xFF202020) : AppColors.text;
     final background = light ? const Color(0xFFFAFAFA) : AppColors.background;
     final surface = light ? Colors.white : AppColors.surface;
-    final muted = light ? const Color(0xFF666666) : AppColors.muted;
-    final line = light ? const Color(0xFFD7D7D7) : AppColors.line;
+    final muted = light ? const Color(0xFF686868) : AppColors.muted;
+    final line = light ? const Color(0xFFD9D9D9) : AppColors.line;
     final primary = accent.background;
     final soft = Color.alphaBlend(
       primary.withValues(alpha: light ? .14 : .25),
@@ -36,6 +39,7 @@ abstract final class AppTheme {
       secondaryContainer: soft,
       onSecondaryContainer: foreground,
       onPrimary: accent.foreground,
+      error: light ? const Color(0xffb6323e) : AppColors.danger,
     );
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
@@ -72,17 +76,34 @@ abstract final class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: accent.foreground,
-          minimumSize: const Size(48, 48),
+          minimumSize: const Size(48, 50),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          textStyle: AppTypography.button,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: foreground,
+          backgroundColor: surface,
+          minimumSize: const Size(48, 50),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           side: BorderSide(color: line),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: foreground),
+        style: TextButton.styleFrom(
+          foregroundColor: muted,
+          minimumSize: const Size(0, 44),
+          textStyle: const TextStyle(
+            fontFamily: 'ReferenceKR',
+            fontSize: 12,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
@@ -107,7 +128,11 @@ abstract final class AppTheme {
       navigationBarTheme: base.navigationBarTheme.copyWith(
         backgroundColor: background,
         labelTextStyle: WidgetStatePropertyAll(
-          TextStyle(fontSize: AppTypography.tabLabelSize, color: foreground),
+          TextStyle(
+            fontSize: AppTypography.tabLabelSize,
+            height: 1.5,
+            color: foreground,
+          ),
         ),
         iconTheme: WidgetStateProperty.resolveWith(
           (states) => IconThemeData(
@@ -125,6 +150,15 @@ abstract final class AppTheme {
         ),
         checkColor: WidgetStatePropertyAll(accent.foreground),
         side: BorderSide(color: muted),
+      ),
+      listTileTheme: base.listTileTheme.copyWith(
+        titleTextStyle: base.listTileTheme.titleTextStyle?.copyWith(
+          color: foreground,
+        ),
+        subtitleTextStyle: base.listTileTheme.subtitleTextStyle?.copyWith(
+          color: muted,
+        ),
+        iconColor: muted,
       ),
       textSelectionTheme: TextSelectionThemeData(
         cursorColor: primary,
@@ -198,6 +232,10 @@ abstract final class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       canvasColor: AppColors.surface,
       applyElevationOverlayColor: false,
+      fontFamily: 'ReferenceKR',
+      actionIconTheme: ActionIconThemeData(
+        backButtonIconBuilder: (_) => const AppIcon(Icons.arrow_back),
+      ),
       fontFamilyFallback: AppTypography.familyStack,
       visualDensity: VisualDensity.standard,
       materialTapTargetSize: MaterialTapTargetSize.padded,
@@ -220,6 +258,9 @@ abstract final class AppTheme {
         labelSmall: AppTypography.supporting,
       ),
       appBarTheme: const AppBarThemeData(
+        toolbarHeight: 88,
+        titleSpacing: 20,
+        centerTitle: false,
         backgroundColor: AppColors.background,
         foregroundColor: AppColors.text,
         surfaceTintColor: Colors.transparent,
@@ -229,6 +270,7 @@ abstract final class AppTheme {
         systemOverlayStyle: SystemUiOverlayStyle.light,
       ),
       cardTheme: const CardThemeData(
+        margin: EdgeInsets.only(bottom: 14),
         color: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
@@ -308,9 +350,11 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         indicatorColor: accent.background,
+        indicatorShape: const AppNavigationIndicator(),
         labelTextStyle: const WidgetStatePropertyAll(
           TextStyle(
             fontSize: AppTypography.tabLabelSize,
+            height: 1.5,
             color: AppColors.text,
           ),
         ),
@@ -320,6 +364,23 @@ abstract final class AppTheme {
                 ? accent.foreground
                 : AppColors.muted,
           ),
+        ),
+      ),
+      listTileTheme: const ListTileThemeData(
+        contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        minVerticalPadding: 10,
+        minLeadingWidth: 40,
+        horizontalTitleGap: 12,
+        titleTextStyle: TextStyle(
+          fontFamily: 'ReferenceKR',
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          height: 1.55,
+        ),
+        subtitleTextStyle: TextStyle(
+          fontFamily: 'ReferenceKR',
+          fontSize: 12,
+          height: 1.7,
         ),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(

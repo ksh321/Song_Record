@@ -21,6 +21,11 @@ import 'package:song_record/features/sync/sync_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(const [
+      'ReferenceKR (Droid Sans Fallback)',
+    ], await rootBundle.loadString('assets/fonts/NOTICE.txt'));
+  });
   final config = AppConfig.fromEnvironment();
   const google = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
   const kakao = String.fromEnvironment('KAKAO_NATIVE_APP_KEY');

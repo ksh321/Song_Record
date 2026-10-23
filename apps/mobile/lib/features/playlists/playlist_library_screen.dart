@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/feature_icon.dart';
+import '../../core/widgets/ui_controls.dart';
+import '../../routing/tab_navigation.dart';
 import '../auth/auth_session.dart';
 import '../charts/popular_chart.dart';
 import '../search/karaoke_search.dart';
@@ -261,7 +264,7 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
                   Text(playlistIconLabels[entry.key]!),
                   if ((row['icon'] ?? 'music') == entry.key) ...[
                     const Spacer(),
-                    Icon(
+                    AppIcon(
                       Icons.check,
                       color: Theme.of(context).colorScheme.primary,
                     ),
@@ -334,15 +337,19 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
     body: SafeArea(
       top: !widget.embedded,
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: AppLayout.bodyPadding,
         children: [
+          TabHeaderSubtitle(loading ? null : '${rows.length}개 목록'),
           if (error != null)
             Text(
               error!,
               style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
               TextButton(
                 onPressed:
@@ -351,10 +358,9 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
                     : reorder,
                 child: const Text('순서 변경'),
               ),
-              FilledButton.icon(
+              AppCompactAction(
+                label: '새 플레이리스트',
                 onPressed: busy || loading ? null : () => edit(),
-                icon: const Icon(Icons.add),
-                label: const Text('새 플레이리스트'),
               ),
             ],
           ),
@@ -370,6 +376,11 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
             ),
           for (final row in rows)
             Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: Theme.of(context).colorScheme.outline),
+              ),
+              margin: const EdgeInsets.only(bottom: 10),
               child: ListTile(
                 onLongPress: busy || loading || rows.length < 2
                     ? null
@@ -377,9 +388,20 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
                 leading: FeatureIcon(
                   playlistIcons[row['icon']] ?? Icons.music_note_outlined,
                 ),
-                title: Text(row['name'] as String),
+                title: Text(
+                  row['name'] as String,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 subtitle: Text(
                   summaries[row['id']]?.preview ?? '',
+                  style: TextStyle(
+                    fontSize: 10,
+                    height: 1.5,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),

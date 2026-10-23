@@ -1,23 +1,23 @@
 {
   "schemaVersion": 1,
   "source": {
-    "file": "b-playlist-ui-v1.11.html",
-    "sha256": "3a0b44fa03b8c4adbb0bd22fef8ff728c9f96acbebabf79a59cb7a5b8dd91555",
-    "basis": "Uploaded HTML CSS and accent array; final cascading overrides included",
-    "units": "CSS px; map to logical units in native UI"
+    "file": "docs/prototypes/song-record-v2/preview.css",
+    "sha256": "bcf9676cb51d3a5332c6c028b6f4eb383629b310f0cd2cd5ba46c26348a791d2",
+    "basis": "Final computed CSS in user-approved UI03 HTML, including cascading overrides; 2026-10-23 parity correction",
+    "units": "CSS px mapped to Flutter logical pixels; native text scaling preserved"
   },
   "theme": "dark",
   "defaultAccentId": "blue",
   "colors": {
-    "bg": "#111111",
-    "surface": "#232323",
+    "bg": "#121212",
+    "surface": "#222222",
     "raised": "#303030",
-    "line": "#383838",
-    "text": "#E7E7E7",
-    "muted": "#A8A8A8",
+    "line": "#3B3B3B",
+    "text": "#EEEEEE",
+    "muted": "#AAAAAA",
     "accent": "#2C67C5",
     "on-accent": "#FFFFFF",
-    "danger": "#E7A2A2"
+    "danger": "#FF9B9F"
   },
   "accents": [
     {
@@ -79,10 +79,10 @@
     "keyForeground": "#FFFFFF",
     "compactRowBackground": "#202020",
     "compactRowBorder": "#353535",
-    "sheetBackground": "#232323",
+    "sheetBackground": "#222222",
     "sheetBorder": "#414141",
     "sheetScrim": "rgba(0,0,0,0.48)",
-    "focusOutline": "#E7E7E7"
+    "focusOutline": "#EEEEEE"
   },
   "typography": {
     "familyStack": [
@@ -92,12 +92,12 @@
       "sans-serif"
     ],
     "baseSize": 14,
-    "songTitleSize": 15,
-    "songDetailTitleSize": 20,
+    "songTitleSize": 16,
+    "songDetailTitleSize": 26,
     "songDetailSubtitleSize": 13,
     "supportingTextSize": 12,
-    "keyBadgeSize": 12,
-    "tabLabelSize": 12,
+    "keyBadgeSize": 11,
+    "tabLabelSize": 9,
     "fieldValueSize": 14,
     "sheetTitleSize": 19,
     "sheetOptionSize": 15,
@@ -108,8 +108,8 @@
   },
   "components": {
     "primaryButton": {
-      "minHeight": 52,
-      "radius": 28,
+      "minHeight": 50,
+      "radius": 12,
       "padding": [
         13,
         18
@@ -121,20 +121,30 @@
       "height": 44
     },
     "field": {
-      "minHeight": 71,
+      "minHeight": 49,
       "songEditorMinHeight": 68,
-      "radius": 9
+      "radius": 12
     },
     "listCard": {
       "minHeight": 90,
-      "radius": 22
+      "radius": 14
     },
     "compactSongRow": {
-      "minHeight": 66,
+      "minHeight": 64,
       "padding": 12
     },
     "recordRow": {
-      "minHeight": 86
+      "minHeight": 64,
+      "padding": [
+        4,
+        10
+      ],
+      "tierSize": 28,
+      "dateHeight": 24,
+      "playSize": [
+        62,
+        24
+      ]
     },
     "choiceCard": {
       "columns": 2,
@@ -193,13 +203,34 @@
       "stopSquareRadius": 6
     },
     "bottomNavigation": {
-      "height": 76
+      "height": 70
     },
     "metadataForm": {
       "fieldMinHeight": 44,
       "textareaMinHeight": 120,
       "gap": 14,
       "radius": 9
+    },
+    "pageHeader": {
+      "minHeight": 88,
+      "titleSize": 26,
+      "horizontalPadding": 20,
+      "subtitleSize": 12,
+      "subtitleGap": 6
+    },
+    "libraryRow": {
+      "minHeight": 78,
+      "verticalPadding": 14,
+      "border": "bottom only"
+    },
+    "compactAction": {
+      "minHeight": 40,
+      "radius": 12,
+      "fontSize": 12,
+      "padding": [
+        9,
+        14
+      ]
     }
   },
   "previewOnly": {
@@ -208,5 +239,19 @@
     "note": "Review frame dimensions, not fixed production device size."
   },
   "specVersion": "1.11",
-  "approval": "2026-10-23 시안03 승인. white는 저장 호환 enum만 보존하고 선택 UI에서는 제거."
+  "approval": "2026-10-23 시안03 승인. white는 저장 호환 enum만 보존하고 선택 UI에서는 제거.",
+  "lightColors": {
+    "bg": "#FAFAFA",
+    "surface": "#FFFFFF",
+    "raised": "#EDEDED",
+    "line": "#D9D9D9",
+    "text": "#202020",
+    "muted": "#686868",
+    "danger": "#B6323E"
+  },
+  "fontAsset": {
+    "file": "apps/mobile/assets/fonts/ReferenceKR.ttf",
+    "origin": "https://android.googlesource.com/platform/frameworks/base/+/android-4.1.1_r1/data/fonts/DroidSansFallback.ttf",
+    "notice": "apps/mobile/assets/fonts/NOTICE.txt"
+  }
 }

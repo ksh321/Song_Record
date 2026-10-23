@@ -12,11 +12,15 @@ Map<String, dynamic> recordingViewFixture(Map<String, dynamic> row) {
     'song_id': row['song_id'] == null ? null : uuid(row['song_id'] as String),
     'timezone_id': 'Asia/Seoul',
     'timezone_offset_minutes': row['timezone_offset_minutes'] ?? 540,
-    if (status != null) '_file_status': RecordingFileStatus(
-      recording: uuid(row['id'] as String), information: status.information,
-      device: status.device, serverState: status.serverState,
-      blockedReason: status.blockedReason, pinCurrent: status.pinCurrent,
-      pinPending: status.pinPending,
-    ),
+    if (status != null)
+      '_file_status': RecordingFileStatus(
+        recording: uuid(row['id'] as String),
+        information: status.information,
+        device: status.device,
+        serverState: status.serverState,
+        blockedReason: status.blockedReason,
+        pinCurrent: status.pinCurrent,
+        pinPending: status.pinPending,
+      ),
   };
 }

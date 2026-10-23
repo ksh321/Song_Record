@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/audio/audio_player.dart';
-import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/app_icon.dart';
+import '../../core/widgets/ui_controls.dart';
 
 /// Owns only the visible player lifetime; source choice stays in AudioPlayback.
 class RecordingPlayerScreen extends StatefulWidget {
@@ -54,12 +55,33 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
             PlaybackPhase.completed,
           }.contains(player.phase);
           return ListView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: AppLayout.bodyPadding,
             children: [
-              Text('${time(player.position)} / ${time(player.duration)}'),
+              const SizedBox(height: 24),
+              Center(
+                child: Text(
+                  time(player.position),
+                  style: const TextStyle(
+                    fontSize: 58,
+                    fontWeight: FontWeight.w600,
+                    height: 1.2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: Text(
+                  time(player.duration),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
               if (player.waveform.isNotEmpty)
                 SizedBox(
-                  height: 100,
+                  height: 116,
                   child: CustomPaint(
                     painter: _Waveform(
                       player.waveform,
@@ -103,10 +125,20 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
                               ),
                             )
                           : null,
-                      icon: const Icon(Icons.replay_5),
+                      icon: const AppIcon(Icons.replay_5),
                     ),
                     FilledButton.icon(
-                      icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+                      style: IconButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Theme.of(context)
+                            .colorScheme
+                            .onPrimary,
+                        minimumSize: const Size(68, 68),
+                      ),
+                      icon: AppIcon(
+                        playing ? Icons.pause : Icons.play_arrow,
+                        size: 30,
+                      ),
                       label: Text(playing ? '일시정지' : '재생'),
                       onPressed: () => unawaited(
                         playing
@@ -128,7 +160,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
                               ),
                             )
                           : null,
-                      icon: const Icon(Icons.forward_5),
+                      icon: const AppIcon(Icons.forward_5),
                     ),
                   ],
                 ),

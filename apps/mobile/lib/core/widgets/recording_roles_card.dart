@@ -5,6 +5,8 @@ import 'package:song_record/core/domain/song_types.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/music_view_data.dart';
 
+import 'app_icon.dart';
+
 class RecordingRolesCard extends StatelessWidget {
   RecordingRolesCard({
     required this.songId,
@@ -36,7 +38,7 @@ class RecordingRolesCard extends StatelessWidget {
       color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
         side: BorderSide(color: Theme.of(context).colorScheme.outline),
-        borderRadius: BorderRadius.circular(AppDimensions.songSummaryRadius),
+        borderRadius: BorderRadius.circular(14),
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(
@@ -79,7 +81,7 @@ class RecordingRolesCard extends StatelessWidget {
                       MediaQuery.of(context).accessibleNavigation
                   ? AnimationStyle.noAnimation
                   : null,
-              title: const Text('자동 보관 기준', style: AppTypography.supporting),
+              title: const Text('서버 자동 보관 기준', style: AppTypography.supporting),
               tilePadding: EdgeInsets.zero,
               childrenPadding: const EdgeInsets.only(bottom: AppSpacing.sm),
               children: const [
@@ -151,7 +153,7 @@ class RecordingRolesCard extends StatelessWidget {
                   if (action != null)
                     Text(action, style: AppTypography.supporting)
                   else if (recording != null)
-                    const Icon(Icons.chevron_right, size: 16)
+                    const AppIcon(Icons.chevron_right, size: 16)
                   else
                     const Text('—', style: AppTypography.supporting),
                 ],

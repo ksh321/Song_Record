@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/sync/local_repository.dart';
-import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../songs/my_song.dart';
 
 class RecordingRelinkScreen extends StatefulWidget {
@@ -105,7 +105,7 @@ class _RecordingRelinkScreenState extends State<RecordingRelinkScreen> {
                     .where((s) => s.matches(query.text))
                     .toList();
           return ListView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: AppLayout.bodyPadding,
             children: [
               const Text(
                 '곡을 검색해 선택한 뒤 연결 저장을 눌러 주세요. 녹음 당시 정보는 새 곡 정보로 덮어쓰지 않아요.',

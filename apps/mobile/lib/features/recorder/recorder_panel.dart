@@ -5,6 +5,8 @@ import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 
+import '../../core/widgets/app_icon.dart';
+
 class RecorderPanel extends StatefulWidget {
   const RecorderPanel({
     required this.gateway,
@@ -261,8 +263,7 @@ class _RecorderPanelState extends State<RecorderPanel>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('최대 녹음 시간 6분', textAlign: TextAlign.center),
-        const SizedBox(height: AppSpacing.lg),
+        const SizedBox(height: 24),
         Text(
           completed
               ? '녹음이 완료됐어요'
@@ -271,14 +272,31 @@ class _RecorderPanelState extends State<RecorderPanel>
               : busy
               ? '녹음 준비·마무리 중'
               : '오늘의 목소리를 남겨요',
-          style: Theme.of(context).textTheme.titleLarge,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            height: 1.5,
+          ),
           textAlign: TextAlign.center,
         ),
+        if (!completed && !recording && !busy)
+          Text(
+            '부르고, 듣고, 다음 연습을 준비해요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
         const SizedBox(height: AppSpacing.md),
         Text(
           time,
           key: const ValueKey('recorder-service-time'),
-          style: const TextStyle(fontSize: 42),
+          style: const TextStyle(
+            fontSize: 52,
+            fontWeight: FontWeight.w600,
+            height: 1.2,
+          ),
           textAlign: TextAlign.center,
         ),
         if (warning != null)
@@ -500,7 +518,7 @@ class _RecorderPanelState extends State<RecorderPanel>
                 onPressed: _permissions!.microphoneCanAskAgain
                     ? _start
                     : _openAppSettings,
-                icon: const Icon(Icons.mic_none),
+                icon: const AppIcon(Icons.mic_none),
                 label: Text(
                   _permissions!.microphoneCanAskAgain
                       ? '마이크 권한 다시 요청'
@@ -515,7 +533,7 @@ class _RecorderPanelState extends State<RecorderPanel>
                   child: FilledButton.icon(
                     onPressed: _status.isRecording ? null : _start,
                     style: AppTheme.recordingFilledButtonStyle,
-                    icon: const Icon(Icons.mic),
+                    icon: const AppIcon(Icons.mic),
                     label: const Text('녹음 시작'),
                   ),
                 ),
@@ -524,7 +542,7 @@ class _RecorderPanelState extends State<RecorderPanel>
                   child: OutlinedButton.icon(
                     onPressed: _status.isRecording ? _stop : null,
                     style: AppTheme.recordingOutlinedButtonStyle,
-                    icon: const Icon(Icons.stop),
+                    icon: const AppIcon(Icons.stop),
                     label: const Text('녹음 종료'),
                   ),
                 ),
@@ -535,7 +553,7 @@ class _RecorderPanelState extends State<RecorderPanel>
               onPressed: _status.phase == RecorderPhase.completed
                   ? _playLatest
                   : null,
-              icon: const Icon(Icons.play_arrow),
+              icon: const AppIcon(Icons.play_arrow),
               label: const Text('녹음 파일 재생 확인'),
             ),
           ],

@@ -262,12 +262,7 @@ void main() {
       await tester.tap(find.text('열기'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, '변경 제목');
-      await tester.scrollUntilVisible(
-        find.text('취소'),
-        150,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.tap(find.text('취소'));
+      await tester.tap(find.byTooltip('취소'));
       await tester.pumpAndSettle();
       expect(writes, 0);
       expect(original, fixture.song());

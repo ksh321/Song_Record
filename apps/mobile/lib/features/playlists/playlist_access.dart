@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/widgets/app_icon.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../search/karaoke_search.dart';
 import 'playlist_library.dart';
 
@@ -69,7 +71,7 @@ class _AddSongToPlaylistState extends State<AddSongToPlaylistScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: AppLayout.bodyPadding,
           children: [
             if (error != null) Text(error!),
             if (snapshot.data!.isEmpty)
@@ -78,7 +80,7 @@ class _AddSongToPlaylistState extends State<AddSongToPlaylistScreen> {
               Card(
                 child: ListTile(
                   title: Text(row['name'] as String),
-                  trailing: const Icon(Icons.add),
+                  trailing: const AppIcon(Icons.add),
                   onTap: busy ? null : () => add(row['id'] as String),
                 ),
               ),

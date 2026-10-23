@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 /// P05-01: values from docs/reference/ui_reference_palette.json (v1.11).
 /// CSS px are logical pixels here; preview device dimensions are not app sizes.
 abstract final class AppColors {
-  static const background = Color(0xFF111111);
-  static const surface = Color(0xFF232323);
+  static const background = Color(0xFF121212);
+  static const surface = Color(0xFF222222);
   static const raised = Color(0xFF303030);
-  static const line = Color(0xFF383838);
-  static const text = Color(0xFFE7E7E7);
-  static const muted = Color(0xFFA8A8A8);
+  static const line = Color(0xFF3B3B3B);
+  static const text = Color(0xFFEEEEEE);
+  static const muted = Color(0xFFAAAAAA);
   // Shared foreground for every selectable accent and both app themes.
   static const onAccent = Color(0xFFFFFFFF);
-  static const danger = Color(0xFFE7A2A2);
+  static const danger = Color(0xFFFF9B9F);
 
   // Recording has its own meaning and never follows the selected accent.
   static const recording = Color(0xFFE5484D);
@@ -24,10 +24,10 @@ abstract final class AppColors {
   static const keyForeground = Color(0xFFFFFFFF);
   static const compactRowBackground = Color(0xFF202020);
   static const compactRowBorder = Color(0xFF353535);
-  static const sheetBackground = Color(0xFF232323);
+  static const sheetBackground = Color(0xFF222222);
   static const sheetBorder = Color(0xFF414141);
   static const sheetScrim = Color.fromRGBO(0, 0, 0, 0.48);
-  static const focusOutline = Color(0xFFE7E7E7);
+  static const focusOutline = Color(0xFFEEEEEE);
 }
 
 enum AppAccent {
@@ -52,8 +52,8 @@ enum AppAccent {
 }
 
 abstract final class AppTypography {
-  // No font asset is bundled by this change. Unavailable families fall back
-  // to the platform font; final font packaging is a separate decision.
+  // The approved HTML uses Droid Sans Fallback. Bundle the complete AOSP font
+  // so labels outside the prototype's small subset also render consistently.
   static const familyStack = <String>[
     'ReferenceKR',
     'Noto Sans KR',
@@ -61,12 +61,12 @@ abstract final class AppTypography {
     'sans-serif',
   ];
   static const double baseSize = 14;
-  static const double songTitleSize = 15;
-  static const double songDetailTitleSize = 20;
+  static const double songTitleSize = 16;
+  static const double songDetailTitleSize = 26;
   static const double songDetailSubtitleSize = 13;
   static const double supportingTextSize = 12;
-  static const double keyBadgeSize = 12;
-  static const double tabLabelSize = 12;
+  static const double keyBadgeSize = 11;
+  static const double tabLabelSize = 9;
   static const double fieldValueSize = 14;
   static const double sheetTitleSize = 19;
   static const double sheetOptionSize = 15;
@@ -77,29 +77,47 @@ abstract final class AppTypography {
   // UI_REFERENCE specifies this line height for song list titles.
   static const double songTitleLineHeight = 1.5;
 
-  static const body = TextStyle(fontSize: baseSize, color: AppColors.text);
-  static const supporting = TextStyle(fontSize: supportingTextSize);
+  static const body = TextStyle(
+    fontFamily: 'ReferenceKR',
+    fontSize: baseSize,
+    color: AppColors.text,
+  );
+  static const supporting = TextStyle(
+    fontFamily: 'ReferenceKR',
+    fontSize: supportingTextSize,
+  );
   static const songTitle = TextStyle(
+    fontFamily: 'ReferenceKR',
     fontSize: songTitleSize,
     height: songTitleLineHeight,
+    fontWeight: FontWeight.w600,
   );
   static const detailTitle = TextStyle(
+    fontFamily: 'ReferenceKR',
     fontSize: songDetailTitleSize,
     fontWeight: FontWeight.w700,
   );
   static const sheetTitle = TextStyle(
+    fontFamily: 'ReferenceKR',
     fontSize: sheetTitleSize,
     fontWeight: FontWeight.w700,
   );
-  static const sheetOption = TextStyle(fontSize: sheetOptionSize);
+  static const sheetOption = TextStyle(
+    fontFamily: 'ReferenceKR',
+    fontSize: sheetOptionSize,
+  );
   // Button colour belongs to its stateful ButtonStyle, not this TextStyle.
-  static const button = TextStyle(fontSize: baseSize, fontWeight: buttonWeight);
+  static const button = TextStyle(
+    fontFamily: 'ReferenceKR',
+    fontSize: baseSize,
+    fontWeight: buttonWeight,
+  );
 }
 
 /// Named component measurements; minimum heights may grow with text scaling.
 abstract final class AppDimensions {
-  static const double primaryButtonMinHeight = 52;
-  static const double primaryButtonRadius = 28;
+  static const double primaryButtonMinHeight = 50;
+  static const double primaryButtonRadius = 12;
   static const primaryButtonPadding = EdgeInsets.symmetric(
     vertical: 13,
     horizontal: 18,
@@ -107,19 +125,19 @@ abstract final class AppDimensions {
   static const double primaryButtonFontSize = 14;
   static const double iconButtonWidth = 44;
   static const double iconButtonHeight = 44;
-  static const double fieldMinHeight = 71;
+  static const double fieldMinHeight = 49;
   static const double songEditorFieldMinHeight = 68;
-  static const double fieldRadius = 9;
+  static const double fieldRadius = 12;
   // Final HTML .field padding; the JSON only specifies height and radius.
   static const fieldPadding = EdgeInsets.symmetric(
     vertical: 12,
     horizontal: 15,
   );
   static const double listCardMinHeight = 90;
-  static const double listCardRadius = 22;
-  static const double compactSongRowMinHeight = 66;
+  static const double listCardRadius = 14;
+  static const double compactSongRowMinHeight = 64;
   static const double compactSongRowPadding = 12;
-  static const double recordRowMinHeight = 86;
+  static const double recordRowMinHeight = 64;
   static const int choiceCardColumns = 2;
   static const double choiceCardGap = 12;
   static const double choiceCardRadius = 18;
@@ -151,7 +169,7 @@ abstract final class AppDimensions {
   static const double recordStartCircleSize = 64;
   static const double recordStopSquareSize = 32;
   static const double recordStopSquareRadius = 6;
-  static const double bottomNavigationHeight = 76;
+  static const double bottomNavigationHeight = 70;
   static const double metadataFieldMinHeight = 44;
   static const double metadataTextareaMinHeight = 120;
   static const double metadataGap = 14;

@@ -131,13 +131,20 @@ class RecordingViewData {
   RecordingId get id => snapshot.id;
 
   /// Preserve the recording's captured local time, not the viewer's timezone.
+  DateTime get _capturedTime => snapshot.recordedAt.toUtc().add(
+    Duration(minutes: snapshot.timezoneOffsetMinutes),
+  );
   String get dateLabel {
-    final time = snapshot.recordedAt.toUtc().add(
-      Duration(minutes: snapshot.timezoneOffsetMinutes),
-    );
+    final time = _capturedTime;
     String two(int value) => value.toString().padLeft(2, '0');
     return '${time.year}.${two(time.month)}.${two(time.day)} '
         '${two(time.hour)}:${two(time.minute)}';
+  }
+
+  String get compactDateLabel {
+    final time = _capturedTime;
+    return '${time.month}월 ${time.day}일 ${time.hour < 12 ? '오전' : '오후'} '
+        '${time.hour % 12 == 0 ? 12 : time.hour % 12}:${time.minute.toString().padLeft(2, '0')}';
   }
 
   String get durationLabel => !durationKnown

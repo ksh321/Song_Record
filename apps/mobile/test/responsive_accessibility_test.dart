@@ -174,8 +174,8 @@ void main() {
       await tester.ensureVisible(find.text('곡 수정'));
       await tester.tap(find.text('곡 수정'));
       expect(edited, isTrue);
-      await tester.ensureVisible(find.text('자동 보관 기준'));
-      await tester.tap(find.text('자동 보관 기준'));
+      await tester.ensureVisible(find.text('서버 자동 보관 기준'));
+      await tester.tap(find.text('서버 자동 보관 기준'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });

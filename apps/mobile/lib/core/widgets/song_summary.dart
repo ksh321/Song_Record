@@ -3,6 +3,8 @@ import 'package:song_record/core/domain/song_types.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/music_view_data.dart';
 
+import 'app_icon.dart';
+
 class SongSummary extends StatelessWidget {
   const SongSummary({required this.song, this.onEdit, super.key});
   final RegisteredSongViewData song;
@@ -55,7 +57,7 @@ class SongSummary extends StatelessWidget {
                       style: TextButton.styleFrom(
                         minimumSize: const Size(44, 44),
                       ),
-                      icon: const Icon(Icons.edit_outlined, size: 16),
+                      icon: const AppIcon(Icons.edit_outlined, size: 16),
                       label: const Text('곡 수정'),
                     ),
                   ],

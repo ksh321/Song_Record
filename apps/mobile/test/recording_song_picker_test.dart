@@ -240,7 +240,13 @@ void main() {
       await t.tap(find.text('찾는 곡 없음 확인'));
       await t.pumpAndSettle();
       await t.enterText(find.byKey(const ValueKey('song-artist')), '직접 가수');
+      await t.scrollUntilVisible(
+        find.text('저장'),
+        180,
+        scrollable: find.byType(Scrollable).last,
+      );
       await t.ensureVisible(find.text('저장'));
+      await t.pumpAndSettle();
       await t.runAsync(() async {
         await t.tap(find.text('저장'));
         await Future<void>.delayed(const Duration(milliseconds: 200));

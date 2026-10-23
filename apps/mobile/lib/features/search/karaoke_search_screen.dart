@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/content_state.dart';
+import '../../core/widgets/music_view_data.dart';
+import '../../core/widgets/song_row.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../auth/auth_session.dart';
 import 'karaoke_search.dart';
 import 'search_intent.dart';
@@ -227,37 +230,36 @@ class _KaraokeSearchScreenState extends State<KaraokeSearchScreen> {
     builder: (context, _) {
       final state = controller.phase;
       return ListView(
-        padding: const EdgeInsets.all(16),
+        padding: AppLayout.bodyPadding,
         children: [
-          SegmentedButton<KaraokeBrand>(
-            segments: const [
-              ButtonSegment(value: KaraokeBrand.tj, label: Text('TJ')),
-              ButtonSegment(value: KaraokeBrand.ky, label: Text('금영')),
-            ],
-            selected: {controller.query.brand},
-            onSelectionChanged: (v) => controller.change(brand: v.single),
+          AppBrandTabs<KaraokeBrand>(
+            options: const {KaraokeBrand.tj: 'TJ', KaraokeBrand.ky: '금영'},
+            selected: controller.query.brand,
+            onChanged: (v) => controller.change(brand: v),
           ),
-          const SizedBox(height: 12),
-          TextField(
+          const SizedBox(height: 14),
+          AppSearchField(
             controller: input,
-            decoration: const InputDecoration(
-              labelText: '검색어',
-              hintText: '곡명·가수·번호 검색',
-            ),
+            hint: switch (controller.query.kind) {
+              KaraokeKind.title => '곡명 검색',
+              KaraokeKind.artist => '가수 검색',
+              KaraokeKind.number => '번호 검색',
+            },
             onChanged: (v) => controller.change(text: v),
             onSubmitted: (_) => controller.retry(),
           ),
-          const SizedBox(height: 12),
-          SegmentedButton<KaraokeKind>(
-            segments: const [
-              ButtonSegment(value: KaraokeKind.title, label: Text('곡명')),
-              ButtonSegment(value: KaraokeKind.artist, label: Text('가수')),
-              ButtonSegment(value: KaraokeKind.number, label: Text('번호')),
-            ],
-            selected: {controller.query.kind},
-            onSelectionChanged: (v) => controller.change(kind: v.single),
+          const SizedBox(height: 14),
+          AppOptions<KaraokeKind>(
+            pills: true,
+            options: const {
+              KaraokeKind.title: '곡명',
+              KaraokeKind.artist: '가수',
+              KaraokeKind.number: '번호',
+            },
+            selected: controller.query.kind,
+            onChanged: (v) => controller.change(kind: v),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           if (state == SearchPhase.idle)
             const ContentState(
               phase: ContentPhase.waiting,
@@ -282,17 +284,20 @@ class _KaraokeSearchScreenState extends State<KaraokeSearchScreen> {
           if (controller.canOfferManual && widget.prepareRegistration != null)
             TextButton(onPressed: _manual, child: const Text('찾는 곡이 없어요')),
           for (final c in controller.results)
-            ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                vertical: 8,
-                horizontal: 4,
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: SongRow.candidate(
+                candidate: CandidateSongViewData(
+                  brand: c.brand == KaraokeBrand.tj
+                      ? CatalogBrand.tj
+                      : CatalogBrand.ky,
+                  number: c.number,
+                  title: c.title,
+                  artist: c.artist,
+                ),
+                placement: CandidatePlacement.search,
+                onTap: () => _select(c),
               ),
-              title: Text(c.title, style: AppTypography.songTitle),
-              subtitle: Text(
-                '${c.artist} · ${c.brand == KaraokeBrand.tj ? 'TJ' : '금영'} ${c.number}',
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _select(c),
             ),
         ],
       );

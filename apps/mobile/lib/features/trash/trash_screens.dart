@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/app_icon.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../auth/auth_session.dart';
 import 'trash_workflow.dart';
 
@@ -104,7 +106,7 @@ class _DeleteScreenState extends State<DeleteScreen> {
     appBar: AppBar(title: Text(widget.recording ? '녹음 삭제' : '곡 삭제')),
     body: SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: AppLayout.bodyPadding,
         children: [
           Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
           if (invalid)
@@ -365,13 +367,13 @@ class _TrashScreenState extends State<TrashScreen> {
         IconButton(
           tooltip: '새로 확인',
           onPressed: loading || invalid ? null : load,
-          icon: const Icon(Icons.refresh),
+          icon: const AppIcon(Icons.refresh),
         ),
       ],
     ),
     body: SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: AppLayout.bodyPadding,
         children: [
           if (invalid)
             const Text('계정이 변경됐어요. 다시 열어 주세요.')

@@ -102,7 +102,12 @@ void main() {
       expect(find.text('일반 반주'), findsNothing);
       expect(find.byType(MusicalKeyBadge), findsNothing);
       expect(find.text('미정'), findsNothing);
-      expect(find.text('TJ 00123'), findsOneWidget);
+      expect(
+        placement == CandidatePlacement.chart
+            ? find.text('00123')
+            : find.textContaining('TJ 00123'),
+        findsOneWidget,
+      );
       if (placement == CandidatePlacement.chart) {
         expect(find.text('2'), findsOneWidget);
       }
@@ -131,7 +136,7 @@ void main() {
       );
       expect(find.text('당시 제목'), findsOneWidget);
       expect(find.text('당시 가수'), findsOneWidget);
-      expect(find.text('2026.09.23 01:05'), findsOneWidget);
+      expect(find.text('9월 23일 오전 1:05'), findsOneWidget);
       expect(find.text('03:07'), findsOneWidget);
       expect(find.text('남'), findsOneWidget);
       expect(find.text('C'), findsOneWidget);
@@ -193,7 +198,7 @@ void main() {
     expect(edits, 1);
     await tester.tap(find.text('최신 녹음'));
     expect(opened, recordingId);
-    await tester.tap(find.text('자동 보관 기준'));
+    await tester.tap(find.text('서버 자동 보관 기준'));
     await tester.pumpAndSettle();
     expect(find.textContaining('파일이 서버에 있다는 뜻은 아니에요'), findsOneWidget);
     expect(find.text('대표 녹음'), findsOneWidget);

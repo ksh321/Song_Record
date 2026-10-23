@@ -73,10 +73,10 @@ void main() {
         await settleRead();
         expect(find.text('TJ 검사 곡'), findsOneWidget);
         expect(find.text('미등록 TJ 후보'), findsOneWidget);
-        expect(find.text('후보 가수'), findsOneWidget);
+        expect(find.text('후보 가수 · TJ 00555'), findsOneWidget);
         expect(find.text('내 곡 미등록'), findsNothing);
         expect(find.text('미정'), findsNWidgets(2)); // registered tier + key only
-        expect(find.text('TJ 00555'), findsOneWidget);
+        expect(find.textContaining('TJ 00555'), findsOneWidget);
         await tester.tap(find.text('TJ 검사 곡'));
         expect(openedSong, playlistFixtureId(1910));
         await tester.runAsync(() => tester.tap(find.text('미등록 TJ 후보')));
@@ -84,8 +84,8 @@ void main() {
         await tester.pumpAndSettle();
         expect(queries.single.kind, KaraokeKind.number);
         expect(queries.single.text, '00555');
-        expect(find.widgetWithText(TextFormField, '곡명'), findsOneWidget);
-        await tester.tap(find.text('취소'));
+        expect(find.byKey(const ValueKey('song-title')), findsOneWidget);
+        await tester.tap(find.byTooltip('취소'));
         await tester.pumpAndSettle();
         // Navigator completes after the exit animation; only then does the
         // picker refresh SQLite and release its busy state.
@@ -116,7 +116,7 @@ void main() {
         expect(find.text('수정 가수 · LIVE'), findsOneWidget);
         expect(find.text('A'), findsOneWidget);
         expect(find.text('남 +2'), findsOneWidget);
-        expect(find.text('후보 가수'), findsOneWidget);
+        expect(find.text('후보 가수 · TJ 00555'), findsOneWidget);
 
         // Changes to items without changes to songs also refresh automatically.
         await tester.runAsync(() async {

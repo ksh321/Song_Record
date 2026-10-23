@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_icon.dart';
+
 /// Shared outline treatment for feature entry points in either appearance.
 class FeatureIcon extends StatelessWidget {
   const FeatureIcon(
@@ -27,7 +29,7 @@ class FeatureIcon extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(icon, size: size * .58, color: accent),
+      child: AppIcon(icon, size: size * .58, color: accent),
     );
   }
 }

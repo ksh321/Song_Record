@@ -7,6 +7,7 @@ import '../../core/sync/canonical_conflict_plan.dart';
 import '../../core/sync/conflict_resolution_plan.dart';
 import '../../core/sync/conflict_review.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/ui_controls.dart';
 
 String _displayValue(String field, Object? value) {
   if (field == 'is_suitable' && value is bool) {
@@ -164,7 +165,7 @@ class _ConflictScreenState extends State<ConflictScreen> {
         appBar: AppBar(title: const Text('동기화 충돌')),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: AppLayout.bodyPadding,
             children: [
               if (_busy) const LinearProgressIndicator(),
               if (_message != null) ...[
@@ -310,7 +311,7 @@ class _CanonicalConflictScreenState extends State<CanonicalConflictScreen> {
         appBar: AppBar(title: const Text('같은 곡의 개인 편집')),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: AppLayout.bodyPadding,
             children: [
               if (_busy) const LinearProgressIndicator(),
               if (_message != null) Text(_message!),

@@ -48,6 +48,7 @@ void main() {
         await _openRecordingTab(tester);
         final label = phase == RecorderPhase.idle ? '녹음 시작' : '녹음 완료';
         await tester.ensureVisible(find.text(label));
+        await tester.pumpAndSettle();
         final control = tester.widget<TextButton>(
           find.byKey(const ValueKey('recorder-control')),
         );
@@ -379,6 +380,13 @@ Future<void> _openRecordingTab(WidgetTester tester) async {
 
 Future<void> _openHealth(WidgetTester tester) async {
   await tester.tap(find.byTooltip('설정'));
+  await tester.pumpAndSettle();
+  await tester.scrollUntilVisible(
+    find.text('서버 연결 확인'),
+    150,
+    scrollable: find.byType(Scrollable).last,
+  );
+  await tester.ensureVisible(find.text('서버 연결 확인'));
   await tester.pumpAndSettle();
   await tester.tap(find.text('서버 연결 확인'));
   await tester.pumpAndSettle();

@@ -6,6 +6,7 @@ import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 
 import '../../core/database/account_store.dart';
+import '../../core/widgets/app_icon.dart';
 import '../settings/deletion_status_recovery_screen.dart';
 import '../sync/sync_controller.dart';
 import 'auth_session.dart';
@@ -99,7 +100,7 @@ class _LoginGateState extends State<LoginGate> with WidgetsBindingObserver {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Icon(Icons.mic_none, size: 56),
+                      const AppIcon(Icons.mic_none, size: 56),
                       const SizedBox(height: 16),
                       const Text(
                         '노래기록',

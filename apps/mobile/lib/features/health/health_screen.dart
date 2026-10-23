@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/network/health_client.dart';
 
+import '../../core/widgets/app_icon.dart';
+
 class HealthScreen extends StatefulWidget {
   const HealthScreen({
     required this.config,
@@ -71,7 +73,7 @@ class _HealthScreenState extends State<HealthScreen> {
               const SizedBox(height: 12),
               const Center(child: Text('Spring Boot health 확인 중...')),
             ] else if (response != null) ...[
-              const Icon(Icons.check_circle, color: Colors.green, size: 48),
+              const AppIcon(Icons.check_circle, color: Colors.green, size: 48),
               const SizedBox(height: 12),
               Text(
                 '서버 연결 성공: ${response.status}',
@@ -84,7 +86,7 @@ class _HealthScreenState extends State<HealthScreen> {
                 textAlign: TextAlign.center,
               ),
             ] else ...[
-              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const AppIcon(Icons.error_outline, color: Colors.red, size: 48),
               const SizedBox(height: 12),
               Text(
                 '서버 연결 실패',

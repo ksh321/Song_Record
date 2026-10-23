@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../core/domain/song_types.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/content_state.dart';
 import '../../core/widgets/musical_key_picker.dart';
 import '../../core/widgets/song_badges.dart';
 import '../../core/widgets/tier_picker.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../../core/widgets/version_picker.dart';
 import '../auth/auth_session.dart';
 import 'song_edit.dart';
@@ -94,25 +96,12 @@ class _SongEditScreenState extends State<SongEditScreen> {
     canPop: !busy,
     child: Scaffold(
       appBar: AppBar(
-        title: const Text('곡 수정'),
-        leadingWidth: 70,
-        leading: TextButton(
+        title: const Text('곡 정보 수정'),
+        leading: IconButton(
+          tooltip: '취소',
           onPressed: busy ? null : () => Navigator.of(context).pop(false),
-          child: const Text('취소'),
+          icon: const AppIcon(Icons.arrow_back),
         ),
-        actions: [
-          if (!revoked)
-            TextButton(
-              onPressed: busy || revoked ? null : save,
-              child: Text(
-                busy
-                    ? '저장 중'
-                    : command == null
-                    ? '저장'
-                    : '같은 변경 다시 저장',
-              ),
-            ),
-        ],
       ),
       body: SafeArea(
         child: revoked
@@ -121,31 +110,36 @@ class _SongEditScreenState extends State<SongEditScreen> {
                 title: '계정이 변경됐어요. 편집을 닫고 다시 열어 주세요.',
               )
             : ListView(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+                padding: AppLayout.bodyPadding,
                 children: [
-                  TextField(
-                    controller: title,
-                    enabled: editable,
-                    decoration: const InputDecoration(labelText: '곡명'),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(
-                    controller: artist,
-                    enabled: editable,
-                    decoration: const InputDecoration(labelText: '가수'),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextField(
-                    controller: note,
-                    enabled: editable,
-                    minLines: 3,
-                    maxLines: 6,
-                    decoration: const InputDecoration(
-                      labelText: '메모 (최대 2,000자)',
+                  AppPanel(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      children: [
+                        AppLabeledField(
+                          label: '곡명',
+                          controller: title,
+                          enabled: editable,
+                        ),
+                        const SizedBox(height: 14),
+                        AppLabeledField(
+                          label: '가수',
+                          controller: artist,
+                          enabled: editable,
+                        ),
+                        const SizedBox(height: 14),
+                        AppLabeledField(
+                          label: '메모',
+                          controller: note,
+                          enabled: editable,
+                          minLines: 4,
+                          maxLines: 6,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  OutlinedButton(
+                  const SizedBox(height: 14),
+                  AppPickerField(
                     onPressed: !editable
                         ? null
                         : () async {
@@ -159,11 +153,10 @@ class _SongEditScreenState extends State<SongEditScreen> {
                               );
                             }
                           },
-                    child: Text(
-                      '버전: ${formatVersionCode(widget.draft.version)}',
-                    ),
+                    label: '버전',
+                    value: formatVersionCode(widget.draft.version),
                   ),
-                  OutlinedButton(
+                  AppPickerField(
                     onPressed: !editable
                         ? null
                         : () async {
@@ -177,11 +170,12 @@ class _SongEditScreenState extends State<SongEditScreen> {
                               );
                             }
                           },
-                    child: Text(
-                      '대표 키: ${widget.draft.musicalKey == null ? '미정' : formatMusicalKey(widget.draft.musicalKey!)}',
-                    ),
+                    label: '대표 키',
+                    value: widget.draft.musicalKey == null
+                        ? '미정'
+                        : formatMusicalKey(widget.draft.musicalKey!),
                   ),
-                  OutlinedButton(
+                  AppPickerField(
                     onPressed: !editable
                         ? null
                         : () async {
@@ -193,7 +187,8 @@ class _SongEditScreenState extends State<SongEditScreen> {
                               setState(() => widget.draft.tier = result.value);
                             }
                           },
-                    child: Text('곡 티어: ${formatSongTier(widget.draft.tier)}'),
+                    label: '곡 티어',
+                    value: formatSongTier(widget.draft.tier),
                   ),
                   SongSuitabilityChoice(
                     value: widget.draft.isSuitable,
@@ -202,6 +197,23 @@ class _SongEditScreenState extends State<SongEditScreen> {
                         : (v) => setState(() => widget.draft.isSuitable = v),
                   ),
                   if (error != null) Text(error!, semanticsLabel: error),
+                  FilledButton(
+                    onPressed: busy || revoked ? null : save,
+                    child: Text(
+                      busy
+                          ? '저장 중'
+                          : command == null
+                          ? '저장'
+                          : '같은 변경 다시 저장',
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton(
+                    onPressed: busy
+                        ? null
+                        : () => Navigator.of(context).pop(false),
+                    child: const Text('취소'),
+                  ),
                   const SizedBox(height: AppSpacing.md),
                 ],
               ),

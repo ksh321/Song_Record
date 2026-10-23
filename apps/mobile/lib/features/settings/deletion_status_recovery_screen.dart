@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/domain/account_deletion_confirmation.dart';
+import '../../core/widgets/app_icon.dart';
 import '../auth/identity_link.dart';
 import 'account_deletion.dart';
 import 'account_deletion_screen.dart';
@@ -72,7 +73,7 @@ class _DeletionStatusRecoveryScreenState
             for (var i = 0; i < scopes!.length; i++)
               ListTile(
                 title: Text('탈퇴 확인증 ${i + 1}'),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const AppIcon(Icons.chevron_right),
                 onTap: () {
                   final api = AccountDeletionApi(
                     widget.base,

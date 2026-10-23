@@ -4,9 +4,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../core/sync/local_repository.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/feature_icon.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/song_row.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../auth/auth_session.dart';
 import '../charts/popular_chart.dart';
 import '../search/karaoke_search.dart';
@@ -108,7 +110,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     final menu = PopupMenuButton<String>(
       tooltip: '곡 메뉴',
       enabled: !busy && parent != null,
-      icon: const Icon(Icons.more_vert),
+      icon: const AppIcon(Icons.more_vert),
       onSelected: (value) =>
           value == 'register' ? registerCandidate(item) : removeItem(item),
       itemBuilder: (_) => [
@@ -383,7 +385,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       child: RefreshIndicator(
         onRefresh: reload,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: AppLayout.bodyPadding,
           children: [
             if (error != null) Text(error!),
             Row(
@@ -396,10 +398,9 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                       : reorder,
                   child: const Text('순서 변경'),
                 ),
-                FilledButton.icon(
+                AppCompactAction(
+                  label: '곡 추가',
                   onPressed: busy || parent == null ? null : chooseSource,
-                  icon: const Icon(Icons.add),
-                  label: const Text('곡 추가'),
                 ),
               ],
             ),

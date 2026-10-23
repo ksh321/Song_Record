@@ -2,6 +2,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../core/widgets/app_icon.dart';
+import '../../core/widgets/feature_icon.dart';
+import '../../core/widgets/ui_controls.dart';
 import 'settings_api.dart';
 
 class StorageView {
@@ -324,10 +327,19 @@ class _StorageState extends State<StorageScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('보관량과 고정')),
+    appBar: AppBar(
+      title: const Text('보관량과 고정'),
+      actions: [
+        IconButton(
+          tooltip: '새로고침',
+          onPressed: busy || pending != null ? null : refresh,
+          icon: const AppIcon(Icons.refresh),
+        ),
+      ],
+    ),
     body: SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: AppLayout.bodyPadding,
         children: [
           if (busy) const LinearProgressIndicator(),
           if (message != null) Text(message!),
@@ -336,10 +348,6 @@ class _StorageState extends State<StorageScreen> {
               onPressed: busy ? null : submit,
               child: const Text('같은 요청 결과 다시 확인'),
             ),
-          TextButton(
-            onPressed: busy || pending != null ? null : refresh,
-            child: const Text('새로고침'),
-          ),
           if (data case final current?) ...[
             Card(
               child: Padding(
@@ -347,11 +355,33 @@ class _StorageState extends State<StorageScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('서버 보관량'),
-                    const SizedBox(height: 16),
                     Text(
-                      '${formatBytes(current.usage['used_bytes'] as int)} / ${formatBytes(current.usage['quota_bytes'] as int)}',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      '서버 보관량',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: formatBytes(
+                              current.usage['used_bytes'] as int,
+                            ),
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                ' / ${formatBytes(current.usage['quota_bytes'] as int)}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 16),
                     LinearProgressIndicator(
@@ -360,7 +390,7 @@ class _StorageState extends State<StorageScreen> {
                           : ((current.usage['used_bytes'] as int) /
                                     (current.usage['quota_bytes'] as int))
                                 .clamp(0.0, 1.0),
-                      minHeight: 10,
+                      minHeight: 6,
                       borderRadius: BorderRadius.circular(99),
                       backgroundColor: Theme.of(context).colorScheme.primary
                           .withValues(alpha: .14),
@@ -374,6 +404,148 @@ class _StorageState extends State<StorageScreen> {
                 ),
               ),
             ),
+            if (current.usage['waiting_by_reason'] is Map)
+              for (final waiting
+                  in (current.usage['waiting_by_reason'] as Map).entries)
+                if (waiting.value is int && (waiting.value as int) > 0)
+                  Text(
+                    '${const {'PIN_LIMIT': '고정 개수 부족', 'USER_QUOTA': '계정 보관 용량 부족', 'GLOBAL_QUOTA': '서비스 보관 용량 대기', 'QUOTA': '보관 용량 부족', 'WAITING_LOCAL_CONFIRM': '기기 보존 확인 대기'}[waiting.key] ?? '다른 보관 대기'}: ${waiting.value}개',
+                  ),
+            if (widget.requestBuilder != null)
+              TextButton(
+                onPressed: busy
+                    ? null
+                    : () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: widget.requestBuilder!,
+                        ),
+                      ),
+                child: const Text('추가 보관 요청'),
+              ),
+            AppPanel(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  ExpansionTile(
+                    leading: const FeatureIcon(
+                      Icons.push_pin_outlined,
+                      size: 34,
+                    ),
+                    title: const Text('고정한 녹음'),
+                    subtitle: const Text('중요한 녹음을 계속 보관'),
+                    childrenPadding: const EdgeInsets.all(14),
+                    children: [
+                      FilledButton(
+                        onPressed:
+                            busy ||
+                                pending != null ||
+                                (current.usage['pinned_used'] as int) >=
+                                    (current.usage['pinned_limit'] as int)
+                            ? null
+                            : () => choose(null),
+                        child: const Text('녹음 고정 신청'),
+                      ),
+                      for (final slot in current.slots)
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '고정 ${slot['slot_no']} · 현재 ${current.name(slot['current_recording_id'])}',
+                                ),
+                                if (slot['pending_recording_id'] != null)
+                                  Text(
+                                    '${slot['current_recording_id'] == null ? '고정 대기' : '교체 대기'}: ${current.name(slot['pending_recording_id'])}',
+                                  ),
+                                Wrap(
+                                  children: [
+                                    if (slot['current_recording_id'] != null &&
+                                        slot['pending_recording_id'] == null)
+                                      TextButton(
+                                        onPressed: busy || pending != null
+                                            ? null
+                                            : () => choose(slot),
+                                        child: const Text('교체'),
+                                      ),
+                                    if (slot['current_recording_id'] != null &&
+                                        slot['pending_recording_id'] != null)
+                                      TextButton(
+                                        onPressed: busy || pending != null
+                                            ? null
+                                            : () => act(
+                                                'POST',
+                                                '/v1/pins/${slot['slot_no']}/replacement/cancel',
+                                                {
+                                                  'base_revision':
+                                                      slot['revision'],
+                                                },
+                                                '교체 대기 취소',
+                                              ),
+                                        child: const Text('교체 대기 취소'),
+                                      ),
+                                    TextButton(
+                                      onPressed: busy || pending != null
+                                          ? null
+                                          : () => act(
+                                              'DELETE',
+                                              '/v1/pins/${slot['slot_no']}',
+                                              {
+                                                'base_revision':
+                                                    slot['revision'],
+                                              },
+                                              '고정 해제',
+                                            ),
+                                      child: Text(
+                                        slot['current_recording_id'] == null
+                                            ? '고정 대기 취소'
+                                            : '고정 해제',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const Divider(height: 1),
+                  ExpansionTile(
+                    leading: const FeatureIcon(
+                      Icons.storage_outlined,
+                      size: 34,
+                    ),
+                    title: const Text('서버 사본 정리'),
+                    subtitle: const Text('이 기기의 원본은 유지'),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Text(
+                          '정리 대기 ${formatBytes(current.usage['cleanup_pending_bytes'] as int)} · 휴지통 ${formatBytes(current.usage['trash_bytes'] as int)}. 서버 정리가 끝난 뒤 보관량에 반영돼요. 공간 확보를 약속할 수는 없어요.',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 1),
+                  const ExpansionTile(
+                    leading: FeatureIcon(Icons.queue_music_outlined, size: 34),
+                    title: Text('자동 보관 기준'),
+                    subtitle: Text('대표 · 최신 · 최저 티어'),
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.all(14),
+                        child: Text(
+                          '대표·최신·최저 티어 녹음을 자동 보관해요. 같은 녹음이 여러 역할을 맡으면 한 번만 세어요.',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
             ExpansionTile(
               title: const Text('사용량 자세히 보기'),
               children: [
@@ -394,94 +566,6 @@ class _StorageState extends State<StorageScreen> {
                 ),
               ],
             ),
-            if (current.usage['waiting_by_reason'] is Map)
-              for (final waiting
-                  in (current.usage['waiting_by_reason'] as Map).entries)
-                if (waiting.value is int && (waiting.value as int) > 0)
-                  Text(
-                    '${const {'PIN_LIMIT': '고정 개수 부족', 'USER_QUOTA': '계정 보관 용량 부족', 'GLOBAL_QUOTA': '서비스 보관 용량 대기', 'QUOTA': '보관 용량 부족', 'WAITING_LOCAL_CONFIRM': '기기 보존 확인 대기'}[waiting.key] ?? '다른 보관 대기'}: ${waiting.value}개',
-                  ),
-            if (widget.requestBuilder != null)
-              TextButton(
-                onPressed: busy
-                    ? null
-                    : () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: widget.requestBuilder!,
-                        ),
-                      ),
-                child: const Text('추가 보관 요청'),
-              ),
-            if (current.usage['cleanup_pending_bytes'] == 0)
-              const Text('현재 정리 대기 중인 사본이 없어요. 공간 확보를 약속할 수 없습니다.'),
-            FilledButton(
-              onPressed:
-                  busy ||
-                      pending != null ||
-                      (current.usage['pinned_used'] as int) >=
-                          (current.usage['pinned_limit'] as int)
-                  ? null
-                  : () => choose(null),
-              child: const Text('녹음 고정 신청'),
-            ),
-            for (final slot in current.slots)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '고정 ${slot['slot_no']} · 현재 ${current.name(slot['current_recording_id'])}',
-                      ),
-                      if (slot['pending_recording_id'] != null)
-                        Text(
-                          '${slot['current_recording_id'] == null ? '고정 대기' : '교체 대기'}: ${current.name(slot['pending_recording_id'])}',
-                        ),
-                      Wrap(
-                        children: [
-                          if (slot['current_recording_id'] != null &&
-                              slot['pending_recording_id'] == null)
-                            TextButton(
-                              onPressed: busy || pending != null
-                                  ? null
-                                  : () => choose(slot),
-                              child: const Text('교체'),
-                            ),
-                          if (slot['current_recording_id'] != null &&
-                              slot['pending_recording_id'] != null)
-                            TextButton(
-                              onPressed: busy || pending != null
-                                  ? null
-                                  : () => act(
-                                      'POST',
-                                      '/v1/pins/${slot['slot_no']}/replacement/cancel',
-                                      {'base_revision': slot['revision']},
-                                      '교체 대기 취소',
-                                    ),
-                              child: const Text('교체 대기 취소'),
-                            ),
-                          TextButton(
-                            onPressed: busy || pending != null
-                                ? null
-                                : () => act(
-                                    'DELETE',
-                                    '/v1/pins/${slot['slot_no']}',
-                                    {'base_revision': slot['revision']},
-                                    '고정 해제',
-                                  ),
-                            child: Text(
-                              slot['current_recording_id'] == null
-                                  ? '고정 대기 취소'
-                                  : '고정 해제',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ],
       ),

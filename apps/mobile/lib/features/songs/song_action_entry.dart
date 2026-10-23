@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../auth/auth_session.dart';
 import '../playlists/playlist_access.dart';
 import 'my_song_detail.dart';
@@ -59,7 +59,7 @@ class _SongActionEntryState extends State<SongActionEntry> {
     }
     Widget body() => SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: AppLayout.bodyPadding,
         children: [
           if (!current)
             const Text('계정이 변경됐어요. 내 곡 목록에서 다시 열어 주세요.')

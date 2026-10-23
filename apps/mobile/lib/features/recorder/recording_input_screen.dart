@@ -9,8 +9,11 @@ import '../../core/domain/recording_defaults.dart';
 import '../../core/domain/song_types.dart';
 import '../../core/sync/local_repository.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/musical_key_picker.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../../core/widgets/version_picker.dart';
+import 'recording_classification_picker.dart';
 import 'recording_song_picker.dart';
 
 /// A recoverable input draft, separate from SAVED metadata and the capture file.
@@ -264,6 +267,46 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
     await loadTags();
   }
 
+  List<Map<String, dynamic>> classificationConditions() => [
+    ...availableConditions,
+    if (condition != null &&
+        !availableConditions.any((r) => r['code'] == condition))
+      {
+        'code': condition,
+        'name': widget.recording['condition_name_snapshot'] ?? '기존 컨디션',
+      },
+  ];
+  Future<void> chooseClassifications() async {
+    if (busy || !current) return;
+    final result = await Navigator.of(context).push<RecordingClassification>(
+      MaterialPageRoute(
+        builder: (_) => RecordingClassificationPicker(
+          options: (
+            conditions: classificationConditions(),
+            tags: availableTags,
+          ),
+          selection: (condition: condition, tags: List.of(tags)),
+          isCurrent: () => current,
+          manage: widget.classificationBuilder == null
+              ? null
+              : () async {
+                  await manageClassifications();
+                  return (
+                    conditions: classificationConditions(),
+                    tags: availableTags,
+                  );
+                },
+        ),
+      ),
+    );
+    if (result == null || !current) return;
+    setState(() {
+      condition = result.condition;
+      tags = List.of(result.tags);
+    });
+    changed();
+  }
+
   Future<void> applyDefaults() async {
     try {
       final rows = await widget.repository.pendingRecordings();
@@ -428,12 +471,12 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
           title: Text(widget.editing ? '녹음 정보 수정' : '녹음 정보 입력'),
           leading: IconButton(
             onPressed: busy ? null : exit,
-            icon: const Icon(Icons.arrow_back),
+            icon: const AppIcon(Icons.arrow_back),
           ),
         ),
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: AppLayout.bodyPadding,
             child: AbsorbPointer(
               absorbing:
                   busy ||
@@ -454,72 +497,47 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
                         songId == null ? '내 곡 선택 / 새 곡 찾기' : '연결할 곡 변경',
                       ),
                     ),
-                  TextField(
-                    key: const ValueKey('recording-title'),
+                  AppLabeledField(
+                    fieldKey: const ValueKey('recording-title'),
+                    label: '곡명',
                     controller: title,
-                    decoration: const InputDecoration(labelText: '곡명'),
                     onChanged: (_) => changed(),
                   ),
-                  TextField(
-                    key: const ValueKey('recording-artist'),
+                  const SizedBox(height: 14),
+                  AppLabeledField(
+                    fieldKey: const ValueKey('recording-artist'),
+                    label: '가수',
                     controller: artist,
-                    decoration: const InputDecoration(labelText: '가수'),
                     onChanged: (_) => changed(),
                   ),
-                  TextButton(
+                  const SizedBox(height: 14),
+                  AppPickerField(
+                    label: '키',
+                    value: formatMusicalKey(defaults.key),
                     onPressed: key,
-                    child: Text('키: ${formatMusicalKey(defaults.key)}'),
                   ),
-                  TextButton(
+                  AppPickerField(
+                    label: '버전',
+                    value: formatVersionCode(defaults.version),
                     onPressed: version,
-                    child: Text('버전: ${formatVersionCode(defaults.version)}'),
                   ),
-                  TextButton(
+                  AppPickerField(
+                    label: '녹음 시각',
                     onPressed: correctTime,
-                    child: Text(
-                      '녹음 시각: ${wall.toIso8601String().replaceFirst('T', ' ').replaceFirst('Z', '')} (${widget.recording['timezone_id']})',
-                    ),
+                    value:
+                        '${wall.year}년 ${wall.month}월 ${wall.day}일 ${wall.hour < 12 ? '오전' : '오후'} ${wall.hour % 12 == 0 ? 12 : wall.hour % 12}:${wall.minute.toString().padLeft(2, '0')}',
                   ),
                   if (!widget.editing && songId != null)
                     TextButton(
                       onPressed: applyDefaults,
                       child: const Text('선택 곡의 키·버전 기본값 적용'),
                     ),
-                  DropdownButtonFormField<String>(
-                    initialValue: condition,
-                    decoration: const InputDecoration(labelText: '컨디션 (선택)'),
-                    items: [
-                      const DropdownMenuItem(value: null, child: Text('미선택')),
-                      for (final item in availableConditions)
-                        DropdownMenuItem(
-                          value: item['code'] as String,
-                          child: Text(item['name'] as String),
-                        ),
-                      if (condition != null &&
-                          !availableConditions.any(
-                            (r) => r['code'] == condition,
-                          ))
-                        DropdownMenuItem(
-                          value: condition,
-                          child: Text(
-                            '${widget.recording['condition_name_snapshot'] ?? '기존 컨디션'} (기존 기록)',
-                          ),
-                        ),
-                    ],
-                    onChanged: (v) {
-                      setState(() => condition = v);
-                      changed();
-                    },
+                  AppPickerField(
+                    label: '컨디션과 태그',
+                    value:
+                        '${classificationConditions().where((r) => r['code'] == condition).firstOrNull?['name'] ?? '선택 안 함'} · 태그 ${tags.length}개',
+                    onPressed: chooseClassifications,
                   ),
-                  if (widget.classificationBuilder != null)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: OutlinedButton.icon(
-                        onPressed: busy ? null : manageClassifications,
-                        icon: const Icon(Icons.edit_outlined),
-                        label: const Text('컨디션 수정'),
-                      ),
-                    ),
                   if (widget.editing)
                     DropdownButtonFormField<String>(
                       key: const ValueKey('recording-tier'),
@@ -532,48 +550,11 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
                       ],
                       onChanged: (v) => setState(() => tier = v),
                     ),
-                  const Text('태그 (선택)'),
-                  if (availableTags.isEmpty) const Text('선택할 태그가 없어요.'),
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    children: [
-                      for (final tag in availableTags)
-                        FilterChip(
-                          label: Text(
-                            '${tag['name']}${tag['historical'] == true ? ' (보관됨)' : ''}',
-                          ),
-                          selected: tags.contains(tag['id']),
-                          onSelected:
-                              tag['historical'] == true &&
-                                  !tags.contains(tag['id'])
-                              ? null
-                              : (selected) {
-                                  setState(() {
-                                    if (selected) {
-                                      tags.add(tag['id'] as String);
-                                    } else {
-                                      tags.remove(tag['id']);
-                                    }
-                                  });
-                                  changed();
-                                },
-                        ),
-                    ],
-                  ),
-                  if (widget.classificationBuilder != null)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: OutlinedButton.icon(
-                        onPressed: busy ? null : manageClassifications,
-                        icon: const Icon(Icons.edit_outlined),
-                        label: const Text('태그 수정'),
-                      ),
-                    ),
-                  TextField(
-                    key: const ValueKey('recording-note'),
+                  AppLabeledField(
+                    fieldKey: const ValueKey('recording-note'),
+                    label: '메모 (선택)',
                     controller: note,
                     maxLines: 3,
-                    decoration: const InputDecoration(labelText: '메모 (선택)'),
                     onChanged: (_) => changed(),
                   ),
                 ],

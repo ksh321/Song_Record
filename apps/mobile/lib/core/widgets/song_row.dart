@@ -4,6 +4,7 @@ import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/music_row_surface.dart';
 import 'package:song_record/core/widgets/music_view_data.dart';
 
+import 'app_icon.dart';
 import 'song_badges.dart';
 
 class SongRow extends StatelessWidget {
@@ -12,6 +13,7 @@ class SongRow extends StatelessWidget {
     this.onTap,
     this.alreadyAdded = false,
     this.trailingAction,
+    this.flat = false,
     super.key,
   }) : _candidate = null,
        placement = null,
@@ -24,7 +26,8 @@ class SongRow extends StatelessWidget {
     this.onTap,
     this.trailingAction,
     super.key,
-  }) : _song = null,
+  }) : flat = placement != CandidatePlacement.playlist,
+       _song = null,
        _candidate = candidate,
        alreadyAdded = false {
     if (placement == null ||
@@ -45,6 +48,7 @@ class SongRow extends StatelessWidget {
   final int? rank;
   final VoidCallback? onTap;
   final bool alreadyAdded;
+  final bool flat;
   final Widget? trailingAction;
 
   @override
@@ -56,7 +60,11 @@ class SongRow extends StatelessWidget {
     final isPlaylist = placement == CandidatePlacement.playlist;
     return MusicRowSurface(
       compact: true,
-      minHeight: AppDimensions.compactSongRowMinHeight,
+      flat: flat,
+      padding: flat
+          ? null
+          : const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      minHeight: flat ? 78 : 64,
       enabled: !alreadyAdded,
       onTap: onTap,
       child: LayoutBuilder(
@@ -68,18 +76,24 @@ class SongRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(title, style: AppTypography.songTitle),
-              const SizedBox(height: AppSpacing.xs),
+              Text(
+                title,
+                style: AppTypography.songTitle.copyWith(
+                  fontSize: flat ? 16 : 15,
+                ),
+              ),
+              const SizedBox(height: 5),
               Text(
                 song == null
-                    ? artist
+                    ? (rank == null
+                          ? '$artist · ${candidate!.sourceLabel}'
+                          : artist)
                     : '$artist · ${formatVersionCode(song.version)}',
-                style: AppTypography.supporting,
+                style: AppTypography.supporting.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  height: 1.5,
+                ),
               ),
-              if (candidate != null) ...[
-                const SizedBox(height: AppSpacing.xs),
-                Text(candidate.sourceLabel, style: AppTypography.supporting),
-              ],
             ],
           );
           final badges = Wrap(
@@ -90,7 +104,7 @@ class SongRow extends StatelessWidget {
               if (song != null) ...[
                 TierBadge(formatSongTier(song.tier)),
                 if (song.isSuitable)
-                  Icon(
+                  AppIcon(
                     Icons.favorite,
                     size: 19,
                     color: Theme.of(context).colorScheme.primary,
@@ -99,7 +113,7 @@ class SongRow extends StatelessWidget {
                 if (!alreadyAdded) MusicalKeyBadge(value: song.musicalKey),
               ],
               if (isPlaylist && trailingAction == null)
-                const Icon(Icons.chevron_right, size: 16),
+                const AppIcon(Icons.chevron_right, size: 16),
               if (alreadyAdded)
                 const Text('추가됨', style: AppTypography.supporting),
               ?trailingAction,
@@ -128,6 +142,7 @@ class SongRow extends StatelessWidget {
                   '$rank',
                   semanticsLabel: '$rank위',
                   style: AppTypography.detailTitle.copyWith(
+                    fontSize: 25,
                     color: rank! <= 3
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(context).colorScheme.onSurfaceVariant,
@@ -144,7 +159,7 @@ class SongRow extends StatelessWidget {
                 SizedBox(
                   width: 22,
                   child: song.isSuitable
-                      ? Icon(
+                      ? AppIcon(
                           Icons.favorite,
                           size: 19,
                           color: Theme.of(context).colorScheme.primary,
@@ -157,8 +172,16 @@ class SongRow extends StatelessWidget {
                 const Text('추가됨', style: AppTypography.supporting)
               else if (song != null)
                 MusicalKeyBadge(value: song.musicalKey)
+              else if (rank != null)
+                Text(
+                  candidate!.number,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                )
               else if (trailingAction == null)
-                const Icon(Icons.chevron_right, size: 16),
+                const AppIcon(Icons.chevron_right, size: 16),
               ?trailingAction,
             ],
           );

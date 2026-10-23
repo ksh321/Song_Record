@@ -90,6 +90,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('선택할 키: 여 +12'), findsOneWidget);
     await tester.ensureVisible(find.byKey(const ValueKey('apply-key')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('apply-key')));
     await tester.pumpAndSettle();
     expect(result?.value, MusicalKey(mode: KeyMode.female, shift: 12));
@@ -117,6 +118,7 @@ void main() {
     expect(wheel(tester).selectedItem, 0);
     expect(find.text('선택할 키: 원키 -12'), findsOneWidget);
     await tester.ensureVisible(find.text('적용'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('적용'));
     await tester.pumpAndSettle();
     expect(result?.value, MusicalKey(mode: KeyMode.original, shift: -12));
@@ -131,6 +133,7 @@ void main() {
     await tester.tap(find.text('여'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('취소'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('취소'));
     await tester.pumpAndSettle();
     expect(result, isNull);
@@ -140,6 +143,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('선택할 키: 남 -1'), findsOneWidget);
     await tester.ensureVisible(find.text('미정으로 두기'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('미정으로 두기'));
     await tester.pumpAndSettle();
     expect(result, isNotNull);
@@ -156,6 +160,7 @@ void main() {
     wheel(tester).jumpToItem(13);
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('적용'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('적용'));
     await tester.pumpAndSettle();
     expect(result?.value, MusicalKey(mode: KeyMode.original, shift: 1));
@@ -175,6 +180,7 @@ void main() {
       lessThanOrEqualTo(576),
     );
     await tester.ensureVisible(find.byKey(const ValueKey('apply-key')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('apply-key')));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
@@ -189,6 +195,7 @@ void main() {
     wheel(tester).jumpToItem(13);
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('적용'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('적용'));
     await tester.pumpAndSettle();
     expect(
@@ -209,6 +216,8 @@ void main() {
       find.byKey(const ValueKey('copy-song-default')),
       200,
     );
+    await tester.ensureVisible(find.byKey(const ValueKey('copy-song-default')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('copy-song-default')));
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(

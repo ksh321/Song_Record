@@ -100,6 +100,35 @@ void main() {
       await root.delete(recursive: true);
     }
   });
+  testWidgets('detail settings opens app settings above the tab navigator', (
+    t,
+  ) async {
+    final data = StreamController<MySongDetail>.broadcast();
+    addTearDown(data.close);
+    await t.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark(),
+        routes: {
+          '/settings': (_) => Scaffold(
+            appBar: AppBar(title: const Text('앱 설정 도착')),
+          ),
+        },
+        home: Navigator(
+          onGenerateRoute: (_) => MaterialPageRoute<void>(
+            builder: (_) => SongDetailScreen(watch: () => data.stream),
+          ),
+        ),
+      ),
+    );
+    data.add(detail());
+    await t.pump();
+    await t.tap(find.byTooltip('설정'));
+    await t.pumpAndSettle();
+    expect(find.text('앱 설정 도착'), findsOneWidget);
+    await t.pageBack();
+    await t.pumpAndSettle();
+    expect(find.text('곡 상세'), findsOneWidget);
+  });
   testWidgets(
     'manual detail shows required fields without language and opens recording snapshot',
     (tester) async {
@@ -113,10 +142,10 @@ void main() {
       );
       data.add(detail());
       await tester.pump();
-      expect(find.text('TJ 번호 없음'), findsOneWidget);
+      expect(find.textContaining('직접 등록'), findsOneWidget);
       expect(find.text('일반 반주'), findsOneWidget);
-      expect(find.text('대표 키: 남 +2'), findsOneWidget);
-      expect(find.text('곡 티어: A'), findsOneWidget);
+      expect(find.text('남 +2'), findsOneWidget);
+      expect(find.text('A'), findsOneWidget);
       expect(find.text('곡메모'), findsOneWidget);
       expect(find.text('언어'), findsNothing);
       await tester.scrollUntilVisible(
@@ -124,6 +153,8 @@ void main() {
         300,
         scrollable: find.byType(Scrollable).first,
       );
+      await tester.ensureVisible(find.text('녹음 당시 제목'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('녹음 당시 제목'));
       await tester.pump();
       data.add(detail());
@@ -145,7 +176,7 @@ void main() {
       );
       data.add(detail(tj: '00123'));
       await tester.pump();
-      expect(find.text('TJ 00123'), findsOneWidget);
+      expect(find.textContaining('TJ 00123'), findsOneWidget);
       data.add(
         MySongDetail({
           'song': null,
@@ -154,7 +185,7 @@ void main() {
         }),
       );
       await tester.pump();
-      expect(find.text('TJ 00123'), findsNothing);
+      expect(find.textContaining('TJ 00123'), findsNothing);
       expect(find.text('현재 계정의 활성 곡을 찾을 수 없어요.'), findsOneWidget);
       data.addError(StateError('lease invalid'));
       await tester.pump();
@@ -185,12 +216,12 @@ void main() {
       );
       data.add(detail(tj: '00123'));
       await tester.pump();
-      expect(find.text('TJ 00123'), findsOneWidget);
+      expect(find.textContaining('TJ 00123'), findsOneWidget);
       api.next = auth_fixtures.session(user: 'account-b');
       await auth.signIn('google');
       data.add(detail(tj: '00123'));
       await tester.pump();
-      expect(find.text('TJ 00123'), findsNothing);
+      expect(find.textContaining('TJ 00123'), findsNothing);
       expect(find.text('계정이 변경됐어요. 내 곡 목록에서 다시 열어 주세요.'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       await tester.runAsync(data.close);

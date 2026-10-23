@@ -7,6 +7,7 @@ import '../../core/domain/condition_types.dart';
 import '../../core/domain/identifiers.dart';
 import '../../core/domain/input_validation.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/app_icon.dart';
 import 'settings_api.dart';
 
 typedef ClassificationData = ({
@@ -334,14 +335,14 @@ class _ClassificationState extends State<ClassificationScreen> {
                     children: [
                       IconButton(
                         tooltip: '컨디션 이름 변경',
-                        icon: const Icon(Icons.edit_outlined),
+                        icon: const AppIcon(Icons.edit_outlined),
                         onPressed: busy || pending != null || !widget.canEdit
                             ? null
                             : () => edit(r, condition: true),
                       ),
                       IconButton(
                         tooltip: '컨디션 삭제',
-                        icon: const Icon(Icons.delete_outline),
+                        icon: const AppIcon(Icons.delete_outline),
                         onPressed: busy || pending != null || !widget.canEdit
                             ? null
                             : () => edit(r, condition: true, archive: true),
@@ -370,7 +371,7 @@ class _ClassificationState extends State<ClassificationScreen> {
                                   busy || pending != null || !widget.canEdit
                                   ? null
                                   : () => edit(tag),
-                              icon: const Icon(Icons.edit_outlined),
+                              icon: const AppIcon(Icons.edit_outlined),
                             ),
                             IconButton(
                               tooltip: '태그 삭제',
@@ -378,7 +379,7 @@ class _ClassificationState extends State<ClassificationScreen> {
                                   busy || pending != null || !widget.canEdit
                                   ? null
                                   : () => edit(tag, archive: true),
-                              icon: const Icon(Icons.delete_outline),
+                              icon: const AppIcon(Icons.delete_outline),
                             ),
                           ],
                         ),

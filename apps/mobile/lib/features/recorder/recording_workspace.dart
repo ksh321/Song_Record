@@ -5,7 +5,10 @@ import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 
 import '../../core/files/recording_catalog.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/feature_icon.dart';
+import '../../core/widgets/ui_controls.dart';
+import '../../routing/tab_navigation.dart';
 import '../trash/trash_workflow.dart';
 import 'completed_capture_handoff.dart';
 import 'recorder_gateway.dart';
@@ -97,7 +100,7 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
       leading: FeatureIcon(icon),
       title: Text(title),
       subtitle: Text(subtitle),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: const AppIcon(Icons.chevron_right),
       onTap: open,
     ),
   );
@@ -109,7 +112,7 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
           appBar: AppBar(title: Text(title)),
           body: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+              padding: AppLayout.bodyPadding,
               child: body,
             ),
           ),
@@ -120,8 +123,9 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(AppSpacing.lg),
+    padding: AppLayout.bodyPadding,
     children: [
+      const TabHeaderSubtitle('한 번에 최대 6분'),
       RecorderPanel(
         gateway: widget.gateway,
         diagnostics: false,
@@ -170,7 +174,7 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
                     ? '선택한 곡: ${row['input_selection']['title_snapshot']}'
                     : '정보 입력 대기 · ${row['recorded_at']}',
               ),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: const AppIcon(Icons.chevron_right),
               onTap: () {
                 final repo = widget.repository();
                 if (repo == null || !widget.isCurrent(repo)) return;

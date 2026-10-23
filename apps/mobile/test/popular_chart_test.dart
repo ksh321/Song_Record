@@ -128,8 +128,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('출처: MANANA'), findsOneWidget);
       expect(find.textContaining('서버 수집:'), findsNothing);
-        await tester.scrollUntilVisible(find.textContaining('이전 정상 자료'), 100,
-            scrollable: find.byType(Scrollable).first);
+      await tester.scrollUntilVisible(
+        find.textContaining('이전 정상 자료'),
+        100,
+        scrollable: find.byType(Scrollable).first,
+      );
       expect(find.textContaining('이전 정상 자료'), findsOneWidget);
       await tester.tap(find.text('주간'));
       await tester.pumpAndSettle();

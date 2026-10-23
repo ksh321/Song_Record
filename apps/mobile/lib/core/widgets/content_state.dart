@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 
+import 'app_icon.dart';
+
 enum ContentPhase { loading, empty, error, waiting }
 
 /// Display only. The caller supplies the actual request or operation state.
@@ -40,7 +42,7 @@ class ContentState extends StatelessWidget {
                 ),
               )
             else
-              Icon(
+              AppIcon(
                 switch (phase) {
                   ContentPhase.loading => Icons.hourglass_top,
                   ContentPhase.empty => Icons.music_note_outlined,

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/ui_controls.dart';
 
 /// Actual state only: unavailable data is never replaced by example numbers.
 class SettingsReadScreen extends StatefulWidget {
@@ -101,7 +101,7 @@ class _State extends State<SettingsReadScreen> {
     body: SafeArea(
       top: false,
       child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: AppLayout.bodyPadding,
         children: [
           if (busy) const LinearProgressIndicator(),
           if (failed) const Text('정보를 읽지 못했어요. 연결·로그인 상태를 확인해 주세요.'),

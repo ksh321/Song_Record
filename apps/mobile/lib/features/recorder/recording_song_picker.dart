@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../core/sync/local_repository.dart';
 import '../../core/theme/app_tokens.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/feature_icon.dart';
 import '../../core/widgets/song_discovery_sheet.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../playlists/playlist_access.dart';
 import '../search/karaoke_search.dart';
 import '../search/search_intent.dart';
@@ -251,12 +253,12 @@ class _RecordingSongPickerState extends State<RecordingSongPicker> {
                 leading: FeatureIcon(icon),
                 title: Text(title),
                 subtitle: Text(subtitle),
-                trailing: const Icon(Icons.chevron_right),
+                trailing: const AppIcon(Icons.chevron_right),
                 onTap: busy || !available ? null : action,
               ),
             );
             return ListView(
-              padding: const EdgeInsets.all(16),
+              padding: AppLayout.bodyPadding,
               children: [
                 if (error != null) Text(error!),
                 if (available && selectedTitle != null)
@@ -344,7 +346,7 @@ class _RecordingSongPickerState extends State<RecordingSongPicker> {
                 itemBuilder: (context, i) => ListTile(
                   title: Text(rows[i].view.title),
                   subtitle: Text(rows[i].view.artist),
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: const AppIcon(Icons.chevron_right),
                   onTap: busy
                       ? null
                       : () => select(rows[i].view.id.value, rows[i].view.title),
@@ -362,7 +364,7 @@ class _RecordingSongPickerState extends State<RecordingSongPicker> {
                         subtitle: Text(
                           '${(item['candidate_snapshot'] as Map)['artist']} · TJ ${item['candidate_number']}',
                         ),
-                        trailing: const Icon(Icons.chevron_right),
+                        trailing: const AppIcon(Icons.chevron_right),
                         onTap: busy || !available
                             ? null
                             : () => chooseCandidate(item, access),

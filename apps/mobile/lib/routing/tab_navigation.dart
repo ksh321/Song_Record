@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:song_record/app/app_tab.dart';
-import 'package:song_record/core/theme/app_tokens.dart';
 
 import '../core/theme/app_appearance.dart';
+import '../core/widgets/app_icon.dart';
 
 /// Navigation context for one tab, retained only for this shell's lifetime.
 /// This is UI selection, not account data or process-death restoration.
@@ -12,6 +12,15 @@ class TabNavigation extends ChangeNotifier {
   final VoidCallback _openSettings;
   final _navigatorKey = GlobalKey<NavigatorState>();
   String? _selectedPlaylistId;
+  String? _subtitle;
+  void updateHeaderSubtitle(String? value) {
+    if (_subtitle == value) return;
+    _subtitle = value;
+    notifyListeners();
+  }
+
+  static TabNavigation? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_TabScope>()?.notifier;
 
   static TabNavigation of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<_TabScope>();
@@ -132,22 +141,52 @@ class _TabPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         toolbarHeight:
-            (MediaQuery.textScalerOf(context)
-                            .scale(AppTypography.songDetailTitleSize) *
-                        1.4 +
-                    16)
-                .clamp(kToolbarHeight, double.infinity)
-                .toDouble(),
+            (MediaQuery.textScalerOf(context).scale(26) * 1.3 +
+                    32 +
+                    (!showBack &&
+                            TabNavigation.maybeOf(context)?._subtitle != null
+                        ? MediaQuery.textScalerOf(context).scale(12) * 1.55 + 6
+                        : 0))
+                .clamp(88, double.infinity),
         title: Tooltip(
           message: title,
-          child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  height: 1.3,
+                  letterSpacing: -1.1,
+                ),
+              ),
+              if ((showBack ? null : TabNavigation.maybeOf(context)?._subtitle)
+                  case final String subtitle) ...[
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.55,
+                    fontWeight: FontWeight.w400,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
         automaticallyImplyLeading: false,
         leading: showBack
             ? IconButton(
                 tooltip: '뒤로가기',
                 onPressed: () => Navigator.of(context).maybePop(),
-                icon: const Icon(Icons.arrow_back),
+                icon: const AppIcon(Icons.arrow_back),
               )
             : null,
         actions: [
@@ -155,12 +194,49 @@ class _TabPage extends StatelessWidget {
           IconButton(
             tooltip: '설정',
             onPressed: openSettings,
-            icon: const Icon(Icons.settings_outlined),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              minimumSize: const Size(44, 44),
+              maximumSize: const Size(44, 44),
+              padding: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              alignment: Alignment.center,
+              child: const AppIcon(Icons.settings_outlined, size: 20),
+            ),
           ),
-          const SizedBox(width: AppSpacing.sm),
+          const SizedBox(width: 20),
         ],
       ),
       body: SafeArea(top: false, bottom: false, child: child),
     );
+  }
+}
+
+/// A screen's existing observed data supplies presentation-only header text.
+/// It neither starts a query nor alters any account state.
+class TabHeaderSubtitle extends StatelessWidget {
+  const TabHeaderSubtitle(this.text, {super.key});
+  final String? text;
+  @override
+  Widget build(BuildContext context) {
+    final navigation = TabNavigation.maybeOf(context);
+    if (navigation != null && navigation._subtitle != text) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted && navigation._subtitle != text) {
+          navigation.updateHeaderSubtitle(text);
+        }
+      });
+    }
+    return const SizedBox.shrink();
   }
 }

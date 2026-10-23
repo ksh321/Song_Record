@@ -106,8 +106,10 @@ void main() {
       expect(find.byIcon(Icons.check), findsOneWidget);
       await tester.tap(find.text('오래된순'));
       await tester.pumpAndSettle();
-      expect(tester.getTopLeft(find.text('밤')).dy,
-          lessThan(tester.getTopLeft(find.text('아침')).dy));
+      expect(
+        tester.getTopLeft(find.text('밤')).dy,
+        lessThan(tester.getTopLeft(find.text('아침')).dy),
+      );
       await tester.tap(find.text('밤'));
       expect(opened, recordingViewFixture({'id': 'b'})['id']);
     },

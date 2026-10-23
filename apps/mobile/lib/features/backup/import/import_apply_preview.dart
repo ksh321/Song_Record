@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_tokens.dart';
+import '../../../core/widgets/ui_controls.dart';
 import 'import_outcome.dart';
 import 'import_outcome_view.dart';
 
@@ -91,7 +91,7 @@ class _State extends State<ImportApplyPreview> {
     appBar: AppBar(title: const Text('가져오기 미리보기')),
     body: SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: AppLayout.bodyPadding,
         children: [
           const Text('백업과 현재 기록을 확인했어요. 아래 내용을 확인하고 가져오기를 눌러 주세요.'),
           Text('가져올 정보 ${widget.information}개'),

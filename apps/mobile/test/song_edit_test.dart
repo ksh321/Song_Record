@@ -146,7 +146,7 @@ void main() {
         250,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.tap(find.text('취소'));
+      await tester.tap(find.byTooltip('취소'));
       await tester.pumpAndSettle();
       expect(prepared, 0);
       expect(saved, 0);
@@ -155,6 +155,11 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('저장'),
         250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.scrollUntilVisible(
+        find.text('저장'),
+        150,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.tap(find.text('저장'));
@@ -185,6 +190,11 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('저장'),
         250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.scrollUntilVisible(
+        find.text('저장'),
+        150,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.tap(find.text('저장'));

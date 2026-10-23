@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:song_record/core/widgets/ui_controls.dart';
 import 'package:song_record/features/charts/popular_chart.dart';
 import 'package:song_record/features/charts/popular_chart_screen.dart';
 import 'package:song_record/features/search/karaoke_search.dart';
@@ -34,6 +35,7 @@ const tj = KaraokeCandidate(
 );
 Future<void> open(WidgetTester t) async {
   await t.ensureVisible(find.text('원본 (LIVE)'));
+  await t.pumpAndSettle();
   await t.tap(find.text('원본 (LIVE)'));
   await t.pumpAndSettle();
 }
@@ -118,6 +120,7 @@ void main() {
       await t.tap(find.text('TJ에서 이 곡 찾기'));
       await t.pumpAndSettle();
       await t.ensureVisible(find.text('실제 TJ 결과'));
+      await t.pumpAndSettle();
       await t.tap(find.text('실제 TJ 결과'));
       await t.pumpAndSettle();
       await t.tap(find.text('목록에 사용할 TJ 곡 선택'));
@@ -143,8 +146,10 @@ void main() {
     );
     await t.pumpAndSettle();
     await open(t);
-    final chip = t.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, '일간'));
-    chip.onSelected!(true);
+    final periods = t.widget<AppOptions<ChartPeriod>>(
+      find.byType(AppOptions<ChartPeriod>),
+    );
+    periods.onChanged(ChartPeriod.daily);
     await t.pump();
     await t.tap(find.text('이 TJ 곡 선택'));
     await t.pumpAndSettle();
@@ -175,15 +180,20 @@ void main() {
       await t.tap(find.text('이 TJ 곡 선택'));
       await t.pumpAndSettle();
       expect(find.textContaining('TJ 00123'), findsOneWidget);
-      await t.ensureVisible(find.text('취소'));
-      await t.tap(find.text('취소'));
+      await t.tap(find.byTooltip('취소'));
       await t.pumpAndSettle();
       expect(saves, 0);
       expect(drafts, isEmpty);
       await open(t);
       await t.tap(find.text('이 TJ 곡 선택'));
       await t.pumpAndSettle();
+      await t.scrollUntilVisible(
+        find.text('저장'),
+        180,
+        scrollable: find.byType(Scrollable).last,
+      );
       await t.ensureVisible(find.text('저장'));
+      await t.pumpAndSettle();
       await t.tap(find.text('저장'));
       await t.pumpAndSettle();
       expect(saves, 1);
@@ -211,14 +221,20 @@ void main() {
       await open(t);
       await t.tap(find.text('이 TJ 곡 선택'));
       await t.pumpAndSettle();
+      await t.scrollUntilVisible(
+        find.text('저장'),
+        180,
+        scrollable: find.byType(Scrollable).last,
+      );
       await t.ensureVisible(find.text('저장'));
+      await t.pumpAndSettle();
       await t.tap(find.text('저장'));
       await t.pumpAndSettle();
       expect(saves, 1);
-      final chip = t.widget<ChoiceChip>(
-        find.widgetWithText(ChoiceChip, '주간', skipOffstage: false),
+      final periods = t.widget<AppOptions<ChartPeriod>>(
+        find.byType(AppOptions<ChartPeriod>, skipOffstage: false),
       );
-      chip.onSelected!(true);
+      periods.onChanged(ChartPeriod.weekly);
       await t.pump();
       await t.tap(find.text('저장'));
       await t.pumpAndSettle();

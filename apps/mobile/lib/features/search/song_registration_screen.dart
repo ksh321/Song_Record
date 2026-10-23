@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/domain/input_validation.dart';
 import '../../core/domain/song_types.dart';
 import '../../core/sync/local_repository.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/song_badges.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../../core/widgets/version_picker.dart';
 import 'karaoke_search.dart';
 import 'search_intent.dart';
@@ -106,26 +108,26 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
     child: Scaffold(
       appBar: AppBar(
         title: Text(widget.candidate == null ? '직접 등록' : '내 곡 등록'),
-        leadingWidth: 64,
-        leading: TextButton(
+        leading: IconButton(
+          tooltip: '취소',
           onPressed: busy ? null : () => Navigator.pop(context, false),
-          child: const Text('취소'),
+          icon: const AppIcon(Icons.arrow_back),
         ),
-        actions: [
-          TextButton(
-            onPressed: busy ? null : _save,
-            child: Text(busy ? '저장 중' : '저장'),
-          ),
-        ],
       ),
       body: SafeArea(
         child: Form(
           key: form,
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: AppLayout.bodyPadding,
             children: [
               if (widget.candidate != null)
-                Text('TJ ${widget.candidate!.number} · 원본 정보와 편집값을 따로 보관해요.'),
+                Text(
+                  'TJ ${widget.candidate!.number}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
               if (widget.candidate == null)
                 Text(
                   widget.directEntry
@@ -133,31 +135,39 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
                       : '검색에서 찾지 못한 곡을 직접 등록해요.',
                 ),
               const SizedBox(height: 12),
-              TextFormField(
-                key: const ValueKey('song-title'),
-                controller: title,
-                readOnly: busy || _savePrepared != null,
-                decoration: const InputDecoration(labelText: '곡명'),
-                validator: (v) => validate(InputField.title, v),
+              AppPanel(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  children: [
+                    AppLabeledFormField(
+                      fieldKey: const ValueKey('song-title'),
+                      label: '곡명',
+                      controller: title,
+                      readOnly: busy || _savePrepared != null,
+                      validator: (v) => validate(InputField.title, v),
+                    ),
+                    const SizedBox(height: 14),
+                    AppLabeledFormField(
+                      fieldKey: const ValueKey('song-artist'),
+                      label: '가수',
+                      controller: artist,
+                      readOnly: busy || _savePrepared != null,
+                      validator: (v) => validate(InputField.artist, v),
+                    ),
+                    const SizedBox(height: 14),
+                    AppLabeledFormField(
+                      fieldKey: const ValueKey('song-note'),
+                      label: '메모',
+                      controller: note,
+                      maxLines: 4,
+                      readOnly: busy || _savePrepared != null,
+                      validator: (v) => validate(InputField.note, v),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                key: const ValueKey('song-artist'),
-                controller: artist,
-                readOnly: busy || _savePrepared != null,
-                decoration: const InputDecoration(labelText: '가수'),
-                validator: (v) => validate(InputField.artist, v),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                key: const ValueKey('song-note'),
-                controller: note,
-                readOnly: busy || _savePrepared != null,
-                maxLines: 3,
-                decoration: const InputDecoration(labelText: '메모'),
-                validator: (v) => validate(InputField.note, v),
-              ),
-              TextButton(
+              const SizedBox(height: 14),
+              AppPickerField(
                 onPressed: busy || _savePrepared != null
                     ? null
                     : () async {
@@ -169,13 +179,23 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
                           setState(() => version = choice.value);
                         }
                       },
-                child: Text('버전: ${formatVersionCode(version)}'),
+                label: '버전',
+                value: formatVersionCode(version),
               ),
               SongSuitabilityChoice(
                 value: isSuitable,
                 onChanged: busy || _savePrepared != null
                     ? null
                     : (v) => setState(() => isSuitable = v),
+              ),
+              FilledButton(
+                onPressed: busy ? null : _save,
+                child: Text(busy ? '저장 중' : '저장'),
+              ),
+              const SizedBox(height: 14),
+              OutlinedButton(
+                onPressed: busy ? null : () => Navigator.pop(context, false),
+                child: const Text('취소'),
               ),
               if (error != null)
                 Text(
