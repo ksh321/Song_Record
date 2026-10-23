@@ -310,3 +310,11 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 최종 실기 진행: 우회 설정을 제거한 APK4463a5f9...에서 밝은 모드 흰 글자/선택 아이콘, 기존 S/하트/원키-3·계정 보존, 실제 곡 상세의 하단탭과 내곡 재선택 복귀를 확인했다. 설정 경로 1줄 보완을 담은 최종 APK 설치·설정 진입 확인 후 커밋/필수CI 예정. 개인 곡/녹음 생성·삭제·키 입력·서버 변경 없음.
 
 - 최종 APK `21e32cba0caa5fe9245cee2e00b3260e9acca5a4e1c220bc7baa0d3cda9c42e0`: 서명·패키지·lib/Android/assets 소스 지문 확인, 동일 beta install-r 및 설치 바이트 해시 일치. 추적 소스244개와 Git index 대조 일치(CRLF 정규화). 실제 곡 상세→앱 설정→같은 상세 복귀와 하단탭 유지 PASS(`library-parity-release-{detail,settings,settings-return}.png`). 이전 계정/S/하트/원키-3/플리/녹음 유지. 기존 NOTICE의 마지막 빈 줄은 원문 고지 보존을 위해 유지했다. 필수 원격 CI만 대기.
+
+
+### 2026-10-23 P25-04 녹음 시작·목록 진입 간격 보완
+- 사용자 요청: 녹음 시작과 입력 대기·전체 녹음이 너무 가까워 두 목록 진입 항목을 아래로 이동한다. HTML footnote 하단 여백12→60px, 앱 RecorderPanel 뒤 공통 간격16→64 논리px로 각각48px 확대했다. 녹음·저장·목록 콜백과 데이터는 변경하지 않는다.
+- 로컬: flutter analyze 진단0. responsive_accessibility_test.dart 17 PASS, app_shell_test.dart/recording_service_screen_test.dart 12 PASS. 첫 명령에 존재하지 않는 recording_workspace_test.dart를 포함해 파일 로드1실패가 있었고, 실제 경로로 고쳐 통과했다. 제품 오류나 검사삭제로 분류하지 않는다. 단순 간격 변경에 별도 미러 테스트를 추가하지 않았다.
+- 별도 현재 모델 검토: 실제 diff의 여백2곳/미사용 import 제거만 확인, 공유 진입 항목·스크롤·원본 데이터 보존을 대조. 하위 에이전트 없음. HTML 실제 렌더와 베타 녹음 화면에서 두 항목의 간격 확대·겹침 없음·하단탭 유지 확인.
+- 서명APK 9371992c14965a995e3d882cb1d339d18b81b05bee664dc89b5c5ea3e7cfc061 생성·소스검증·동일 beta install-r·설치바이트 일치 PASS. 실기 근거 library-record-gap.png. 현재 사용자 테마/색 유지, 녹음 시작·개인 데이터 생성/삭제 없음. 서버/DB 배포 없음.
+- push 기준 원격 HEAD ab2bd6436e8d948ac106ac8284246f59785989b9를 새 ls-remote로 확인. 필수 Flutter CI만 남아 있으며 이전 완료와 다른 작업의 미커밋 변경은 보존한다.

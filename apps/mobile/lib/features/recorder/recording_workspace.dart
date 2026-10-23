@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:song_record/core/sync/local_repository.dart';
-import 'package:song_record/core/theme/app_tokens.dart';
 
 import '../../core/files/recording_catalog.dart';
 import '../../core/widgets/app_icon.dart';
@@ -131,7 +130,7 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
         diagnostics: false,
         onCompleted: _persist,
       ),
-      const SizedBox(height: AppSpacing.lg),
+      const SizedBox(height: 64),
       StreamBuilder<List<Map<String, dynamic>>>(
         stream: _pending,
         builder: (context, snapshot) => _entry(
