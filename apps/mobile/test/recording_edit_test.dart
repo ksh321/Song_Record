@@ -181,13 +181,27 @@ void main() {
       expect((await repo.pending()).length, count);
     },
   );
+  test('original-reference recording edit keeps offset and audio', () async {
+    final old = await row();
+    final audio = await store.readLocalAudio(rec);
+    await repo.saveRecordingDetails(
+      rec,
+      {...values(), 'key_mode': 'ORIGINAL', 'key_shift': -3},
+      repo.recordingEditOperationIds(),
+      old,
+      0,
+    );
+    expect((await row())['key_mode'], 'ORIGINAL');
+    expect((await row())['key_shift'], -3);
+    expect(await store.readLocalAudio(rec), audio);
+  });
   test(
     'bad key, unavailable new tag and identity changes cannot partially queue',
     () async {
       final old = await row();
       final count = (await repo.pending()).length;
       for (final fields in [
-        {...values(), 'key_mode': 'ORIGINAL', 'key_shift': 1},
+        {...values(), 'key_mode': 'ORIGINAL', 'key_shift': 13},
         {
           ...values(),
           'tag_ids': [other],
@@ -311,6 +325,7 @@ void main() {
             repository: repo,
             isCurrent: (_) => true,
             editing: true,
+            conditionLoader: () async => [],
             tagLoader: () async => [],
           ),
         ),

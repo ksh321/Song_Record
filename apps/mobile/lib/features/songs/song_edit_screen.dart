@@ -4,6 +4,7 @@ import '../../core/domain/song_types.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/content_state.dart';
 import '../../core/widgets/musical_key_picker.dart';
+import '../../core/widgets/song_badges.dart';
 import '../../core/widgets/tier_picker.dart';
 import '../../core/widgets/version_picker.dart';
 import '../auth/auth_session.dart';
@@ -79,7 +80,7 @@ class _SongEditScreenState extends State<SongEditScreen> {
       if (mounted && !revoked) {
         setState(
           () => error = failure is ArgumentError
-              ? '곡명·가수는 1~200자, 아쉬운 점은 2,000자 이내로 입력해 주세요.'
+              ? '곡명·가수는 1~200자, 메모은 2,000자 이내로 입력해 주세요.'
               : '저장하지 못했어요. 같은 변경을 다시 저장하거나, 원본이 바뀌었다면 취소하고 다시 열어 주세요.',
         );
       }
@@ -92,7 +93,27 @@ class _SongEditScreenState extends State<SongEditScreen> {
   Widget build(BuildContext context) => PopScope(
     canPop: !busy,
     child: Scaffold(
-      appBar: AppBar(title: const Text('곡 수정')),
+      appBar: AppBar(
+        title: const Text('곡 수정'),
+        leadingWidth: 70,
+        leading: TextButton(
+          onPressed: busy ? null : () => Navigator.of(context).pop(false),
+          child: const Text('취소'),
+        ),
+        actions: [
+          if (!revoked)
+            TextButton(
+              onPressed: busy || revoked ? null : save,
+              child: Text(
+                busy
+                    ? '저장 중'
+                    : command == null
+                    ? '저장'
+                    : '같은 변경 다시 저장',
+              ),
+            ),
+        ],
+      ),
       body: SafeArea(
         child: revoked
             ? const ContentState(
@@ -120,7 +141,7 @@ class _SongEditScreenState extends State<SongEditScreen> {
                     minLines: 3,
                     maxLines: 6,
                     decoration: const InputDecoration(
-                      labelText: '아쉬운 점 (최대 2,000자)',
+                      labelText: '메모 (최대 2,000자)',
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
@@ -174,24 +195,14 @@ class _SongEditScreenState extends State<SongEditScreen> {
                           },
                     child: Text('곡 티어: ${formatSongTier(widget.draft.tier)}'),
                   ),
+                  SongSuitabilityChoice(
+                    value: widget.draft.isSuitable,
+                    onChanged: !editable
+                        ? null
+                        : (v) => setState(() => widget.draft.isSuitable = v),
+                  ),
                   if (error != null) Text(error!, semanticsLabel: error),
                   const SizedBox(height: AppSpacing.md),
-                  FilledButton(
-                    onPressed: busy ? null : save,
-                    child: Text(
-                      busy
-                          ? '저장 중'
-                          : command == null
-                          ? '저장'
-                          : '같은 변경 다시 저장',
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: busy
-                        ? null
-                        : () => Navigator.of(context).pop(false),
-                    child: const Text('취소'),
-                  ),
                 ],
               ),
       ),

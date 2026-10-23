@@ -4,11 +4,14 @@ import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/music_row_surface.dart';
 import 'package:song_record/core/widgets/music_view_data.dart';
 
+import 'song_badges.dart';
+
 class SongRow extends StatelessWidget {
   const SongRow.registered({
     required RegisteredSongViewData this._song,
     this.onTap,
     this.alreadyAdded = false,
+    this.trailingAction,
     super.key,
   }) : _candidate = null,
        placement = null,
@@ -19,6 +22,7 @@ class SongRow extends StatelessWidget {
     required this.placement,
     this.rank,
     this.onTap,
+    this.trailingAction,
     super.key,
   }) : _song = null,
        _candidate = candidate,
@@ -41,6 +45,7 @@ class SongRow extends StatelessWidget {
   final int? rank;
   final VoidCallback? onTap;
   final bool alreadyAdded;
+  final Widget? trailingAction;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +76,7 @@ class SongRow extends StatelessWidget {
                     : '$artist · ${formatVersionCode(song.version)}',
                 style: AppTypography.supporting,
               ),
-              if (candidate != null && !isPlaylist) ...[
+              if (candidate != null) ...[
                 const SizedBox(height: AppSpacing.xs),
                 Text(candidate.sourceLabel, style: AppTypography.supporting),
               ],
@@ -83,16 +88,21 @@ class SongRow extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               if (song != null) ...[
-                Text(
-                  '티어 ${formatSongTier(song.tier)}',
-                  style: AppTypography.supporting,
-                ),
+                TierBadge(formatSongTier(song.tier)),
+                if (song.isSuitable)
+                  Icon(
+                    Icons.favorite,
+                    size: 19,
+                    color: Theme.of(context).colorScheme.primary,
+                    semanticLabel: '나에게 어울리는 곡',
+                  ),
                 if (!alreadyAdded) MusicalKeyBadge(value: song.musicalKey),
               ],
-              if (isPlaylist)
-                const Text('내 곡 미등록', style: AppTypography.supporting),
+              if (isPlaylist && trailingAction == null)
+                const Icon(Icons.chevron_right, size: 16),
               if (alreadyAdded)
                 const Text('추가됨', style: AppTypography.supporting),
+              ?trailingAction,
             ],
           );
           if (stacked) {
@@ -117,27 +127,39 @@ class SongRow extends StatelessWidget {
                 Text(
                   '$rank',
                   semanticsLabel: '$rank위',
-                  style: AppTypography.detailTitle,
+                  style: AppTypography.detailTitle.copyWith(
+                    color: rank! <= 3
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(width: AppSpacing.md),
               ],
               if (song != null) ...[
-                Text(
-                  formatSongTier(song.tier),
-                  semanticsLabel: '곡 티어 ${formatSongTier(song.tier)}',
-                ),
+                TierBadge(formatSongTier(song.tier)),
                 const SizedBox(width: AppSpacing.md),
               ],
               Expanded(child: copy),
+              if (song != null)
+                SizedBox(
+                  width: 22,
+                  child: song.isSuitable
+                      ? Icon(
+                          Icons.favorite,
+                          size: 19,
+                          color: Theme.of(context).colorScheme.primary,
+                          semanticLabel: '나에게 어울리는 곡',
+                        )
+                      : null,
+                ),
               const SizedBox(width: AppSpacing.sm),
               if (alreadyAdded)
                 const Text('추가됨', style: AppTypography.supporting)
               else if (song != null)
                 MusicalKeyBadge(value: song.musicalKey)
-              else if (isPlaylist)
-                const Text('내 곡 미등록', style: AppTypography.supporting)
-              else
+              else if (trailingAction == null)
                 const Icon(Icons.chevron_right, size: 16),
+              ?trailingAction,
             ],
           );
         },
@@ -153,23 +175,37 @@ class MusicalKeyBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final keyValue = value;
-    final color = switch (keyValue?.mode) {
-      KeyMode.male => AppColors.keyMaleBackground,
-      KeyMode.female => AppColors.keyFemaleBackground,
-      _ => AppColors.keyOriginalBackground,
+    final light = Theme.of(context).brightness == Brightness.light;
+    final (background, foreground) = switch (keyValue?.mode) {
+      KeyMode.male =>
+        light
+            ? (const Color(0xFFE1EFFF), const Color(0xFF15538A))
+            : (const Color(0xFF174A7E), const Color(0xFFD4E9FF)),
+      KeyMode.female =>
+        light
+            ? (const Color(0xFFFCE5F0), const Color(0xFF98345F))
+            : (const Color(0xFF6E3051), const Color(0xFFFFE0EF)),
+      _ =>
+        light
+            ? (const Color(0xFFE6E6E6), const Color(0xFF333333))
+            : (const Color(0xFF303030), Colors.white),
     };
-    return DecoratedBox(
+    return Container(
+      width: 44,
+      height: 30,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(AppDimensions.fieldRadius),
+        color: background,
+        borderRadius: BorderRadius.circular(7),
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 3),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
         child: Text(
           keyValue == null ? '미정' : formatMusicalKey(keyValue),
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: AppTypography.keyBadgeSize,
-            color: AppColors.keyForeground,
+            color: foreground,
           ),
         ),
       ),

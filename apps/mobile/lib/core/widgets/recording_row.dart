@@ -3,8 +3,8 @@ import 'package:song_record/core/domain/song_types.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/music_row_surface.dart';
 import 'package:song_record/core/widgets/music_view_data.dart';
-import 'package:song_record/core/widgets/recording_file_status_card.dart';
-import 'package:song_record/core/widgets/recording_playback_actions.dart';
+import 'package:song_record/core/widgets/song_badges.dart';
+import 'package:song_record/core/widgets/song_row.dart';
 
 class RecordingRow extends StatelessWidget {
   const RecordingRow({
@@ -25,49 +25,71 @@ class RecordingRow extends StatelessWidget {
     // Never replace captured title/key/version with a linked song's current data.
     final snapshot = recording.snapshot;
     return MusicRowSurface(
-      minHeight: AppDimensions.recordRowMinHeight,
+      minHeight: 64,
       onTap: onTap,
       selected: selected,
-      child: Row(
+      compact: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(snapshot.title, style: AppTypography.songTitle),
-                Text(snapshot.artist, style: AppTypography.supporting),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  '${recording.dateLabel} · ${recording.durationLabel}',
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${recording.dateLabel}${snapshot.songId == null ? ' · 곡 미연결' : ''}',
                   style: AppTypography.supporting,
                 ),
-                Text(
-                  '${formatVersionCode(snapshot.version)} · ${formatMusicalKey(snapshot.key)} · '
-                  '티어 ${formatRecordingTier(recording.tier)}',
-                  style: AppTypography.supporting,
+              ),
+              Tooltip(
+                message: recording.fileStatus?.canPlay == false
+                    ? recording.fileStatus!.playbackUnavailableLabel
+                    : '재생',
+                child: FilledButton.icon(
+                  onPressed: recording.fileStatus?.canPlay == false
+                      ? null
+                      : onPlay,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(48, 30),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.padded,
+                  ),
+                  icon: const Icon(Icons.play_arrow, size: 16),
+                  label: Text(
+                    recording.durationLabel,
+                    style: const TextStyle(fontSize: 11),
+                  ),
                 ),
-                if (recording.fileStatus == null)
-                  Text(
-                    recording.fileAvailability.label,
-                    style: AppTypography.supporting,
-                  ),
-                if (recording.fileStatus != null)
-                  RecordingFileStatusCard(status: recording.fileStatus!),
-                if (recording.fileStatus != null)
-                  RecordingPlaybackActions(
-                    status: recording.fileStatus!,
-                    onPlay: onPlay,
-                  ),
-                if (snapshot.songId == null)
-                  const Text('곡 미연결', style: AppTypography.supporting),
-                if (selected)
-                  const Text('선택됨', style: AppTypography.supporting),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(width: AppSpacing.sm),
-          Icon(selected ? Icons.check : Icons.chevron_right, size: 20),
+          Row(
+            children: [
+              TierBadge(formatRecordingTier(recording.tier), size: 28),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  snapshot.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.songTitle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  snapshot.artist,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.supporting,
+                ),
+              ),
+              const SizedBox(width: 8),
+              MusicalKeyBadge(value: snapshot.key),
+              if (selected) const Icon(Icons.check, size: 18),
+            ],
+          ),
         ],
       ),
     );

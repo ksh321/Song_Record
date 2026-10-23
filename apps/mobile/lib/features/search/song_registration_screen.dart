@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/domain/input_validation.dart';
 import '../../core/domain/song_types.dart';
 import '../../core/sync/local_repository.dart';
+import '../../core/widgets/song_badges.dart';
 import '../../core/widgets/version_picker.dart';
 import 'karaoke_search.dart';
 import 'search_intent.dart';
@@ -14,12 +15,14 @@ class SongRegistrationScreen extends StatefulWidget {
     required this.intent,
     this.candidate,
     this.manualApproval,
+    this.directEntry = false,
     super.key,
   });
   final SongRegistrationPreparer prepare;
   final SearchIntent intent;
   final KaraokeCandidate? candidate;
   final ManualSearchApproval? manualApproval;
+  final bool directEntry;
   @override
   State<SongRegistrationScreen> createState() => _SongRegistrationScreenState();
 }
@@ -30,13 +33,15 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
   final note = TextEditingController();
   VersionCode version = VersionCode.normal;
   Future<void> Function()? _savePrepared;
-  bool busy = false;
+  bool busy = false, isSuitable = false;
   String? error;
   @override
   void initState() {
     super.initState();
     widget.intent.validate();
-    if ((widget.candidate == null) == (widget.manualApproval == null) ||
+    if ((widget.candidate == null
+            ? (widget.manualApproval == null && !widget.directEntry)
+            : (widget.manualApproval != null || widget.directEntry)) ||
         widget.candidate != null &&
             widget.candidate!.brand != KaraokeBrand.tj) {
       throw ArgumentError('Verified TJ or approved manual input is required');
@@ -72,10 +77,12 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
           intent: widget.intent,
           candidate: widget.candidate,
           manualApproval: widget.manualApproval,
+          directEntry: widget.directEntry,
           title: title.text,
           artist: artist.text,
           note: note.text,
           version: version,
+          isSuitable: isSuitable,
         ),
       );
       await _savePrepared!();
@@ -99,6 +106,17 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
     child: Scaffold(
       appBar: AppBar(
         title: Text(widget.candidate == null ? '직접 등록' : '내 곡 등록'),
+        leadingWidth: 64,
+        leading: TextButton(
+          onPressed: busy ? null : () => Navigator.pop(context, false),
+          child: const Text('취소'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: busy ? null : _save,
+            child: Text(busy ? '저장 중' : '저장'),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Form(
@@ -109,7 +127,11 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
               if (widget.candidate != null)
                 Text('TJ ${widget.candidate!.number} · 원본 정보와 편집값을 따로 보관해요.'),
               if (widget.candidate == null)
-                const Text('정상 TJ 검색에서 찾지 못한 곡을 직접 등록해요. 번호는 입력하지 않습니다.'),
+                Text(
+                  widget.directEntry
+                      ? '곡명과 가수를 입력해 내 곡에 등록해요.'
+                      : '검색에서 찾지 못한 곡을 직접 등록해요.',
+                ),
               const SizedBox(height: 12),
               TextFormField(
                 key: const ValueKey('song-title'),
@@ -149,20 +171,17 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
                       },
                 child: Text('버전: ${formatVersionCode(version)}'),
               ),
+              SongSuitabilityChoice(
+                value: isSuitable,
+                onChanged: busy || _savePrepared != null
+                    ? null
+                    : (v) => setState(() => isSuitable = v),
+              ),
               if (error != null)
                 Text(
                   error!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: busy ? null : _save,
-                child: Text(busy ? '저장 중' : '이 기기에 저장'),
-              ),
-              TextButton(
-                onPressed: busy ? null : () => Navigator.pop(context, false),
-                child: const Text('취소'),
-              ),
             ],
           ),
         ),

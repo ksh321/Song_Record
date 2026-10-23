@@ -52,6 +52,10 @@ void main() {
         player.removeListener(observe);
         await tester.pump();
         expect(find.text('일시정지'), findsOneWidget);
+        await tester.tap(find.byTooltip('5초 뒤로'));
+        expect(port.seekAt, 0);
+        await tester.tap(find.byTooltip('5초 앞으로'));
+        expect(port.seekAt, 5000);
         await tester.tap(find.text('일시정지'));
         await tester.pump();
         expect(port.pauses, 1);

@@ -6,6 +6,7 @@ import '../domain/input_validation.dart';
 import 'change_payload_validation.dart';
 import 'mutation_request.dart';
 import 'playlist_addition_receipt.dart';
+import 'playlist_library_order_receipt.dart';
 import 'recording_change_projection.dart';
 import 'recording_save_contract.dart';
 import 'wire_json.dart';
@@ -17,6 +18,12 @@ Map<String, Object?> decodeMetadataSnapshot(
   bool conflict = false,
 }) {
   final m = request.mutation;
+  if (!conflict && isPlaylistLibraryOrder(request)) {
+    return decodePlaylistLibraryOrder(
+      request,
+      response,
+    ).singleWhere((r) => r['id'] == m.entityId);
+  }
   if (!conflict && isPlaylistAddition(request)) {
     return Map<String, Object?>.from(
       decodePlaylistAddition(request, response)['playlist'] as Map,
@@ -103,6 +110,10 @@ Map<String, Object?> decodeMetadataSnapshot(
         );
         final sent = jsonDecode(request.body) as Map<String, dynamic>;
         require(value['name'] == sent['name']);
+        if (sent.containsKey('icon')) require(value['icon'] == sent['icon']);
+        if (sent.containsKey('display_order')) {
+          require(value['display_order'] == sent['display_order']);
+        }
       }
     }
     return value;
@@ -223,6 +234,7 @@ Map<String, Object?> decodeMetadataSnapshot(
         {
           'created_at',
           'latest_recorded_at',
+          'is_suitable',
           'representative_recording_id',
           'representative_key_mode',
           'representative_key_shift',
@@ -250,6 +262,15 @@ Map<String, Object?> decodeMetadataSnapshot(
       fields({'id', 'name', 'revision', 'archived_at', 'updated_at'}, {});
       string('name');
       time('archived_at', nullable: true);
+    case LocalEntity.recordingCondition:
+      validateChangePayload(LocalEntity.recordingCondition, decoded);
+      if (!conflict) {
+        require(value['id'] == m.entityId && value['archived_at'] == null);
+        if (!(m.operation == LocalOperation.create && response.status == 200)) {
+          final sent = jsonDecode(request.body) as Map<String, dynamic>;
+          require(value['name'] == sent['name']);
+        }
+      }
     case LocalEntity.recording:
       fields(
         {
@@ -402,6 +423,16 @@ Map<String, Object?> decodeMetadataSnapshot(
   // The current server always returns these snapshot fields, including explicit null.
   // A missing field must never turn a locally selected value into an apparent omission.
   if (m.entity == LocalEntity.song) {
+    if (value.containsKey('is_suitable')) require(value['is_suitable'] is bool);
+    // A duplicate creation returns the existing canonical song unchanged.
+    // Every other successful write must confirm the requested suitability.
+    if (!conflict &&
+        !(m.operation == LocalOperation.create && response.status == 200)) {
+      final sent = jsonDecode(request.body) as Map<String, dynamic>;
+      if (sent.containsKey('is_suitable')) {
+        require(value['is_suitable'] == sent['is_suitable']);
+      }
+    }
     require(
       value.keys.toSet().containsAll({
         'representative_key_mode',
@@ -427,7 +458,8 @@ Map<String, Object?> decodeMetadataSnapshot(
   integer('revision');
   time('updated_at');
   require((value['revision'] as int) > 0);
-  if (!conflict && m.entity != LocalEntity.tag) {
+  if (!conflict &&
+      !{LocalEntity.tag, LocalEntity.recordingCondition}.contains(m.entity)) {
     require(value['lifecycle_state'] == 'ACTIVE');
   }
   if (!conflict && m.operation == LocalOperation.patch) {

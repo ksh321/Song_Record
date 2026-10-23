@@ -63,7 +63,7 @@ void main() {
     }
   });
   testWidgets(
-    'registered song uses explicit add button and separate bottom delete entry without executing mutations',
+    'song menu exposes playlist and delete without executing mutations',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -72,12 +72,9 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final add = find.widgetWithText(FilledButton, '플레이리스트 추가');
-      await tester.scrollUntilVisible(
-        add,
-        250,
-        scrollable: find.byType(Scrollable).first,
-      );
+      await tester.tap(find.byTooltip('곡 메뉴'));
+      await tester.pumpAndSettle();
+      final add = find.text('플레이리스트 추가');
       await tester.tap(add);
       await tester.pumpAndSettle();
       expect(
@@ -86,12 +83,9 @@ void main() {
       );
       await tester.tap(find.text('돌아가기'));
       await tester.pumpAndSettle();
-      final delete = find.widgetWithText(TextButton, '곡 삭제');
-      await tester.scrollUntilVisible(
-        delete,
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
+      await tester.tap(find.byTooltip('곡 메뉴'));
+      await tester.pumpAndSettle();
+      final delete = find.text('곡 삭제');
       await tester.tap(delete);
       await tester.pumpAndSettle();
       expect(find.text('현재 기기에 연결된 활성 녹음 1개'), findsOneWidget);

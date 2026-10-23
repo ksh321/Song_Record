@@ -19,12 +19,19 @@ ClassificationData data({bool archived = false}) => (
   ],
   conditions: [
     for (final c in ['VERY_GOOD', 'GOOD', 'NORMAL', 'BAD'])
-      {'code': c, 'name': c},
+      {
+        'id':
+            '00000000-0000-4000-8000-${['VERY_GOOD', 'GOOD', 'NORMAL', 'BAD'].indexOf(c).toString().padLeft(12, '0')}',
+        'code': c,
+        'name': c,
+        'revision': 1,
+        'archived_at': null,
+      },
   ],
 );
 void main() {
   testWidgets(
-    'eight device accents persist through the dedicated channel only',
+    'device accents persist and legacy white migrates to the default',
     (t) async {
       String? saved;
       final methods = <String>[];
@@ -42,7 +49,10 @@ void main() {
       expect(await preferences.read(), isNull);
       for (final accent in AppAccent.values) {
         await preferences.write(accent);
-        expect(await preferences.read(), accent);
+        expect(
+          await preferences.read(),
+          accent == AppAccent.white ? AppAccent.initial : accent,
+        );
       }
       expect(AppAccent.values, hasLength(8));
       expect(methods.toSet(), {'readAccent', 'writeAccent'});
@@ -51,7 +61,7 @@ void main() {
     },
   );
   testWidgets(
-    'archive cancellation sends nothing; archive preserves definition display',
+    'tag removal cancellation sends nothing; confirmed archive hides only the selection row',
     (t) async {
       final accent = ValueNotifier(AppAccent.blue);
       var archived = false;
@@ -71,25 +81,25 @@ void main() {
         ),
       );
       await t.pumpAndSettle();
-      await t.scrollUntilVisible(find.text('보관'), 300);
-      await t.tap(find.text('보관'));
+      await t.scrollUntilVisible(find.byTooltip('태그 삭제'), 300);
+      await t.tap(find.byTooltip('태그 삭제'));
       await t.pumpAndSettle();
       await t.tap(find.text('취소'));
       await t.pumpAndSettle();
       expect(commands, isEmpty);
-      await t.tap(find.text('보관'));
+      await t.tap(find.byTooltip('태그 삭제'));
       await t.pumpAndSettle();
-      await t.tap(find.text('보관').last);
+      await t.tap(find.text('삭제'));
       await t.pumpAndSettle();
       expect(commands.single, {
         'method': 'POST',
         'path': '/v1/tags/$id/archive',
         'body': {'base_revision': 7},
       });
-      await t.scrollUntilVisible(find.text('보관됨 · 신규 선택에서 숨김'), 300);
-      expect(find.text('연습'), findsOneWidget);
-      expect(find.text('보관됨 · 신규 선택에서 숨김'), findsOneWidget);
-      expect(find.text('이름 변경'), findsNothing);
+      expect(find.text('연습'), findsNothing);
+      expect(find.text('등록한 태그가 없어요.'), findsOneWidget);
+      expect(find.byTooltip('이름 변경'), findsNothing);
+      expect(find.byTooltip('컨디션 이름 변경'), findsWidgets);
       await t.pumpWidget(const SizedBox());
       accent.dispose();
     },
@@ -128,6 +138,62 @@ void main() {
     await t.pumpWidget(const SizedBox());
     accent.dispose();
   });
+  testWidgets(
+    'custom condition create and rename use owned endpoints and latest revision',
+    (t) async {
+      final accent = ValueNotifier(AppAccent.blue);
+      var conditions = <Map<String, dynamic>>[];
+      final sent = <String>[];
+      await t.pumpWidget(
+        MaterialApp(
+          home: ClassificationScreen(
+            load: () async =>
+                (tags: <Map<String, dynamic>>[], conditions: conditions),
+            requireCurrent: () {},
+            accent: accent,
+            saveAccent: (_) async {},
+            command: (method, path, body, op) async {
+              sent.add('$method $path');
+              if (method == 'POST') {
+                conditions = [
+                  {
+                    'id': body['id'],
+                    'code': body['id'],
+                    'name': body['name'],
+                    'revision': 1,
+                    'archived_at': null,
+                  },
+                ];
+              } else {
+                expect(body['base_revision'], 1);
+                conditions = [
+                  {...conditions.single, 'name': body['name'], 'revision': 2},
+                ];
+              }
+            },
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      await t.scrollUntilVisible(find.text('컨디션 만들기'), 200);
+      await t.tap(find.text('컨디션 만들기'));
+      await t.pumpAndSettle();
+      await t.enterText(find.byType(TextField), '목이 편함');
+      await t.tap(find.text('저장'));
+      await t.pumpAndSettle();
+      expect(find.text('목이 편함'), findsOneWidget);
+      await t.tap(find.byTooltip('컨디션 이름 변경'));
+      await t.pumpAndSettle();
+      await t.enterText(find.byType(TextField), '목 상태 좋음');
+      await t.tap(find.text('저장'));
+      await t.pumpAndSettle();
+      expect(find.text('목 상태 좋음'), findsOneWidget);
+      expect(sent.first, 'POST /v1/conditions');
+      expect(sent.last, 'PATCH /v1/conditions/${conditions.single['id']}');
+      await t.pumpWidget(const SizedBox());
+      accent.dispose();
+    },
+  );
   testWidgets('account switch hides late tag data', (t) async {
     final result = Completer<ClassificationData>(),
         n = ChangeNotifier(),
@@ -156,24 +222,18 @@ void main() {
     n.dispose();
     accent.dispose();
   });
-  test(
-    'classification transport never accepts condition edits or foreign routes',
-    () {
-      final api = SettingsApi(
-        Uri.parse('https://example.com'),
-        () => throw StateError('must not authenticate'),
-        () {},
-      );
-      for (final route in [
-        '/v1/conditions',
-        'https://attacker.example/v1/tags',
-        '/v1/tags/$id/archive?token=x',
-      ]) {
-        expect(
-          () => api.tagCommand('POST', route, {}, id),
-          throwsArgumentError,
-        );
-      }
-    },
-  );
+  test('classification transport rejects foreign or malformed routes', () {
+    final api = SettingsApi(
+      Uri.parse('https://example.com'),
+      () => throw StateError('must not authenticate'),
+      () {},
+    );
+    for (final route in [
+      '/v1/conditions/invalid',
+      'https://attacker.example/v1/tags',
+      '/v1/tags/$id/archive?token=x',
+    ]) {
+      expect(() => api.tagCommand('POST', route, {}, id), throwsArgumentError);
+    }
+  });
 }

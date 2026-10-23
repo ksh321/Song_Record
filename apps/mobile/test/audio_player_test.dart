@@ -106,6 +106,23 @@ void main() {
     await manager.logout();
     await root.delete(recursive: true);
   });
+  test('waveform accepts only current bounded samples and clears on account loss', () async {
+    await flow.start(id);
+    final token = port.sources.single['token'] as int;
+    port.stream.add(PlayerEvent(token, PlaybackPhase.playing, 2000, 10000,
+        waveform: const [0, .5, 1]));
+    expect(flow.waveform, [0, .5, 1]);
+    port.stream.add(PlayerEvent(token - 1, PlaybackPhase.playing, 0, 10000,
+        waveform: const [.9]));
+    expect(flow.waveform, [0, .5, 1]);
+    port.stream.add(PlayerEvent(token, PlaybackPhase.playing, 2000, 10000,
+        waveform: [double.nan]));
+    expect(flow.waveform, [0, .5, 1]);
+    await manager.logout();
+    port.stream.add(PlayerEvent(token, PlaybackPhase.playing, 2000, 10000,
+        waveform: const [1]));
+    expect(flow.waveform, isEmpty);
+  });
   test(
     'account invalidation immediately stops playback and rejects late load',
     () async {

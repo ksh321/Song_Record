@@ -19,8 +19,8 @@ final class ImportCandidateHold {
   }
 
   String get reason => code == 'LEGACY_KY_CANDIDATE'
-      ? '구형 금영 후보는 보류됩니다. 번호를 TJ로 자동 변환하지 않으며 TJ에서 다시 선택해야 합니다.'
-      : '목록 후보의 브랜드/구조를 확인할 수 없어 보류됩니다. TJ에서 다시 선택해 주세요.';
+      ? '예전 백업의 금영 곡은 그대로 가져올 수 없어요. 같은 곡을 TJ에서 찾아 다시 선택해 주세요.'
+      : '이 곡의 노래방 정보를 확인하지 못했어요. TJ에서 찾아 다시 선택해 주세요.';
   @override
   String toString() => 'ImportCandidateHold[$code]';
 }

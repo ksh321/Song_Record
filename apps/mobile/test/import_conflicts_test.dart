@@ -121,6 +121,7 @@ void main() {
     String? backupSha,
     int baseRevision = 1,
     bool omitSong = false,
+    bool legacySuitability = false,
   }) async {
     final current = await server(
       fileSpec: fileSpec,
@@ -129,6 +130,7 @@ void main() {
     );
     final base = {...remoteSong, 'revision': baseRevision, 'note': baseNote}
       ..remove('user_id');
+    if (legacySuitability) base.remove('is_suitable');
     final local = note == null ? null : {...base, 'note': note};
     final hash = sha256.convert(bytes).toString();
     final baseline = ExportBaseline(
@@ -246,6 +248,21 @@ void main() {
       'server note',
     );
     expect(p.conflicts, isEmpty);
+  });
+  test('legacy backup without suitability preserves current heart during a note merge', () async {
+    remoteSong['is_suitable'] = true;
+    final p = await preview(
+      await input(
+        legacySuitability: true,
+        baseNote: 'server note',
+        note: 'imported note',
+      ),
+    );
+    final song =
+        p.records.singleWhere((r) => r['entity'] == 'SONG')['payload'] as Map;
+    expect(p.conflicts, isEmpty);
+    expect(song['is_suitable'], isTrue);
+    expect(song['note'], 'imported note');
   });
   test('same-field local/server changes stay unresolved without overwrite or DB writes', () async {
     final i = await input(note: 'offline draft');
@@ -405,11 +422,14 @@ void main() {
           ),
         ),
       );
-      expect(find.textContaining('충돌 미리보기'), findsOneWidget);
+      expect(find.textContaining('다른 내용 확인'), findsOneWidget);
       expect(find.textContaining('최신 서버:'), findsOneWidget);
       expect(find.textContaining('백업 로컬:'), findsOneWidget);
-      expect(find.textContaining('보류됨'), findsOneWidget);
+      expect(find.textContaining('이번에 가져오지 않아요'), findsOneWidget);
       expect(find.text('복원 완료'), findsNothing);
+      expect(find.textContaining('REVISION_FIELD_CONFLICT'), findsNothing);
+      expect(find.textContaining('user_id'), findsNothing);
+      expect(find.textContaining('offline draft'), findsOneWidget);
     },
   );
 }

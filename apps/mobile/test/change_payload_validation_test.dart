@@ -43,36 +43,58 @@ void main() {
     final value = recordingWire('RecordingEdited')
       ..['lifecycle_state'] = 'TRASHED'
       ..['deleted_at'] = '2026-10-11T05:00:00.123Z';
-    expect(() => validateChangePayload(LocalEntity.recording, value), returnsNormally);
+    expect(
+      () => validateChangePayload(LocalEntity.recording, value),
+      returnsNormally,
+    );
     value['deleted_at'] = '2026-02-30T00:00:00Z';
-    expect(() => validateChangePayload(LocalEntity.recording, value), throwsFormatException);
+    expect(
+      () => validateChangePayload(LocalEntity.recording, value),
+      throwsFormatException,
+    );
   });
-  test('trash change preserves a server UTC deletion date without a tombstone', () {
-    final value = songChange(payloadId, 2)
-      ..['lifecycle_state'] = 'TRASHED'
-      ..['deleted_at'] = '2026-10-11T05:00:00.123Z';
-    validateChangePayload(LocalEntity.song, value);
-    expect(value['deleted_at'], '2026-10-11T05:00:00.123Z');
-    value['deleted_at'] = '2026-02-30T00:00:00Z';
-    expect(() => validateChangePayload(LocalEntity.song, value), throwsFormatException);
-    value['deleted_at'] = null;
-    value['lifecycle_state'] = 'ACTIVE';
-    validateChangePayload(LocalEntity.song, value);
-  });
-  test('D07 deletion receipt requires identity, revision and a real UTC date', () {
-    final valid = <String, dynamic>{'id': payloadId, 'status': 'DELETED',
-      'revision': 2, 'deleted_at': '2026-10-01T00:00:00Z'};
-    validatePlaylistDeletion(valid);
-    for (final invalid in <Map<String, dynamic>>[
-      {...valid}..remove('deleted_at'),
-      {...valid, 'status': 'ACTIVE'}, {...valid, 'revision': 0},
-      {...valid, 'revision': 2.0}, {...valid, 'id': 'invalid'},
-      {...valid, 'deleted_at': '2026-02-30T00:00:00Z'},
-      {...valid, 'deleted_at': null}, {...valid, 'items': <dynamic>[]},
-    ]) {
-      expect(() => validatePlaylistDeletion(invalid), throwsFormatException);
-    }
-  });
+  test(
+    'trash change preserves a server UTC deletion date without a tombstone',
+    () {
+      final value = songChange(payloadId, 2)
+        ..['lifecycle_state'] = 'TRASHED'
+        ..['deleted_at'] = '2026-10-11T05:00:00.123Z';
+      validateChangePayload(LocalEntity.song, value);
+      expect(value['deleted_at'], '2026-10-11T05:00:00.123Z');
+      value['deleted_at'] = '2026-02-30T00:00:00Z';
+      expect(
+        () => validateChangePayload(LocalEntity.song, value),
+        throwsFormatException,
+      );
+      value['deleted_at'] = null;
+      value['lifecycle_state'] = 'ACTIVE';
+      validateChangePayload(LocalEntity.song, value);
+    },
+  );
+  test(
+    'D07 deletion receipt requires identity, revision and a real UTC date',
+    () {
+      final valid = <String, dynamic>{
+        'id': payloadId,
+        'status': 'DELETED',
+        'revision': 2,
+        'deleted_at': '2026-10-01T00:00:00Z',
+      };
+      validatePlaylistDeletion(valid);
+      for (final invalid in <Map<String, dynamic>>[
+        {...valid}..remove('deleted_at'),
+        {...valid, 'status': 'ACTIVE'},
+        {...valid, 'revision': 0},
+        {...valid, 'revision': 2.0},
+        {...valid, 'id': 'invalid'},
+        {...valid, 'deleted_at': '2026-02-30T00:00:00Z'},
+        {...valid, 'deleted_at': null},
+        {...valid, 'items': <dynamic>[]},
+      ]) {
+        expect(() => validatePlaylistDeletion(invalid), throwsFormatException);
+      }
+    },
+  );
   test(
     'playlist header validates its own fields without inventing item revision',
     () {

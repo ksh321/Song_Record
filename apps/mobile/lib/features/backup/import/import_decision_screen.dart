@@ -8,14 +8,14 @@ import 'import_decision.dart';
 import 'import_validation.dart';
 
 String importIssueLabel(String code) => switch (code) {
-  'MISSING_AUDIO' => '백업에 선언된 음원 파일 없음',
-  'AUDIO_HASH_OR_SIZE' => '음원 체크섬 또는 크기 불일치',
-  'AUDIO_FORMAT' => '음원 형식·길이 또는 전체 디코딩 오류',
+  'MISSING_AUDIO' => '백업에 녹음 파일이 없어요',
+  'AUDIO_HASH_OR_SIZE' => '녹음 파일이 백업 정보와 달라요',
+  'AUDIO_FORMAT' => '녹음 파일을 정상적으로 읽을 수 없어요',
   'AUDIO_INSPECTION_TIMEOUT' => '음원 검사 시간 초과',
   _ => '백업 검사 오류',
 };
 
-class ImportDecisionScreen extends StatelessWidget {
+class ImportDecisionScreen extends StatefulWidget {
   const ImportDecisionScreen({
     required this.controller,
     required this.onApproved,
@@ -27,6 +27,62 @@ class ImportDecisionScreen extends StatelessWidget {
   final void Function(ImportConsent consent) onApproved;
   final VoidCallback onCancel;
   final ValueListenable<String?>? progress;
+  @override
+  State<ImportDecisionScreen> createState() => _ImportDecisionScreenState();
+}
+
+class _ImportDecisionScreenState extends State<ImportDecisionScreen> {
+  ImportDecision get controller => widget.controller;
+  ValueListenable<String?>? get progress => widget.progress;
+  VoidCallback get onCancel => widget.onCancel;
+  void Function(ImportConsent) get onApproved => widget.onApproved;
+  bool scheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    controller.addListener(advance);
+    advance();
+  }
+
+  @override
+  void didUpdateWidget(covariant ImportDecisionScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != controller) {
+      oldWidget.controller.removeListener(advance);
+      controller.addListener(advance);
+      advance();
+    }
+  }
+
+  // Validation and preview never apply data. Damaged backups still require
+  // the separate partial-recovery choice, and final import remains explicit.
+  void advance() {
+    if (scheduled) return;
+    scheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      scheduled = false;
+      if (!mounted) return;
+      if (controller.phase == ImportDecisionPhase.ready) {
+        unawaited(controller.check());
+      } else if (controller.canApproveWhole) {
+        try {
+          final consent = controller.approveWhole();
+          controller.requireConsent(consent);
+          onApproved(consent);
+        } on StateError {
+          controller.cancel();
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    controller.removeListener(advance);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: Listenable.merge([controller, progress]),
@@ -44,7 +100,7 @@ class ImportDecisionScreen extends StatelessWidget {
         },
         child: Scaffold(
           appBar: AppBar(
-            title: const Text('백업 가져오기 사전 검사'),
+            title: const Text('백업 가져오기'),
             leading: BackButton(onPressed: cancel),
           ),
           body: SafeArea(
@@ -57,20 +113,15 @@ class ImportDecisionScreen extends StatelessWidget {
                   const LinearProgressIndicator(),
                   Text(progress!.value!),
                 ],
-                if (controller.phase == ImportDecisionPhase.ready)
-                  FilledButton(
-                    onPressed: () => unawaited(controller.check()),
-                    child: const Text('백업 검사'),
-                  ),
                 if (controller.busy) const LinearProgressIndicator(),
-                if (controller.busy) const Text('필수 JSON·모든 포함 파일 검증 중'),
+                if (controller.busy) const Text('백업과 녹음 파일을 확인하고 있어요'),
                 if (controller.phase == ImportDecisionPhase.failed) ...[
                   const Text(
                     '전체 복원 중단',
                     style: TextStyle(color: AppColors.danger),
                   ),
                   const Text(
-                    '계정·ZIP 구조·필수 JSON 또는 검사 상태를 확인할 수 없습니다. 원본 백업을 확인해 다시 선택해 주세요.',
+                    '이 계정의 백업인지 또는 정상 파일인지 확인하지 못했어요. 원본 백업 파일을 다시 선택해 주세요.',
                   ),
                 ],
                 if (source != null) ...[
@@ -89,7 +140,7 @@ class ImportDecisionScreen extends StatelessWidget {
                   const Text('손상 파일을 자동으로 건너뛰지 않습니다. 아직 가져온 항목은 없습니다.'),
                   for (final issue in source!.issues.take(10))
                     Text(
-                      '${issue.recordingId == null ? '검사 항목' : 'audio/${issue.recordingId}.m4a'} · ${importIssueLabel(issue.code)}',
+                      '${issue.recordingId == null ? '검사 항목' : '녹음 파일'} · ${importIssueLabel(issue.code)}',
                     ),
                   if (source.issues.length > 10)
                     TextButton(
@@ -111,13 +162,7 @@ class ImportDecisionScreen extends StatelessWidget {
                     ),
                   ],
                 ],
-                if (controller.canApproveWhole) ...[
-                  const Text('포함 파일 전체 검증 통과 · 미포함 파일은 복원되지 않습니다.'),
-                  FilledButton(
-                    onPressed: () => onApproved(controller.approveWhole()),
-                    child: const Text('검증한 항목으로 미리보기'),
-                  ),
-                ],
+                if (controller.canApproveWhole) const Text('가져올 내용을 확인하고 있어요'),
                 if (controller.phase == ImportDecisionPhase.approved)
                   const Text('미리보기 선택됨 · 아직 복원되지 않았습니다.'),
                 if (controller.phase == ImportDecisionPhase.cancelled)
@@ -146,11 +191,7 @@ class ImportErrorList extends StatelessWidget {
         itemBuilder: (context, index) {
           final issue = issues[index];
           return ListTile(
-            title: Text(
-              issue.recordingId == null
-                  ? '검사 항목'
-                  : 'audio/${issue.recordingId}.m4a',
-            ),
+            title: Text(issue.recordingId == null ? '검사 항목' : '녹음 파일'),
             subtitle: Text(importIssueLabel(issue.code)),
           );
         },

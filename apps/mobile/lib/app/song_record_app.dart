@@ -23,6 +23,7 @@ import 'package:song_record/features/search/karaoke_search.dart';
 import 'package:song_record/features/search/karaoke_search_screen.dart';
 import 'package:song_record/features/search/search_intent.dart';
 import 'package:song_record/features/search/song_registration.dart';
+import 'package:song_record/features/search/song_registration_screen.dart';
 import 'package:song_record/features/settings/accent_preferences.dart';
 import 'package:song_record/features/settings/classification_screen.dart';
 import 'package:song_record/features/settings/settings_api.dart';
@@ -33,6 +34,7 @@ import 'package:song_record/features/settings/storage_screen.dart';
 import 'package:song_record/features/songs/my_song.dart';
 import 'package:song_record/features/songs/my_song_detail.dart';
 import 'package:song_record/features/songs/my_songs_screen.dart';
+import 'package:song_record/features/songs/song_detail_screen.dart';
 import 'package:song_record/features/songs/song_representative.dart';
 import 'package:song_record/features/sync/sync_controller.dart';
 import 'package:song_record/network/health_client.dart';
@@ -43,8 +45,10 @@ import '../core/audio/playback_http.dart';
 import '../core/database/account_store.dart';
 import '../core/database/local_models.dart';
 import '../core/sync/snapshot_transport.dart';
+import '../core/theme/app_appearance.dart';
 import '../features/backup/export/export_controller.dart';
 import '../features/backup/export/export_screen.dart';
+import '../features/playlists/playlist_access.dart';
 import '../features/playlists/playlist_library.dart';
 import '../features/playlists/playlist_library_screen.dart';
 import '../features/recorder/recording_audio_panel.dart';
@@ -88,6 +92,18 @@ class _SongRecordAppState extends State<SongRecordApp>
   late final ValueNotifier<AppAccent> accentChanges = ValueNotifier(
     widget.accent,
   );
+  final lightMode = ValueNotifier(false);
+  Future<void> loadAppearance() async {
+    try {
+      final light = await AppAppearance.channel.invokeMethod<bool>(
+        'readLightMode',
+      );
+      if (mounted) lightMode.value = light ?? false;
+    } catch (_) {
+      /* Desktop test hosts may not have device settings. */
+    }
+  }
+
   int accentVersion = 0;
   AppConfig get config => widget.config;
   IdentityLinkFlow? get identityLink => widget.identityLink;
@@ -101,6 +117,7 @@ class _SongRecordAppState extends State<SongRecordApp>
   @override
   void initState() {
     super.initState();
+    loadAppearance();
     WidgetsBinding.instance.addObserver(this);
     restoreAccent();
   }
@@ -223,6 +240,7 @@ class _SongRecordAppState extends State<SongRecordApp>
     demand?.dispose();
     accentVersion++;
     accentChanges.dispose();
+    lightMode.dispose();
     super.dispose();
   }
 
@@ -231,6 +249,107 @@ class _SongRecordAppState extends State<SongRecordApp>
     currentDemand();
     final loadHealth =
         healthLoader ?? HealthClient(apiBaseUrl: config.apiBaseUrl).fetch;
+
+    Widget classificationBuilder(BuildContext context) {
+      final store = accountStore?.call(), auth = authController;
+      if (store == null ||
+          auth?.phase != AuthPhase.ready ||
+          store.userId != auth?.session?.userId) {
+        return const Scaffold(
+          body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
+        );
+      }
+      final epoch = auth!.accountEpoch;
+      void guard() {
+        store.requireActive();
+        if (auth.phase != AuthPhase.ready ||
+            auth.accountEpoch != epoch ||
+            accountStore?.call() != store ||
+            auth.session?.userId != store.userId) {
+          throw StateError('Classification account changed');
+        }
+      }
+
+      final api = SettingsApi(
+        config.apiBaseUrl,
+        auth.validSession,
+        guard,
+        local: kDebugMode && config.environment == AppEnvironment.dev,
+      );
+      return ClassificationScreen(
+        canEdit: syncController != null,
+        requireCurrent: guard,
+        accountChanges: auth,
+        accent: accentChanges,
+        saveAccent: saveAccent,
+        load: () async {
+          final tags = <Map<String, dynamic>>[], cursors = <String>{};
+          String? cursor;
+          do {
+            final page =
+                await api.tagsPage(cursor: cursor) as Map<String, dynamic>;
+            tags.addAll((page['items'] as List).cast<Map<String, dynamic>>());
+            cursor = page['next_cursor'] as String?;
+            if (cursor != null && !cursors.add(cursor)) {
+              throw const FormatException('Repeated tag cursor');
+            }
+          } while (cursor != null);
+          final conditions = <Map<String, dynamic>>[];
+          cursor = null;
+          cursors.clear();
+          do {
+            final page = await api.conditionsPage(
+              cursor: cursor,
+            ) as Map<String, dynamic>;
+            conditions.addAll(
+              (page['items'] as List).cast<Map<String, dynamic>>(),
+            );
+            cursor = page['next_cursor'] as String?;
+            if (cursor != null && !cursors.add(cursor)) {
+              throw const FormatException('Repeated condition cursor');
+            }
+          } while (cursor != null);
+          guard();
+          return (tags: tags, conditions: conditions);
+        },
+        command: (method, path, body, op) async {
+          final result = await api.tagCommand(
+            method,
+            path,
+            body,
+            op,
+          ) as Map<String, dynamic>;
+          guard();
+          await syncController?.wake();
+          guard();
+          final copy = await store.readMetadata(
+            path.startsWith('/v1/conditions')
+                ? LocalEntity.recordingCondition
+                : LocalEntity.tag,
+            result['id'] as String,
+          );
+          guard();
+          final local = copy?.localJson ?? copy?.serverJson;
+          if (local == null) {
+            throw StateError('Tag receipt awaiting local sync');
+          }
+          final actual = jsonDecode(local) as Map<String, dynamic>;
+          if (copy!.revision > (result['revision'] as int)) {
+            // A newer account change superseded this accepted receipt.
+            // Refresh instead of endlessly replaying the old request.
+            throw const SettingsUnavailable(status: 409);
+          }
+          if (copy.revision < (result['revision'] as int) ||
+              actual['name'] != result['name'] ||
+              (actual['archived_at'] == null) !=
+                  (result['archived_at'] == null)) {
+            throw StateError(
+              'Tag receipt awaiting local sync or conflict resolution',
+            );
+          }
+        },
+      );
+    }
 
     final SongRegistrationPreparer? prepareRegistration =
         localRepository == null
@@ -346,506 +465,499 @@ class _SongRecordAppState extends State<SongRecordApp>
       );
     }
 
-    return MaterialApp(
-      builder: (context, child) => RecordingAudioAccess(
-        store: () {
-          final store = accountStore?.call();
-          return authController?.phase == AuthPhase.ready &&
-                  store?.userId == authController?.session?.userId
-              ? store
-              : null;
-        },
-        createPlayer: (store) {
-          final auth = authController!;
-          final epoch = auth.accountEpoch;
-          void guard() {
-            store.requireActive();
-            if (auth.phase != AuthPhase.ready ||
-                auth.accountEpoch != epoch ||
-                accountStore?.call() != store ||
-                auth.session?.userId != store.userId) {
-              throw StateError('Playback account changed');
-            }
-          }
-
-          return AudioPlayback(
-            store,
-            HttpPlaybackUrls(
-              config.apiBaseUrl,
-              () async {
-                guard();
-                final session = await auth.validSession();
-                guard();
-                return session;
-              },
-              allowLocalHttp:
-                  kDebugMode && config.environment == AppEnvironment.dev,
-            ),
-            AndroidAudioPlayer(),
-            requireCurrent: guard,
-            accountChanges: auth,
-          );
-        },
-        changes: Listenable.merge([authController, syncController]),
-        refresh: () {
-          final sync = syncController;
-          if (sync != null) unawaited(sync.wake());
-        },
-        child: child ?? const SizedBox.shrink(),
-      ),
-      title: '노래기록',
-      debugShowCheckedModeBanner: config.environment != AppEnvironment.prod,
-      initialRoute: AppRoutes.home,
-      routes: {
-        AppRoutes.home: (context) => AppShell(
-          recorderGateway: recorderGateway,
-          playlistsBuilder: (context) {
-            final auth = authController;
-            if (auth == null) return const Center(child: Text('로그인이 필요해요.'));
-            return AnimatedBuilder(
-              animation: auth,
-              builder: (context, _) {
-                final repository = localRepository?.call();
+    return AppAppearance(
+      light: lightMode,
+      child: ValueListenableBuilder<bool>(
+        valueListenable: lightMode,
+        builder: (context, light, _) => MaterialApp(
+          builder: (context, child) => RecordingAudioAccess(
+            store: () {
+              final store = accountStore?.call();
+              return authController?.phase == AuthPhase.ready &&
+                      store?.userId == authController?.session?.userId
+                  ? store
+                  : null;
+            },
+            createPlayer: (store) {
+              final auth = authController!;
+              final epoch = auth.accountEpoch;
+              void guard() {
+                store.requireActive();
                 if (auth.phase != AuthPhase.ready ||
-                    repository == null ||
-                    repository.userId != auth.session?.userId) {
+                    auth.accountEpoch != epoch ||
+                    accountStore?.call() != store ||
+                    auth.session?.userId != store.userId) {
+                  throw StateError('Playback account changed');
+                }
+              }
+
+              return AudioPlayback(
+                store,
+                HttpPlaybackUrls(
+                  config.apiBaseUrl,
+                  () async {
+                    guard();
+                    final session = await auth.validSession();
+                    guard();
+                    return session;
+                  },
+                  allowLocalHttp:
+                      kDebugMode && config.environment == AppEnvironment.dev,
+                ),
+                AndroidAudioPlayer(),
+                requireCurrent: guard,
+                accountChanges: auth,
+              );
+            },
+            changes: Listenable.merge([authController, syncController]),
+            refresh: () {
+              final sync = syncController;
+              if (sync != null) unawaited(sync.wake());
+            },
+            child: PlaylistAccess(
+              searchLoad: searchLoad,
+              library: () {
+                final repo = localRepository?.call();
+                return authController?.phase == AuthPhase.ready &&
+                        repo?.userId == authController?.session?.userId &&
+                        repo != null
+                    ? PlaylistLibrary(repo)
+                    : null;
+              },
+              wakeSync: () {
+                final sync = syncController;
+                if (sync != null) unawaited(sync.wake());
+              },
+              child: child ?? const SizedBox.shrink(),
+            ),
+          ),
+          title: '노래기록',
+          debugShowCheckedModeBanner: config.environment != AppEnvironment.prod,
+          initialRoute: AppRoutes.home,
+          routes: {
+            AppRoutes.home: (context) => AppShell(
+              recorderGateway: recorderGateway,
+              manualBuilder: prepareRegistration == null
+                  ? null
+                  : (_) => SongRegistrationScreen(
+                      prepare: prepareRegistration,
+                      intent: const SearchIntent(),
+                      directEntry: true,
+                    ),
+              playlistsBuilder: (context) {
+                final auth = authController;
+                if (auth == null) {
                   return const Center(child: Text('로그인이 필요해요.'));
                 }
-                return PlaylistLibraryScreen(
-                  key: ValueKey(repository.userId),
-                  library: PlaylistLibrary(repository),
-                  searchLoad: searchLoad,
-                  chartLoad: chartLoad,
-                  auth: auth,
-                  afterSave: () async {
-                    final sync = syncController;
-                    if (sync != null) unawaited(sync.wake());
-                  },
-                );
-              },
-            );
-          },
-          recordingBuilder: localRepository == null
-              ? null
-              : (context) => RecordingWorkspace(
-                  trash: trashActions(),
-                  gateway: recorderGateway,
-                  repository: localRepository!,
-                  discoveryBuilder: (context, destination, prepare) => Scaffold(
-                    appBar: AppBar(title: const Text('녹음에 사용할 새 곡 찾기')),
-                    body: SafeArea(
-                      child: destination == SongDiscoveryDestination.charts
-                          ? PopularChartScreen(
-                              auth: authController,
-                              load: chartLoad,
-                              searchLoad: searchLoad,
-                              prepareRegistration: prepare,
-                              intent: const SearchIntent(
-                                returnRoute: '/recording/input',
-                              ),
-                            )
-                          : KaraokeSearchScreen(
-                              auth: authController,
-                              load: searchLoad,
-                              prepareRegistration: prepare,
-                              intent: const SearchIntent(
-                                returnRoute: '/recording/input',
-                              ),
-                            ),
-                    ),
-                  ),
-                  isCurrent: (repo) =>
-                      authController?.phase == AuthPhase.ready &&
-                      authController?.session?.userId == repo.userId &&
-                      repo.userId == localRepository?.call()?.userId,
-                  wakeSync: () {
-                    final sync = syncController;
-                    if (sync != null) unawaited(sync.wake());
-                  },
-                ),
-          songsBuilder: (context, findSong) => MySongsScreen(
-            onOpenRecording: (id) {
-              final repository = localRepository?.call();
-              if (repository == null ||
-                  authController?.phase != AuthPhase.ready ||
-                  authController?.session?.userId != repository.userId) {
-                return;
-              }
-              Navigator.of(context).push<void>(
-                MaterialPageRoute(
-                  builder: (_) => RecordingDetailScreen(
-                    id: id,
-                    repository: repository,
-                    isCurrent: (repo) =>
-                        authController?.phase == AuthPhase.ready &&
-                        authController?.session?.userId == repo.userId &&
-                        repo.userId == localRepository?.call()?.userId,
-                    wakeSync: () {
-                      final sync = syncController;
-                      if (sync != null) unawaited(sync.wake());
-                    },
-                    trash: trashActions(),
-                  ),
-                ),
-              );
-            },
-            trash: trashActions(),
-            auth: authController,
-            watchUnlinked: () {
-              final auth = authController, repository = localRepository?.call();
-              if (auth == null ||
-                  auth.phase != AuthPhase.ready ||
-                  repository == null ||
-                  repository.userId != auth.session?.userId) {
-                throw StateError('Current account storage is unavailable');
-              }
-              return repository.watchUnlinkedRecordings();
-            },
-            onFindSong: findSong,
-            prepareRepresentative: (detail, recording) {
-              final auth = authController, repository = localRepository?.call();
-              if (auth == null ||
-                  auth.phase != AuthPhase.ready ||
-                  repository == null ||
-                  repository.userId != auth.session?.userId) {
-                throw StateError('Current account storage is unavailable');
-              }
-              return prepareRepresentative(repository, detail, recording);
-            },
-            prepareEdit: (draft) {
-              final auth = authController, repository = localRepository?.call();
-              if (auth == null ||
-                  auth.phase != AuthPhase.ready ||
-                  repository == null ||
-                  repository.userId != auth.session?.userId) {
-                throw StateError('Current account storage is unavailable');
-              }
-              return draft.prepare(repository);
-            },
-            watchDetail: (id) => () {
-              final auth = authController, repository = localRepository?.call();
-              if (auth == null ||
-                  auth.phase != AuthPhase.ready ||
-                  repository == null ||
-                  repository.userId != auth.session?.userId) {
-                throw StateError('Current account storage is unavailable');
-              }
-              return repository
-                  .watchSongDetail(id)
-                  .asyncMap(
-                    (bundle) => MySongDetail.verified(
-                      bundle,
-                      repository.recordingFileStatus,
-                    ),
-                  );
-            },
-            watch: () {
-              final auth = authController, repository = localRepository?.call();
-              if (auth == null ||
-                  auth.phase != AuthPhase.ready ||
-                  repository == null ||
-                  repository.userId != auth.session?.userId) {
-                throw StateError('Current account storage is unavailable');
-              }
-              return repository.watchActiveSongs().map(
-                (rows) => rows.map(MySong.new).toList(),
-              );
-            },
-          ),
-          chartBuilder: (context) => PopularChartScreen(
-            auth: authController,
-            searchLoad: searchLoad,
-            prepareRegistration: prepareRegistration,
-            load: chartLoad,
-          ),
-          searchBuilder: (context) => KaraokeSearchScreen(
-            auth: authController,
-            prepareRegistration: prepareRegistration,
-            load: searchLoad,
-          ),
-        ),
-        AppRoutes.settings: (context) => SettingsScreen(
-          deletionBuilder: authController?.phase == AuthPhase.ready
-              ? (_) {
-                  final store = accountStore?.call(), auth = authController;
-                  if (store == null ||
-                      auth?.phase != AuthPhase.ready ||
-                      store.userId != auth?.session?.userId ||
-                      auth!.proofs is! IdentityLinkProofSource) {
-                    return const Scaffold(
-                      body: SafeArea(
-                        child: Center(child: Text('최근 계정 재인증을 사용할 수 없어요.')),
-                      ),
-                    );
-                  }
-                  final epoch = auth.accountEpoch, owner = store.userId;
-                  void guard() {
-                    store.requireActive();
+                return AnimatedBuilder(
+                  animation: auth,
+                  builder: (context, _) {
+                    final repository = localRepository?.call();
                     if (auth.phase != AuthPhase.ready ||
-                        auth.accountEpoch != epoch ||
-                        auth.session?.userId != owner ||
-                        accountStore?.call() != store) {
-                      throw StateError('Deletion account changed');
+                        repository == null ||
+                        repository.userId != auth.session?.userId) {
+                      return const Center(child: Text('로그인이 필요해요.'));
                     }
+                    return PlaylistLibraryScreen(
+                      key: ValueKey(repository.userId),
+                      embedded: true,
+                      syncChanges: syncController,
+                      library: PlaylistLibrary(repository),
+                      trash: trashActions(),
+                      searchLoad: searchLoad,
+                      chartLoad: chartLoad,
+                      auth: auth,
+                      onOpenSong: (songId) {
+                        if (auth.phase != AuthPhase.ready ||
+                            auth.session?.userId != repository.userId) {
+                          return;
+                        }
+                        Navigator.of(context).push<void>(
+                          MaterialPageRoute(
+                            builder: (_) => SongDetailScreen(
+                              auth: auth,
+                              trash: trashActions(),
+                              watch: () => repository
+                                  .watchSongDetail(songId)
+                                  .asyncMap(
+                                    (bundle) => MySongDetail.verified(
+                                      bundle,
+                                      repository.recordingFileStatus,
+                                    ),
+                                  ),
+                              prepareEdit: (draft) => draft.prepare(repository),
+                              prepareRepresentative: (detail, recording) =>
+                                  prepareRepresentative(
+                                    repository,
+                                    detail,
+                                    recording,
+                                  ),
+                            ),
+                          ),
+                        );
+                      },
+                      afterSave: () async {
+                        final sync = syncController;
+                        if (sync != null) unawaited(sync.wake());
+                      },
+                    );
+                  },
+                );
+              },
+              recordingBuilder: localRepository == null
+                  ? null
+                  : (context) => RecordingWorkspace(
+                      classificationBuilder: classificationBuilder,
+                      trash: trashActions(),
+                      gateway: recorderGateway,
+                      repository: localRepository!,
+                      discoveryBuilder: (context, destination, prepare) =>
+                          Scaffold(
+                            appBar: AppBar(title: const Text('녹음에 사용할 새 곡 찾기')),
+                            body: SafeArea(
+                              child:
+                                  destination == SongDiscoveryDestination.manual
+                                  ? SongRegistrationScreen(
+                                      prepare: prepare,
+                                      intent: const SearchIntent(
+                                        returnRoute: '/recording/input',
+                                      ),
+                                      directEntry: true,
+                                    )
+                                  : destination ==
+                                        SongDiscoveryDestination.charts
+                                  ? PopularChartScreen(
+                                      auth: authController,
+                                      load: chartLoad,
+                                      searchLoad: searchLoad,
+                                      prepareRegistration: prepare,
+                                      intent: const SearchIntent(
+                                        returnRoute: '/recording/input',
+                                      ),
+                                    )
+                                  : KaraokeSearchScreen(
+                                      auth: authController,
+                                      load: searchLoad,
+                                      prepareRegistration: prepare,
+                                      intent: const SearchIntent(
+                                        returnRoute: '/recording/input',
+                                      ),
+                                    ),
+                            ),
+                          ),
+                      isCurrent: (repo) =>
+                          authController?.phase == AuthPhase.ready &&
+                          authController?.session?.userId == repo.userId &&
+                          repo.userId == localRepository?.call()?.userId,
+                      wakeSync: () {
+                        final sync = syncController;
+                        if (sync != null) unawaited(sync.wake());
+                      },
+                    ),
+              songsBuilder: (context, findSong) => MySongsScreen(
+                onOpenRecording: (id) {
+                  final repository = localRepository?.call();
+                  if (repository == null ||
+                      authController?.phase != AuthPhase.ready ||
+                      authController?.session?.userId != repository.userId) {
+                    return;
                   }
-
-                  final api = AccountDeletionApi(
-                    config.apiBaseUrl,
-                    auth.validSession,
-                    guard,
-                    local:
-                        kDebugMode && config.environment == AppEnvironment.dev,
-                  );
-                  final flow = AccountDeletionFlow(
-                    '${config.environment.name}:${config.apiBaseUrl.origin}:$owner',
-                    api,
-                    auth.proofs as IdentityLinkProofSource,
-                    const SecureDeletionReceiptVault(),
-                  );
-                  return AccountDeletionScreen(
-                    flow: flow,
-                    onAccepted: () => auth.deletionAccepted(
-                      owner,
-                      confirmation: flow.confirmation(owner),
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      builder: (_) => RecordingDetailScreen(
+                        classificationBuilder: classificationBuilder,
+                        id: id,
+                        repository: repository,
+                        isCurrent: (repo) =>
+                            authController?.phase == AuthPhase.ready &&
+                            authController?.session?.userId == repo.userId &&
+                            repo.userId == localRepository?.call()?.userId,
+                        wakeSync: () {
+                          final sync = syncController;
+                          if (sync != null) unawaited(sync.wake());
+                        },
+                        trash: trashActions(),
+                      ),
                     ),
                   );
-                }
-              : null,
-          importBuilder: (_) {
-            final store = accountStore?.call(), auth = authController;
-            if (store == null ||
-                auth?.phase != AuthPhase.ready ||
-                store.userId != auth?.session?.userId) {
-              return const Scaffold(
-                body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
-              );
-            }
-            final epoch = auth!.accountEpoch;
-            void guard() {
-              store.requireActive();
-              if (auth.phase != AuthPhase.ready ||
-                  auth.accountEpoch != epoch ||
-                  accountStore?.call() != store ||
-                  auth.session?.userId != store.userId) {
-                throw StateError('Import account changed');
-              }
-            }
-
-            return ImportEntryScreen(
-              store: store,
-              accountChanges: auth,
-              synchronize: syncController?.wake,
-              requireCurrent: guard,
-              session: auth.validSession,
-              transport: HttpSnapshotTransport(
-                config.apiBaseUrl,
-                allowLocalHttp:
-                    kDebugMode && config.environment == AppEnvironment.dev,
-              ),
-            );
-          },
-          storageBuilder: (_) {
-            final store = accountStore?.call(), auth = authController;
-            if (store == null ||
-                auth?.phase != AuthPhase.ready ||
-                store.userId != auth?.session?.userId) {
-              return const Scaffold(
-                body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
-              );
-            }
-            final epoch = auth!.accountEpoch;
-            void guard() {
-              store.requireActive();
-              if (auth.phase != AuthPhase.ready ||
-                  auth.accountEpoch != epoch ||
-                  accountStore?.call() != store ||
-                  auth.session?.userId != store.userId) {
-                throw StateError('Storage account changed');
-              }
-            }
-
-            final api = SettingsApi(
-              config.apiBaseUrl,
-              auth.validSession,
-              guard,
-              local: kDebugMode && config.environment == AppEnvironment.dev,
-            );
-            return StorageScreen(
-              requestBuilder: demandScreen,
-              requireCurrent: guard,
-              accountChanges: auth,
-              load: () async {
-                final usage =
-                    await api.get('/v1/storage') as Map<String, dynamic>;
-                final pins = await api.get('/v1/pins') as Map<String, dynamic>;
-                final recordings = await store.savedRecordings();
-                guard();
-                final view = StorageView(
-                  usage,
-                  (pins['items'] as List).cast<Map<String, dynamic>>(),
-                  recordings,
-                );
-                final confirmed = <String>{
-                  for (final slot in view.slots)
-                    for (final key in [
-                      'current_recording_id',
-                      'pending_recording_id',
-                    ])
-                      if (slot[key] case final String id) id,
-                };
-                final resumed = await store.resumePinnedUploads(confirmed);
-                guard();
-                if (resumed > 0) syncController?.wake();
-                return view;
-              },
-              command: (method, path, body, id) async {
-                await api.pinCommand(method, path, body, id);
-                guard();
-                syncController?.wake();
-              },
-            );
-          },
-          classificationBuilder: (_) {
-            final store = accountStore?.call(), auth = authController;
-            if (store == null ||
-                auth?.phase != AuthPhase.ready ||
-                store.userId != auth?.session?.userId) {
-              return const Scaffold(
-                body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
-              );
-            }
-            final epoch = auth!.accountEpoch;
-            void guard() {
-              store.requireActive();
-              if (auth.phase != AuthPhase.ready ||
-                  auth.accountEpoch != epoch ||
-                  accountStore?.call() != store ||
-                  auth.session?.userId != store.userId) {
-                throw StateError('Classification account changed');
-              }
-            }
-
-            final api = SettingsApi(
-              config.apiBaseUrl,
-              auth.validSession,
-              guard,
-              local: kDebugMode && config.environment == AppEnvironment.dev,
-            );
-            return ClassificationScreen(
-              canEdit: syncController != null,
-              requireCurrent: guard,
-              accountChanges: auth,
-              accent: accentChanges,
-              saveAccent: saveAccent,
-              load: () async {
-                final tags = <Map<String, dynamic>>[], cursors = <String>{};
-                String? cursor;
-                do {
-                  final page = await api.tagsPage(
-                    cursor: cursor,
-                  ) as Map<String, dynamic>;
-                  tags.addAll(
-                    (page['items'] as List).cast<Map<String, dynamic>>(),
-                  );
-                  cursor = page['next_cursor'] as String?;
-                  if (cursor != null && !cursors.add(cursor)) {
-                    throw const FormatException('Repeated tag cursor');
+                },
+                trash: trashActions(),
+                auth: authController,
+                watchUnlinked: () {
+                  final auth = authController,
+                      repository = localRepository?.call();
+                  if (auth == null ||
+                      auth.phase != AuthPhase.ready ||
+                      repository == null ||
+                      repository.userId != auth.session?.userId) {
+                    throw StateError('Current account storage is unavailable');
                   }
-                } while (cursor != null);
-                final conditions =
-                    await api.get('/v1/conditions') as Map<String, dynamic>;
-                guard();
-                return (
-                  tags: tags,
-                  conditions: (conditions['items'] as List)
-                      .cast<Map<String, dynamic>>(),
-                );
-              },
-              command: (method, path, body, op) async {
-                final result = await api.tagCommand(
-                  method,
-                  path,
-                  body,
-                  op,
-                ) as Map<String, dynamic>;
-                guard();
-                await syncController?.wake();
-                guard();
-                final copy = await store.readMetadata(
-                  LocalEntity.tag,
-                  result['id'] as String,
-                );
-                guard();
-                final local = copy?.localJson ?? copy?.serverJson;
-                if (local == null) {
-                  throw StateError('Tag receipt awaiting local sync');
-                }
-                final actual = jsonDecode(local) as Map<String, dynamic>;
-                if (copy!.revision > (result['revision'] as int)) {
-                  // A newer account change superseded this accepted receipt.
-                  // Refresh instead of endlessly replaying the old request.
-                  throw const SettingsUnavailable(status: 409);
-                }
-                if (copy.revision < (result['revision'] as int) ||
-                    actual['name'] != result['name'] ||
-                    (actual['archived_at'] == null) !=
-                        (result['archived_at'] == null)) {
-                  throw StateError(
-                    'Tag receipt awaiting local sync or conflict resolution',
+                  return repository.watchUnlinkedRecordings();
+                },
+                onFindSong: findSong,
+                prepareRepresentative: (detail, recording) {
+                  final auth = authController,
+                      repository = localRepository?.call();
+                  if (auth == null ||
+                      auth.phase != AuthPhase.ready ||
+                      repository == null ||
+                      repository.userId != auth.session?.userId) {
+                    throw StateError('Current account storage is unavailable');
+                  }
+                  return prepareRepresentative(repository, detail, recording);
+                },
+                prepareEdit: (draft) {
+                  final auth = authController,
+                      repository = localRepository?.call();
+                  if (auth == null ||
+                      auth.phase != AuthPhase.ready ||
+                      repository == null ||
+                      repository.userId != auth.session?.userId) {
+                    throw StateError('Current account storage is unavailable');
+                  }
+                  return draft.prepare(repository);
+                },
+                watchDetail: (id) => () {
+                  final auth = authController,
+                      repository = localRepository?.call();
+                  if (auth == null ||
+                      auth.phase != AuthPhase.ready ||
+                      repository == null ||
+                      repository.userId != auth.session?.userId) {
+                    throw StateError('Current account storage is unavailable');
+                  }
+                  return repository
+                      .watchSongDetail(id)
+                      .asyncMap(
+                        (bundle) => MySongDetail.verified(
+                          bundle,
+                          repository.recordingFileStatus,
+                        ),
+                      );
+                },
+                watch: () {
+                  final auth = authController,
+                      repository = localRepository?.call();
+                  if (auth == null ||
+                      auth.phase != AuthPhase.ready ||
+                      repository == null ||
+                      repository.userId != auth.session?.userId) {
+                    throw StateError('Current account storage is unavailable');
+                  }
+                  return repository.watchActiveSongs().map(
+                    (rows) => rows.map(MySong.new).toList(),
+                  );
+                },
+              ),
+              chartBuilder: (context) => PopularChartScreen(
+                auth: authController,
+                searchLoad: searchLoad,
+                prepareRegistration: prepareRegistration,
+                load: chartLoad,
+              ),
+              searchBuilder: (context) => KaraokeSearchScreen(
+                auth: authController,
+                prepareRegistration: prepareRegistration,
+                load: searchLoad,
+              ),
+            ),
+            AppRoutes.settings: (context) => SettingsScreen(
+              deletionBuilder: authController?.phase == AuthPhase.ready
+                  ? (_) {
+                      final store = accountStore?.call(), auth = authController;
+                      if (store == null ||
+                          auth?.phase != AuthPhase.ready ||
+                          store.userId != auth?.session?.userId ||
+                          auth!.proofs is! IdentityLinkProofSource) {
+                        return const Scaffold(
+                          body: SafeArea(
+                            child: Center(child: Text('최근 계정 재인증을 사용할 수 없어요.')),
+                          ),
+                        );
+                      }
+                      final epoch = auth.accountEpoch, owner = store.userId;
+                      void guard() {
+                        store.requireActive();
+                        if (auth.phase != AuthPhase.ready ||
+                            auth.accountEpoch != epoch ||
+                            auth.session?.userId != owner ||
+                            accountStore?.call() != store) {
+                          throw StateError('Deletion account changed');
+                        }
+                      }
+
+                      final api = AccountDeletionApi(
+                        config.apiBaseUrl,
+                        auth.validSession,
+                        guard,
+                        local:
+                            kDebugMode &&
+                            config.environment == AppEnvironment.dev,
+                      );
+                      final flow = AccountDeletionFlow(
+                        '${config.environment.name}:${config.apiBaseUrl.origin}:$owner',
+                        api,
+                        auth.proofs as IdentityLinkProofSource,
+                        const SecureDeletionReceiptVault(),
+                      );
+                      return AccountDeletionScreen(
+                        flow: flow,
+                        onAccepted: () => auth.deletionAccepted(
+                          owner,
+                          confirmation: flow.confirmation(owner),
+                        ),
+                      );
+                    }
+                  : null,
+              importBuilder: (_) {
+                final store = accountStore?.call(), auth = authController;
+                if (store == null ||
+                    auth?.phase != AuthPhase.ready ||
+                    store.userId != auth?.session?.userId) {
+                  return const Scaffold(
+                    body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
                   );
                 }
-              },
-            );
-          },
-          backupBuilder: (context) {
-            final store = accountStore?.call(), auth = authController;
-            if (store == null ||
-                auth?.phase != AuthPhase.ready ||
-                store.userId != auth?.session?.userId) {
-              return const Scaffold(body: Center(child: Text('로그인이 필요해요.')));
-            }
-            void guard() {
-              store.requireActive();
-              if (auth!.phase != AuthPhase.ready ||
-                  auth.session?.userId != store.userId ||
-                  accountStore?.call() != store) {
-                throw StateError('The backup account changed');
-              }
-            }
+                final epoch = auth!.accountEpoch;
+                void guard() {
+                  store.requireActive();
+                  if (auth.phase != AuthPhase.ready ||
+                      auth.accountEpoch != epoch ||
+                      accountStore?.call() != store ||
+                      auth.session?.userId != store.userId) {
+                    throw StateError('Import account changed');
+                  }
+                }
 
-            final localHttp =
-                kDebugMode && config.environment == AppEnvironment.dev;
-            return ExportScreen(
-              controller: ExportController.forStore(
-                store: store,
-                recorder: recorderGateway,
-                transport: HttpSnapshotTransport(
+                return ImportEntryScreen(
+                  store: store,
+                  accountChanges: auth,
+                  synchronize: syncController?.wake,
+                  requireCurrent: guard,
+                  session: auth.validSession,
+                  transport: HttpSnapshotTransport(
+                    config.apiBaseUrl,
+                    allowLocalHttp:
+                        kDebugMode && config.environment == AppEnvironment.dev,
+                  ),
+                );
+              },
+              storageBuilder: (_) {
+                final store = accountStore?.call(), auth = authController;
+                if (store == null ||
+                    auth?.phase != AuthPhase.ready ||
+                    store.userId != auth?.session?.userId) {
+                  return const Scaffold(
+                    body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
+                  );
+                }
+                final epoch = auth!.accountEpoch;
+                void guard() {
+                  store.requireActive();
+                  if (auth.phase != AuthPhase.ready ||
+                      auth.accountEpoch != epoch ||
+                      accountStore?.call() != store ||
+                      auth.session?.userId != store.userId) {
+                    throw StateError('Storage account changed');
+                  }
+                }
+
+                final api = SettingsApi(
                   config.apiBaseUrl,
-                  allowLocalHttp: localHttp,
-                ),
-                session: auth!.validSession,
-                base: config.apiBaseUrl,
-                requireCurrent: guard,
-                allowLocalHttp: localHttp,
-              ),
-            );
+                  auth.validSession,
+                  guard,
+                  local: kDebugMode && config.environment == AppEnvironment.dev,
+                );
+                return StorageScreen(
+                  requestBuilder: demandScreen,
+                  requireCurrent: guard,
+                  accountChanges: auth,
+                  load: () async {
+                    final usage =
+                        await api.get('/v1/storage') as Map<String, dynamic>;
+                    final pins =
+                        await api.get('/v1/pins') as Map<String, dynamic>;
+                    final recordings = await store.savedRecordings();
+                    guard();
+                    final view = StorageView(
+                      usage,
+                      (pins['items'] as List).cast<Map<String, dynamic>>(),
+                      recordings,
+                    );
+                    final confirmed = <String>{
+                      for (final slot in view.slots)
+                        for (final key in [
+                          'current_recording_id',
+                          'pending_recording_id',
+                        ])
+                          if (slot[key] case final String id) id,
+                    };
+                    final resumed = await store.resumePinnedUploads(confirmed);
+                    guard();
+                    if (resumed > 0) syncController?.wake();
+                    return view;
+                  },
+                  command: (method, path, body, id) async {
+                    await api.pinCommand(method, path, body, id);
+                    guard();
+                    syncController?.wake();
+                  },
+                );
+              },
+              classificationBuilder: classificationBuilder,
+              backupBuilder: (context) {
+                final store = accountStore?.call(), auth = authController;
+                if (store == null ||
+                    auth?.phase != AuthPhase.ready ||
+                    store.userId != auth?.session?.userId) {
+                  return const Scaffold(
+                    body: Center(child: Text('로그인이 필요해요.')),
+                  );
+                }
+                void guard() {
+                  store.requireActive();
+                  if (auth!.phase != AuthPhase.ready ||
+                      auth.session?.userId != store.userId ||
+                      accountStore?.call() != store) {
+                    throw StateError('The backup account changed');
+                  }
+                }
+
+                final localHttp =
+                    kDebugMode && config.environment == AppEnvironment.dev;
+                return ExportScreen(
+                  controller: ExportController.forStore(
+                    store: store,
+                    recorder: recorderGateway,
+                    transport: HttpSnapshotTransport(
+                      config.apiBaseUrl,
+                      allowLocalHttp: localHttp,
+                    ),
+                    session: auth!.validSession,
+                    base: config.apiBaseUrl,
+                    requireCurrent: guard,
+                    allowLocalHttp: localHttp,
+                  ),
+                );
+              },
+              trashBuilder: (context) {
+                final actions = trashActions();
+                return actions == null
+                    ? const Scaffold(body: Center(child: Text('로그인이 필요해요.')))
+                    : TrashScreen(actions: actions, auth: authController);
+              },
+              showDevelopmentTools: config.environment == AppEnvironment.dev,
+              identityLink: identityLink,
+              authController: authController,
+              syncController: syncController,
+            ),
+            if (config.environment == AppEnvironment.dev)
+              AppRoutes.health: (context) =>
+                  HealthScreen(config: config, healthLoader: loadHealth),
           },
-          trashBuilder: (context) {
-            final actions = trashActions();
-            return actions == null
-                ? const Scaffold(body: Center(child: Text('로그인이 필요해요.')))
-                : TrashScreen(actions: actions, auth: authController);
-          },
-          showDevelopmentTools: config.environment == AppEnvironment.dev,
-          identityLink: identityLink,
-          authController: authController,
-          syncController: syncController,
+          theme: AppTheme.preview(accent: accent, light: light),
         ),
-        if (config.environment == AppEnvironment.dev)
-          AppRoutes.health: (context) =>
-              HealthScreen(config: config, healthLoader: loadHealth),
-      },
-      theme: AppTheme.dark(accent: accent),
+      ),
     );
   }
 }

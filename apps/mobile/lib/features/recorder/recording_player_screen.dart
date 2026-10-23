@@ -57,6 +57,19 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
               Text('${time(player.position)} / ${time(player.duration)}'),
+              if (player.waveform.isNotEmpty)
+                SizedBox(
+                  height: 100,
+                  child: CustomPaint(
+                    painter: _Waveform(
+                      player.waveform,
+                      player.duration == 0
+                          ? 0
+                          : player.position / player.duration,
+                      Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
               Slider(
                 semanticFormatterCallback: (v) => time(v.toInt()),
                 value: player.position.clamp(0, player.duration).toDouble(),
@@ -75,16 +88,49 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
                   child: const Text('다시 시도'),
                 ),
               ] else
-                FilledButton.icon(
-                  icon: Icon(playing ? Icons.pause : Icons.play_arrow),
-                  label: Text(playing ? '일시정지' : '재생'),
-                  onPressed: () => unawaited(
-                    playing
-                        ? player.pause()
-                        : player.phase == PlaybackPhase.paused
-                        ? player.resume()
-                        : player.start(widget.recordingId),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      tooltip: '5초 뒤로',
+                      onPressed: seekable
+                          ? () => unawaited(
+                              player.seek(
+                                (player.position - 5000).clamp(
+                                  0,
+                                  player.duration,
+                                ),
+                              ),
+                            )
+                          : null,
+                      icon: const Icon(Icons.replay_5),
+                    ),
+                    FilledButton.icon(
+                      icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+                      label: Text(playing ? '일시정지' : '재생'),
+                      onPressed: () => unawaited(
+                        playing
+                            ? player.pause()
+                            : player.phase == PlaybackPhase.paused
+                            ? player.resume()
+                            : player.start(widget.recordingId),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: '5초 앞으로',
+                      onPressed: seekable
+                          ? () => unawaited(
+                              player.seek(
+                                (player.position + 5000).clamp(
+                                  0,
+                                  player.duration,
+                                ),
+                              ),
+                            )
+                          : null,
+                      icon: const Icon(Icons.forward_5),
+                    ),
+                  ],
                 ),
             ],
           );
@@ -92,4 +138,36 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
       ),
     ),
   );
+}
+
+class _Waveform extends CustomPainter {
+  _Waveform(this.peaks, this.progress, this.color);
+  final List<double> peaks;
+  final double progress;
+  final Color color;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final step = size.width / peaks.length;
+    for (var i = 0; i < peaks.length; i++) {
+      final height = (peaks[i] * size.height).clamp(1.0, size.height);
+      final paint = Paint()
+        ..color = color.withValues(
+          alpha: i / peaks.length <= progress ? 1 : .25,
+        )
+        ..strokeWidth = (step * .6).clamp(1.0, 3.0)
+        ..strokeCap = StrokeCap.round;
+      final x = (i + .5) * step;
+      canvas.drawLine(
+        Offset(x, (size.height - height) / 2),
+        Offset(x, (size.height + height) / 2),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Waveform oldDelegate) =>
+      oldDelegate.peaks != peaks ||
+      oldDelegate.progress != progress ||
+      oldDelegate.color != color;
 }

@@ -11,6 +11,7 @@ import 'package:sqlite3/sqlite3.dart' as native;
 
 import '../../config/app_config.dart';
 import '../domain/account_deletion_confirmation.dart';
+import '../domain/condition_types.dart';
 import '../domain/identifiers.dart';
 import '../files/account_deletion_files.dart';
 import '../sync/canonical_conflict_plan.dart';
@@ -21,6 +22,7 @@ import '../sync/dependency_planner.dart';
 import '../sync/metadata_response.dart';
 import '../sync/mutation_request.dart';
 import '../sync/playlist_addition_receipt.dart';
+import '../sync/playlist_library_order_receipt.dart';
 import '../sync/recording_save_contract.dart';
 import '../sync/trash_receipt.dart';
 import 'account_database.dart' show AccountDatabase;
@@ -34,6 +36,7 @@ import 'local_models.dart';
 import 'mapping_eligibility.dart';
 import 'metadata_followup_store.dart';
 import 'playlist_change_store.dart';
+import 'playlist_order_dismissal.dart';
 import 'retry_controls.dart';
 import 'snapshot_business_store.dart';
 import 'snapshot_download_store.dart';
@@ -305,7 +308,14 @@ final class AccountStore {
         'local_base_revision': row.read<int>('server_revision'),
       });
     }
-    result.sort((a, b) => (a['id'] as String).compareTo(b['id'] as String));
+    result.sort((a, b) {
+      final order = ((a['display_order'] ?? 0) as int).compareTo(
+        (b['display_order'] ?? 0) as int,
+      );
+      return order != 0
+          ? order
+          : (a['id'] as String).compareTo(b['id'] as String);
+    });
     return result;
   });
 
@@ -390,13 +400,16 @@ final class AccountStore {
   }
 
   /// Serialized current-account reads, including unsent local edits. Never network.
-  Future<String?> trashReservation(String number) => _run(() async {
+  Future<String?> trashReservation(String number) async =>
+      (await reservedTjSong(number))?['lifecycle_state'] as String?;
+
+  Future<Map<String, dynamic>?> reservedTjSong(String number) => _run(() async {
     if (!RegExp(r'^\d{5}$').hasMatch(number)) {
       throw ArgumentError('Invalid TJ number');
     }
     final rows = await _database
         .customSelect(
-          "SELECT server_payload,local_payload FROM metadata_copies WHERE user_id=? AND entity_type='SONG' AND tombstone=0",
+          "SELECT entity_id,server_payload,local_payload FROM metadata_copies WHERE user_id=? AND entity_type='SONG' AND tombstone=0",
           variables: [Variable(userId)],
         )
         .get();
@@ -408,7 +421,20 @@ final class AccountStore {
         if (value['tj_number'] == number &&
             value['source_type'] == 'TJ' &&
             {'TRASHED', 'PURGE_PENDING'}.contains(value['lifecycle_state'])) {
-          return value['lifecycle_state'] as String;
+          if (value['id'] != row.read<String>('entity_id') ||
+              (value['user_id'] != null && value['user_id'] != userId)) {
+            throw const FormatException('Song identity mismatch');
+          }
+          final server = row.readNullable<String>('server_payload');
+          final local = row.readNullable<String>('local_payload');
+          return Map<String, dynamic>.from(value)
+            ..['pending_changes'] =
+                server == null ||
+                local != null &&
+                    canonicalJson(jsonDecode(local) as Map<String, dynamic>) !=
+                        canonicalJson(
+                          jsonDecode(server) as Map<String, dynamic>,
+                        );
         }
       }
     }
@@ -782,6 +808,7 @@ final class AccountStore {
         'mutation_supersessions': 'original_op_id',
         'mutation_conflict_resolutions': 'original_op_id',
         'pending_edit_resolutions': 'original_op_id',
+        'playlist_order_dismissals': 'op_id',
         'recording_followups': 'original_op_id',
         'canonical_edit_intents': 'intent_id',
         'mutation_mapping_holds': 'op_id,mapping_source_id,reason',
@@ -1175,6 +1202,14 @@ final class AccountStore {
   }
 
   Future<List<QueuedMutation>> pendingMutations() => _run(_pendingMutations);
+
+  Future<void> acceptLatestPlaylistOrder(QueuedMutation expected) => _run(
+    () => _database.transaction(() async {
+      requireActive();
+      await dismissPlaylistOrder(_database, expected, _retry.nowMs);
+      requireActive();
+    }),
+  );
 
   /// Work list excludes only validated, explicitly resolved history. Recovery
   /// and pendingMutations keep the original requests for inspection/export.
@@ -1882,6 +1917,63 @@ final class AccountStore {
       }
       requireActive();
       return true;
+    }),
+  );
+
+  Future<bool> acknowledgePlaylistLibraryOrder(
+    MutationRequest request,
+    MutationResponse response,
+  ) => _run(
+    () => _database.transaction(() async {
+      final values = decodePlaylistLibraryOrder(request, response);
+      if (!await _ownsAttempt(request)) return false;
+      final business = SnapshotBusinessStore(
+        _database,
+        clock: _manager._clock,
+        requireActive: requireActive,
+      );
+      for (final value in values) {
+        _validatePayloadOwner(canonicalJson(value));
+        final current = await _database
+            .customSelect(
+              "SELECT server_revision,server_payload,tombstone FROM metadata_copies WHERE user_id=? AND entity_type='PLAYLIST' AND entity_id=?",
+              variables: [Variable(userId), Variable(value['id'] as String)],
+            )
+            .getSingleOrNull();
+        if (current == null) {
+          throw const FormatException('Order receipt has unknown member');
+        }
+        if (current.read<int>('tombstone') == 1 ||
+            current.read<int>('server_revision') >=
+                (value['revision'] as int)) {
+          continue;
+        }
+        final previous =
+            jsonDecode(current.read<String>('server_payload')) as Map;
+        for (final field in ['name', 'icon', 'deleted_at']) {
+          if ((field == 'icon'
+                  ? previous[field] ?? 'music'
+                  : previous[field]) !=
+              value[field]) {
+            throw const FormatException(
+              'Order receipt changed playlist details',
+            );
+          }
+        }
+        if (value['id'] != request.mutation.entityId) {
+          await business.writeCopy(
+            'PLAYLIST',
+            value['id'] as String,
+            value['revision'] as int,
+            canonicalJson(value),
+            false,
+          );
+        }
+      }
+      return _acknowledgeMutation(
+        request,
+        values.singleWhere((r) => r['id'] == request.mutation.entityId),
+      );
     }),
   );
 
@@ -2806,7 +2898,6 @@ final class AccountStore {
       if (!{'ORIGINAL', 'MALE', 'FEMALE'}.contains(draft['key_mode']) ||
           draft['key_shift'] is! int ||
           (draft['key_shift'] as int).abs() > 12 ||
-          draft['key_mode'] == 'ORIGINAL' && draft['key_shift'] != 0 ||
           !{'NORMAL', 'MR', 'LIVE'}.contains(draft['version_code']) ||
           draft['tier'] != null &&
               !{'S', 'A', 'B', 'C', 'D'}.contains(draft['tier'])) {
@@ -2827,8 +2918,7 @@ final class AccountStore {
         throw ArgumentError('Invalid capture time');
       }
       final condition = draft['condition_code'];
-      if (condition != null &&
-          !{'VERY_GOOD', 'GOOD', 'NORMAL', 'BAD'}.contains(condition)) {
+      if (condition != null && !validConditionCode(condition)) {
         throw ArgumentError('Invalid condition');
       }
       final tags = draft['tag_ids'];
@@ -2859,13 +2949,10 @@ final class AccountStore {
         }
       }
       draft['tags'] = snapshots;
-      draft['condition_name_snapshot'] = switch (condition) {
-        'VERY_GOOD' => '아주 좋음',
-        'GOOD' => '좋음',
-        'NORMAL' => '보통',
-        'BAD' => '안 좋음',
-        _ => null,
-      };
+      draft['condition_name_snapshot'] = await _conditionName(
+        condition as String?,
+        expected,
+      );
       final metadata = Map<String, Object?>.from(fields)..remove('tier');
       for (var i = 0; i < 2; i++) {
         final base = i == 0 ? revision : 0;
@@ -2888,6 +2975,69 @@ final class AccountStore {
       }
     }),
   );
+
+  Future<List<Map<String, dynamic>>> _conditionDefinitions() async {
+    final rows = await _database
+        .customSelect(
+          "SELECT entity_id,COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='RECORDING_CONDITION' AND tombstone=0",
+          variables: [Variable(userId)],
+        )
+        .get();
+    final result = <Map<String, dynamic>>[];
+    for (final row in rows) {
+      final raw = row.readNullable<String>('payload');
+      if (raw == null) continue;
+      _validatePayloadOwner(raw);
+      final value = jsonDecode(raw) as Map<String, dynamic>;
+      if (value['id'] != row.read<String>('entity_id') ||
+          !validConditionCode(value['code']) ||
+          (!defaultConditionNames.containsKey(value['code']) &&
+              value['code'] != value['id']) ||
+          value['name'] is! String) {
+        throw StateError('Invalid owned condition');
+      }
+      result.add(value);
+    }
+    return result;
+  }
+
+  Future<List<Map<String, dynamic>>> selectableRecordingConditions() => _run(
+    () async {
+      final definitions = await _conditionDefinitions();
+      // Legacy/offline stores may predate the definition snapshot. Custom codes
+      // never use this fallback and still require an owned definition.
+      if (definitions.isEmpty) {
+        return [
+          for (final item in defaultConditionNames.entries)
+            {'code': item.key, 'name': item.value},
+        ];
+      }
+      return definitions.where((r) => r['archived_at'] == null).toList();
+    },
+  );
+
+  Future<String?> _conditionName(
+    String? code,
+    Map<String, dynamic> prior,
+  ) async {
+    if (code == null) return null;
+    if (!validConditionCode(code)) throw ArgumentError('Invalid condition');
+    if (code == prior['condition_code'] &&
+        prior['condition_name_snapshot'] is String) {
+      return prior['condition_name_snapshot'] as String;
+    }
+    final definitions = await _conditionDefinitions();
+    final row = definitions.where((r) => r['code'] == code).firstOrNull;
+    if (row == null &&
+        definitions.isEmpty &&
+        defaultConditionNames.containsKey(code)) {
+      return defaultConditionNames[code];
+    }
+    if (row == null || row['archived_at'] != null) {
+      throw StateError('Condition unavailable');
+    }
+    return row['name'] as String;
+  }
 
   Future<List<Map<String, dynamic>>> selectableRecordingTags() =>
       _run(() async {
@@ -2990,22 +3140,21 @@ final class AccountStore {
         throw StateError('Capture no longer pending');
       }
       if (fields.keys.any(
-            (k) => !{
-              'song_id',
-              'title_snapshot',
-              'artist_snapshot',
-              'note',
-              'key_mode',
-              'key_shift',
-              'version_code',
-              'recorded_at',
-              'timezone_id',
-              'timezone_offset_minutes',
-              'condition_code',
-              'tag_ids',
-            }.contains(k),
-          ) ||
-          fields['key_mode'] == 'ORIGINAL' && fields['key_shift'] != 0) {
+        (k) => !{
+          'song_id',
+          'title_snapshot',
+          'artist_snapshot',
+          'note',
+          'key_mode',
+          'key_shift',
+          'version_code',
+          'recorded_at',
+          'timezone_id',
+          'timezone_offset_minutes',
+          'condition_code',
+          'tag_ids',
+        }.contains(k),
+      )) {
         throw ArgumentError('Invalid input fields');
       }
       final song = fields['song_id'];
@@ -3052,8 +3201,7 @@ final class AccountStore {
         throw ArgumentError('Invalid recording time');
       }
       final condition = fields['condition_code'];
-      if (condition != null &&
-          !{'VERY_GOOD', 'GOOD', 'NORMAL', 'BAD'}.contains(condition)) {
+      if (condition != null && !validConditionCode(condition)) {
         throw ArgumentError('Invalid condition');
       }
       final tags = fields['tag_ids'];
@@ -3085,13 +3233,10 @@ final class AccountStore {
         'link_revision':
             (old['link_revision'] as int? ?? 1) +
             (old['song_id'] == song ? 0 : 1),
-        'condition_name_snapshot': switch (condition) {
-          'VERY_GOOD' => '아주 좋음',
-          'GOOD' => '좋음',
-          'NORMAL' => '보통',
-          'BAD' => '안 좋음',
-          _ => null,
-        },
+        'condition_name_snapshot': await _conditionName(
+          condition as String?,
+          old,
+        ),
       };
       final requests = [
         metadata,

@@ -269,6 +269,7 @@ void main() {
       await t.pumpWidget(
         MaterialApp(
           home: RecordingInputScreen(
+            conditionLoader: () async => [],
             tagLoader: () async => [],
             recording: row!,
             repository: repo,
@@ -361,6 +362,7 @@ void main() {
       await t.pumpWidget(
         MaterialApp(
           home: RecordingInputScreen(
+            conditionLoader: () async => [],
             tagLoader: () async => [],
             recording: row!,
             repository: repo,
@@ -423,6 +425,7 @@ void main() {
     await t.pumpWidget(
       MaterialApp(
         home: RecordingInputScreen(
+          conditionLoader: () async => [],
           tagLoader: () async => [],
           recording: row!,
           repository: repo,

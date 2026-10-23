@@ -14,7 +14,7 @@ final class MySongDetail {
       revision = bundle['revision'] as int,
       recordings = [
         for (final r in bundle['recordings'] as List)
-          _recording(Map<String, dynamic>.from(r as Map)),
+          recordingView(Map<String, dynamic>.from(r as Map)),
       ];
   MySongDetail._(this.song, this.revision, this.recordings);
   static Future<MySongDetail> verified(
@@ -47,7 +47,7 @@ final class MySongDetail {
   final int revision;
   final List<RecordingViewData> recordings;
 
-  static RecordingViewData _recording(Map<String, dynamic> p) {
+  static RecordingViewData recordingView(Map<String, dynamic> p) {
     final spec = p['file_spec'] as Map? ?? p['file'] as Map?;
     final ms = spec?['duration_ms'] as int?;
     return RecordingViewData(

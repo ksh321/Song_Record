@@ -33,11 +33,14 @@ public final class PlaylistService {
         this.candidates=candidates;
     }
     public IdempotentMutations.Reply create(String auth,String device,String op,String body){
-        var account=access.authenticate(auth,device);var root=parse(body,Set.of("id","name"));UUID id=uuid(text(root.get("id")),false);String name=name(root.get("name"));UUID owner=account.principal().userId();
+        var account=access.authenticate(auth,device);var root=parseIconBody(body,Set.of("id","name"));UUID id=uuid(text(root.get("id")),false);String name=name(root.get("name"));UUID owner=account.principal().userId();
         try{return mutations.execute(account,op,"POST","/v1/playlists",body,()->{
             var result=guard.create(account,CreationGuard.Resource.PLAYLIST,id,()->changes.write(account,()->{
 
-                var now=now();jdbc.update("INSERT INTO playlist(id,user_id,name,revision,created_at,updated_at) VALUES(?,?,?,1,?,?)",bytes(id),bytes(owner),name,now,now);
+                var now=now();jdbc.update("INSERT INTO playlist(id,user_id,name,icon,display_order,revision,created_at,updated_at) VALUES(?,?,?,?,0,1,?,?)",bytes(id),bytes(owner),name,root.has("icon")?text(root.get("icon")):"music",now,now);
+                Long last=jdbc.queryForObject("SELECT MAX(display_order) FROM playlist WHERE user_id=? AND deleted_at IS NULL AND id<>?",Long.class,bytes(owner),bytes(id));
+                long order=root.has("display_order")?root.get("display_order").asLong():(last==null?0:Math.incrementExact(last));
+                jdbc.update("UPDATE playlist SET display_order=? WHERE user_id=? AND id=?",order,bytes(owner),bytes(id));
                 return batch(id,201,snapshot(owner,id));
             }).value());
             if(result.created())return result.value();
@@ -46,6 +49,37 @@ public final class PlaylistService {
         });}catch(DuplicateKeyException e){throw conflict("PLAYLIST_ID_CONFLICT","목록 식별자를 확인해 주세요.");}
     }
     public IdempotentMutations.Reply rename(String auth,String device,String op,String id,String body){return edit(auth,device,op,id,body,false);}
+    /** Whole-library ordering is atomic; every member revision must still match. */
+    public IdempotentMutations.Reply reorderLibrary(String auth,String device,String op,String rawId,String body){
+        var account=access.authenticate(auth,device);var owner=account.principal().userId();var anchor=uuid(rawId,true);
+        var root=parse(body,Set.of("base_revision","ordered_playlists"));long base=revision(root.get("base_revision"));
+        var entries=root.get("ordered_playlists");if(entries==null || !entries.isArray() || entries.size()<1 || entries.size()>1000)throw invalid();
+        var desired=new LinkedHashMap<UUID,Long>();
+        for(var entry:entries){
+            if(!entry.isObject() || entry.size()!=2 || !entry.has("id") || !entry.has("base_revision"))throw invalid();
+            var id=uuid(text(entry.get("id")),false);if(desired.put(id,revision(entry.get("base_revision")))!=null)throw invalid();
+        }
+        if(!Objects.equals(desired.get(anchor),base))throw invalid();
+        return mutations.execute(account,op,"PUT","/v1/playlists/"+anchor+"/library-order",body,()->changes.write(account,()->{
+            var active=jdbc.query("SELECT id FROM playlist WHERE user_id=? AND deleted_at IS NULL ORDER BY id",(rs,n)->asUuid(rs.getBytes(1)),bytes(owner));
+            if(!new HashSet<>(active).equals(desired.keySet()))throw conflict("PLAYLIST_ORDER_CHANGED","목록 구성이 바뀌었어요. 최신 목록에서 다시 정렬해 주세요.");
+            // Lock in canonical ID order, never in user display order.
+            for(var id:active){
+                var current=revisions.lock(account,RevisionChanges.Resource.PLAYLIST,id.toString());
+                if(((Number)current.get("revision")).longValue()!=desired.get(id))throw conflict("PLAYLIST_ORDER_CHANGED","목록이 변경됐어요. 최신 목록에서 다시 정렬해 주세요.");
+            }
+            var positions=new HashMap<UUID,Integer>();int position=0;for(var id:desired.keySet())positions.put(id,position++);
+            var updated=new HashMap<UUID,Map<String,Object>>();var events=new ArrayList<AccountChanges.Change>();
+            for(var id:active){
+                var value=revisions.change(account,RevisionChanges.Resource.PLAYLIST,id.toString(),desired.get(id),old->
+                    jdbc.update("UPDATE playlist SET display_order=? WHERE user_id=? AND id=?",positions.get(id),bytes(owner),bytes(id)));
+                updated.put(id,value);events.add(new AccountChanges.Change(AccountChanges.Entity.PLAYLIST,id,((Number)value.get("revision")).longValue(),AccountChanges.Operation.UPSERT,JSON.writeValueAsString(value)));
+            }
+            var ordered=desired.keySet().stream().map(updated::get).toList();
+            var reply=new IdempotentMutations.Reply(200,JSON.writeValueAsString(Map.of("playlist",updated.get(anchor),"playlists",ordered)));
+            return new AccountChanges.Batch<>(reply,events);
+        }).value());
+    }
     public IdempotentMutations.Reply delete(String auth,String device,String op,String id,String body){return edit(auth,device,op,id,body,true);}
     public Map<String,Object> items(String auth,String device,String rawId){
         var account=access.authenticate(auth,device);var owner=account.principal().userId();var id=uuid(rawId,true);
@@ -73,7 +107,7 @@ public final class PlaylistService {
                 if(!"ACTIVE".equals(song.get("lifecycle_state")))throw conflict("SONG_NOT_ACTIVE","활성 내 곡만 추가할 수 있습니다.");
                 key=switch((String)song.get("source_type")){case "TJ"->"tj:"+song.get("tj_number");case "MANUAL"->"manual:"+songId;default->throw invalid();};
             }
-            var existing=jdbc.query("SELECT id FROM playlist_item WHERE user_id=? AND playlist_id=? AND entry_key=?",(rs,n)->asUuid(rs.getBytes(1)),bytes(owner),bytes(id),key);
+            var existing=jdbc.query("SELECT id FROM playlist_item WHERE user_id=? AND playlist_id=? AND entry_key=? AND hidden_by_batch_id IS NULL",(rs,n)->asUuid(rs.getBytes(1)),bytes(owner),bytes(id),key);
             if(!existing.isEmpty())return additionReply(owner,id,parent,existing.getFirst(),false,200);
             return changes.write(account,()->{
                 if(songId!=null)revisions.lock(account,RevisionChanges.Resource.SONG,songId.toString());
@@ -106,9 +140,9 @@ public final class PlaylistService {
                     if(rows.isEmpty())throw notFound();var row=rows.getFirst();
                     if(!"ACTIVE".equals(row.get("lifecycle_state")))throw conflict("SONG_NOT_ACTIVE","활성 내 곡만 추가할 수 있습니다.");
                     String key=switch((String)row.get("source_type")){case "TJ"->"tj:"+row.get("tj_number");case "MANUAL"->"manual:"+song;default->throw invalid();};keys.put(song,key);
-                    var existing=jdbc.queryForList("SELECT id,hidden_by_batch_id FROM playlist_item WHERE user_id=? AND playlist_id=? AND entry_key=?",bytes(owner),bytes(id),key);
+                    var existing=jdbc.queryForList("SELECT id FROM playlist_item WHERE user_id=? AND playlist_id=? AND entry_key=? AND hidden_by_batch_id IS NULL",bytes(owner),bytes(id),key);
                     if(existing.isEmpty()){UUID item=UUID.randomUUID();ids.add(item);additions.put(item,song);}
-                    else {if(existing.getFirst().get("hidden_by_batch_id")!=null)throw conflict("PLAYLIST_ITEM_HIDDEN","숨겨진 항목 상태를 확인해 주세요.");ids.add(asUuid((byte[])existing.getFirst().get("id")));}
+                    else ids.add(asUuid((byte[])existing.getFirst().get("id")));
                 }
                 if(additions.isEmpty())return multiReply(aggregate(owner,id,parent),ids,false);
             return changes.write(account,()->{
@@ -168,7 +202,7 @@ public final class PlaylistService {
         });
     }
     private Map<String,Object> activeParent(UUID owner,UUID id){
-        var rows=jdbc.query("SELECT id,name,revision,deleted_at,updated_at FROM playlist WHERE user_id=? AND id=?",(rs,n)->wire(rs),bytes(owner),bytes(id));
+        var rows=jdbc.query("SELECT id,name,icon,display_order,revision,deleted_at,updated_at FROM playlist WHERE user_id=? AND id=?",(rs,n)->wire(rs),bytes(owner),bytes(id));
         if(rows.isEmpty())throw notFound();var parent=rows.getFirst();if(parent.get("deleted_at")!=null)throw conflict("PLAYLIST_DELETED","영구 삭제된 목록입니다.");return parent;
     }
     private static void requireRevision(Map<String,Object> parent,long base){if(((Number)parent.get("revision")).longValue()!=base)throw new ApiException(HttpStatus.CONFLICT,"REVISION_CONFLICT","최신 목록을 확인해 주세요.",false,Map.of("current_revision",parent.get("revision"),"current",parent));}
@@ -248,7 +282,7 @@ public final class PlaylistService {
     private static ApiException notFound(){return new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","내 곡 또는 목록을 찾을 수 없습니다.",false,Map.of());}
     private IdempotentMutations.Reply edit(String auth,String device,String op,String rawId,String body,boolean delete){
         var account=access.authenticate(auth,device);UUID id=uuid(rawId,true),owner=account.principal().userId();
-        var root=parse(body,delete?Set.of("base_revision"):Set.of("base_revision","name"));long revision=revision(root.get("base_revision"));String name=delete?null:name(root.get("name"));
+        var root=delete?parse(body,Set.of("base_revision")):parseIconBody(body,Set.of("base_revision","name"));long revision=revision(root.get("base_revision"));String name=delete?null:name(root.get("name"));
         return mutations.execute(account,op,delete?"DELETE":"PATCH","/v1/playlists/"+id,body,()->{
             var locked=revisionsReadDeleted(account,id);
             if(locked!=null){
@@ -267,6 +301,8 @@ public final class PlaylistService {
                 }
                 else{
                     jdbc.update("UPDATE playlist SET name=? WHERE user_id=? AND id=?",name,bytes(owner),bytes(id));
+                    if(root.has("display_order"))jdbc.update("UPDATE playlist SET display_order=? WHERE user_id=? AND id=?",root.get("display_order").asLong(),bytes(owner),bytes(id));
+                    if(root.has("icon"))jdbc.update("UPDATE playlist SET icon=? WHERE user_id=? AND id=?",text(root.get("icon")),bytes(owner),bytes(id));
                 }
             });
             if(delete) jobs.enqueue(account,com.ksh321.songrecord.api.jobs.JobQueue.Type.PLAYLIST_CLEANUP,id,UUID.fromString(op),"{}");
@@ -277,7 +313,7 @@ public final class PlaylistService {
         // Lock order: account sync precedes aggregate. This also serializes concurrent deletes.
         com.ksh321.songrecord.api.locking.LockOrder.before(com.ksh321.songrecord.api.locking.LockOrder.Rank.USER_SYNC,account.principal().userId().toString());
         jdbc.queryForList("SELECT last_change_seq FROM user_sync_state WHERE user_id=? FOR UPDATE",bytes(account.principal().userId()));
-        var rows=jdbc.query("SELECT id,name,revision,deleted_at,updated_at FROM playlist WHERE user_id=? AND id=? AND deleted_at IS NOT NULL",(rs,n)->wire(rs),bytes(account.principal().userId()),bytes(id));
+        var rows=jdbc.query("SELECT id,name,icon,display_order,revision,deleted_at,updated_at FROM playlist WHERE user_id=? AND id=? AND deleted_at IS NOT NULL",(rs,n)->wire(rs),bytes(account.principal().userId()),bytes(id));
         if(!rows.isEmpty())return rows.getFirst();
         var proofs=jdbc.query("SELECT revision,purged_at FROM deletion_ledger WHERE user_id=? AND entity_type='PLAYLIST' AND entity_id=? AND object_generation IS NULL",(rs,n)->Map.<String,Object>of("id",id.toString(),"revision",rs.getLong(1),"deleted_at",rs.getObject(2, java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC).toString()),bytes(account.principal().userId()),bytes(id));
         return proofs.isEmpty()?null:proofs.getFirst();
@@ -334,7 +370,7 @@ public final class PlaylistService {
         return new AccountChanges.Batch<>(new IdempotentMutations.Reply(status,payload),List.of(new AccountChanges.Change(AccountChanges.Entity.PLAYLIST,id,((Number)snapshot.get("revision")).longValue(),snapshot.get("deleted_at")==null?AccountChanges.Operation.UPSERT:AccountChanges.Operation.DELETE,payload)));
     }
     private static Map<String,Object> deletion(Map<String,Object> value){return Map.of("id",value.get("id"),"status","DELETED","revision",value.get("revision"),"deleted_at",value.get("deleted_at"));}
-    private Map<String,Object> snapshot(UUID owner,UUID id){return jdbc.queryForObject("SELECT id,name,revision,deleted_at,updated_at FROM playlist WHERE user_id=? AND id=?",(rs,n)->wire(rs),bytes(owner),bytes(id));}
+    private Map<String,Object> snapshot(UUID owner,UUID id){return jdbc.queryForObject("SELECT id,name,icon,display_order,revision,deleted_at,updated_at FROM playlist WHERE user_id=? AND id=?",(rs,n)->wire(rs),bytes(owner),bytes(id));}
     public KeysetPages.Page<Map<String,Object>> list(String auth,String device,MultiValueMap<String,String> params){
         var account=access.authenticate(auth,device);
         for(var e:params.entrySet())if(!Set.of("state","limit","cursor").contains(e.getKey()) || e.getValue().size()!=1)throw invalid();
@@ -350,15 +386,21 @@ public final class PlaylistService {
             String predicate=where();var args=new ArrayList<Object>();args.add(bytes(owner));
             if(after!=null){predicate+=" AND id>?";args.add(bytes(after.id()));}
             args.add(maximum);
-            return db.query("SELECT id,name,revision,deleted_at,updated_at FROM playlist WHERE "+predicate+" ORDER BY id LIMIT ?",(rs,n)->{
+            return db.query("SELECT id,name,icon,display_order,revision,deleted_at,updated_at FROM playlist WHERE "+predicate+" ORDER BY id LIMIT ?",(rs,n)->{
                 var item=wire(rs);return new KeysetPages.Entry<>(item,new PageCursor.Tuple(List.of(),UUID.fromString((String)item.get("id"))));
             },args.toArray());
         }
         public Comparator<PageCursor.Tuple> order(){return Comparator.comparing(p->p.id().toString());}
     }
     private static Map<String,Object> wire(ResultSet rs)throws SQLException{
-        var result=new LinkedHashMap<String,Object>();var b=java.nio.ByteBuffer.wrap(rs.getBytes("id"));result.put("id",new UUID(b.getLong(),b.getLong()).toString());result.put("name",rs.getString("name"));result.put("revision",rs.getLong("revision"));
+        var result=new LinkedHashMap<String,Object>();var b=java.nio.ByteBuffer.wrap(rs.getBytes("id"));result.put("id",new UUID(b.getLong(),b.getLong()).toString());result.put("name",rs.getString("name"));result.put("icon",rs.getString("icon"));result.put("display_order",rs.getLong("display_order"));result.put("revision",rs.getLong("revision"));
         for(String key:List.of("deleted_at","updated_at")){var t=rs.getObject(key, java.time.LocalDateTime.class);result.put(key,t==null?null:t.toInstant(ZoneOffset.UTC).toString());}return result;
+    }
+    private static JsonNode parseIconBody(String body,Set<String> required){
+        CanonicalRequest.canonical(body);var root=JSON.readTree(body);var fields=new HashSet<>(required);
+        if(root.has("icon")){fields.add("icon");if(!Set.of("music","mic","heart","star","headphones","sun").contains(text(root.get("icon"))))throw invalid();}
+        if(root.has("display_order")){fields.add("display_order");var order=root.get("display_order");if(!order.isIntegralNumber() || !order.canConvertToLong() || order.asLong()<0)throw invalid();}
+        return parse(body,fields);
     }
     private static JsonNode parse(String body,Set<String> fields){CanonicalRequest.canonical(body);var root=JSON.readTree(body);if(!root.isObject() || root.size()!=fields.size())throw invalid();for(var e:root.properties())if(!fields.contains(e.getKey()))throw invalid();return root;}
     private static String text(JsonNode node){if(node==null || !node.isTextual())throw invalid();return node.asText();}

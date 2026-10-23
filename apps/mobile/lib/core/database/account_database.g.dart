@@ -11878,6 +11878,377 @@ class LocalUploadQueueCompanion extends UpdateCompanion<LocalUploadQueueData> {
   }
 }
 
+class PlaylistOrderDismissals extends Table
+    with TableInfo<PlaylistOrderDismissals, PlaylistOrderDismissal> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  PlaylistOrderDismissals(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _opIdMeta = const VerificationMeta('opId');
+  late final GeneratedColumn<String> opId = GeneratedColumn<String>(
+    'op_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    $customConstraints: 'PRIMARY KEY REFERENCES local_mutations(op_id)',
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL REFERENCES local_account(user_id)',
+  );
+  static const VerificationMeta _requestHashMeta = const VerificationMeta(
+    'requestHash',
+  );
+  late final GeneratedColumn<String> requestHash = GeneratedColumn<String>(
+    'request_hash',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  static const VerificationMeta _responseJsonMeta = const VerificationMeta(
+    'responseJson',
+  );
+  late final GeneratedColumn<String> responseJson = GeneratedColumn<String>(
+    'response_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL CHECK (json_valid(response_json))',
+  );
+  static const VerificationMeta _decidedAtMeta = const VerificationMeta(
+    'decidedAt',
+  );
+  late final GeneratedColumn<int> decidedAt = GeneratedColumn<int>(
+    'decided_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    $customConstraints: 'NOT NULL',
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    opId,
+    userId,
+    requestHash,
+    responseJson,
+    decidedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'playlist_order_dismissals';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PlaylistOrderDismissal> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('op_id')) {
+      context.handle(
+        _opIdMeta,
+        opId.isAcceptableOrUnknown(data['op_id']!, _opIdMeta),
+      );
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('request_hash')) {
+      context.handle(
+        _requestHashMeta,
+        requestHash.isAcceptableOrUnknown(
+          data['request_hash']!,
+          _requestHashMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_requestHashMeta);
+    }
+    if (data.containsKey('response_json')) {
+      context.handle(
+        _responseJsonMeta,
+        responseJson.isAcceptableOrUnknown(
+          data['response_json']!,
+          _responseJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_responseJsonMeta);
+    }
+    if (data.containsKey('decided_at')) {
+      context.handle(
+        _decidedAtMeta,
+        decidedAt.isAcceptableOrUnknown(data['decided_at']!, _decidedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_decidedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {opId};
+  @override
+  PlaylistOrderDismissal map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PlaylistOrderDismissal(
+      opId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}op_id'],
+      ),
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      requestHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}request_hash'],
+      )!,
+      responseJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}response_json'],
+      )!,
+      decidedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}decided_at'],
+      )!,
+    );
+  }
+
+  @override
+  PlaylistOrderDismissals createAlias(String alias) {
+    return PlaylistOrderDismissals(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+  @override
+  bool get dontWriteConstraints => true;
+}
+
+class PlaylistOrderDismissal extends DataClass
+    implements Insertable<PlaylistOrderDismissal> {
+  final String? opId;
+  final String userId;
+  final String requestHash;
+  final String responseJson;
+  final int decidedAt;
+  const PlaylistOrderDismissal({
+    this.opId,
+    required this.userId,
+    required this.requestHash,
+    required this.responseJson,
+    required this.decidedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (!nullToAbsent || opId != null) {
+      map['op_id'] = Variable<String>(opId);
+    }
+    map['user_id'] = Variable<String>(userId);
+    map['request_hash'] = Variable<String>(requestHash);
+    map['response_json'] = Variable<String>(responseJson);
+    map['decided_at'] = Variable<int>(decidedAt);
+    return map;
+  }
+
+  PlaylistOrderDismissalsCompanion toCompanion(bool nullToAbsent) {
+    return PlaylistOrderDismissalsCompanion(
+      opId: opId == null && nullToAbsent ? const Value.absent() : Value(opId),
+      userId: Value(userId),
+      requestHash: Value(requestHash),
+      responseJson: Value(responseJson),
+      decidedAt: Value(decidedAt),
+    );
+  }
+
+  factory PlaylistOrderDismissal.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PlaylistOrderDismissal(
+      opId: serializer.fromJson<String?>(json['op_id']),
+      userId: serializer.fromJson<String>(json['user_id']),
+      requestHash: serializer.fromJson<String>(json['request_hash']),
+      responseJson: serializer.fromJson<String>(json['response_json']),
+      decidedAt: serializer.fromJson<int>(json['decided_at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'op_id': serializer.toJson<String?>(opId),
+      'user_id': serializer.toJson<String>(userId),
+      'request_hash': serializer.toJson<String>(requestHash),
+      'response_json': serializer.toJson<String>(responseJson),
+      'decided_at': serializer.toJson<int>(decidedAt),
+    };
+  }
+
+  PlaylistOrderDismissal copyWith({
+    Value<String?> opId = const Value.absent(),
+    String? userId,
+    String? requestHash,
+    String? responseJson,
+    int? decidedAt,
+  }) => PlaylistOrderDismissal(
+    opId: opId.present ? opId.value : this.opId,
+    userId: userId ?? this.userId,
+    requestHash: requestHash ?? this.requestHash,
+    responseJson: responseJson ?? this.responseJson,
+    decidedAt: decidedAt ?? this.decidedAt,
+  );
+  PlaylistOrderDismissal copyWithCompanion(
+    PlaylistOrderDismissalsCompanion data,
+  ) {
+    return PlaylistOrderDismissal(
+      opId: data.opId.present ? data.opId.value : this.opId,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      requestHash: data.requestHash.present
+          ? data.requestHash.value
+          : this.requestHash,
+      responseJson: data.responseJson.present
+          ? data.responseJson.value
+          : this.responseJson,
+      decidedAt: data.decidedAt.present ? data.decidedAt.value : this.decidedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlaylistOrderDismissal(')
+          ..write('opId: $opId, ')
+          ..write('userId: $userId, ')
+          ..write('requestHash: $requestHash, ')
+          ..write('responseJson: $responseJson, ')
+          ..write('decidedAt: $decidedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(opId, userId, requestHash, responseJson, decidedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PlaylistOrderDismissal &&
+          other.opId == this.opId &&
+          other.userId == this.userId &&
+          other.requestHash == this.requestHash &&
+          other.responseJson == this.responseJson &&
+          other.decidedAt == this.decidedAt);
+}
+
+class PlaylistOrderDismissalsCompanion
+    extends UpdateCompanion<PlaylistOrderDismissal> {
+  final Value<String?> opId;
+  final Value<String> userId;
+  final Value<String> requestHash;
+  final Value<String> responseJson;
+  final Value<int> decidedAt;
+  const PlaylistOrderDismissalsCompanion({
+    this.opId = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.requestHash = const Value.absent(),
+    this.responseJson = const Value.absent(),
+    this.decidedAt = const Value.absent(),
+  });
+  PlaylistOrderDismissalsCompanion.insert({
+    this.opId = const Value.absent(),
+    required String userId,
+    required String requestHash,
+    required String responseJson,
+    required int decidedAt,
+  }) : userId = Value(userId),
+       requestHash = Value(requestHash),
+       responseJson = Value(responseJson),
+       decidedAt = Value(decidedAt);
+  static Insertable<PlaylistOrderDismissal> custom({
+    Expression<String>? opId,
+    Expression<String>? userId,
+    Expression<String>? requestHash,
+    Expression<String>? responseJson,
+    Expression<int>? decidedAt,
+  }) {
+    return RawValuesInsertable({
+      if (opId != null) 'op_id': opId,
+      if (userId != null) 'user_id': userId,
+      if (requestHash != null) 'request_hash': requestHash,
+      if (responseJson != null) 'response_json': responseJson,
+      if (decidedAt != null) 'decided_at': decidedAt,
+    });
+  }
+
+  PlaylistOrderDismissalsCompanion copyWith({
+    Value<String?>? opId,
+    Value<String>? userId,
+    Value<String>? requestHash,
+    Value<String>? responseJson,
+    Value<int>? decidedAt,
+  }) {
+    return PlaylistOrderDismissalsCompanion(
+      opId: opId ?? this.opId,
+      userId: userId ?? this.userId,
+      requestHash: requestHash ?? this.requestHash,
+      responseJson: responseJson ?? this.responseJson,
+      decidedAt: decidedAt ?? this.decidedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (opId.present) {
+      map['op_id'] = Variable<String>(opId.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (requestHash.present) {
+      map['request_hash'] = Variable<String>(requestHash.value);
+    }
+    if (responseJson.present) {
+      map['response_json'] = Variable<String>(responseJson.value);
+    }
+    if (decidedAt.present) {
+      map['decided_at'] = Variable<int>(decidedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlaylistOrderDismissalsCompanion(')
+          ..write('opId: $opId, ')
+          ..write('userId: $userId, ')
+          ..write('requestHash: $requestHash, ')
+          ..write('responseJson: $responseJson, ')
+          ..write('decidedAt: $decidedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class LocalCleanupConfirmations extends Table
     with TableInfo<LocalCleanupConfirmations, LocalCleanupConfirmation> {
   @override
@@ -12773,6 +13144,28 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     'CREATE TRIGGER local_upload_identity BEFORE UPDATE ON local_upload_queue WHEN NEW.recording_id <> OLD.recording_id OR NEW.user_id <> OLD.user_id OR NEW.operation_id <> OLD.operation_id OR NEW.expected_size <> OLD.expected_size OR NEW.sha256 <> OLD.sha256 OR NEW.created_at <> OLD.created_at OR NEW.automatic_retries < OLD.automatic_retries OR NEW.attempt_count < OLD.attempt_count BEGIN SELECT RAISE (ABORT, \'Upload identity and retry budget are immutable\');END',
     'local_upload_identity',
   );
+  late final PlaylistOrderDismissals playlistOrderDismissals =
+      PlaylistOrderDismissals(this);
+  late final Trigger playlistOrderDismissalValid = Trigger(
+    'CREATE TRIGGER playlist_order_dismissal_valid BEFORE INSERT ON playlist_order_dismissals BEGIN SELECT RAISE (ABORT, \'Order rejection evidence mismatch\') WHERE NOT EXISTS (SELECT 1 FROM local_mutations AS m WHERE m.op_id = NEW.op_id AND m.user_id = NEW.user_id AND m.entity_type = \'PLAYLIST\' AND m.operation = \'PATCH\' AND m.queue_state = \'CONFLICT\' AND m.request_hash = NEW.request_hash AND m.server_response = NEW.response_json AND json_type(m.payload, \'\$.ordered_playlists\') = \'array\' AND json_extract(m.server_response, \'\$.status\') = 409 AND json_extract(m.server_response, \'\$.code\') = \'PLAYLIST_ORDER_CHANGED\');END',
+    'playlist_order_dismissal_valid',
+  );
+  late final Trigger playlistOrderDismissalNoReplace = Trigger(
+    'CREATE TRIGGER playlist_order_dismissal_no_replace BEFORE INSERT ON playlist_order_dismissals WHEN EXISTS (SELECT 1 FROM playlist_order_dismissals WHERE op_id = NEW.op_id) BEGIN SELECT RAISE (ABORT, \'Order decision exists\');END',
+    'playlist_order_dismissal_no_replace',
+  );
+  late final Trigger playlistOrderDismissalNoUpdate = Trigger(
+    'CREATE TRIGGER playlist_order_dismissal_no_update BEFORE UPDATE ON playlist_order_dismissals BEGIN SELECT RAISE (ABORT, \'Order decision immutable\');END',
+    'playlist_order_dismissal_no_update',
+  );
+  late final Trigger playlistOrderDismissalNoDelete = Trigger(
+    'CREATE TRIGGER playlist_order_dismissal_no_delete BEFORE DELETE ON playlist_order_dismissals BEGIN SELECT RAISE (ABORT, \'Order decision retained\');END',
+    'playlist_order_dismissal_no_delete',
+  );
+  late final Trigger playlistOrderDismissedRequestImmutable = Trigger(
+    'CREATE TRIGGER playlist_order_dismissed_request_immutable BEFORE UPDATE ON local_mutations WHEN EXISTS (SELECT 1 FROM playlist_order_dismissals WHERE op_id = OLD.op_id) BEGIN SELECT RAISE (ABORT, \'Rejected order retained\');END',
+    'playlist_order_dismissed_request_immutable',
+  );
   late final LocalCleanupConfirmations localCleanupConfirmations =
       LocalCleanupConfirmations(this);
   late final Index localCleanupRecording = Index(
@@ -12862,6 +13255,12 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
     localUploadQueue,
     localUploadReady,
     localUploadIdentity,
+    playlistOrderDismissals,
+    playlistOrderDismissalValid,
+    playlistOrderDismissalNoReplace,
+    playlistOrderDismissalNoUpdate,
+    playlistOrderDismissalNoDelete,
+    playlistOrderDismissedRequestImmutable,
     localCleanupConfirmations,
     localCleanupRecording,
   ];
@@ -13233,6 +13632,41 @@ abstract class _$AccountDatabase extends GeneratedDatabase {
       ),
       result: [],
     ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'playlist_order_dismissals',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'playlist_order_dismissals',
+        limitUpdateKind: UpdateKind.insert,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'playlist_order_dismissals',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'playlist_order_dismissals',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'local_mutations',
+        limitUpdateKind: UpdateKind.update,
+      ),
+      result: [],
+    ),
   ]);
 }
 
@@ -13573,6 +14007,34 @@ final class $LocalAccountReferences
 
     final cache = $_typedResult.readTableOrNull(
       _pendingEditResolutionsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    PlaylistOrderDismissals,
+    List<PlaylistOrderDismissal>
+  >
+  _playlistOrderDismissalsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.playlistOrderDismissals,
+        aliasName: 'local_account__user_id__playlist_order_dismissals__user_id',
+      );
+
+  $PlaylistOrderDismissalsProcessedTableManager
+  get playlistOrderDismissalsRefs {
+    final manager =
+        $PlaylistOrderDismissalsTableManager(
+          $_db,
+          $_db.playlistOrderDismissals,
+        ).filter(
+          (f) => f.userId.userId.sqlEquals($_itemColumn<String>('user_id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _playlistOrderDismissalsRefsTable($_db),
     );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
@@ -13976,6 +14438,31 @@ class $LocalAccountFilterComposer
           }) => $PendingEditResolutionsFilterComposer(
             $db: $db,
             $table: $db.pendingEditResolutions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> playlistOrderDismissalsRefs(
+    Expression<bool> Function($PlaylistOrderDismissalsFilterComposer f) f,
+  ) {
+    final $PlaylistOrderDismissalsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.playlistOrderDismissals,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $PlaylistOrderDismissalsFilterComposer(
+            $db: $db,
+            $table: $db.playlistOrderDismissals,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -14414,6 +14901,32 @@ class $LocalAccountAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> playlistOrderDismissalsRefs<T extends Object>(
+    Expression<T> Function($PlaylistOrderDismissalsAnnotationComposer a) f,
+  ) {
+    final $PlaylistOrderDismissalsAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.userId,
+          referencedTable: $db.playlistOrderDismissals,
+          getReferencedColumn: (t) => t.userId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $PlaylistOrderDismissalsAnnotationComposer(
+                $db: $db,
+                $table: $db.playlistOrderDismissals,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $LocalAccountTableManager
@@ -14445,6 +14958,7 @@ class $LocalAccountTableManager
             bool snapshotBaselineRefs,
             bool mutationConflictResolutionsRefs,
             bool pendingEditResolutionsRefs,
+            bool playlistOrderDismissalsRefs,
           })
         > {
   $LocalAccountTableManager(_$AccountDatabase db, LocalAccount table)
@@ -14507,6 +15021,7 @@ class $LocalAccountTableManager
                 snapshotBaselineRefs = false,
                 mutationConflictResolutionsRefs = false,
                 pendingEditResolutionsRefs = false,
+                playlistOrderDismissalsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -14527,6 +15042,7 @@ class $LocalAccountTableManager
                     if (mutationConflictResolutionsRefs)
                       db.mutationConflictResolutions,
                     if (pendingEditResolutionsRefs) db.pendingEditResolutions,
+                    if (playlistOrderDismissalsRefs) db.playlistOrderDismissals,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -14846,6 +15362,27 @@ class $LocalAccountTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (playlistOrderDismissalsRefs)
+                        await $_getPrefetchedData<
+                          LocalAccountData,
+                          LocalAccount,
+                          PlaylistOrderDismissal
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalAccountReferences
+                              ._playlistOrderDismissalsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalAccountReferences(
+                                db,
+                                table,
+                                p0,
+                              ).playlistOrderDismissalsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.userId == item.userId,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -14882,6 +15419,7 @@ typedef $LocalAccountProcessedTableManager =
         bool snapshotBaselineRefs,
         bool mutationConflictResolutionsRefs,
         bool pendingEditResolutionsRefs,
+        bool playlistOrderDismissalsRefs,
       })
     >;
 typedef $MetadataCopiesCreateCompanionBuilder =
@@ -15404,6 +15942,31 @@ final class $LocalMutationsReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    PlaylistOrderDismissals,
+    List<PlaylistOrderDismissal>
+  >
+  _playlistOrderDismissalsRefsTable(_$AccountDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.playlistOrderDismissals,
+        aliasName: 'local_mutations__op_id__playlist_order_dismissals__op_id',
+      );
+
+  $PlaylistOrderDismissalsProcessedTableManager
+  get playlistOrderDismissalsRefs {
+    final manager = $PlaylistOrderDismissalsTableManager(
+      $_db,
+      $_db.playlistOrderDismissals,
+    ).filter((f) => f.opId.opId.sqlEquals($_itemColumn<String>('op_id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _playlistOrderDismissalsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $LocalMutationsFilterComposer
@@ -15599,6 +16162,31 @@ class $LocalMutationsFilterComposer
           }) => $MutationMappingHoldsFilterComposer(
             $db: $db,
             $table: $db.mutationMappingHolds,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> playlistOrderDismissalsRefs(
+    Expression<bool> Function($PlaylistOrderDismissalsFilterComposer f) f,
+  ) {
+    final $PlaylistOrderDismissalsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.playlistOrderDismissals,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $PlaylistOrderDismissalsFilterComposer(
+            $db: $db,
+            $table: $db.playlistOrderDismissals,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -15901,6 +16489,32 @@ class $LocalMutationsAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> playlistOrderDismissalsRefs<T extends Object>(
+    Expression<T> Function($PlaylistOrderDismissalsAnnotationComposer a) f,
+  ) {
+    final $PlaylistOrderDismissalsAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.opId,
+          referencedTable: $db.playlistOrderDismissals,
+          getReferencedColumn: (t) => t.opId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $PlaylistOrderDismissalsAnnotationComposer(
+                $db: $db,
+                $table: $db.playlistOrderDismissals,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $LocalMutationsTableManager
@@ -15922,6 +16536,7 @@ class $LocalMutationsTableManager
             bool mutationRetryControlsRefs,
             bool songAliasesRefs,
             bool mutationMappingHoldsRefs,
+            bool playlistOrderDismissalsRefs,
           })
         > {
   $LocalMutationsTableManager(_$AccountDatabase db, LocalMutations table)
@@ -16022,6 +16637,7 @@ class $LocalMutationsTableManager
                 mutationRetryControlsRefs = false,
                 songAliasesRefs = false,
                 mutationMappingHoldsRefs = false,
+                playlistOrderDismissalsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -16030,6 +16646,7 @@ class $LocalMutationsTableManager
                     if (mutationRetryControlsRefs) db.mutationRetryControls,
                     if (songAliasesRefs) db.songAliases,
                     if (mutationMappingHoldsRefs) db.mutationMappingHolds,
+                    if (playlistOrderDismissalsRefs) db.playlistOrderDismissals,
                   ],
                   addJoins:
                       <
@@ -16147,6 +16764,27 @@ class $LocalMutationsTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (playlistOrderDismissalsRefs)
+                        await $_getPrefetchedData<
+                          LocalMutation,
+                          LocalMutations,
+                          PlaylistOrderDismissal
+                        >(
+                          currentTable: table,
+                          referencedTable: $LocalMutationsReferences
+                              ._playlistOrderDismissalsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $LocalMutationsReferences(
+                                db,
+                                table,
+                                p0,
+                              ).playlistOrderDismissalsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.opId == item.opId,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -16173,6 +16811,7 @@ typedef $LocalMutationsProcessedTableManager =
         bool mutationRetryControlsRefs,
         bool songAliasesRefs,
         bool mutationMappingHoldsRefs,
+        bool playlistOrderDismissalsRefs,
       })
     >;
 typedef $LocalRecordingFilesCreateCompanionBuilder =
@@ -25555,6 +26194,421 @@ typedef $LocalUploadQueueProcessedTableManager =
       LocalUploadQueueData,
       PrefetchHooks Function()
     >;
+typedef $PlaylistOrderDismissalsCreateCompanionBuilder =
+    PlaylistOrderDismissalsCompanion Function({
+      Value<String?> opId,
+      required String userId,
+      required String requestHash,
+      required String responseJson,
+      required int decidedAt,
+    });
+typedef $PlaylistOrderDismissalsUpdateCompanionBuilder =
+    PlaylistOrderDismissalsCompanion Function({
+      Value<String?> opId,
+      Value<String> userId,
+      Value<String> requestHash,
+      Value<String> responseJson,
+      Value<int> decidedAt,
+    });
+
+final class $PlaylistOrderDismissalsReferences
+    extends
+        BaseReferences<
+          _$AccountDatabase,
+          PlaylistOrderDismissals,
+          PlaylistOrderDismissal
+        > {
+  $PlaylistOrderDismissalsReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static LocalMutations _opIdTable(_$AccountDatabase db) => db.localMutations
+      .createAlias('playlist_order_dismissals__op_id__local_mutations__op_id');
+
+  $LocalMutationsProcessedTableManager? get opId {
+    final $_column = $_itemColumn<String>('op_id');
+    if ($_column == null) return null;
+    final manager = $LocalMutationsTableManager(
+      $_db,
+      $_db.localMutations,
+    ).filter((f) => f.opId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_opIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static LocalAccount _userIdTable(_$AccountDatabase db) =>
+      db.localAccount.createAlias(
+        'playlist_order_dismissals__user_id__local_account__user_id',
+      );
+
+  $LocalAccountProcessedTableManager get userId {
+    final $_column = $_itemColumn<String>('user_id')!;
+
+    final manager = $LocalAccountTableManager(
+      $_db,
+      $_db.localAccount,
+    ).filter((f) => f.userId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_userIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $PlaylistOrderDismissalsFilterComposer
+    extends Composer<_$AccountDatabase, PlaylistOrderDismissals> {
+  $PlaylistOrderDismissalsFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get requestHash => $composableBuilder(
+    column: $table.requestHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get responseJson => $composableBuilder(
+    column: $table.responseJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get decidedAt => $composableBuilder(
+    column: $table.decidedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $LocalMutationsFilterComposer get opId {
+    final $LocalMutationsFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsFilterComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountFilterComposer get userId {
+    final $LocalAccountFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountFilterComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $PlaylistOrderDismissalsOrderingComposer
+    extends Composer<_$AccountDatabase, PlaylistOrderDismissals> {
+  $PlaylistOrderDismissalsOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get requestHash => $composableBuilder(
+    column: $table.requestHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get responseJson => $composableBuilder(
+    column: $table.responseJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get decidedAt => $composableBuilder(
+    column: $table.decidedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $LocalMutationsOrderingComposer get opId {
+    final $LocalMutationsOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsOrderingComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountOrderingComposer get userId {
+    final $LocalAccountOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountOrderingComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $PlaylistOrderDismissalsAnnotationComposer
+    extends Composer<_$AccountDatabase, PlaylistOrderDismissals> {
+  $PlaylistOrderDismissalsAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get requestHash => $composableBuilder(
+    column: $table.requestHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get responseJson => $composableBuilder(
+    column: $table.responseJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get decidedAt =>
+      $composableBuilder(column: $table.decidedAt, builder: (column) => column);
+
+  $LocalMutationsAnnotationComposer get opId {
+    final $LocalMutationsAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.opId,
+      referencedTable: $db.localMutations,
+      getReferencedColumn: (t) => t.opId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalMutationsAnnotationComposer(
+            $db: $db,
+            $table: $db.localMutations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $LocalAccountAnnotationComposer get userId {
+    final $LocalAccountAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.userId,
+      referencedTable: $db.localAccount,
+      getReferencedColumn: (t) => t.userId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $LocalAccountAnnotationComposer(
+            $db: $db,
+            $table: $db.localAccount,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $PlaylistOrderDismissalsTableManager
+    extends
+        RootTableManager<
+          _$AccountDatabase,
+          PlaylistOrderDismissals,
+          PlaylistOrderDismissal,
+          $PlaylistOrderDismissalsFilterComposer,
+          $PlaylistOrderDismissalsOrderingComposer,
+          $PlaylistOrderDismissalsAnnotationComposer,
+          $PlaylistOrderDismissalsCreateCompanionBuilder,
+          $PlaylistOrderDismissalsUpdateCompanionBuilder,
+          (PlaylistOrderDismissal, $PlaylistOrderDismissalsReferences),
+          PlaylistOrderDismissal,
+          PrefetchHooks Function({bool opId, bool userId})
+        > {
+  $PlaylistOrderDismissalsTableManager(
+    _$AccountDatabase db,
+    PlaylistOrderDismissals table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $PlaylistOrderDismissalsFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $PlaylistOrderDismissalsOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $PlaylistOrderDismissalsAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String?> opId = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> requestHash = const Value.absent(),
+                Value<String> responseJson = const Value.absent(),
+                Value<int> decidedAt = const Value.absent(),
+              }) => PlaylistOrderDismissalsCompanion(
+                opId: opId,
+                userId: userId,
+                requestHash: requestHash,
+                responseJson: responseJson,
+                decidedAt: decidedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<String?> opId = const Value.absent(),
+                required String userId,
+                required String requestHash,
+                required String responseJson,
+                required int decidedAt,
+              }) => PlaylistOrderDismissalsCompanion.insert(
+                opId: opId,
+                userId: userId,
+                requestHash: requestHash,
+                responseJson: responseJson,
+                decidedAt: decidedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<PlaylistOrderDismissals, PlaylistOrderDismissal>(
+                    table,
+                  ),
+                  $PlaylistOrderDismissalsReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({opId = false, userId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (opId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.opId,
+                        referencedTable: $PlaylistOrderDismissalsReferences
+                            ._opIdTable(db),
+                        referencedColumn: $PlaylistOrderDismissalsReferences
+                            ._opIdTable(db)
+                            .opId,
+                      ) as T;
+                    }
+                    if (userId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.userId,
+                        referencedTable: $PlaylistOrderDismissalsReferences
+                            ._userIdTable(db),
+                        referencedColumn: $PlaylistOrderDismissalsReferences
+                            ._userIdTable(db)
+                            .userId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $PlaylistOrderDismissalsProcessedTableManager =
+    ProcessedTableManager<
+      _$AccountDatabase,
+      PlaylistOrderDismissals,
+      PlaylistOrderDismissal,
+      $PlaylistOrderDismissalsFilterComposer,
+      $PlaylistOrderDismissalsOrderingComposer,
+      $PlaylistOrderDismissalsAnnotationComposer,
+      $PlaylistOrderDismissalsCreateCompanionBuilder,
+      $PlaylistOrderDismissalsUpdateCompanionBuilder,
+      (PlaylistOrderDismissal, $PlaylistOrderDismissalsReferences),
+      PlaylistOrderDismissal,
+      PrefetchHooks Function({bool opId, bool userId})
+    >;
 typedef $LocalCleanupConfirmationsCreateCompanionBuilder =
     LocalCleanupConfirmationsCompanion Function({
       required String token,
@@ -25935,6 +26989,8 @@ class $AccountDatabaseManager {
       $PendingEditResolutionsTableManager(_db, _db.pendingEditResolutions);
   $LocalUploadQueueTableManager get localUploadQueue =>
       $LocalUploadQueueTableManager(_db, _db.localUploadQueue);
+  $PlaylistOrderDismissalsTableManager get playlistOrderDismissals =>
+      $PlaylistOrderDismissalsTableManager(_db, _db.playlistOrderDismissals);
   $LocalCleanupConfirmationsTableManager get localCleanupConfirmations =>
       $LocalCleanupConfirmationsTableManager(
         _db,

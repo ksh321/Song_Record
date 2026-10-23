@@ -54,6 +54,7 @@ const _operationFields = {
   'pin_release_confirmed',
   'remove_item_id',
   'ordered_item_ids',
+  'ordered_playlists',
   'song_ids',
   'item_id',
   'song_id',
@@ -94,6 +95,7 @@ Map<String, Object?> _project(
       'tag_ids',
       'song_ids',
       'ordered_item_ids',
+      'ordered_playlists',
     }.contains(key);
     if (value == null ||
         !structured && (value is String || value is bool || value is num)) {
@@ -122,6 +124,11 @@ Map<String, Object?> _project(
         owner,
         operation: true,
       );
+    } else if (key == 'ordered_playlists' && value is List) {
+      result[key] = [
+        for (final entry in value)
+          _project(_map(entry), entity, owner, fields: {'id', 'base_revision'}),
+      ];
     } else if (key == 'tags' && value is List) {
       result[key] = [
         for (final tag in value)

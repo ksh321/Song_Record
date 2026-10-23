@@ -242,20 +242,17 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          const Text(
-            '제공자 기준 기간 · 정확 집계 날짜 미제공',
-            style: AppTypography.supporting,
-          ),
           if (chart != null) ...[
-            const SizedBox(height: 8),
-            const Text('출처: MANANA', style: AppTypography.supporting),
-            SelectableText(
-              chart.scope.sourceUrl,
-              style: AppTypography.supporting,
-            ),
-            Text(
-              '서버 수집: ${chart.fetchedAt.toLocal()} · revision ${chart.revision}',
-              style: AppTypography.supporting,
+            ExpansionTile(
+              title: const Text('출처 정보'),
+              children: [
+                const Text('출처: MANANA'),
+                SelectableText(
+                  chart.scope.sourceUrl,
+                  key: PageStorageKey('chart-source-${chart.scope.sourceUrl}'),
+                  style: AppTypography.supporting,
+                ),
+              ],
             ),
             if (chart.stale)
               const Padding(

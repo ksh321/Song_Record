@@ -38,8 +38,8 @@ public final class SongCreation {
                     String title=normalized(InputContracts.Field.TITLE,request.title==null?proof.title():request.title);
                     String artist=normalized(InputContracts.Field.ARTIST,request.artist==null?proof.artist():request.artist);
                     var now=LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
-                    jdbc.update("INSERT INTO song(id,user_id,source_type,tj_number,title,artist,version_code,note,song_tier,lifecycle_state,revision,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'ACTIVE',1,?,?)",
-                            bytes(request.id),bytes(owner),request.type,proof==null?null:proof.number(),title,artist,request.version,request.note,request.tier,now,now);
+                    jdbc.update("INSERT INTO song(id,user_id,source_type,tj_number,title,artist,version_code,note,song_tier,is_suitable,lifecycle_state,revision,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,'ACTIVE',1,?,?)",
+                            bytes(request.id),bytes(owner),request.type,proof==null?null:proof.number(),title,artist,request.version,request.note,request.tier,request.suitable,now,now);
                     SongQueryKeys.insert(jdbc,owner,request.id,title,artist);
                     if(proof!=null){
                         String ref=proof.provider()+":"+proof.number();if(ref.length()>255)throw new IllegalStateException("Invalid candidate source reference");
@@ -65,25 +65,25 @@ public final class SongCreation {
         return reply(200,false,song);
     }
     private Map<String,Object> snapshot(UUID owner,UUID id){
-        var rows=jdbc.query("SELECT id,revision,updated_at,source_type,tj_number,title,artist,version_code,song_tier,note,lifecycle_state,representative_key_mode,representative_key_shift,representative_recording_id FROM song WHERE user_id=? AND id=?",(rs,n)->{
+        var rows=jdbc.query("SELECT id,revision,updated_at,source_type,tj_number,title,artist,version_code,song_tier,is_suitable,note,lifecycle_state,representative_key_mode,representative_key_shift,representative_recording_id FROM song WHERE user_id=? AND id=?",(rs,n)->{
             var m=new LinkedHashMap<String,Object>();m.put("id",uuid(rs.getBytes("id")).toString());m.put("revision",rs.getLong("revision"));
             m.put("updated_at",rs.getObject("updated_at", java.time.LocalDateTime.class).toInstant(ZoneOffset.UTC).toString());
             for(String name:List.of("source_type","tj_number","title","artist","version_code","note","lifecycle_state"))m.put(name,rs.getString(name));
-            m.put("tier",rs.getString("song_tier"));m.put("representative_key_mode",rs.getString("representative_key_mode"));m.put("representative_key_shift",rs.getObject("representative_key_shift"));var representative=rs.getBytes("representative_recording_id");m.put("representative_recording_id",representative==null?null:uuid(representative).toString());return m;
+            m.put("is_suitable",rs.getBoolean("is_suitable"));m.put("tier",rs.getString("song_tier"));m.put("representative_key_mode",rs.getString("representative_key_mode"));m.put("representative_key_shift",rs.getObject("representative_key_shift"));var representative=rs.getBytes("representative_recording_id");m.put("representative_recording_id",representative==null?null:uuid(representative).toString());return m;
         },bytes(owner),bytes(id));
         if(rows.size()!=1)throw new IllegalStateException("Song disappeared inside account transaction");return rows.getFirst();
     }
     private static IdempotentMutations.Reply reply(int status,boolean created,Map<String,Object> song){return new IdempotentMutations.Reply(status,JSON.writeValueAsString(Map.of("created",created,"canonical_song_id",song.get("id"),"song",song)));}
-    private record Request(UUID id,String type,String proof,String title,String artist,String version,String note,String tier){@Override public String toString(){return "SongRequest[REDACTED]";}}
+    private record Request(UUID id,String type,String proof,String title,String artist,String version,String note,String tier,boolean suitable){@Override public String toString(){return "SongRequest[REDACTED]";}}
     private static Request parse(String body){
         var root=JSON.readTree(CanonicalRequest.canonical(body));if(!root.isObject())throw invalid();
-        var allowed=Set.of("id","source_type","source_token","manual_reason","title","artist","version_code","note","tier");
+        var allowed=Set.of("id","source_type","source_token","manual_reason","title","artist","version_code","note","tier","is_suitable");
         for(var entry:root.properties())if(!allowed.contains(entry.getKey()))throw invalid();
         String id=text(root,"id",true),type=text(root,"source_type",true);
         if(!Set.of("TJ","MANUAL").contains(type))throw invalid();
         boolean manual=type.equals("MANUAL");
         if(manual){
-            if(root.has("source_token") || !"TJ_NOT_FOUND".equals(text(root,"manual_reason",true)))throw invalid();
+            if(root.has("source_token") || !Set.of("TJ_NOT_FOUND", "USER_ENTERED").contains(text(root,"manual_reason",true)))throw invalid();
         }else if(root.has("manual_reason"))throw invalid();
         String proof=manual?null:text(root,"source_token",true);
         UUID uuid;try{uuid=UUID.fromString(id);if(!uuid.toString().equals(id))throw invalid();}catch(IllegalArgumentException e){throw invalid();}
@@ -92,7 +92,8 @@ public final class SongCreation {
         if(tier!=null && !Set.of("S","A","B","C","D").contains(tier))throw invalid();
         if(title!=null)title=normalized(InputContracts.Field.TITLE,title);if(artist!=null)artist=normalized(InputContracts.Field.ARTIST,artist);
         note=normalized(InputContracts.Field.NOTE,note==null?"":note);
-        return new Request(uuid,type,proof,title,artist,version,note,tier);
+        if(root.has("is_suitable") && !root.get("is_suitable").isBoolean())throw invalid();
+        return new Request(uuid,type,proof,title,artist,version,note,tier,root.has("is_suitable") && root.get("is_suitable").asBoolean());
     }
     private static String text(JsonNode root,String key,boolean required){var value=root.get(key);if(value==null){if(required)throw invalid();return null;}if(value.isNull() && (key.equals("tier") || key.equals("note")))return null;if(!value.isTextual())throw invalid();return value.asText();}
     private static String normalized(InputContracts.Field field,String value){var result=InputContracts.validate(field,value);if(!result.valid())throw invalid();return result.normalized();}

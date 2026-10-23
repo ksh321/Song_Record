@@ -33,9 +33,9 @@ class RecordingRolesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(
-        side: const BorderSide(color: AppColors.line),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
         borderRadius: BorderRadius.circular(AppDimensions.songSummaryRadius),
       ),
       clipBehavior: Clip.antiAlias,

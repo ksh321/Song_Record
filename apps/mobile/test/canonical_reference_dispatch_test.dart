@@ -436,9 +436,10 @@ void main() {
             },
           ),
         );
-        final originals = _rows(await f.tables(), 'local_mutations')
-            .where((r) => r['op_id'] != _songOp)
-            .toList();
+        final originals = _rows(
+          await f.tables(),
+          'local_mutations',
+        ).where((r) => r['op_id'] != _songOp).toList();
         final remote = {
           ..._recording(selected: _canonical),
           'revision': 2,
@@ -501,25 +502,35 @@ void main() {
         );
         expect(sent, hasLength(3));
         final conflicted = await f.tables();
-        final conflict = _rows(conflicted, 'local_mutations')
-            .singleWhere((r) => r['queue_state'] == 'CONFLICT');
+        final conflict = _rows(
+          conflicted,
+          'local_mutations',
+        ).singleWhere((r) => r['queue_state'] == 'CONFLICT');
         final conflictId = conflict['op_id'] as String;
-        final conflictWire = _rows(conflicted, 'mutation_wire_requests')
-            .singleWhere((r) => r['op_id'] == conflictId);
+        final conflictWire = _rows(
+          conflicted,
+          'mutation_wire_requests',
+        ).singleWhere((r) => r['op_id'] == conflictId);
 
         Future<void> expectSaveHeld() async {
           final tables = await f.tables();
-          final hold = _rows(tables, 'mutation_mapping_holds')
-              .singleWhere((r) => r['op_id'] == _saveOp);
+          final hold = _rows(
+            tables,
+            'mutation_mapping_holds',
+          ).singleWhere((r) => r['op_id'] == _saveOp);
           expect(hold['released_at'], isNull);
           expect(
-            _rows(tables, 'local_mutations')
-                .singleWhere((r) => r['op_id'] == _saveOp),
+            _rows(
+              tables,
+              'local_mutations',
+            ).singleWhere((r) => r['op_id'] == _saveOp),
             originals.singleWhere((r) => r['op_id'] == _saveOp),
           );
           expect(
-            _rows(tables, 'recording_followups')
-                .where((r) => r['original_op_id'] == _saveOp),
+            _rows(
+              tables,
+              'recording_followups',
+            ).where((r) => r['original_op_id'] == _saveOp),
             isEmpty,
           );
           await f.preserved();
@@ -533,10 +544,9 @@ void main() {
         expect(await f.store.claimMutation(), isNull);
         var serial = 950;
         final repo = LocalRepository(f.store, newId: () => uid(serial++));
-        await repo.resolve(
-          await repo.review(conflictId),
-          {'note': ConflictChoice.local},
-        );
+        await repo.resolve(await repo.review(conflictId), {
+          'note': ConflictChoice.local,
+        });
         await expectSaveHeld();
         final resolution = _rows(
           await f.tables(),
@@ -551,11 +561,18 @@ void main() {
         await expectSaveHeld();
         final ready = await f.tables();
         expect(await f.store.nextDispatchAt(), isNotNull);
-        expect(await f.tables(), ready, reason: 'preview must not release save');
+        expect(
+          await f.tables(),
+          ready,
+          reason: 'preview must not release save',
+        );
         if (loseResolution) {
           expect(
-            await MetadataDispatcher(f.store, transport, f.session)
-                .dispatch(limit: 1),
+            await MetadataDispatcher(
+              f.store,
+              transport,
+              f.session,
+            ).dispatch(limit: 1),
             0,
           );
           final frozen = sent.last;
@@ -599,12 +616,18 @@ void main() {
           await expectSaveHeld();
         }
         expect(
-          await MetadataDispatcher(f.store, transport, f.session)
-              .dispatch(limit: 1),
+          await MetadataDispatcher(
+            f.store,
+            transport,
+            f.session,
+          ).dispatch(limit: 1),
           1,
         );
         final resolutionRequest = sent.last;
-        expect(resolutionRequest.mutation.opId, resolution['replacement_op_id']);
+        expect(
+          resolutionRequest.mutation.opId,
+          resolution['replacement_op_id'],
+        );
         if (loseResolution) {
           expect(resolutionRequest.mutation.opId, sent[3].mutation.opId);
           expect(resolutionRequest.body, sent[3].body);
@@ -632,24 +655,32 @@ void main() {
         final after = await f.tables();
         for (final original in originals) {
           expect(
-            _rows(after, 'local_mutations')
-                .singleWhere((r) => r['op_id'] == original['op_id']),
+            _rows(
+              after,
+              'local_mutations',
+            ).singleWhere((r) => r['op_id'] == original['op_id']),
             original,
           );
         }
         expect(
-          _rows(after, 'local_mutations')
-              .singleWhere((r) => r['op_id'] == conflictId),
+          _rows(
+            after,
+            'local_mutations',
+          ).singleWhere((r) => r['op_id'] == conflictId),
           conflict,
         );
         expect(
-          _rows(after, 'mutation_wire_requests')
-              .singleWhere((r) => r['op_id'] == conflictId),
+          _rows(
+            after,
+            'mutation_wire_requests',
+          ).singleWhere((r) => r['op_id'] == conflictId),
           conflictWire,
         );
         expect(_rows(after, 'mutation_conflict_resolutions'), [resolution]);
-        final saveEdge = _rows(after, 'recording_followups')
-            .singleWhere((r) => r['original_op_id'] == _saveOp);
+        final saveEdge = _rows(
+          after,
+          'recording_followups',
+        ).singleWhere((r) => r['original_op_id'] == _saveOp);
         expect(saveEdge['predecessor_op_id'], resolutionRequest.mutation.opId);
         expect(saveEdge['replacement_op_id'], sent.last.mutation.opId);
         final copy = (await f.store.readMetadata(LocalEntity.recording, _rec))!;
@@ -760,106 +791,186 @@ void main() {
   });
 
   for (final baselineState in ['exact', 'newer', 'different-same-revision']) {
-    test('confirmed relink requires the exact baseline: $baselineState', () async {
-      await f.source();
-      final baseline = {
-        ..._recording(),
-        'revision': 4,
-        'tier': null,
-        'tags': <Object>[],
-        'tag_ids': <String>[],
-      };
-      await f.sql(
-        'INSERT INTO metadata_copies(user_id,entity_type,entity_id,server_revision,server_payload,local_payload,updated_at) VALUES(?,?,?,?,?,?,?)',
-        [_owner, 'RECORDING', _rec, 4, canonicalJson(baseline), canonicalJson(baseline), 1],
-      );
-      await f.store.saveEdit(LocalEdit(
-        opId: _linkOp,
-        entity: LocalEntity.recording,
-        entityId: _rec,
-        operation: LocalOperation.patch,
-        baseRevision: 4,
-        draft: baseline,
-        changes: {'base_revision': 4, 'song_id': _source},
-      ));
-      final original = _rows(await f.tables(), 'local_mutations')
-          .singleWhere((row) => row['op_id'] == _linkOp);
-      if (baselineState != 'exact') {
-        final revision = baselineState == 'newer' ? 5 : 4;
-        await f.sql(
-          "UPDATE metadata_copies SET server_revision=?,server_payload=? WHERE entity_type='RECORDING' AND entity_id=?",
-          [revision, canonicalJson({...baseline, 'revision': revision, 'note': 'received change'}), _rec],
-        );
-      }
-      final mapping = (await f.store.claimMutation())!;
-      expect(await f.store.applyCanonicalSongReceipt(mapping, f.receipt()), isTrue);
-      await f.reopen();
-      final mapped = await f.tables();
-      if (baselineState == 'exact') {
-        expect(_rows(mapped, 'mutation_supersessions'), hasLength(1));
-        final confirmed = {
-          ...baseline,
-          'song_id': _canonical,
-          'revision': 5,
-          'link_revision': 2,
+    test(
+      'confirmed relink requires the exact baseline: $baselineState',
+      () async {
+        await f.source();
+        final baseline = {
+          ..._recording(),
+          'revision': 4,
+          'tier': null,
+          'tags': <Object>[],
+          'tag_ids': <String>[],
         };
-        expect(await MetadataDispatcher(f.store, ReceiptTransport((request) async {
-          expect(request.method, 'PATCH');
-          expect(request.path, '/v1/recordings/$_rec/song');
-          expect(request.mutation.opId, isNot(_linkOp));
-          expect(request.mutation.basePayload, original['base_payload']);
-          expect(jsonDecode(request.body), {'base_revision': 4, 'song_id': _canonical});
-          return MutationResponse(200, jsonEncode(confirmed));
-        }), f.session).dispatch(), 1);
-        expect(await f.store.pendingWorkMutations(), isEmpty);
-        final copy = (await f.store.readMetadata(LocalEntity.recording, _rec))!;
-        expect(jsonDecode(copy.serverJson!), confirmed);
-        expect(jsonDecode(copy.localJson!), confirmed);
-      } else {
-        expect(_rows(mapped, 'mutation_supersessions'), isEmpty);
-        expect(await f.store.claimMutation(), isNull);
-        expect(await f.tables(), mapped);
-      }
-      expect(await f.store.nextDispatchAt(), isNull);
-      expect(_rows(await f.tables(), 'local_mutations')
-          .singleWhere((row) => row['op_id'] == _linkOp), original);
-      await f.preserved();
-    });
+        await f.sql(
+          'INSERT INTO metadata_copies(user_id,entity_type,entity_id,server_revision,server_payload,local_payload,updated_at) VALUES(?,?,?,?,?,?,?)',
+          [
+            _owner,
+            'RECORDING',
+            _rec,
+            4,
+            canonicalJson(baseline),
+            canonicalJson(baseline),
+            1,
+          ],
+        );
+        await f.store.saveEdit(
+          LocalEdit(
+            opId: _linkOp,
+            entity: LocalEntity.recording,
+            entityId: _rec,
+            operation: LocalOperation.patch,
+            baseRevision: 4,
+            draft: baseline,
+            changes: {'base_revision': 4, 'song_id': _source},
+          ),
+        );
+        final original = _rows(
+          await f.tables(),
+          'local_mutations',
+        ).singleWhere((row) => row['op_id'] == _linkOp);
+        if (baselineState != 'exact') {
+          final revision = baselineState == 'newer' ? 5 : 4;
+          await f.sql(
+            "UPDATE metadata_copies SET server_revision=?,server_payload=? WHERE entity_type='RECORDING' AND entity_id=?",
+            [
+              revision,
+              canonicalJson({
+                ...baseline,
+                'revision': revision,
+                'note': 'received change',
+              }),
+              _rec,
+            ],
+          );
+        }
+        final mapping = (await f.store.claimMutation())!;
+        expect(
+          await f.store.applyCanonicalSongReceipt(mapping, f.receipt()),
+          isTrue,
+        );
+        await f.reopen();
+        final mapped = await f.tables();
+        if (baselineState == 'exact') {
+          expect(_rows(mapped, 'mutation_supersessions'), hasLength(1));
+          final confirmed = {
+            ...baseline,
+            'song_id': _canonical,
+            'revision': 5,
+            'link_revision': 2,
+          };
+          expect(
+            await MetadataDispatcher(
+              f.store,
+              ReceiptTransport((request) async {
+                expect(request.method, 'PATCH');
+                expect(request.path, '/v1/recordings/$_rec/song');
+                expect(request.mutation.opId, isNot(_linkOp));
+                expect(request.mutation.basePayload, original['base_payload']);
+                expect(jsonDecode(request.body), {
+                  'base_revision': 4,
+                  'song_id': _canonical,
+                });
+                return MutationResponse(200, jsonEncode(confirmed));
+              }),
+              f.session,
+            ).dispatch(),
+            1,
+          );
+          expect(await f.store.pendingWorkMutations(), isEmpty);
+          final copy = (await f.store.readMetadata(
+            LocalEntity.recording,
+            _rec,
+          ))!;
+          expect(jsonDecode(copy.serverJson!), confirmed);
+          expect(jsonDecode(copy.localJson!), confirmed);
+        } else {
+          expect(_rows(mapped, 'mutation_supersessions'), isEmpty);
+          expect(await f.store.claimMutation(), isNull);
+          expect(await f.tables(), mapped);
+        }
+        expect(await f.store.nextDispatchAt(), isNull);
+        expect(
+          _rows(
+            await f.tables(),
+            'local_mutations',
+          ).singleWhere((row) => row['op_id'] == _linkOp),
+          original,
+        );
+        await f.preserved();
+      },
+    );
   }
 
-  test('incomplete reference evidence quarantines the target without scheduling', () async {
-    await f.source();
-    await f.recording();
-    await f.sql("UPDATE mutation_retry_controls SET retry_mode='BLOCKED' WHERE op_id=?", [_createOp]);
-    final request = (await f.store.claimMutation())!;
-    await f.store.applyCanonicalSongReceipt(request, f.receipt());
-    final original = _rows(await f.tables(), 'local_mutations')
-        .singleWhere((row) => row['op_id'] == _createOp);
-    final replacement = uid(555);
-    await f.sql(
-      "INSERT INTO local_mutations(op_id,user_id,entity_type,entity_id,operation,base_revision,payload,request_hash,created_at,updated_at) VALUES(?,?,'RECORDING',?,'CREATE',0,?,?,1,1)",
-      [replacement, _owner, _rec, canonicalJson({...jsonDecode(original['payload'] as String) as Map<String, dynamic>, 'song_id': _canonical}), List.filled(64, 'a').join()],
-    );
-    await f.sql(
-      "INSERT INTO mutation_retry_controls(op_id,automatic_retries_claimed,retry_mode,last_attempt_kind) VALUES(?,0,'INITIAL','INITIAL')",
-      [replacement],
-    );
-    await f.sql(
-      'INSERT INTO mutation_supersessions(original_op_id,replacement_op_id,mapping_source_id,user_id,order_root_op_id,logical_order,created_at) VALUES(?,?,?,?,?,?,1)',
-      [_createOp, replacement, _source, _owner, _createOp, original['local_order']],
-    );
-    await f.sql(
-      'UPDATE mutation_mapping_holds SET released_at=2,release_evidence=? WHERE op_id=?',
-      [canonicalJson({'contract': 'canonical-reference-v1', 'original_op_id': _createOp, 'replacement_op_id': replacement, 'metadata_before': {'server_revision': 'invalid'}}), _createOp],
-    );
-    await f.reopen();
-    final before = await f.tables();
-    expect(await f.store.nextDispatchAt(), isNull);
-    expect(await f.store.claimMutation(), isNull);
-    expect(await f.tables(), before);
-    expect(await f.store.retryMutation(replacement, expectedAttempt: 0), isFalse);
-    await f.preserved();
-  });
+  test(
+    'incomplete reference evidence quarantines the target without scheduling',
+    () async {
+      await f.source();
+      await f.recording();
+      await f.sql(
+        "UPDATE mutation_retry_controls SET retry_mode='BLOCKED' WHERE op_id=?",
+        [_createOp],
+      );
+      final request = (await f.store.claimMutation())!;
+      await f.store.applyCanonicalSongReceipt(request, f.receipt());
+      final original = _rows(
+        await f.tables(),
+        'local_mutations',
+      ).singleWhere((row) => row['op_id'] == _createOp);
+      final replacement = uid(555);
+      await f.sql(
+        "INSERT INTO local_mutations(op_id,user_id,entity_type,entity_id,operation,base_revision,payload,request_hash,created_at,updated_at) VALUES(?,?,'RECORDING',?,'CREATE',0,?,?,1,1)",
+        [
+          replacement,
+          _owner,
+          _rec,
+          canonicalJson({
+            ...jsonDecode(original['payload'] as String)
+                as Map<String, dynamic>,
+            'song_id': _canonical,
+          }),
+          List.filled(64, 'a').join(),
+        ],
+      );
+      await f.sql(
+        "INSERT INTO mutation_retry_controls(op_id,automatic_retries_claimed,retry_mode,last_attempt_kind) VALUES(?,0,'INITIAL','INITIAL')",
+        [replacement],
+      );
+      await f.sql(
+        'INSERT INTO mutation_supersessions(original_op_id,replacement_op_id,mapping_source_id,user_id,order_root_op_id,logical_order,created_at) VALUES(?,?,?,?,?,?,1)',
+        [
+          _createOp,
+          replacement,
+          _source,
+          _owner,
+          _createOp,
+          original['local_order'],
+        ],
+      );
+      await f.sql(
+        'UPDATE mutation_mapping_holds SET released_at=2,release_evidence=? WHERE op_id=?',
+        [
+          canonicalJson({
+            'contract': 'canonical-reference-v1',
+            'original_op_id': _createOp,
+            'replacement_op_id': replacement,
+            'metadata_before': {'server_revision': 'invalid'},
+          }),
+          _createOp,
+        ],
+      );
+      await f.reopen();
+      final before = await f.tables();
+      expect(await f.store.nextDispatchAt(), isNull);
+      expect(await f.store.claimMutation(), isNull);
+      expect(await f.tables(), before);
+      expect(
+        await f.store.retryMutation(replacement, expectedAttempt: 0),
+        isFalse,
+      );
+      await f.preserved();
+    },
+  );
 
   test('account loss rolls back alias references replacements and holds together', () async {
     await f.source();
@@ -874,7 +985,10 @@ void main() {
         f.onClock = null;
         closing = f.manager.logout();
       };
-      await expectLater(f.store.applyCanonicalSongReceipt(request, f.receipt()), throwsStateError);
+      await expectLater(
+        f.store.applyCanonicalSongReceipt(request, f.receipt()),
+        throwsStateError,
+      );
       await closing!;
       final after = <String, Object?>{};
       for (final table in before.keys) {
@@ -887,7 +1001,9 @@ void main() {
             'SELECT * FROM metadata_copies ORDER BY entity_type,entity_id',
           _ => 'SELECT * FROM $table',
         };
-        after[table] = (await db.customSelect(query).get()).map((row) => row.data).toList();
+        after[table] = (await db.customSelect(query).get())
+            .map((row) => row.data)
+            .toList();
       }
       expect(after, before);
     } finally {
@@ -1036,10 +1152,12 @@ void main() {
       if (scenario == 'tombstone') {
         expect(
           _rows(after, 'metadata_copies').singleWhere(
-            (row) => row['entity_type'] == 'RECORDING' && row['entity_id'] == _rec,
+            (row) =>
+                row['entity_type'] == 'RECORDING' && row['entity_id'] == _rec,
           ),
           _rows(before, 'metadata_copies').singleWhere(
-            (row) => row['entity_type'] == 'RECORDING' && row['entity_id'] == _rec,
+            (row) =>
+                row['entity_type'] == 'RECORDING' && row['entity_id'] == _rec,
           ),
           reason: 'deletion snapshot and local input must both survive mapping',
         );

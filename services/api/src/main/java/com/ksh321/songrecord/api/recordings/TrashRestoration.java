@@ -54,12 +54,20 @@ public final class TrashRestoration {
             var records=new TreeMap<UUID,Map<String,Object>>(Comparator.comparing(UUID::toString));
             for(UUID recording:members.stream().filter(i->"RECORDING".equals(i.get("entity_type"))).map(i->uuid((byte[])i.get("entity_id"))).sorted(Comparator.comparing(UUID::toString)).toList())if(!db.queryForList("SELECT id FROM recording WHERE user_id=? AND id=?",bytes(owner),bytes(recording)).isEmpty())records.put(recording,revisions.lock(account,RevisionChanges.Resource.RECORDING,recording.toString()));
             var lists=new TreeMap<UUID,Map<String,Object>>(Comparator.comparing(UUID::toString));
-            for(UUID parent:members.stream().filter(i->"PLAYLIST_ITEM".equals(i.get("entity_type")) && i.get("previous_list_id")!=null).map(i->uuid((byte[])i.get("previous_list_id"))).distinct().sorted(Comparator.comparing(UUID::toString)).toList())if(!db.queryForList("SELECT id FROM playlist WHERE user_id=? AND id=?",bytes(owner),bytes(parent)).isEmpty())lists.put(parent,revisions.lock(account,RevisionChanges.Resource.PLAYLIST,parent.toString()));
+            var parentIds=new TreeSet<UUID>(Comparator.comparing(UUID::toString));
+            for(var item:members)if("PLAYLIST_ITEM".equals(item.get("entity_type")) && item.get("previous_list_id")!=null)parentIds.add(uuid((byte[])item.get("previous_list_id")));
+            // Also lock newly added catalog candidates before recording asset locks.
+            for(UUID song:selectedSongs){var row=songs.get(song);if(row==null || !eligible(row,deleted) || !"TJ".equals(row.get("source_type")))continue;
+                parentIds.addAll(db.query("SELECT DISTINCT p.id FROM playlist p JOIN playlist_item i ON i.user_id=p.user_id AND i.playlist_id=p.id WHERE p.user_id=? AND p.deleted_at IS NULL AND i.song_id IS NULL AND i.candidate_brand='TJ' AND i.candidate_number=? AND i.hidden_by_batch_id IS NULL",(rs,n)->uuid(rs.getBytes(1)),bytes(owner),row.get("tj_number")));
+            }
+            for(UUID parent:parentIds)if(!db.queryForList("SELECT id FROM playlist WHERE user_id=? AND id=?",bytes(owner),bytes(parent)).isEmpty())lists.put(parent,revisions.lock(account,RevisionChanges.Resource.PLAYLIST,parent.toString()));
             var events=new ArrayList<AccountChanges.Change>();var restored=new ArrayList<Map<String,Object>>();var skipped=new ArrayList<Map<String,Object>>();var changedAssets=new ArrayList<UUID>();
+            var restoredTjSongs=new TreeMap<UUID,String>(Comparator.comparing(UUID::toString));
             for(var item:members){if(!"SONG".equals(item.get("entity_type")))continue;UUID song=uuid((byte[])item.get("entity_id"));var current=songs.get(song);
                 if(!eligible(current,deleted)){skipped.add(result("SONG",song,current==null?"PURGED":"STATE_CHANGED"));continue;}
                 var updated=revisions.change(account,RevisionChanges.Resource.SONG,song.toString(),((Number)current.get("revision")).longValue(),old->db.update("UPDATE song SET lifecycle_state='ACTIVE',deleted_at=NULL,representative_recording_id=NULL WHERE user_id=? AND id=?",bytes(owner),bytes(song)));
                 songs.put(song,updated);var wire=new LinkedHashMap<>(SongEditing.wire(updated));wire.put("deleted_at",null);restored.add(Map.of("entity_type","SONG","value",wire));events.add(new AccountChanges.Change(AccountChanges.Entity.SONG,song,((Number)updated.get("revision")).longValue(),AccountChanges.Operation.UPSERT,json.writeValueAsString(wire)));
+                if("TJ".equals(updated.get("source_type")))restoredTjSongs.put(song,(String)updated.get("tj_number"));
             }
             for(var item:members){if(!"RECORDING".equals(item.get("entity_type")))continue;UUID recording=uuid((byte[])item.get("entity_id"));var current=records.get(recording);
                 boolean only="SONG_ONLY".equals(history.get("mode"));
@@ -77,6 +85,7 @@ public final class TrashRestoration {
                 changedAssets.add(recording);var wire=editing.snapshot(owner,recording);wire.put("deleted_at",null);restored.add(Map.of("entity_type","RECORDING","value",wire));events.add(new AccountChanges.Change(AccountChanges.Entity.RECORDING,recording,((Number)wire.get("revision")).longValue(),AccountChanges.Operation.UPSERT,json.writeValueAsString(wire)));
             }
             PlaylistService.restoreTrashedItems(db,revisions,account,batch,members,lists,restored,skipped,events,clock);
+            for(var song:restoredTjSongs.entrySet())events.addAll(PlaylistService.linkNewSong(db,revisions,account,song.getKey(),song.getValue(),clock));
             RetentionAssetVersions.bump(db,owner,changedAssets);
             db.update("UPDATE deletion_batch_work SET revision=revision+1,updated_at=CURRENT_TIMESTAMP WHERE user_id=? AND batch_id=? AND revision=?",bytes(owner),bytes(batch),version);
             return new AccountChanges.Batch<>(new IdempotentMutations.Reply(200,json.writeValueAsString(Map.of("batch_id",batch.toString(),"revision",version+1,"restored",restored,"skipped",skipped,"pin_reselection_required",true))),events);

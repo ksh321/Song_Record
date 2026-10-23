@@ -4,6 +4,8 @@ import 'package:song_record/core/files/recording_file_status.dart';
 import 'package:song_record/features/recorder/recording_filter.dart';
 import 'package:song_record/features/recorder/recording_list.dart';
 
+import 'support/recording_view_fixture.dart';
+
 Map<String, dynamic> record(String id, String time) => {
   'id': id,
   'title_snapshot': '곡',
@@ -168,7 +170,10 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: SingleChildScrollView(
-              child: RecordingList(rows: rows, onOpen: (_) {}),
+              child: RecordingList(
+                rows: rows.map(recordingViewFixture).toList(),
+                onOpen: (_) {},
+              ),
             ),
           ),
         ),
@@ -218,7 +223,10 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: SingleChildScrollView(
-              child: RecordingList(rows: [r], onOpen: (_) {}),
+              child: RecordingList(
+                rows: [recordingViewFixture(r)],
+                onOpen: (_) {},
+              ),
             ),
           ),
         ),

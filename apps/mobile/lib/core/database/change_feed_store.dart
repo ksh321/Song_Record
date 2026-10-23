@@ -107,13 +107,20 @@ final class ChangeFeedStore {
       if (entry.entity == LocalEntity.playlistItem ||
           entry.entity == LocalEntity.playlist &&
               entry.payload.containsKey('items')) {
-        await PlaylistChangeStore(db, requireActive, business.writeCopy).apply(entry);
+        await PlaylistChangeStore(
+          db,
+          requireActive,
+          business.writeCopy,
+        ).apply(entry);
         continue;
       }
       if (entry.entity == LocalEntity.playlist &&
           (entry.deleted || entry.payload['deleted_at'] != null)) {
-        await PlaylistChangeStore(db, requireActive, business.writeCopy)
-            .applyParentDeletion(entry);
+        await PlaylistChangeStore(
+          db,
+          requireActive,
+          business.writeCopy,
+        ).applyParentDeletion(entry);
         continue;
       }
       // Only explicitly supported business adapters can advance the cursor.
@@ -216,7 +223,9 @@ final class ChangeFeedStore {
       final projected = entry.entity == LocalEntity.recording && !entry.deleted
           ? projectRecordingChange(previous, payload)
           : Map<String, dynamic>.of(payload);
-      if (!entry.deleted && currentRevision == entry.revision && previous != null) {
+      if (!entry.deleted &&
+          currentRevision == entry.revision &&
+          previous != null) {
         // These fields are optional in the business wire, even when retained
         // by the initial snapshot. Omission is not an explicit value change.
         final optional = switch (entry.entity) {
@@ -279,5 +288,4 @@ final class ChangeFeedStore {
     // A logout while SQLite awaited must roll back both entities and cursor.
     requireActive();
   });
-
 }

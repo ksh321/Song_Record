@@ -47,10 +47,25 @@ final class ConflictReview {
         ? (jsonDecode(mutation.serverResponse!) as Map)['current'] as Map
         : jsonDecode(serverJson!) as Map,
   );
-  Map<String, dynamic> get local => {
-    ...jsonDecode(mutation.basePayload!) as Map<String, dynamic>,
-    ...jsonDecode(mutation.payload) as Map<String, dynamic>,
-  };
+  Map<String, dynamic> get local {
+    final base = jsonDecode(mutation.basePayload!) as Map<String, dynamic>;
+    final result = {
+      ...base,
+      ...jsonDecode(mutation.payload) as Map<String, dynamic>,
+    };
+    if (result['condition_code'] != base['condition_code']) {
+      final draft = localJson == null
+          ? null
+          : jsonDecode(localJson!) as Map<String, dynamic>;
+      result['condition_name_snapshot'] = null;
+      if (draft != null &&
+          draft['condition_code'] == result['condition_code']) {
+        result['condition_name_snapshot'] = draft['condition_name_snapshot'];
+      }
+    }
+    return result;
+  }
+
   @override
   String toString() => 'ConflictReview[REDACTED]';
 }

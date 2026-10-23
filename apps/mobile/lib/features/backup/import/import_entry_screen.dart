@@ -121,6 +121,7 @@ class _State extends State<ImportEntryScreen> {
       );
       final active = decision;
       activeDecision = active;
+      unawaited(active.check());
       if (!mounted) return;
       await Navigator.push<void>(
         context,
@@ -277,13 +278,13 @@ class _State extends State<ImportEntryScreen> {
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           const Text(
-            '동일 계정으로 로그인하고 온라인에서 최신 삭제 상태부터 확인합니다. 검사 실패 시 기존 정보와 정상 파일을 변경하지 않습니다.',
+            '이 계정에서 만든 백업 파일을 선택해 주세요. 파일과 기존 기록을 자동으로 확인한 뒤 가져올 내용을 보여드려요.',
           ),
           if (busy) const LinearProgressIndicator(),
           if (message != null) Text(message!),
           FilledButton(
             onPressed: busy ? null : () => unawaited(select()),
-            child: const Text('백업 ZIP 선택'),
+            child: const Text('파일 선택'),
           ),
         ],
       ),

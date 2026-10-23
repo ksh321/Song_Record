@@ -65,6 +65,7 @@ public final class SongEditing {
                     if(!result.valid())throw invalid();fields.put(name,result.normalized());
                 }
                 case "version_code" -> fields.put(name,choice(value,false,Set.of("NORMAL","MR","LIVE")));
+                case "is_suitable" -> {if(!value.isBoolean())throw invalid();fields.put(name,value.asBoolean());}
                 case "tier" -> fields.put("song_tier",choice(value,true,Set.of("S","A","B","C","D")));
                 case "representative_key_mode" -> fields.put(name,choice(value,true,Set.of("ORIGINAL","MALE","FEMALE")));
                 case "representative_key_shift" -> {
@@ -82,11 +83,12 @@ public final class SongEditing {
         Object mode=merged.get("representative_key_mode"),shift=merged.get("representative_key_shift");
         if(mode==null && shift==null)return;
         if(mode==null || !(shift instanceof Number number) || number.intValue() < -12 || number.intValue() > 12
-                || !Set.of("ORIGINAL","MALE","FEMALE").contains(mode) || (mode.equals("ORIGINAL") && number.intValue()!=0))throw invalid();
+                || !Set.of("ORIGINAL","MALE","FEMALE").contains(mode))throw invalid();
     }
     public static Map<String,Object> wire(Map<String,Object> snapshot){
         var result=new LinkedHashMap<String,Object>();
         for(String key:List.of("id","revision","updated_at","source_type","tj_number","title","artist","version_code","note","lifecycle_state","representative_key_mode","representative_key_shift","representative_recording_id"))result.put(key,snapshot.get(key));
+        Object suitable=snapshot.get("is_suitable");result.put("is_suitable",Boolean.TRUE.equals(suitable) || suitable instanceof Number n && n.intValue()==1);
         result.put("tier",snapshot.get("song_tier"));return result;
     }
     static UUID parseId(String text){try{var id=UUID.fromString(text);if(!id.toString().equals(text))throw new IllegalArgumentException();return id;}catch(IllegalArgumentException|NullPointerException e){throw new ApiException(HttpStatus.NOT_FOUND,"RESOURCE_NOT_FOUND","요청한 자료를 찾을 수 없습니다.",false,Map.of());}}

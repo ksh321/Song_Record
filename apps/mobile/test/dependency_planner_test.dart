@@ -246,21 +246,37 @@ void main() {
     expect(result.ready.map((m) => m.opId), [id(3), id(4), id(2), id(1)]);
   });
 
-  test('unsupported condition mapping and file work stay visible', () {
-    final result = plan([
-      mutation(1, LocalEntity.recordingCondition, 30),
-      mutation(2, LocalEntity.recording, 20, body: {'condition_code': id(30)}),
-      mutation(3, LocalEntity.recordingAsset, 20),
-    ]);
-    expect(result.ready, isEmpty);
-    expect(result.waiting, hasLength(3));
-    expect(
-      result.waiting.values.every(
-        (w) => w.reason == DispatchWaitReason.unsupported,
-      ),
-      isTrue,
-    );
-  });
+  test(
+    'custom condition must be acknowledged before a recording can refer to it',
+    () {
+      final queue = [
+        mutation(1, LocalEntity.recordingCondition, 30),
+        mutation(
+          2,
+          LocalEntity.recording,
+          20,
+          body: {'condition_code': id(30)},
+        ),
+        mutation(3, LocalEntity.recordingAsset, 20),
+      ];
+      final result = plan(queue);
+      expect(result.ready.map((m) => m.opId), [id(1)]);
+      expect(
+        result.waiting[id(2)]!.reason,
+        DispatchWaitReason.missingDependency,
+      );
+      expect(result.waiting[id(3)]!.reason, DispatchWaitReason.unsupported);
+      expect(
+        plan(
+          [queue[1]],
+          baselines: {
+            LocalTarget(LocalEntity.recordingCondition, id(30)): known,
+          },
+        ).ready.map((m) => m.opId),
+        [id(2)],
+      );
+    },
+  );
 
   for (final relation in [
     (

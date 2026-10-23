@@ -15,6 +15,7 @@ class RegisteredSongViewData {
     this.musicalKey,
     this.tier,
     this.note = '',
+    this.isSuitable = false,
   });
 
   final SongId id;
@@ -25,6 +26,7 @@ class RegisteredSongViewData {
   final MusicalKey? musicalKey;
   final SongTier? tier;
   final String note;
+  final bool isSuitable;
 }
 
 enum CatalogBrand { tj, ky }

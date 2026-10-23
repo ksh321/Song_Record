@@ -23,9 +23,9 @@ class SongSummary extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Text(
                 '${song.artist} · ${song.tjNumber == null ? "TJ 번호 없음" : "TJ ${song.tjNumber!.value}"}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: AppTypography.songDetailSubtitleSize,
-                  color: AppColors.muted,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -33,8 +33,8 @@ class SongSummary extends StatelessWidget {
         ),
         DecoratedBox(
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border.all(color: AppColors.line),
+            color: Theme.of(context).colorScheme.surface,
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
             borderRadius: BorderRadius.circular(
               AppDimensions.songSummaryRadius,
             ),
@@ -72,7 +72,7 @@ class SongSummary extends StatelessWidget {
                 ),
                 _SummaryValue(label: '곡 티어', value: formatSongTier(song.tier)),
                 const SizedBox(height: AppSpacing.md),
-                const Text('아쉬운 점', style: AppTypography.supporting),
+                const Text('메모', style: AppTypography.supporting),
                 const SizedBox(height: AppSpacing.xs),
                 Text(song.note.trim().isEmpty ? '아직 작성하지 않았어요.' : song.note),
               ],

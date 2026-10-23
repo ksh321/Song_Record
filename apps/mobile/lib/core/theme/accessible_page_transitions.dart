@@ -19,7 +19,11 @@ class AccessiblePageTransitions extends PageTransitionsBuilder {
       return child;
     }
     return platformBuilder.buildTransitions(
-      route, context, animation, secondaryAnimation, child,
+      route,
+      context,
+      animation,
+      secondaryAnimation,
+      child,
     );
   }
 }

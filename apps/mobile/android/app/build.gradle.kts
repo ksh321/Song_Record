@@ -70,6 +70,12 @@ android {
             applicationIdSuffix = ".verification"
             resValue("string", "app_name", "노래기록 동기화 검증")
         }
+        // Keep installed historical verification apps and their data intact.
+        create("waveformVerification") {
+            dimension = "environment"
+            applicationIdSuffix = ".waveformverification"
+            resValue("string", "app_name", "노래기록 파형 검증")
+        }
         // Separate identity preserves older verification signatures and data.
         create("preservation") {
             dimension = "environment"

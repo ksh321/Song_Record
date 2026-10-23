@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../database/local_models.dart';
+import '../domain/condition_types.dart';
 
 enum DispatchWaitReason {
   earlierMutation,
@@ -150,12 +151,11 @@ final class DependencyPlanner {
           decoded['base_revision'] != mutation.baseRevision) {
         return const DispatchWait(DispatchWaitReason.invalidPayload);
       }
-      // Legacy local RECORDING_CONDITION has not yet been migrated to the
-      // server CONDITION definition. Do not guess a custom condition mapping.
+      // USER-181: UUID codes identify the same owned CONDITION definition.
       final condition = decoded['condition_code'];
       if (mutation.entity == LocalEntity.recording &&
           condition != null &&
-          !{'VERY_GOOD', 'GOOD', 'NORMAL', 'BAD'}.contains(condition)) {
+          !validConditionCode(condition)) {
         return const DispatchWait(DispatchWaitReason.unsupported);
       }
       for (final dependency in _dependencies(mutation.entity, decoded)) {
@@ -210,6 +210,11 @@ final class DependencyPlanner {
         add('representative_recording_id', LocalEntity.recording);
       case LocalEntity.recording:
         add('song_id', LocalEntity.song);
+        final condition = body['condition_code'];
+        if (condition != null &&
+            !defaultConditionNames.containsKey(condition)) {
+          add('condition_code', LocalEntity.recordingCondition);
+        }
         final tags = body['tag_ids'];
         if (tags != null) {
           if (tags is! List<Object?>) {
@@ -256,7 +261,7 @@ final class DependencyPlanner {
   }
 
   int _phase(LocalEntity entity) => switch (entity) {
-    LocalEntity.song || LocalEntity.tag => 0,
+    LocalEntity.song || LocalEntity.tag || LocalEntity.recordingCondition => 0,
     LocalEntity.recording => 1,
     LocalEntity.playlist ||
     LocalEntity.playlistItem ||

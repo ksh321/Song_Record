@@ -285,7 +285,7 @@
       "key_shift": 1,
       "version_code": "NORMAL"
     },
-    "valid": false
+    "valid": true
   },
   {
     "schema": "SongPatch",
@@ -1132,7 +1132,7 @@
       "base_revision": 1,
       "condition_code": "00000000-0000-4000-8000-000000000001"
     },
-    "valid": false
+    "valid": true
   },
   {
     "schema": "RecordingPatch",
@@ -1157,7 +1157,7 @@
       "base_revision": 1,
       "condition_code": "00000000-0000-4000-8000-000000000001"
     },
-    "valid": false
+    "valid": true
   },
   {
     "schema": "ConditionCatalog",
@@ -1482,5 +1482,146 @@
       "tags": [],
       "deleted_at": "2026-02-30T00:00:00Z"
     }
+  },
+  {
+    "schema": "RecordingCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "SAVED",
+      "recorded_at": "2026-09-26T11:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "file": {
+        "size_bytes": 1234,
+        "duration_ms": 5000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "title_snapshot": "Practice",
+      "artist_snapshot": "Artist",
+      "key_mode": "ORIGINAL",
+      "key_shift": -12,
+      "version_code": "NORMAL"
+    },
+    "valid": true,
+    "name": "UI03 original reference shift -12"
+  },
+  {
+    "schema": "RecordingCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "SAVED",
+      "recorded_at": "2026-09-26T11:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "file": {
+        "size_bytes": 1234,
+        "duration_ms": 5000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "title_snapshot": "Practice",
+      "artist_snapshot": "Artist",
+      "key_mode": "ORIGINAL",
+      "key_shift": -3,
+      "version_code": "NORMAL"
+    },
+    "valid": true,
+    "name": "UI03 original reference shift -3"
+  },
+  {
+    "schema": "RecordingCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "SAVED",
+      "recorded_at": "2026-09-26T11:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "file": {
+        "size_bytes": 1234,
+        "duration_ms": 5000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "title_snapshot": "Practice",
+      "artist_snapshot": "Artist",
+      "key_mode": "ORIGINAL",
+      "key_shift": 12,
+      "version_code": "NORMAL"
+    },
+    "valid": true,
+    "name": "UI03 original reference shift 12"
+  },
+  {
+    "schema": "RecordingCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "SAVED",
+      "recorded_at": "2026-09-26T11:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "file": {
+        "size_bytes": 1234,
+        "duration_ms": 5000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "title_snapshot": "Practice",
+      "artist_snapshot": "Artist",
+      "key_mode": "ORIGINAL",
+      "key_shift": -13,
+      "version_code": "NORMAL"
+    },
+    "valid": false,
+    "name": "UI03 original reference shift -13"
+  },
+  {
+    "schema": "RecordingCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "SAVED",
+      "recorded_at": "2026-09-26T11:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "file": {
+        "size_bytes": 1234,
+        "duration_ms": 5000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "title_snapshot": "Practice",
+      "artist_snapshot": "Artist",
+      "key_mode": "ORIGINAL",
+      "key_shift": 13,
+      "version_code": "NORMAL"
+    },
+    "valid": false,
+    "name": "UI03 original reference shift 13"
+  },
+  {
+    "schema": "RecordingCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "metadata_state": "SAVED",
+      "recorded_at": "2026-09-26T11:00:00Z",
+      "timezone_id": "Asia/Seoul",
+      "timezone_offset_minutes": 540,
+      "file": {
+        "size_bytes": 1234,
+        "duration_ms": 5000,
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "title_snapshot": "Practice",
+      "artist_snapshot": "Artist",
+      "key_mode": "ORIGINAL",
+      "key_shift": 1.5,
+      "version_code": "NORMAL"
+    },
+    "valid": false,
+    "name": "UI03 original reference shift 1.5"
+  },
+  {
+    "name": "UI03 custom condition rejects invalid reference",
+    "schema": "RecordingPatch",
+    "value": {
+      "base_revision": 1,
+      "condition_code": "not-a-condition"
+    },
+    "valid": false
   }
 ]

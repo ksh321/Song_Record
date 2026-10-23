@@ -9,6 +9,8 @@ abstract final class AppColors {
   static const line = Color(0xFF383838);
   static const text = Color(0xFFE7E7E7);
   static const muted = Color(0xFFA8A8A8);
+  // Shared foreground for every selectable accent and both app themes.
+  static const onAccent = Color(0xFFFFFFFF);
   static const danger = Color(0xFFE7A2A2);
 
   // Recording has its own meaning and never follows the selected accent.
@@ -29,14 +31,14 @@ abstract final class AppColors {
 }
 
 enum AppAccent {
-  blue('blue', '블루', Color(0xFF2C67C5), Color(0xFFFFFFFF)),
-  green('green', '그린', Color(0xFF38813B), Color(0xFFFFFFFF)),
-  yellow('yellow', '옐로', Color(0xFF926C20), Color(0xFFFFFFFF)),
-  pink('pink', '핑크', Color(0xFFB44077), Color(0xFFFFFFFF)),
-  orange('orange', '오렌지', Color(0xFFB64E1F), Color(0xFFFFFFFF)),
-  purple('purple', '퍼플', Color(0xFF7849D1), Color(0xFFFFFFFF)),
+  blue('blue', '블루', Color(0xFF2C67C5), AppColors.onAccent),
+  green('green', '그린', Color(0xFF38813B), AppColors.onAccent),
+  yellow('yellow', '옐로', Color(0xFFFFC928), AppColors.onAccent),
+  pink('pink', '핑크', Color(0xFFEC4899), AppColors.onAccent),
+  orange('orange', '오렌지', Color(0xFFFF851B), AppColors.onAccent),
+  purple('purple', '퍼플', Color(0xFF7849D1), AppColors.onAccent),
   white('white', '화이트', Color(0xFFFFFFFF), Color(0xFF000000)),
-  neutral('default', '기본값', Color(0xFF737373), Color(0xFFFFFFFF));
+  neutral('default', '기본값', Color(0xFF737373), AppColors.onAccent);
 
   const AppAccent(this.id, this.label, this.background, this.foreground);
 
@@ -76,29 +78,20 @@ abstract final class AppTypography {
   static const double songTitleLineHeight = 1.5;
 
   static const body = TextStyle(fontSize: baseSize, color: AppColors.text);
-  static const supporting = TextStyle(
-    fontSize: supportingTextSize,
-    color: AppColors.muted,
-  );
+  static const supporting = TextStyle(fontSize: supportingTextSize);
   static const songTitle = TextStyle(
     fontSize: songTitleSize,
     height: songTitleLineHeight,
-    color: AppColors.text,
   );
   static const detailTitle = TextStyle(
     fontSize: songDetailTitleSize,
     fontWeight: FontWeight.w700,
-    color: AppColors.text,
   );
   static const sheetTitle = TextStyle(
     fontSize: sheetTitleSize,
     fontWeight: FontWeight.w700,
-    color: AppColors.text,
   );
-  static const sheetOption = TextStyle(
-    fontSize: sheetOptionSize,
-    color: AppColors.text,
-  );
+  static const sheetOption = TextStyle(fontSize: sheetOptionSize);
   // Button colour belongs to its stateful ButtonStyle, not this TextStyle.
   static const button = TextStyle(fontSize: baseSize, fontWeight: buttonWeight);
 }

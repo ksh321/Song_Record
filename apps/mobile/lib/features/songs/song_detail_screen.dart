@@ -10,6 +10,7 @@ import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/recording_roles_card.dart';
 import '../../core/widgets/recording_row.dart';
 import '../../core/widgets/selection_sheet.dart';
+import '../../core/widgets/song_badges.dart';
 import '../auth/auth_session.dart';
 import '../recorder/recording_audio_panel.dart';
 import '../trash/trash_screens.dart';
@@ -49,7 +50,7 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
   bool changedAccount = false;
   late final String scope = tag();
   int generation = 0;
-  bool choosing = false;
+  bool choosing = false, savingSuitability = false;
   String? representativeError;
   Future<void> Function()? representativeCommand;
   String tag() =>
@@ -191,6 +192,37 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.recordingId == null ? '곡 상세' : '녹음 정보'),
+        actions: [
+          if (widget.recordingId == null &&
+              value?.song != null &&
+              !changedAccount)
+            PopupMenuButton<String>(
+              tooltip: '곡 메뉴',
+              icon: const Icon(Icons.more_vert),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'playlist', child: Text('플레이리스트 추가')),
+                PopupMenuItem(value: 'delete', child: Text('곡 삭제')),
+              ],
+              onSelected: (action) => Navigator.of(context).push<void>(
+                MaterialPageRoute(
+                  builder: (_) => action == 'delete' && widget.trash != null
+                      ? DeleteScreen(
+                          actions: widget.trash!,
+                          id: value!.song!.view.id.value,
+                          title: value.song!.view.title,
+                          auth: widget.auth,
+                        )
+                      : SongActionEntry(
+                          action: action == 'delete'
+                              ? SongAction.delete
+                              : SongAction.playlistAdd,
+                          detail: value!,
+                          auth: widget.auth,
+                        ),
+                ),
+              ),
+            ),
+        ],
       ),
       body: SafeArea(
         child: changedAccount
@@ -252,23 +284,34 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
         ),
         Text('곡 티어: ${formatSongTier(view.tier)}'),
         const SizedBox(height: AppSpacing.md),
-        FilledButton.icon(
-          icon: const Icon(Icons.playlist_add),
-          label: const Text('플레이리스트 추가'),
-          onPressed: () => Navigator.of(context).push<void>(
-            MaterialPageRoute(
-              builder: (_) => SongActionEntry(
-                action: SongAction.playlistAdd,
-                detail: detail,
-                auth: widget.auth,
-              ),
-            ),
-          ),
-        ),
         Text(view.tjNumber == null ? 'TJ 번호 없음' : 'TJ ${view.tjNumber!.value}'),
         const SizedBox(height: AppSpacing.md),
-        const Text('아쉬운 점'),
-        Text(view.note.isEmpty ? '작성한 아쉬운 점이 없어요.' : view.note),
+        SongSuitabilityChoice(
+          value: view.isSuitable,
+          onChanged: savingSuitability || widget.prepareEdit == null
+              ? null
+              : (v) async {
+                  if (changedAccount || tag() != scope) return;
+                  final draft = SongEditDraft(detail)..isSuitable = v;
+                  final command = widget.prepareEdit!(draft);
+                  setState(() => savingSuitability = true);
+                  try {
+                    await command();
+                  } catch (_) {
+                    if (mounted && tag() == scope) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('표시를 저장하지 못했어요. 다시 시도해 주세요.'),
+                        ),
+                      );
+                    }
+                  } finally {
+                    if (mounted) setState(() => savingSuitability = false);
+                  }
+                },
+        ),
+        const Text('메모'),
+        Text(view.note.isEmpty ? '작성한 메모가 없어요.' : view.note),
         const SizedBox(height: AppSpacing.lg),
         RecordingRolesCard(
           songId: view.id,
@@ -308,25 +351,6 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
             ),
           ),
         const SizedBox(height: AppSpacing.lg),
-        TextButton(
-          onPressed: () => Navigator.of(context).push<void>(
-            MaterialPageRoute(
-              builder: (_) => widget.trash == null
-                  ? SongActionEntry(
-                      action: SongAction.delete,
-                      detail: detail,
-                      auth: widget.auth,
-                    )
-                  : DeleteScreen(
-                      actions: widget.trash!,
-                      id: detail.song!.view.id.value,
-                      title: detail.song!.view.title,
-                      auth: widget.auth,
-                    ),
-            ),
-          ),
-          child: const Text('곡 삭제'),
-        ),
       ],
     );
   }

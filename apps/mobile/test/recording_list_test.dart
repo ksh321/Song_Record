@@ -12,6 +12,8 @@ import 'package:song_record/core/files/recording_file_status.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/features/recorder/recording_list.dart';
 
+import 'support/recording_view_fixture.dart';
+
 Map<String, dynamic> row(
   String id,
   String title,
@@ -91,7 +93,7 @@ void main() {
           home: Scaffold(
             body: SingleChildScrollView(
               child: RecordingList(
-                rows: rows,
+                rows: rows.map(recordingViewFixture).toList(),
                 onOpen: (r) => opened = r['id'] as String,
               ),
             ),
@@ -104,10 +106,10 @@ void main() {
       expect(find.byIcon(Icons.check), findsOneWidget);
       await tester.tap(find.text('오래된순'));
       await tester.pumpAndSettle();
-      final tiles = tester.widgetList<ListTile>(find.byType(ListTile)).toList();
-      expect((tiles.first.title as Text).data, '밤 · 가수');
-      await tester.tap(find.text('밤 · 가수'));
-      expect(opened, 'b');
+      expect(tester.getTopLeft(find.text('밤')).dy,
+          lessThan(tester.getTopLeft(find.text('아침')).dy));
+      await tester.tap(find.text('밤'));
+      expect(opened, recordingViewFixture({'id': 'b'})['id']);
     },
   );
   test('received saved metadata without local file remains visible with missing state', () async {

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/sheet_safe_area.dart';
 
-enum SongDiscoveryDestination { charts, search, mySongs }
+import 'feature_icon.dart';
+
+enum SongDiscoveryDestination { charts, search, mySongs, manual }
 
 /// Retains the originating playlist across catalog navigation. Null is cancel.
 class SongDiscoveryResult {
@@ -27,7 +29,7 @@ Future<SongDiscoveryResult?> showSongDiscoverySheet({
     useSafeArea: true,
     isScrollControlled: true,
     showDragHandle: false,
-    backgroundColor: AppColors.sheetBackground,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     barrierColor: AppColors.sheetScrim,
     barrierLabel: '새 곡 찾기 취소',
     shape: const RoundedRectangleBorder(
@@ -92,6 +94,13 @@ Future<SongDiscoveryResult?> showSongDiscoverySheet({
                   ],
                 ),
               ),
+              const SizedBox(height: AppSpacing.md),
+              _DiscoveryCard(
+                title: '직접 등록',
+                description: '곡명과 가수를 직접 입력',
+                icon: Icons.edit_outlined,
+                onTap: () => choose(SongDiscoveryDestination.manual),
+              ),
               if (playlistId != null) ...[
                 const SizedBox(height: AppSpacing.md),
                 TextButton(
@@ -127,10 +136,10 @@ class _DiscoveryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: AppColors.surface,
+    color: Theme.of(context).colorScheme.surface,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppDimensions.choiceCardRadius),
-      side: const BorderSide(color: AppColors.sheetBorder),
+      side: BorderSide(color: Theme.of(context).colorScheme.outline),
     ),
     clipBehavior: Clip.antiAlias,
     child: InkWell(
@@ -145,7 +154,7 @@ class _DiscoveryCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 23, color: AppColors.muted),
+              FeatureIcon(icon),
               const SizedBox(height: AppSpacing.md),
               Text(
                 title,

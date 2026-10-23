@@ -41,7 +41,7 @@ class _PlaylistSongPickerState extends State<PlaylistSongPicker> {
       child: Column(
         children: [
           const Text('내 곡 다중 선택'),
-        const Text('한 번에 100곡까지 선택할 수 있어요.'),
+          const Text('한 번에 100곡까지 선택할 수 있어요.'),
           TextField(
             decoration: const InputDecoration(labelText: '내 곡 검색'),
             onChanged: (value) => setState(() => query = value),

@@ -11,6 +11,7 @@ const exportPersonalFields = <String, Set<String>>{
     'representative_key_mode',
     'representative_key_shift',
     'tier',
+    'is_suitable',
     'representative_recording_id',
     'lifecycle_state',
     'deleted_at',
@@ -86,6 +87,8 @@ const exportPersonalFields = <String, Set<String>>{
     'revision',
   },
   'PLAYLIST': {
+    'display_order',
+    'icon',
     'id',
     'name',
     'revision',

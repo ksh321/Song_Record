@@ -88,16 +88,23 @@ class _State extends State<ImportApplyPreview> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('가져오기 대조 결과')),
+    appBar: AppBar(title: const Text('가져오기 미리보기')),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          const Text('현재 계정의 최신 서버 상태와 선택한 실제 백업을 대조했습니다. 아직 적용하지 않았습니다.'),
-          Text('검증된 정보: ${widget.information}'),
-          Text('검증된 파일: ${widget.files}'),
-          Text('삭제·상태·금영 후보 보류: ${widget.held}'),
-          Text('검토할 충돌: ${widget.conflicts}'),
+          const Text('백업과 현재 기록을 확인했어요. 아래 내용을 확인하고 가져오기를 눌러 주세요.'),
+          Text('가져올 정보 ${widget.information}개'),
+          Text('가져올 녹음 파일 ${widget.files}개'),
+          Text('이번에 가져오지 않는 항목 ${widget.held}개'),
+          if (widget.held > 0)
+            const Text(
+              '이미 삭제한 기록, 현재 상태를 확인할 수 없는 항목, 다시 곡을 선택해야 하는 이전 금영 목록 항목은 가져오지 않아요. 원본 백업은 유지돼요.',
+            ),
+          if (widget.conflicts > 0)
+            Text(
+              '현재 기록과 내용이 다른 항목 ${widget.conflicts}개가 있어요. 기존 내용을 보호하기 위해 가져오기를 멈췄어요.',
+            ),
           if (busy) const LinearProgressIndicator(),
           if (message != null) Text(message!),
           const Text('적용을 시작한 뒤 뒤로 나가면 완료된 항목은 유지하고 남은 작업을 중단합니다.'),
@@ -105,7 +112,7 @@ class _State extends State<ImportApplyPreview> {
             onPressed: busy || widget.conflicts > 0 || widget.apply == null
                 ? null
                 : () => unawaited(start()),
-            child: const Text('대조한 정보와 파일 적용'),
+            child: const Text('가져오기'),
           ),
         ],
       ),

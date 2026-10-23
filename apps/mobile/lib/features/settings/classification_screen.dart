@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/domain/condition_types.dart';
 import '../../core/domain/identifiers.dart';
 import '../../core/domain/input_validation.dart';
 import '../../core/theme/app_tokens.dart';
@@ -111,16 +112,16 @@ class _ClassificationState extends State<ClassificationScreen> {
           throw const FormatException('Invalid tag');
         }
       }
-      if (next.conditions.length != 4 ||
-          next.conditions.any((r) => r['name'] is! String) ||
-          next.conditions.map((r) => r['code']).toSet().length != 4 ||
-          !next.conditions.map((r) => r['code']).toSet().containsAll({
-            'VERY_GOOD',
-            'GOOD',
-            'NORMAL',
-            'BAD',
-          })) {
-        throw const FormatException('Invalid condition catalog');
+      final codes = <String>{};
+      for (final item in next.conditions) {
+        UuidValue(item['id'] as String);
+        if (!codes.add(item['code'] as String) ||
+            !validConditionCode(item['code']) ||
+            item['name'] is! String ||
+            item['revision'] is! int ||
+            (item['revision'] as int) < 1) {
+          throw const FormatException('Invalid owned condition');
+        }
       }
       if (mounted && epoch == generation) {
         setState(() {
@@ -154,7 +155,7 @@ class _ClassificationState extends State<ClassificationScreen> {
       setState(() {
         pending = null;
         busy = false;
-        message = '태그 변경과 기기 반영을 확인했어요. 과거 녹음 이름은 유지됩니다.';
+        message = '분류 변경과 기기 반영을 확인했어요. 과거 녹음 이름은 유지됩니다.';
       });
       await reload();
     } catch (e) {
@@ -169,13 +170,19 @@ class _ClassificationState extends State<ClassificationScreen> {
         data = null;
         if (rejected) pending = null;
         message = rejected
-            ? '최신 태그와 중복 이름·버전을 확인해 주세요.'
+            ? '최신 분류와 중복 이름·버전을 확인해 주세요.'
             : '변경 결과 또는 기기 반영을 확인하지 못했어요. 같은 요청으로 다시 확인하세요.';
       });
     }
   }
 
-  Future<void> edit(Map<String, dynamic>? tag, {bool archive = false}) async {
+  Future<void> edit(
+    Map<String, dynamic>? tag, {
+    bool archive = false,
+    bool condition = false,
+  }) async {
+    final kind = condition ? '컨디션' : '태그';
+    final route = condition ? 'conditions' : 'tags';
     final epoch = generation;
     final input = TextEditingController(
       text: tag?['name'] as String? ?? lastName,
@@ -188,17 +195,17 @@ class _ClassificationState extends State<ClassificationScreen> {
         builder: (c, setDialog) => AlertDialog(
           title: Text(
             archive
-                ? '태그 보관'
+                ? '$kind 삭제'
                 : tag == null
-                ? '태그 만들기'
-                : '태그 이름 변경',
+                ? '$kind 만들기'
+                : '$kind 이름 변경',
           ),
           content: archive
-              ? const Text('신규 선택에서 숨깁니다. 과거 녹음의 관계와 당시 이름은 유지됩니다.')
+              ? Text('선택 목록에서 삭제해요. 기존 녹음에 표시된 $kind 이름은 그대로 남아요.')
               : TextField(
                   controller: input,
                   decoration: InputDecoration(
-                    labelText: '태그 이름 (1~50자)',
+                    labelText: '$kind 이름 (1~50자)',
                     errorText: error,
                   ),
                 ),
@@ -214,7 +221,10 @@ class _ClassificationState extends State<ClassificationScreen> {
                   return;
                 }
                 try {
-                  final validated = validateInput(InputField.tag, input.text);
+                  final validated = validateInput(
+                    condition ? InputField.condition : InputField.tag,
+                    input.text,
+                  );
                   if (!validated.isValid) {
                     setDialog(() => error = '앞뒤 공백을 제외한 1~50자로 입력해 주세요.');
                     return;
@@ -224,7 +234,7 @@ class _ClassificationState extends State<ClassificationScreen> {
                   setDialog(() => error = '올바른 문자를 입력해 주세요.');
                 }
               },
-              child: Text(archive ? '보관' : '저장'),
+              child: Text(archive ? '삭제' : '저장'),
             ),
           ],
         ),
@@ -244,8 +254,8 @@ class _ClassificationState extends State<ClassificationScreen> {
     pending = (
       method: tag == null || archive ? 'POST' : 'PATCH',
       path: tag == null
-          ? '/v1/tags'
-          : '/v1/tags/${tag['id']}${archive ? '/archive' : ''}',
+          ? '/v1/$route'
+          : '/v1/$route/${tag['id']}${archive ? '/archive' : ''}',
       body: {
         if (tag == null)
           'id': UuidValue.random().value
@@ -280,13 +290,15 @@ class _ClassificationState extends State<ClassificationScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           const Text('강조색 · 이 기기에만 저장'),
-          if (!widget.canEdit) const Text('태그 변경은 동기화 연결이 필요해요.'),
+          if (!widget.canEdit) const Text('분류 변경은 동기화 연결이 필요해요.'),
           ValueListenableBuilder<AppAccent>(
             valueListenable: widget.accent,
             builder: (c, value, _) => Wrap(
               spacing: 8,
               children: [
-                for (final a in AppAccent.values)
+                for (final a in AppAccent.values.where(
+                  (a) => a != AppAccent.white,
+                ))
                   ChoiceChip(
                     label: Text(a.label),
                     selected: value == a,
@@ -306,52 +318,73 @@ class _ClassificationState extends State<ClassificationScreen> {
             onPressed: busy || pending != null ? null : reload,
             child: const Text('새로고침'),
           ),
-          const Text(
-            '컨디션은 고정 4단계이며 녹음마다 미선택 또는 하나를 선택합니다. 사용자 편집·보관은 태그에서 합니다.',
-          ),
+          const Text('컨디션은 녹음마다 하나를 선택할 수 있어요.'),
           if (data case final current?) ...[
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final r in current.conditions)
-                  Chip(label: Text(r['name'] as String)),
-              ],
+            FilledButton(
+              onPressed: busy || pending != null || !widget.canEdit
+                  ? null
+                  : () => edit(null, condition: true),
+              child: const Text('컨디션 만들기'),
             ),
+            for (final r in current.conditions)
+              if (r['archived_at'] == null)
+                ListTile(
+                  title: Text(r['name'] as String),
+                  trailing: Wrap(
+                    children: [
+                      IconButton(
+                        tooltip: '컨디션 이름 변경',
+                        icon: const Icon(Icons.edit_outlined),
+                        onPressed: busy || pending != null || !widget.canEdit
+                            ? null
+                            : () => edit(r, condition: true),
+                      ),
+                      IconButton(
+                        tooltip: '컨디션 삭제',
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: busy || pending != null || !widget.canEdit
+                            ? null
+                            : () => edit(r, condition: true, archive: true),
+                      ),
+                    ],
+                  ),
+                ),
             FilledButton(
               onPressed: busy || pending != null || !widget.canEdit
                   ? null
                   : () => edit(null),
               child: const Text('태그 만들기'),
             ),
-            const Text('태그는 녹음에 여러 개 선택할 수 있어요. 이름 변경·보관은 과거 녹음 이름을 바꾸지 않습니다.'),
+            const Text('태그는 여러 개 선택할 수 있어요. 수정·삭제해도 기존 녹음의 표시는 유지돼요.'),
             for (final tag in current.tags)
-              ListTile(
-                title: Text(tag['name'] as String),
-                subtitle: tag['archived_at'] == null
-                    ? null
-                    : const Text('보관됨 · 신규 선택에서 숨김'),
-                trailing: tag['archived_at'] != null
-                    ? null
-                    : Wrap(
-                        children: [
-                          TextButton(
-                            onPressed:
-                                busy || pending != null || !widget.canEdit
-                                ? null
-                                : () => edit(tag),
-                            child: const Text('이름 변경'),
-                          ),
-                          TextButton(
-                            onPressed:
-                                busy || pending != null || !widget.canEdit
-                                ? null
-                                : () => edit(tag, archive: true),
-                            child: const Text('보관'),
-                          ),
-                        ],
-                      ),
-              ),
-            if (current.tags.isEmpty) const Text('등록한 태그가 없어요.'),
+              if (tag['archived_at'] == null)
+                ListTile(
+                  title: Text(tag['name'] as String),
+                  trailing: tag['archived_at'] != null
+                      ? null
+                      : Wrap(
+                          children: [
+                            IconButton(
+                              tooltip: '이름 변경',
+                              onPressed:
+                                  busy || pending != null || !widget.canEdit
+                                  ? null
+                                  : () => edit(tag),
+                              icon: const Icon(Icons.edit_outlined),
+                            ),
+                            IconButton(
+                              tooltip: '태그 삭제',
+                              onPressed:
+                                  busy || pending != null || !widget.canEdit
+                                  ? null
+                                  : () => edit(tag, archive: true),
+                              icon: const Icon(Icons.delete_outline),
+                            ),
+                          ],
+                        ),
+                ),
+            if (!current.tags.any((tag) => tag['archived_at'] == null))
+              const Text('등록한 태그가 없어요.'),
           ],
         ],
       ),

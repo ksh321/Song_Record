@@ -39,6 +39,7 @@ final class HttpSignedAudioDownload implements SignedAudioDownload {
         final buffer = BytesBuilder(copy: false);
         var size = 0;
         await for (final chunk in response) {
+          await guard();
           size += chunk.length;
           if (size > ticket.size) throw StateError('Audio size mismatch');
           buffer.add(chunk);

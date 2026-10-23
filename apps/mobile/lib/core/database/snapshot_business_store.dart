@@ -8,6 +8,7 @@ import '../sync/wire_json.dart';
 import 'account_database.dart';
 import 'asset_deletion_store.dart';
 import 'local_models.dart';
+import 'playlist_order_dismissal.dart';
 import 'snapshot_download_store.dart';
 import 'snapshot_metadata_projection.dart';
 import 'snapshot_playlist_item_projection.dart';
@@ -17,7 +18,11 @@ import 'snapshot_recording_projection.dart';
 /// AccountStore serializes access. Callers retain their outer transaction so
 /// projection, baseline publication and cursor changes commit together.
 final class SnapshotBusinessStore {
-  SnapshotBusinessStore(this.db, {required this.requireActive, required this.clock});
+  SnapshotBusinessStore(
+    this.db, {
+    required this.requireActive,
+    required this.clock,
+  });
   final AccountDatabase db;
   final void Function() requireActive;
   final DateTime Function() clock;
@@ -28,16 +33,24 @@ final class SnapshotBusinessStore {
     AssetDeletionStore assetDeletions,
   ) => db.transaction(() async {
     requireActive();
-    final baseline = await db.customSelect(
-      '''
+    final baseline = await db
+        .customSelect(
+          '''
       SELECT b.snapshot_token FROM snapshot_baseline b
       JOIN snapshot_downloads h ON h.snapshot_token=b.snapshot_token
       WHERE b.singleton=1 AND b.user_id=? AND h.user_id=?
         AND h.state='APPLIED' AND b.snapshot_token=?
       ''',
-      variables: [Variable(db.userId), Variable(db.userId), Variable(token)],
-    ).getSingleOrNull();
-    if (baseline == null) throw StateError('Snapshot business baseline changed');
+          variables: [
+            Variable(db.userId),
+            Variable(db.userId),
+            Variable(token),
+          ],
+        )
+        .getSingleOrNull();
+    if (baseline == null) {
+      throw StateError('Snapshot business baseline changed');
+    }
     await assetDeletions.load();
     final permanent = await _initialDeletions(token, assetDeletions);
     await _initialMetadata(token, permanent, assetDeletions);
@@ -104,9 +117,10 @@ final class SnapshotBusinessStore {
               playlist: parent,
               song: song,
             );
-            if (!entryKeys.add(
-              '${projected['playlist_id']}:${projected['entry_key']}',
-            )) {
+            if (projected['hidden_by_batch_id'] == null &&
+                !entryKeys.add(
+                  '${projected['playlist_id']}:${projected['entry_key']}',
+                )) {
               throw StateError('Duplicate initial playlist entry');
             }
           } else if (entity == LocalEntity.recordingAsset) {
@@ -280,6 +294,20 @@ final class SnapshotBusinessStore {
     String encoded,
     bool deleted,
   ) async {
+    final decisions = await playlistOrderDismissalEligibility(
+      db,
+      const MappingEligibility.empty(),
+    );
+    final rejectedOrders = decisions.superseded.difference(decisions.blocked);
+    final pending = await db
+        .customSelect(
+          "SELECT op_id FROM local_mutations WHERE entity_type=? AND entity_id=? AND queue_state<>'ACKED'",
+          variables: [Variable(code), Variable(id)],
+        )
+        .get();
+    final keepPending = pending.any(
+      (row) => !rejectedOrders.contains(row.read<String>('op_id')),
+    );
     await db.customStatement(
       '''
             INSERT INTO metadata_copies(user_id,entity_type,entity_id,server_revision,
@@ -287,10 +315,7 @@ final class SnapshotBusinessStore {
             VALUES(?,?,?,?,?,?,?,?)
             ON CONFLICT(entity_type,entity_id) DO UPDATE SET
               server_revision=excluded.server_revision,server_payload=excluded.server_payload,
-              local_payload=CASE WHEN EXISTS(
-                SELECT 1 FROM local_mutations m WHERE m.entity_type=excluded.entity_type
-                  AND m.entity_id=excluded.entity_id AND m.queue_state<>'ACKED'
-              ) OR EXISTS(
+              local_payload=CASE WHEN ? OR EXISTS(
                 SELECT 1 FROM mutation_mapping_holds h JOIN local_mutations m ON m.op_id=h.op_id
                 WHERE m.entity_type=excluded.entity_type AND m.entity_id=excluded.entity_id
                   AND h.released_at IS NULL
@@ -308,6 +333,7 @@ final class SnapshotBusinessStore {
         deleted ? null : encoded,
         deleted ? 1 : 0,
         clock().toUtc().millisecondsSinceEpoch,
+        keepPending ? 1 : 0,
       ],
     );
   }

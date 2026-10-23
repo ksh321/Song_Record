@@ -41,7 +41,9 @@ void main() {
       environment: AppEnvironment.dev,
     );
     await db.verifyReady();
-    song = songChange(id(10), 1);
+    song = songChange(id(10), 1)
+      ..['source_type'] = 'TJ'
+      ..['tj_number'] = '12345';
     record = recordingWire('RecordingEdited')
       ..['id'] = id(20)
       ..['song_id'] = id(10)
@@ -76,6 +78,11 @@ void main() {
       command: {'mode': 'SONG_AND_RECORDINGS', 'preview_version': 'a' * 64},
     );
     await save();
+    final offlineReserved = await LocalRepository(store)
+        .reservedTjSong('12345');
+    expect(offlineReserved!['id'], id(10));
+    expect(offlineReserved['pending_changes'], isTrue);
+    expect(offlineReserved['deleted_at'], isNull);
     deviceClock = deviceClock.add(const Duration(days: 40));
     expect(await store.readActiveSongs(), isEmpty);
     expect(await store.savedRecordings(), isEmpty);
@@ -130,6 +137,9 @@ void main() {
       )['deleted_at'],
       date,
     );
+    final reserved = await LocalRepository(store).reservedTjSong('12345');
+    expect(reserved!['deleted_at'], date);
+    expect(reserved['pending_changes'], isFalse);
     expect(
       await (await paths.checkedFile(paths.audioPath(id(20)))).exists(),
       isTrue,

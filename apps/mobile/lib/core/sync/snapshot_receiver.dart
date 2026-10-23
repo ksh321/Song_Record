@@ -134,7 +134,8 @@ final class SnapshotReceiver implements SnapshotStepper {
     }
     if (response.status == 410 && token != null) {
       final error = jsonDecode(response.body);
-      if (error is Map && error['error'] is Map &&
+      if (error is Map &&
+          error['error'] is Map &&
           error['error']['code'] == 'SNAPSHOT_EXPIRED') {
         return restart();
       }

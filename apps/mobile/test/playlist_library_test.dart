@@ -9,6 +9,8 @@ import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/sync/mutation_request.dart';
 import 'package:song_record/features/playlists/playlist_library.dart';
+import 'package:song_record/features/search/search_intent.dart';
+import 'package:song_record/features/search/song_registration.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
 import 'auth_session_test.dart' as fixtures;
@@ -17,6 +19,54 @@ import 'metadata_dispatcher_test.dart' show FakeTransport;
 String id(int n) => '00000000-0000-4000-8000-${n.toString().padLeft(12, '0')}';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('direct song registration in a playlist preserves icon and suitability across reopen', () async {
+    final root = await Directory.systemTemp.createTemp('beta-playlist-direct-');
+    final manager = AccountStoreManager(
+      environment: AppEnvironment.dev,
+      directory: () async => root,
+      temporaryDirectory: () async => root,
+    );
+    try {
+      final repo = LocalRepository(await manager.openAccount(id(1)));
+      final library = PlaylistLibrary(repo);
+      await library.create('직접 등록 목록', icon: 'heart')();
+      final playlistId = (await library.load()).single['id'] as String;
+      final song = SongRegistrationDraft(
+        intent: SearchIntent(
+          purpose: SearchPurpose.playlist,
+          playlistId: playlistId,
+        ),
+        directEntry: true,
+        title: '목록에서 만든 곡',
+        artist: '가수',
+        isSuitable: true,
+      ).prepare(repo);
+      await repo.save(song);
+      await library.addRegisteredMany(playlistId, [song.entityId]);
+      await manager.logout();
+      final reopened = LocalRepository(await manager.openAccount(id(1)));
+      final current = PlaylistLibrary(reopened);
+      expect((await current.load()).single['icon'], 'heart');
+      expect((await current.songs()).single['is_suitable'], isTrue);
+      // Pending list relation is durable before a server receipt materializes it.
+      expect(
+        (await reopened.pending()).any(
+          (m) =>
+              m.entity == LocalEntity.playlist &&
+              m.payload.contains(song.entityId),
+        ),
+        isTrue,
+      );
+      await manager.openAccount(id(2));
+      await expectLater(
+        current.addRegisteredMany(playlistId, [song.entityId]),
+        throwsStateError,
+      );
+    } finally {
+      await manager.logout();
+      await root.delete(recursive: true);
+    }
+  });
   test('duplicate names, offline rename/delete followups, replay and restart preserve durable queue and account scope', () async {
     final root = await Directory.systemTemp.createTemp('p19-library-');
     final manager = AccountStoreManager(
@@ -56,6 +106,7 @@ void main() {
                 : {
                     'id': request.mutation.entityId,
                     'name': body['name'],
+                    'icon': body['icon'] ?? 'music',
                     'revision': revision,
                     'deleted_at': null,
                     'updated_at': '2026-10-11T00:00:00Z',
@@ -132,6 +183,8 @@ void main() {
         for (final t in triggers) {
           db.execute(t['sql'] as String);
         }
+        db.execute('DROP TRIGGER playlist_order_dismissed_request_immutable');
+        db.execute('DROP TABLE playlist_order_dismissals');
         db.execute('PRAGMA user_version=12');
       } finally {
         db.close();
@@ -140,7 +193,7 @@ void main() {
       repo = LocalRepository(store);
       final check = sqlite.sqlite3.open(file.path);
       try {
-        expect(check.select('PRAGMA user_version').single.values.single, 13);
+        expect(check.select('PRAGMA user_version').single.values.single, 14);
         expect(
           check
               .select('SELECT * FROM mutation_wire_requests')

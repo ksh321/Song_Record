@@ -25,6 +25,19 @@ class SongEditingTests {
         for(int i=0;i<params.length;i+=2)request.param(params[i],params[i+1]);return setup.mvc.perform(request).andReturn().getResponse();
     }
     long revision(){return setup.f.jdbc.queryForObject("SELECT revision FROM song WHERE id=?",Long.class,SongQueryKeys.bytes(song));}
+    @Test void suitabilitySurvivesOmissionAndRejectsStaleAndInvalidValues()throws Exception{
+        assertThat(setup.f.jdbc.queryForObject("SELECT is_suitable FROM song WHERE id=?",Boolean.class,SongQueryKeys.bytes(song))).isFalse();
+        var op=UUID.randomUUID().toString();var body="{\"base_revision\":1,\"is_suitable\":true}";
+        var first=edit(op,body);assertThat(first.getStatus()).isEqualTo(200);
+        assertThat(json.readTree(first.getContentAsString()).get("is_suitable").asBoolean()).isTrue();
+        assertThat(edit(op,body).getContentAsString()).isEqualTo(first.getContentAsString());
+        assertThat(revision()).isEqualTo(2);
+        assertThat(edit("{\"base_revision\":1,\"is_suitable\":false}").getStatus()).isEqualTo(409);
+        for(String value:List.of("null","1","\"true\""))assertThat(edit("{\"base_revision\":2,\"is_suitable\":"+value+"}").getStatus()).isEqualTo(400);
+        assertThat(edit("{\"base_revision\":2,\"note\":\"keep heart\"}").getStatus()).isEqualTo(200);
+        assertThat(setup.f.jdbc.queryForObject("SELECT is_suitable FROM song WHERE id=?",Boolean.class,SongQueryKeys.bytes(song))).isTrue();
+        assertThat(edit("{\"base_revision\":3,\"is_suitable\":false}").getStatus()).isEqualTo(200);
+    }
     @Test void editsEveryFieldAnd2000CodePointNoteWithoutChangingSourceOrPastRecording()throws Exception{
         var db=setup.f.jdbc;UUID recording=UUID.randomUUID();
         db.update("INSERT INTO recording(id,user_id,song_id,title_snapshot,artist_snapshot,version_code,key_mode,key_shift,tier,note,metadata_state,lifecycle_state,recorded_at) VALUES(?,?,?,'과거 제목','과거 가수','LIVE','FEMALE',-2,'D','과거 메모','SAVED','ACTIVE',CURRENT_TIMESTAMP)",SongQueryKeys.bytes(recording),SongQueryKeys.bytes(setup.f.registration.userId()),SongQueryKeys.bytes(song));
@@ -40,11 +53,24 @@ class SongEditingTests {
         assertThat(json.readTree(list("q","원본 곡").getContentAsString()).get("count").asInt()).isZero();
         assertThat(db.queryForObject("SELECT payload FROM change_log WHERE change_seq=2",String.class)).contains("새 제목","\"representative_key_mode\":\"MALE\"");
     }
+    @Test void originalReferenceAcceptsOffsetsAndPreservesOmittedKeyOnHeartPatch() throws Exception {
+        int revision=1;
+        for(int shift:List.of(-12,-3,0,1,12)) {
+            var reply=edit(json.writeValueAsString(Map.of("base_revision",revision,"representative_key_mode","ORIGINAL","representative_key_shift",shift)));
+            assertThat(reply.getStatus()).isEqualTo(200);
+            assertThat(json.readTree(reply.getContentAsString()).get("representative_key_shift").asInt()).isEqualTo(shift);
+            revision++;
+        }
+        var heart=edit(json.writeValueAsString(Map.of("base_revision",revision,"is_suitable",true)));
+        assertThat(heart.getStatus()).isEqualTo(200);
+        assertThat(json.readTree(heart.getContentAsString()).get("representative_key_shift").asInt()).isEqualTo(12);
+        assertThat(json.readTree(heart.getContentAsString()).get("is_suitable").asBoolean()).isTrue();
+    }
     @Test void omissionKeepsValuesNullClearsAndKeyValidationUsesMergedState()throws Exception{
         assertThat(edit("{\"base_revision\":1,\"note\":\"a\\r\\nb\",\"tier\":\"S\",\"representative_key_mode\":\"FEMALE\",\"representative_key_shift\":-12}").getStatus()).isEqualTo(200);
         var second=edit("{\"base_revision\":2,\"representative_key_shift\":12}");assertThat(second.getStatus()).isEqualTo(200);
         assertThat(json.readTree(second.getContentAsString()).get("note").asText()).isEqualTo("a\nb");
-        assertThat(edit("{\"base_revision\":3,\"representative_key_mode\":\"ORIGINAL\"}").getStatus()).isEqualTo(400);
+        assertThat(edit("{\"base_revision\":3,\"representative_key_mode\":\"BAD\"}").getStatus()).isEqualTo(400);
         assertThat(edit("{\"base_revision\":3,\"representative_key_mode\":null}").getStatus()).isEqualTo(400);
         var cleared=edit("{\"base_revision\":3,\"note\":null,\"tier\":null,\"representative_key_mode\":null,\"representative_key_shift\":null}");assertThat(cleared.getStatus()).isEqualTo(200);
         var value=json.readTree(cleared.getContentAsString());assertThat(value.get("note").asText()).isEmpty();assertThat(value.get("tier").isNull()).isTrue();assertThat(value.get("representative_key_mode").isNull()).isTrue();assertThat(value.get("representative_key_shift").isNull()).isTrue();
@@ -62,7 +88,7 @@ class SongEditingTests {
         assertThat(error.get("details").get("current").get("tier").isNull()).isTrue();assertThat(revision()).isEqualTo(3);assertThat(setup.count("change_log")).isEqualTo(3);
     }
     @Test void rejectsImmutableFieldsNullsOutOfRangeNumbersAndOversizedText()throws Exception{
-        for(String entry:List.of("\"source_type\":\"MANUAL\"","\"tj_number\":\"123\"","\"language\":\"ko\"","\"user_id\":null","\"id\":null","\"source_token\":\"x\"","\"representative_recording_id\":null","\"title\":null","\"artist\":\"  \"","\"version_code\":null","\"tier\":\"X\"","\"representative_key_shift\":13","\"representative_key_shift\":-13","\"representative_key_shift\":1.5","\"representative_key_mode\":\"BAD\"","\"representative_key_mode\":\"ORIGINAL\",\"representative_key_shift\":1","\"representative_key_shift\":1"))
+        for(String entry:List.of("\"source_type\":\"MANUAL\"","\"tj_number\":\"123\"","\"language\":\"ko\"","\"user_id\":null","\"id\":null","\"source_token\":\"x\"","\"representative_recording_id\":null","\"title\":null","\"artist\":\"  \"","\"version_code\":null","\"tier\":\"X\"","\"representative_key_shift\":13","\"representative_key_shift\":-13","\"representative_key_shift\":1.5","\"representative_key_mode\":\"BAD\"","\"representative_key_mode\":\"ORIGINAL\",\"representative_key_shift\":13","\"representative_key_shift\":1"))
             assertThat(edit("{\"base_revision\":1,"+entry+"}").getStatus()).as(entry).isEqualTo(400);
         for(String body:List.of("{}","{\"base_revision\":0}","{\"base_revision\":9223372036854775808}","{\"base_revision\":1.1}","{\"base_revision\":\"1\"}"))assertThat(edit(body).getStatus()).isEqualTo(400);
         for(String field:List.of("title","artist","note"))assertThat(edit(json.writeValueAsString(Map.of("base_revision",1,field,"😀".repeat(field.equals("note")?2001:201)))).getStatus()).isEqualTo(400);

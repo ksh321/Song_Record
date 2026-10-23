@@ -7,6 +7,7 @@ import 'metadata_response.dart';
 import 'mutation_request.dart';
 import 'mutation_transport.dart';
 import 'playlist_addition_receipt.dart';
+import 'playlist_library_order_receipt.dart';
 import 'wire_json.dart';
 
 /// One bounded pass, including atomic canonical mapping; no automatic rebasing.
@@ -66,7 +67,12 @@ final class MetadataDispatcher {
         }
         store.requireActive();
         if (response.status == 200 || response.status == 201) {
-          if (isPlaylistAddition(request)) {
+          if (isPlaylistLibraryOrder(request)) {
+            if (await store.acknowledgePlaylistLibraryOrder(request, response)) {
+              acknowledged++;
+            }
+            continue;
+          } else if (isPlaylistAddition(request)) {
             if (await store.acknowledgePlaylistAddition(request, response)) {
               acknowledged++;
             }

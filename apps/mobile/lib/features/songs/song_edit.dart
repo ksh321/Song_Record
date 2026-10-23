@@ -17,13 +17,15 @@ final class SongEditDraft {
       note = detail.song!.view.note,
       version = detail.song!.view.version,
       musicalKey = detail.song!.view.musicalKey,
-      tier = detail.song!.view.tier;
+      tier = detail.song!.view.tier,
+      isSuitable = detail.song!.view.isSuitable;
   final Map<String, Object?> original;
   final int revision;
   String title, artist, note;
   VersionCode version;
   MusicalKey? musicalKey;
   SongTier? tier;
+  bool isSuitable;
 
   Map<String, Object?> get changes {
     final t = validateInput(InputField.title, title),
@@ -40,10 +42,15 @@ final class SongEditDraft {
       'representative_key_mode': musicalKey?.mode.name.toUpperCase(),
       'representative_key_shift': musicalKey?.shift,
       'tier': tier?.name.toUpperCase(),
+      'is_suitable': isSuitable,
     };
     return {
       for (final entry in fields.entries)
-        if (original[entry.key] != entry.value) entry.key: entry.value,
+        if ((entry.key == 'is_suitable'
+                ? original[entry.key] ?? false
+                : original[entry.key]) !=
+            entry.value)
+          entry.key: entry.value,
     };
   }
 

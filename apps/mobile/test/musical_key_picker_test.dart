@@ -55,7 +55,7 @@ void main() {
       formatMusicalKey(MusicalKey(mode: KeyMode.original, shift: -12)),
       '원키 -12',
     );
-    expect(formatMusicalKey(MusicalKey(mode: KeyMode.male, shift: 0)), '남 0');
+    expect(formatMusicalKey(MusicalKey(mode: KeyMode.male, shift: 0)), '남');
     expect(
       formatMusicalKey(MusicalKey(mode: KeyMode.female, shift: 12)),
       '여 +12',

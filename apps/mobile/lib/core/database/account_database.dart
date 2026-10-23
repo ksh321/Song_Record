@@ -18,7 +18,7 @@ class AccountDatabase extends _$AccountDatabase {
   final AppEnvironment environment;
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -37,8 +37,16 @@ class AccountDatabase extends _$AccountDatabase {
     // No destructive fallback. Every future version needs an explicit,
     // data-preserving migration and a checked-in schema snapshot.
     onUpgrade: (migrator, from, to) async {
-      if (from < 1 || from > 12 || to != 13) {
+      if (from < 1 || from > 13 || to != 14) {
         throw StateError('Unsupported local schema migration: $from -> $to');
+      }
+      if (from < 14) {
+        await migrator.createTable(playlistOrderDismissals);
+        await migrator.createTrigger(playlistOrderDismissalValid);
+        await migrator.createTrigger(playlistOrderDismissalNoReplace);
+        await migrator.createTrigger(playlistOrderDismissalNoUpdate);
+        await migrator.createTrigger(playlistOrderDismissalNoDelete);
+        await migrator.createTrigger(playlistOrderDismissedRequestImmutable);
       }
       if (from < 2) {
         await migrator.createTable(mutationWireRequests);

@@ -49,7 +49,7 @@ class _MySongsScreenState extends State<MySongsScreen> {
   int? unlinkedCount;
   List<MySong> songs = [];
   String query = '', scope = '';
-  bool grouped = false;
+  bool grouped = false, suitableOnly = false;
   SongSort sort = SongSort.recentlyAdded;
   bool loading = true;
   Object? failure;
@@ -69,6 +69,7 @@ class _MySongsScreenState extends State<MySongsScreen> {
   void authChanged() {
     if (tag() != scope) {
       query = '';
+      suitableOnly = false;
       bind();
     }
   }
@@ -175,7 +176,10 @@ class _MySongsScreenState extends State<MySongsScreen> {
   @override
   Widget build(BuildContext context) {
     pages.select(search: query, selectedSort: sort, tierView: grouped);
-    pages.replace(songs, scope);
+    pages.replace(
+      songs.where((s) => !suitableOnly || s.view.isSuitable).toList(),
+      '$scope:$suitableOnly',
+    );
     final visible = pages.visible;
     final groups = groupMySongs(pages.ordered, sort);
     if (pageGeneration != pages.generation) {
@@ -189,6 +193,15 @@ class _MySongsScreenState extends State<MySongsScreen> {
       primary: false,
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.icon(
+            onPressed: widget.onFindSong,
+            icon: const Icon(Icons.add),
+            label: const Text('내 곡 등록'),
+          ),
+        ),
+        const SizedBox(height: 12),
         TextField(
           key: ValueKey(scope),
           decoration: const InputDecoration(
@@ -208,6 +221,13 @@ class _MySongsScreenState extends State<MySongsScreen> {
           selected: {grouped},
           onSelectionChanged: (selected) =>
               setState(() => grouped = selected.single),
+        ),
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          title: const Text('나에게 어울리는 곡만'),
+          value: suitableOnly,
+          onChanged: (v) => setState(() => suitableOnly = v ?? false),
         ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -286,7 +306,6 @@ class _MySongsScreenState extends State<MySongsScreen> {
                     ),
                   ),
           ),
-        FilledButton(onPressed: widget.onFindSong, child: const Text('새 곡 찾기')),
       ],
     );
   }

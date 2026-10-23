@@ -160,8 +160,8 @@ void main() {
         find.byKey(const ValueKey('song-note')),
         '오프라인 메모',
       );
-      await tester.ensureVisible(find.text('이 기기에 저장'));
-      await tester.tap(find.text('이 기기에 저장'));
+      await tester.ensureVisible(find.text('저장'));
+      await tester.tap(find.text('저장'));
       await tester.pumpAndSettle();
       expect(prepared, 1);
       expect(attempts, 1);
@@ -174,8 +174,8 @@ void main() {
         '오프라인 메모',
       );
       expect(submitted!.manualApproval, same(approval));
-      await tester.ensureVisible(find.text('이 기기에 저장'));
-      await tester.tap(find.text('이 기기에 저장'));
+      await tester.ensureVisible(find.text('저장'));
+      await tester.tap(find.text('저장'));
       await tester.pumpAndSettle();
       expect(prepared, 1);
       expect(attempts, 2);
@@ -201,6 +201,49 @@ void main() {
         ),
         throwsArgumentError,
       );
+    },
+  );
+  test(
+    'explicit direct registration persists suitability without a search',
+    () async {
+      final root = await Directory.systemTemp.createTemp('song-direct-');
+      final manager = AccountStoreManager(
+        environment: AppEnvironment.dev,
+        directory: () async => root,
+        temporaryDirectory: () async => root,
+      );
+      try {
+        var repo = LocalRepository(
+          await manager.openAccount('00000000-0000-4000-8000-000000000001'),
+        );
+        final edit = SongRegistrationDraft(
+          intent: const SearchIntent(),
+          title: '직접 입력',
+          artist: '가수',
+          directEntry: true,
+          isSuitable: true,
+        ).prepare(repo);
+        expect(
+          jsonDecode(edit.changesJson),
+          containsPair('manual_reason', 'USER_ENTERED'),
+        );
+        await repo.save(edit);
+        await manager.logout();
+        repo = LocalRepository(
+          await manager.openAccount('00000000-0000-4000-8000-000000000001'),
+        );
+        expect(
+          (await repo.watchActiveSongs().first).single['is_suitable'],
+          true,
+        );
+        expect(
+          jsonDecode((await repo.pending()).single.payload),
+          containsPair('is_suitable', true),
+        );
+      } finally {
+        await manager.logout();
+        await root.delete(recursive: true);
+      }
     },
   );
   test('manual and TJ input persist offline across reopening, replay keeps one immutable operation', () async {

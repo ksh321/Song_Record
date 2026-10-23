@@ -54,6 +54,19 @@ class SettingsApi {
     );
   }
 
+  Future<dynamic> conditionsPage({String? cursor}) {
+    if (cursor != null && cursor.length > 4096) {
+      throw ArgumentError('Invalid cursor');
+    }
+    return _request(
+      'GET',
+      Uri(
+        path: '/v1/conditions',
+        queryParameters: {'state': 'ALL', 'limit': '100', 'cursor': ?cursor},
+      ).toString(),
+    );
+  }
+
   Future<dynamic> tagCommand(
     String method,
     String path,
@@ -62,10 +75,12 @@ class SettingsApi {
   ) {
     const uuid =
         r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-    if (!(method == 'POST' && path == '/v1/tags' ||
-            method == 'PATCH' && RegExp('^/v1/tags/$uuid\$').hasMatch(path) ||
+    if (!(method == 'POST' && {'/v1/tags', '/v1/conditions'}.contains(path) ||
+            method == 'PATCH' &&
+                RegExp('^/v1/(?:tags|conditions)/$uuid\$').hasMatch(path) ||
             method == 'POST' &&
-                RegExp('^/v1/tags/$uuid/archive\$').hasMatch(path)) ||
+                RegExp('^/v1/(?:tags|conditions)/$uuid/archive\$')
+                    .hasMatch(path)) ||
         !RegExp('^$uuid\$').hasMatch(operationId)) {
       throw ArgumentError('Invalid tag command');
     }

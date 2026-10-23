@@ -114,7 +114,10 @@ void main() {
       await library.addSelection(id, selected);
       final queued = (await repo.pendingWork()).single;
       expect(queued.entityId, id);
-      expect(jsonDecode(queued.payload)['source_token'], 'isolated-tj-candidate');
+      expect(
+        jsonDecode(queued.payload)['source_token'],
+        'isolated-tj-candidate',
+      );
       await fixture.synchronize();
       final items = await library.items(id);
       expect(items.single['candidate_number'], '00555');

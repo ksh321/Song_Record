@@ -212,7 +212,9 @@ final class PlaylistChangeStore {
         song: song,
       );
       require(!projectedItems.containsKey(projected['id']));
-      require(keys.add(projected['entry_key'] as String));
+      if (projected['hidden_by_batch_id'] == null) {
+        require(keys.add(projected['entry_key'] as String));
+      }
       projectedItems[projected['id'] as String] = projected;
       requireActive();
     }

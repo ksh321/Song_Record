@@ -26,6 +26,9 @@ final class LocalRepository
   final AccountStore _store;
   final String Function() _newId;
 
+  Future<Map<String, dynamic>?> reservedTjSong(String number) =>
+      _store.reservedTjSong(number);
+
   Future<void> ensureTjAvailable(String number) async {
     final state = await _store.trashReservation(number);
     if (state != null) {
@@ -108,6 +111,9 @@ final class LocalRepository
 
   Future<void> selectPendingRecordingSong(String recordingId, String songId) =>
       _store.selectPendingRecordingSong(recordingId, songId);
+
+  Future<List<Map<String, dynamic>>> selectableRecordingConditions() =>
+      _store.selectableRecordingConditions();
 
   Future<List<Map<String, dynamic>>> selectableRecordingTags() =>
       _store.selectableRecordingTags();
@@ -265,6 +271,9 @@ final class LocalRepository
   Future<List<QueuedMutation>> pending() => _store.pendingMutations();
 
   Future<List<QueuedMutation>> pendingWork() => _store.pendingWorkMutations();
+
+  Future<void> acceptLatestPlaylistOrder(QueuedMutation expected) =>
+      _store.acceptLatestPlaylistOrder(expected);
 
   @override
   Future<List<CanonicalConflictReview>> canonicalCandidates() =>

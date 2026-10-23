@@ -14,6 +14,7 @@ class DeviceAccentPreferences implements AccentPreferences {
   @override
   Future<AppAccent?> read() async {
     final id = await channel.invokeMethod<String>('readAccent');
+    if (id == 'white') return AppAccent.initial;
     for (final accent in AppAccent.values) {
       if (accent.id == id) return accent;
     }

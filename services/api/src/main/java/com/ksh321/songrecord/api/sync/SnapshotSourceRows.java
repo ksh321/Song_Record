@@ -14,12 +14,12 @@ public final class SnapshotSourceRows {
         return new Source(table,key,order,columns,Set.of(json));
     }
     private static final Map<SnapshotPages.Entity,Source> SOURCES=Map.ofEntries(
-        Map.entry(SnapshotPages.Entity.SONG,source("song","id","id","id,user_id,source_type,tj_number,title,artist,version_code,note,representative_key_mode,representative_key_shift,song_tier AS tier,representative_recording_id,lifecycle_state,deleted_at,revision,created_at,updated_at")),
+        Map.entry(SnapshotPages.Entity.SONG,source("song","id","id","id,user_id,source_type,tj_number,title,artist,version_code,note,representative_key_mode,representative_key_shift,song_tier AS tier,is_suitable,representative_recording_id,lifecycle_state,deleted_at,revision,created_at,updated_at")),
         Map.entry(SnapshotPages.Entity.SONG_SOURCE,source("song_source","song_id","song_id","song_id,user_id,provider,source_title,source_artist,source_ref,verified_at,created_at")),
         Map.entry(SnapshotPages.Entity.RECORDING,source("recording","id","id","id,user_id,origin_device_id,song_id,title_snapshot,artist_snapshot,version_code,key_mode,key_shift,tier,note,recorded_at,timezone_id,timezone_offset_minutes,metadata_state,lifecycle_state,revision,link_revision,deleted_at,delete_batch_id,created_at,updated_at,condition_code,condition_name_snapshot")),
         Map.entry(SnapshotPages.Entity.RECORDING_FILE_SPEC,source("recording_file_spec","recording_id","recording_id","recording_id,user_id,sha256,size_bytes,duration_ms,codec,sample_rate,channels,capture_integrity,created_at")),
         Map.entry(SnapshotPages.Entity.RECORDING_ASSET,source("recording_asset","recording_id","recording_id","recording_id,user_id,cloud_state,blocked_reason,generation,verified_size,sha256,stored_at,cloud_revision,created_at,updated_at")),
-        Map.entry(SnapshotPages.Entity.PLAYLIST,source("playlist","id","id","id,user_id,name,revision,deleted_at,created_at,updated_at")),
+        Map.entry(SnapshotPages.Entity.PLAYLIST,source("playlist","id","id","id,user_id,name,icon,display_order,revision,deleted_at,created_at,updated_at")),
         Map.entry(SnapshotPages.Entity.PLAYLIST_ITEM,source("playlist_item","id","id","id,user_id,playlist_id,song_id,candidate_brand,candidate_number,candidate_snapshot,entry_key,position,hidden_by_batch_id,created_at,updated_at","candidate_snapshot")),
         Map.entry(SnapshotPages.Entity.TAG,source("tag","id","id","id,user_id,name,archived_at,revision,created_at,updated_at")),
         Map.entry(SnapshotPages.Entity.RECORDING_TAG,source("recording_tag","recording_id","recording_id,tag_id","user_id,recording_id,tag_id,name_snapshot,created_at")),
@@ -63,6 +63,7 @@ public final class SnapshotSourceRows {
                             else if(value instanceof Timestamp time)value=time.toLocalDateTime().toInstant(ZoneOffset.UTC).toString();
                             else if(value instanceof LocalDateTime time)value=time.toInstant(ZoneOffset.UTC).toString();
                             if(value!=null&&source.json.contains(column))value=json.readTree(rows.getString(i));
+                            if(column.equals("is_suitable"))value=rows.getBoolean(column);
                             payload.put(column,value);
                         }
                         if(!owner.toString().equals(payload.get("user_id")))throw new IllegalStateException("Snapshot source owner mismatch");

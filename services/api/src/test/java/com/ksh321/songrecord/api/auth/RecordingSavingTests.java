@@ -27,6 +27,12 @@ class RecordingSavingTests {
         var changed=body();changed.put("note","different");assertThat(save(op,changed).getContentAsString()).contains("IDEMPOTENCY_CONFLICT");
         assertThat(save(body()).getContentAsString()).contains("REVISION_CONFLICT");changed.put("base_revision",2);assertThat(save(changed).getContentAsString()).contains("RECORDING_ALREADY_SAVED");assertThat(setup.setup.count("change_log")).isEqualTo(2);
     }
+    @Test void savedOriginalReferenceRetainsOffset() throws Exception {
+        var body=body();body.put("key_shift",-3);
+        var reply=save(body);assertThat(reply.getStatus()).isEqualTo(200);
+        assertThat(json.readTree(reply.getContentAsString()).get("key_shift").asInt()).isEqualTo(-3);
+        assertThat(setup.setup.count("recording_file_spec")).isEqualTo(1);
+    }
     @Test void mergesDraftValuesAndRequiresCompleteValidFields()throws Exception{
         var partial=body();partial.remove("title_snapshot");assertThat(save(partial).getStatus()).isEqualTo(400);
         setup.setup.f.jdbc.update("UPDATE recording SET title_snapshot='retained',artist_snapshot='artist',key_mode='MALE',key_shift=10,version_code='LIVE'");
@@ -35,7 +41,7 @@ class RecordingSavingTests {
     @Test void rejectsInvalidFileBoundariesAndUnsupportedEditsWithoutWrites()throws Exception{
         for(var e:Map.<String,Object>of("size_bytes",6291457,"duration_ms",361001,"sha256","bad","codec","MP3","sample_rate",44100,"channels",2,"capture_integrity","UNKNOWN").entrySet()){var body=body();var file=file();file.put(e.getKey(),e.getValue());body.put("file",file);assertThat(save(body).getStatus()).as(e.toString()).isEqualTo(400);}
         for(String field:file().keySet()){var body=body();var file=file();file.remove(field);body.put("file",file);assertThat(save(body).getStatus()).isEqualTo(400);}
-        for(var e:Map.<String,Object>of("song_id",UUID.randomUUID().toString(),"metadata_state","DRAFT","version_code","BAD","key_shift",1,"base_revision",0).entrySet()){var body=body();body.put(e.getKey(),e.getValue());assertThat(save(body).getStatus()).isEqualTo(400);}
+        for(var e:Map.<String,Object>of("song_id",UUID.randomUUID().toString(),"metadata_state","DRAFT","version_code","BAD","key_shift",13,"base_revision",0).entrySet()){var body=body();body.put(e.getKey(),e.getValue());assertThat(save(body).getStatus()).isEqualTo(400);}
         var missing=body();missing.remove("file");assertThat(save(missing).getStatus()).isEqualTo(400);assertThat(setup.setup.count("recording_file_spec")).isZero();assertThat(setup.setup.count("change_log")).isEqualTo(1);
     }
     @Test void authOwnerAndLifecycleAreCheckedBeforeAnyFileWrite()throws Exception{

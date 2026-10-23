@@ -124,15 +124,14 @@ void main() {
           scrollable: find.byType(Scrollable).first,
         );
         expect(find.text('일반 반주'), findsOneWidget);
-        await tester.scrollUntilVisible(
-          find.text('곡 삭제'),
-          250,
-          scrollable: find.byType(Scrollable).first,
-        );
-        expect(find.text('연결된 녹음이 없어요.'), findsOneWidget);
+        await tester.tap(find.byTooltip('곡 메뉴'));
+        await tester.pumpAndSettle();
+        expect(find.text('곡 삭제'), findsOneWidget);
         expect(tester.takeException(), isNull);
         final rect = tester.getRect(find.text('곡 삭제'));
         expect(rect.bottom, lessThanOrEqualTo(544));
+        await tester.tapAt(const Offset(8, 200));
+        await tester.pumpAndSettle();
       }
     },
   );

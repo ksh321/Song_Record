@@ -109,6 +109,49 @@ MutationResponse creation({
 }
 
 void main() {
+  test('suitability writes require matching acknowledgement; canonical duplicate preserves server value', () {
+    final write = request(
+      operation: LocalOperation.patch,
+      body: jsonEncode({'base_revision': 5, 'is_suitable': true}),
+    );
+    final saved = song(target: id(10), revision: 6);
+    for (final response in [
+      saved,
+      {...saved, 'is_suitable': false},
+      {...saved, 'is_suitable': null},
+      {...saved, 'is_suitable': 1},
+    ]) {
+      expect(
+        () => decodeMetadataSnapshot(
+          write,
+          MutationResponse(200, jsonEncode(response)),
+        ),
+        throwsFormatException,
+      );
+    }
+    expect(
+      decodeMetadataSnapshot(
+        write,
+        MutationResponse(200, jsonEncode({...saved, 'is_suitable': true})),
+      )['is_suitable'],
+      isTrue,
+    );
+    final duplicate = request(
+      body: jsonEncode({
+        'id': id(10),
+        'source_type': 'TJ',
+        'is_suitable': true,
+      }),
+    );
+    expect(
+      decodeMetadataSnapshot(
+        duplicate,
+        creation(snapshot: {...song(), 'is_suitable': false}),
+      )['is_suitable'],
+      isFalse,
+    );
+  });
+
   test(
     'saved recording file projection is accepted only when valid and unchanged',
     () {

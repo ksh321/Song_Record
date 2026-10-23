@@ -27,6 +27,8 @@ class DomainContractsTests {
     void keyVersionAndTierDisplaysFollowTheContract() {
         assertThat(DomainTypes.formatVersion(DomainTypes.VersionCode.NORMAL)).isEqualTo("일반 반주");
         assertThat(DomainTypes.formatKey(DomainTypes.MusicalKey.original())).isEqualTo("원키");
+        assertThat(DomainTypes.formatKey(new DomainTypes.MusicalKey(DomainTypes.KeyMode.ORIGINAL, -3))).isEqualTo("원키 -3");
+        assertThat(DomainTypes.formatKey(new DomainTypes.MusicalKey(DomainTypes.KeyMode.ORIGINAL, 12))).isEqualTo("원키 +12");
         assertThat(DomainTypes.formatKey(new DomainTypes.MusicalKey(DomainTypes.KeyMode.MALE, 0))).isEqualTo("남 0");
         assertThat(DomainTypes.formatKey(new DomainTypes.MusicalKey(DomainTypes.KeyMode.FEMALE, 1))).isEqualTo("여 +1");
         assertThat(DomainTypes.formatTier(null)).isEqualTo("미정");

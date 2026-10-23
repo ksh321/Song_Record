@@ -3,7 +3,6 @@ package com.ksh321.songrecord
 import android.app.Activity
 import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import com.ksh321.songrecord.recorder.RecorderAccount
@@ -28,7 +27,8 @@ internal class PlaybackBridge(private val activity: Activity) {
     private var phase="idle"
     private var position=0
     private var duration=0
-    private var generation=0
+    @Volatile private var generation=0
+    private var waveform: List<Double> = emptyList()
     private val tick=object: Runnable {
         override fun run() {
             if(player==null)return
@@ -68,11 +68,11 @@ internal class PlaybackBridge(private val activity: Activity) {
         val currentGeneration=generation
         val kind=call.argument<String>("kind")
         val source=if(kind=="local") requireNotNull(call.argument<String>("path"))
-                   else if(kind=="remote")requireNotNull(call.argument<String>("url"))
+                   else if(kind=="memory") ""
                    else throw IllegalArgumentException("Invalid source")
+        val bytes=if(kind=="memory") requireNotNull(call.argument<ByteArray>("bytes")) else null
         val size=call.argument<Number>("size")?.toLong()
         val checksum=call.argument<String>("sha256")
-        val localHttp=((activity.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE)!=0) && call.argument<Boolean>("allowLocalHttp")==true
         pending=result;phase="loading"
         io.execute {
             try {
@@ -89,10 +89,9 @@ internal class PlaybackBridge(private val activity: Activity) {
                     val hash=digest.digest().joinToString(""){"%02x".format(it)}
                     check(count==size && hash==checksum)
                 } else {
-                    val uri=Uri.parse(source)
-                    val local=localHttp && uri.scheme=="http" && uri.host in setOf("localhost","127.0.0.1","10.0.2.2")
-                    check(local || (uri.scheme=="https" && uri.host?.endsWith(".r2.cloudflarestorage.com")==true))
-                    check(uri.userInfo==null && uri.fragment==null)
+                    check(bytes!=null && size!=null && size in 1L..6291456L && bytes.size.toLong()==size)
+                    val hash=MessageDigest.getInstance("SHA-256").digest(bytes).joinToString(""){"%02x".format(it)}
+                    check(hash==checksum)
                 }
                 activity.runOnUiThread {
                     if(currentGeneration!=generation)return@runOnUiThread
@@ -112,9 +111,24 @@ internal class PlaybackBridge(private val activity: Activity) {
                         next.setOnCompletionListener {if(player===it){position=duration;emit("completed")}}
                         next.setOnSeekCompleteListener {if(player===it)emit(phase)}
                         next.setOnErrorListener { failed,_,_ -> if(player===failed)fail();true }
-                        next.setDataSource(source);next.prepareAsync()
+                        if(bytes!=null) next.setDataSource(PlaybackMemorySource(bytes)) else next.setDataSource(source)
+                        next.prepareAsync()
                     }catch(_:Exception){fail()}
                 }
+                // Both sources use the same decoder. Remote bytes are ephemeral
+                // and shared with the player: no extra request or saved copy.
+                try {
+                        val cancelled = { currentGeneration != generation || scope != RecorderAccount.scope }
+                        val inspected = if(bytes!=null) ImportAudioInspector.waveform(bytes, cancelled)
+                                        else ImportAudioInspector.inspect(File(source), true, cancelled)
+                        val values = inspected["waveform"] as? List<*>
+                        val peaks = values?.map { (it as Number).toDouble() } ?: emptyList()
+                        activity.runOnUiThread {
+                            if(currentGeneration==generation && scope==RecorderAccount.scope && player!=null) {
+                                waveform=peaks; emit(phase)
+                            }
+                        }
+                } catch(_:Exception) { /* Waveform failure never prevents playback. */ }
             } catch(_:Exception) {activity.runOnUiThread {if(currentGeneration==generation)fail()}}
         }
         // Bounded preparation: a dead network request cannot leave the UI loading forever.
@@ -123,7 +137,7 @@ internal class PlaybackBridge(private val activity: Activity) {
     private fun emit(next: String) {
         phase=next
         if(next!="failed")try {position=player?.currentPosition?:position}catch(_:Exception){}
-        events?.success(mapOf("token" to token,"phase" to phase,"position" to position,"duration" to duration))
+        events?.success(mapOf("token" to token,"phase" to phase,"position" to position,"duration" to duration,"waveform" to waveform))
     }
     private fun fail() {
         val callback=pending;pending=null
@@ -135,7 +149,7 @@ internal class PlaybackBridge(private val activity: Activity) {
         val callback=pending;pending=null
         player?.release();player=null
         if(notify && phase!="idle")emit("failed")
-        phase="idle";position=0;duration=0;scope=null
+        phase="idle";position=0;duration=0;scope=null;waveform=emptyList()
         callback?.error("PLAYBACK_SUPERSEDED","재생 요청이 변경됐습니다.",null)
     }
     fun close(){stop();io.shutdownNow();events=null}

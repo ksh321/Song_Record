@@ -50,6 +50,8 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 val preferences = getSharedPreferences("song_record_device_settings", MODE_PRIVATE)
                 when (call.method) {
+                    "readLightMode" -> result.success(preferences.getBoolean("light_mode", false))
+                    "writeLightMode" -> { preferences.edit().putBoolean("light_mode", call.argument<Boolean>("light") ?: false).apply(); result.success(null) }
                     "readAccent" -> result.success(preferences.getString("accent", null))
                     "writeAccent" -> {
                         val accent = call.argument<String>("accent")

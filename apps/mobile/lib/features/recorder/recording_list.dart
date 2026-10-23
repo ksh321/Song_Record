@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../core/domain/song_types.dart';
 import '../../core/files/recording_file_status.dart';
+import '../../core/widgets/music_view_data.dart';
+import '../../core/widgets/recording_row.dart';
+import '../songs/my_song_detail.dart';
+import 'recording_audio_panel.dart';
 import 'recording_filter.dart';
 import 'recording_order.dart';
 import 'recording_pages.dart';
+import 'recording_player_screen.dart';
 
 export 'recording_order.dart';
 
@@ -77,6 +82,27 @@ class _RecordingListState extends State<RecordingList> {
     }
   }
 
+  RecordingViewData recordingView(Map<String, dynamic> row) {
+    final view = MySongDetail.recordingView(row);
+    final status = row['_file_status'] as RecordingFileStatus?;
+    return status == null ? view : view.withFileStatus(status);
+  }
+
+  void play(Map<String, dynamic> row) {
+    final access = context
+        .dependOnInheritedWidgetOfExactType<RecordingAudioAccess>();
+    final store = access?.store();
+    if (access == null || store == null) return;
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => RecordingPlayerScreen(
+          recordingId: row['id'] as String,
+          createPlayer: () => access.createPlayer(store),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     pages.replace(
@@ -112,20 +138,19 @@ class _RecordingListState extends State<RecordingList> {
         ),
         if (!widget.metadataComplete)
           const Text('동기화 중 · 전체 개수는 아직 확정되지 않았어요.'),
-        Text(
-          '로컬 정보 기준 · 마지막 동기화: ${widget.lastSync == null ? '확인된 기록 없음' : formatSyncTime(widget.lastSync!)}',
-        ),
+
         if (unknown) const Text('파일 상태 확인 불가 · 결과 개수를 아직 확정할 수 없어요.'),
         if (rows.isEmpty && exact)
           Text(filter.count == 0 ? '저장된 녹음이 없습니다' : '조건에 맞는 녹음이 없습니다'),
         for (final row in rows)
-          ListTile(
+          Padding(
             key: ValueKey(row['id']),
-            title: Text('${row['title_snapshot']} · ${row['artist_snapshot']}'),
-            subtitle: Text(recordingSummary(row)),
-            isThreeLine: true,
-            trailing: Text(row['tier'] as String? ?? '미정'),
-            onTap: () => widget.onOpen(row),
+            padding: const EdgeInsets.only(top: 8),
+            child: RecordingRow(
+              recording: recordingView(row),
+              onTap: () => widget.onOpen(row),
+              onPlay: () => play(row),
+            ),
           ),
         if (pages.cursor != null)
           TextButton(

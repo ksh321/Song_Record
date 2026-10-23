@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/domain/condition_types.dart';
 import '../../core/domain/identifiers.dart';
 import '../../core/domain/input_validation.dart';
 import '../../core/domain/recording_defaults.dart';
@@ -20,7 +21,9 @@ class RecordingInputScreen extends StatefulWidget {
     required this.isCurrent,
     this.discoveryBuilder,
     this.wakeSync,
+    this.classificationBuilder,
     this.tagLoader,
+    this.conditionLoader,
     this.editing = false,
     this.revision = 0,
     super.key,
@@ -32,7 +35,9 @@ class RecordingInputScreen extends StatefulWidget {
   final bool Function(LocalRepository) isCurrent;
   final RecordingDiscoveryBuilder? discoveryBuilder;
   final VoidCallback? wakeSync;
+  final WidgetBuilder? classificationBuilder;
   final Future<List<Map<String, dynamic>>> Function()? tagLoader;
+  final Future<List<Map<String, dynamic>>> Function()? conditionLoader;
   @override
   State<RecordingInputScreen> createState() => _RecordingInputScreenState();
 }
@@ -46,6 +51,11 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
   String? condition, songId, error, tier;
   List<String> tags = [];
   List<Map<String, dynamic>> availableTags = [];
+  List<Map<String, dynamic>> availableConditions = [
+    for (final e in defaultConditionNames.entries)
+      {'code': e.key, 'name': e.value},
+  ];
+
   Timer? timer;
   Future<void> writes = Future.value();
   bool busy = false, allowExit = false;
@@ -98,6 +108,19 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
     condition = saved['condition_code'] as String?;
     tags = List<String>.from(saved['tag_ids'] as List? ?? []);
     unawaited(loadTags());
+    unawaited(loadConditions());
+  }
+
+  Future<void> loadConditions() async {
+    try {
+      final rows =
+          await (widget.conditionLoader?.call() ??
+              widget.repository.selectableRecordingConditions());
+      if (!current) return;
+      setState(() => availableConditions = rows);
+    } catch (_) {
+      if (current) setState(() => error = '컨디션 정보를 확인하지 못했어요. 입력은 유지돼요.');
+    }
   }
 
   Future<void> loadTags() async {
@@ -232,6 +255,15 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
     }
   }
 
+  Future<void> manageClassifications() async {
+    final builder = widget.classificationBuilder;
+    if (builder == null || !current || busy) return;
+    await Navigator.of(context).push<void>(MaterialPageRoute(builder: builder));
+    if (!current) return;
+    await loadConditions();
+    await loadTags();
+  }
+
   Future<void> applyDefaults() async {
     try {
       final rows = await widget.repository.pendingRecordings();
@@ -316,11 +348,8 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
     final t = validateInput(InputField.title, title.text),
         a = validateInput(InputField.artist, artist.text),
         n = validateInput(InputField.note, note.text);
-    if (!t.isValid ||
-        !a.isValid ||
-        !n.isValid ||
-        defaults.key.mode == KeyMode.original && defaults.key.shift != 0) {
-      setState(() => error = '곡명·가수는 1~200자, 메모는 2000자 이내로 입력해 주세요. 원키는 0이에요.');
+    if (!t.isValid || !a.isValid || !n.isValid) {
+      setState(() => error = '곡명·가수는 1~200자, 메모는 2000자 이내로 입력해 주세요.');
       return;
     }
     setState(() {
@@ -459,21 +488,38 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
                   DropdownButtonFormField<String>(
                     initialValue: condition,
                     decoration: const InputDecoration(labelText: '컨디션 (선택)'),
-                    items: const [
-                      DropdownMenuItem(value: null, child: Text('미선택')),
-                      DropdownMenuItem(
-                        value: 'VERY_GOOD',
-                        child: Text('아주 좋음'),
-                      ),
-                      DropdownMenuItem(value: 'GOOD', child: Text('좋음')),
-                      DropdownMenuItem(value: 'NORMAL', child: Text('보통')),
-                      DropdownMenuItem(value: 'BAD', child: Text('안 좋음')),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('미선택')),
+                      for (final item in availableConditions)
+                        DropdownMenuItem(
+                          value: item['code'] as String,
+                          child: Text(item['name'] as String),
+                        ),
+                      if (condition != null &&
+                          !availableConditions.any(
+                            (r) => r['code'] == condition,
+                          ))
+                        DropdownMenuItem(
+                          value: condition,
+                          child: Text(
+                            '${widget.recording['condition_name_snapshot'] ?? '기존 컨디션'} (기존 기록)',
+                          ),
+                        ),
                     ],
                     onChanged: (v) {
                       setState(() => condition = v);
                       changed();
                     },
                   ),
+                  if (widget.classificationBuilder != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: OutlinedButton.icon(
+                        onPressed: busy ? null : manageClassifications,
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('컨디션 수정'),
+                      ),
+                    ),
                   if (widget.editing)
                     DropdownButtonFormField<String>(
                       key: const ValueKey('recording-tier'),
@@ -514,6 +560,15 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
                         ),
                     ],
                   ),
+                  if (widget.classificationBuilder != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: OutlinedButton.icon(
+                        onPressed: busy ? null : manageClassifications,
+                        icon: const Icon(Icons.edit_outlined),
+                        label: const Text('태그 수정'),
+                      ),
+                    ),
                   TextField(
                     key: const ValueKey('recording-note'),
                     controller: note,

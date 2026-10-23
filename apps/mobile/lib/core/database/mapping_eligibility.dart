@@ -21,9 +21,9 @@ import 'metadata_followup_store.dart';
 /// Unsupported components remain visible but cannot dispatch. Graph grouping
 /// below reserves ordering only; it does not resolve or flatten alias routes.
 Future<MappingEligibility> readMappingEligibility(
-  AccountDatabase database,
-  {bool holdDrafts = true}
-) async {
+  AccountDatabase database, {
+  bool holdDrafts = true,
+}) async {
   final aliases = await database.customSelect('''
     SELECT source_song_id,canonical_song_id FROM song_aliases
   ''').get();
@@ -243,14 +243,18 @@ Future<MappingEligibility> readMappingEligibility(
     database,
     await metadataFollowupEligibility(
       database,
-      await canonicalChoiceEligibility(database, MappingEligibility(
-        blocked: blocked,
-        superseded: superseded,
-        logicalOrders: logicalOrders,
-        groups: {
-          for (final target in parent.keys.toList()) target: root(target),
-        },
-      ), quarantinedGroups),
+      await canonicalChoiceEligibility(
+        database,
+        MappingEligibility(
+          blocked: blocked,
+          superseded: superseded,
+          logicalOrders: logicalOrders,
+          groups: {
+            for (final target in parent.keys.toList()) target: root(target),
+          },
+        ),
+        quarantinedGroups,
+      ),
     ),
     holdDrafts: holdDrafts,
   );

@@ -255,6 +255,8 @@ void main() {
         for (final trigger in triggers) {
           db.execute(trigger['sql']! as String);
         }
+        db.execute('DROP TRIGGER playlist_order_dismissed_request_immutable');
+        db.execute('DROP TABLE playlist_order_dismissals');
         db.execute('PRAGMA user_version=11');
       } finally {
         db.close();
@@ -263,7 +265,7 @@ void main() {
       repo = LocalRepository(store);
       final check = sqlite.sqlite3.open(file.path);
       try {
-        expect(check.select('PRAGMA user_version').single.values.single, 13);
+        expect(check.select('PRAGMA user_version').single.values.single, 14);
         expect(
           check
               .select('SELECT * FROM mutation_wire_requests')

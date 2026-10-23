@@ -1,11 +1,81 @@
+import 'dart:convert';
+
 import '../../core/database/local_models.dart';
 import '../../core/domain/input_validation.dart';
 import '../../core/sync/local_repository.dart';
+import '../../core/sync/mutation_request.dart';
+import '../../core/sync/playlist_library_order_receipt.dart';
 import '../search/search_intent.dart';
 
 final class PlaylistLibrary {
   PlaylistLibrary(this.repository);
   final LocalRepository repository;
+
+  Future<QueuedMutation?> pendingOrder() async {
+    for (final mutation in await repository.pendingWork()) {
+      if (mutation.entity != LocalEntity.playlist) continue;
+      final request = MutationRequest.prepare(mutation);
+      if (request != null && isPlaylistLibraryOrder(request)) return mutation;
+    }
+    return null;
+  }
+
+  Future<QueuedMutation?> rejectedOrder() async {
+    for (final mutation in await repository.pendingWork()) {
+      if (mutation.entity != LocalEntity.playlist ||
+          mutation.state != 'CONFLICT') {
+        continue;
+      }
+      final response = jsonDecode(mutation.serverResponse ?? '{}') as Map;
+      if (response['status'] == 409 &&
+          response['code'] == 'PLAYLIST_ORDER_CHANGED') {
+        return mutation;
+      }
+    }
+    return null;
+  }
+
+  Future<void> reorderLibrary(
+    List<Map<String, dynamic>> baseline,
+    List<String> ids,
+  ) async {
+    final current = await load();
+    if ((await repository.pendingWork()).any(
+      (m) => m.entity == LocalEntity.playlist,
+    )) {
+      throw StateError('목록의 이전 변경을 먼저 동기화해 주세요.');
+    }
+    final originals = {for (final row in baseline) row['id']: row};
+    if (baseline.isEmpty ||
+        baseline.length > 1000 ||
+        ids.length != baseline.length ||
+        ids.toSet().length != ids.length ||
+        !ids.every(originals.containsKey) ||
+        current.length != baseline.length ||
+        current.any(
+          (row) =>
+              originals[row['id']]?['local_base_revision'] !=
+              row['local_base_revision'],
+        )) {
+      throw StateError('목록이 바뀌었어요. 다시 열어 순서를 변경해 주세요.');
+    }
+    final anchor = baseline.first;
+    final value = _payload(anchor);
+    final command = repository.preparePatch(
+      entity: LocalEntity.playlist,
+      entityId: anchor['id'] as String,
+      baseRevision: anchor['local_base_revision'] as int,
+      draft: value,
+      changes: {
+        'ordered_playlists': [
+          for (final id in ids)
+            {'id': id, 'base_revision': originals[id]!['local_base_revision']},
+        ],
+      },
+    );
+    await repository.saveCheckedEdit(command, value);
+  }
+
   Future<void> removeItem(Map<String, dynamic> row, String itemId) async {
     final id = row['id'] as String;
     if ((await repository.pendingWork()).any(
@@ -69,12 +139,48 @@ final class PlaylistLibrary {
     )) {
       throw StateError('이 목록의 이전 변경을 먼저 동기화해 주세요.');
     }
-    await repository.ensureTjAvailable(selection.candidate.number);
+    // A catalog candidate does not recreate or restore the reserved Song.
+    // The owned Song is restored only after a separate confirmation.
     final row = (await load()).singleWhere((p) => p['id'] == id);
     await addCandidate(row, selection.candidate.sourceToken)();
   }
 
-  Future<List<Map<String, dynamic>>> load() => repository.activePlaylists();
+  Future<List<Map<String, dynamic>>> load() async {
+    final rows = await repository.activePlaylists();
+    final pending = await pendingOrder();
+    if (pending == null ||
+        !{'PENDING', 'SENDING', 'RETRY'}.contains(pending.state)) {
+      return rows;
+    }
+    final order =
+        (jsonDecode(pending.payload) as Map)['ordered_playlists'] as List;
+    final positions = <String, int>{};
+    for (var i = 0; i < order.length; i++) {
+      positions[order[i]['id'] as String] = i;
+    }
+    if (rows.length == order.length &&
+        rows.every((row) {
+          final index = positions[row['id']];
+          return index != null &&
+              row['local_base_revision'] == order[index]['base_revision'];
+        })) {
+      rows.sort((a, b) => positions[a['id']]!.compareTo(positions[b['id']]!));
+    }
+    return rows;
+  }
+
+  Future<Map<String, PlaylistSummary>> summaries(
+    List<Map<String, dynamic>> playlists,
+  ) async {
+    final available = {for (final song in await songs()) song['id']: song};
+    final result = <String, PlaylistSummary>{};
+    for (final playlist in playlists) {
+      final id = playlist['id'] as String;
+      result[id] = PlaylistSummary.fromItems(await items(id), available);
+    }
+    return result;
+  }
+
   Future<List<Map<String, dynamic>>> items(String id) =>
       repository.playlistItems(id);
   Future<List<Map<String, dynamic>>> songs() =>
@@ -179,12 +285,12 @@ final class PlaylistLibrary {
     return value.value;
   }
 
-  Future<void> Function() create(String input) {
+  Future<void> Function() create(String input, {String icon = 'music'}) {
     final name = _name(input);
     final command = repository.prepareCreate(
       entity: LocalEntity.playlist,
-      draft: {'name': name, 'deleted_at': null},
-      changes: {'name': name},
+      draft: {'name': name, 'icon': icon, 'deleted_at': null},
+      changes: {'name': name, 'icon': icon},
     );
     return () => repository.save(command);
   }
@@ -200,6 +306,28 @@ final class PlaylistLibrary {
       baseRevision: row['local_base_revision'] as int,
       draft: {...value, 'name': name},
       changes: {'name': name},
+    );
+    return () => repository.saveCheckedEdit(command, value);
+  }
+
+  Future<void> Function() changeIcon(Map<String, dynamic> row, String icon) {
+    if (!{
+      'music',
+      'mic',
+      'heart',
+      'star',
+      'headphones',
+      'sun',
+    }.contains(icon)) {
+      throw ArgumentError('Invalid icon');
+    }
+    final value = _payload(row);
+    final command = repository.preparePatch(
+      entity: LocalEntity.playlist,
+      entityId: row['id'] as String,
+      baseRevision: row['local_base_revision'] as int,
+      draft: {...value, 'icon': icon},
+      changes: {'name': row['name'], 'icon': icon},
     );
     return () => repository.saveCheckedEdit(command, value);
   }
@@ -223,5 +351,33 @@ final class PlaylistLibrary {
       changes: {'base_revision': revision},
     );
     return () => repository.saveCheckedEdit(command, value);
+  }
+}
+
+/// Display-only data from the same account's active songs and visible items.
+final class PlaylistSummary {
+  const PlaylistSummary(this.count, this.preview);
+  final int count;
+  final String preview;
+
+  factory PlaylistSummary.fromItems(
+    List<Map<String, dynamic>> items,
+    Map<dynamic, Map<String, dynamic>> songs,
+  ) {
+    final titles = <String>[];
+    for (final item in items) {
+      if (item['song_id'] != null) {
+        final song = songs[item['song_id']];
+        // Do not resurrect a trashed song using its candidate snapshot.
+        if (song != null) titles.add(song['title'] as String);
+      } else if (item['candidate_brand'] == 'TJ' &&
+          item['candidate_snapshot'] is Map) {
+        titles.add((item['candidate_snapshot'] as Map)['title'] as String);
+      }
+    }
+    return PlaylistSummary(
+      titles.length,
+      titles.isEmpty ? '첫 곡을 담아보세요' : titles.take(2).join(' · '),
+    );
   }
 }

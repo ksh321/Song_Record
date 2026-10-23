@@ -246,7 +246,7 @@ void main() {
       expect(find.text('25'), findsOneWidget);
       await tester.drag(find.byType(ListView), const Offset(0, -450));
       await tester.pump();
-      expect(find.text('충돌'), findsOneWidget);
+      expect(find.text('현재 기록과 내용이 다른 항목'), findsOneWidget);
     },
   );
 }

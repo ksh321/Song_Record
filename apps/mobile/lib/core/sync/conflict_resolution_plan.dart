@@ -34,8 +34,10 @@ ConflictResolutionPlan prepareConflictResolution(
     throw StateError('Unsupported metadata conflict');
   }
   final base = jsonDecode(mutation.basePayload!) as Map<String, dynamic>;
-  final server = serverSnapshot ??
-      (jsonDecode(mutation.serverResponse!) as Map<String, dynamic>)['current'] as Map<String, dynamic>;
+  final server =
+      serverSnapshot ??
+      (jsonDecode(mutation.serverResponse!) as Map<String, dynamic>)['current']
+          as Map<String, dynamic>;
   final local = jsonDecode(mutation.payload) as Map<String, dynamic>;
   if (local['base_revision'] is! int) {
     throw const FormatException('Conflict base revision must be an integer');

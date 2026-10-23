@@ -13,6 +13,51 @@ import 'package:song_record/features/playlists/playlist_order_picker.dart';
 import '../tool/playlist_addition_fixture.dart';
 
 void main() {
+  testWidgets('long press drags a row without a separate handle', (t) async {
+    List<String>? result;
+    await t.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                result = await showModalBottomSheet<List<String>>(
+                  context: context,
+                  builder: (_) => const SizedBox(
+                    height: 500,
+                    child: PlaylistOrderPicker(
+                      items: [
+                        {'id': 'a'},
+                        {'id': 'b'},
+                        {'id': 'c'},
+                      ],
+                      titles: {'a': '첫 곡', 'b': '둘째 곡', 'c': '셋째 곡'},
+                    ),
+                  ),
+                );
+              },
+              child: const Text('열기'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await t.tap(find.text('열기'));
+    await t.pumpAndSettle();
+    final destination = t.getCenter(find.text('첫 곡'));
+    final gesture = await t.startGesture(t.getCenter(find.text('둘째 곡')));
+    await t.pump(const Duration(milliseconds: 600));
+    // The first move starts the delayed drag; the next move changes position.
+    await gesture.moveBy(const Offset(0, -20));
+    await t.pump();
+    await gesture.moveTo(destination);
+    await t.pump(const Duration(milliseconds: 400));
+    await gesture.up();
+    await t.pumpAndSettle();
+    await t.tap(find.text('순서 저장'));
+    await t.pumpAndSettle();
+    expect(result, ['b', 'a', 'c']);
+  });
   testWidgets('order controls move full IDs; cancel is null', (t) async {
     List<String>? result;
     await t.pumpWidget(

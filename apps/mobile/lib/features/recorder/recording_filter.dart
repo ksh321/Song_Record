@@ -256,6 +256,11 @@ class _RecordingFilterScreenState extends State<RecordingFilterScreen> {
                     'GOOD': '좋음',
                     'NORMAL': '보통',
                     'BAD': '안 좋음',
+                    for (final row in widget.rows)
+                      if (row['condition_code'] is String &&
+                          row['condition_name_snapshot'] is String)
+                        row['condition_code'] as String:
+                            row['condition_name_snapshot'] as String,
                     'UNSET': '미선택',
                   }),
                   choice('tag', '태그 1개', tags),

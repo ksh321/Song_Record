@@ -166,6 +166,7 @@ class _RemoteCheckState extends State<RemoteCheck> with WidgetsBindingObserver {
         'kind': 'remote',
         'url': ticket.url.toString(),
         'allowLocalHttp': false,
+        'ticket': ticket,
       });
       await guard();
       if (duration < 1) throw StateError('No audio');

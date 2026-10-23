@@ -8,7 +8,7 @@ class RecordingFileStatusCard extends StatelessWidget {
   final RecordingFileStatus status;
   @override
   Widget build(BuildContext context) => Card(
-    color: AppColors.surface,
+    color: Theme.of(context).colorScheme.surface,
     child: Padding(
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(

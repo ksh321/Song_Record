@@ -760,6 +760,35 @@ WHEN NEW.recording_id<>OLD.recording_id OR NEW.user_id<>OLD.user_id OR NEW.opera
 BEGIN SELECT RAISE(ABORT,'Upload identity and retry budget are immutable'); END;
 
 -- P13-04: durable local fence, released only by an authenticated terminal server result.
+-- Explicitly abandon a rejected whole-library order without erasing its request.
+CREATE TABLE playlist_order_dismissals (
+  op_id TEXT PRIMARY KEY REFERENCES local_mutations(op_id),
+  user_id TEXT NOT NULL REFERENCES local_account(user_id),
+  request_hash TEXT NOT NULL,
+  response_json TEXT NOT NULL CHECK(json_valid(response_json)),
+  decided_at INTEGER NOT NULL
+) WITHOUT ROWID;
+
+CREATE TRIGGER playlist_order_dismissal_valid BEFORE INSERT ON playlist_order_dismissals BEGIN
+  SELECT RAISE(ABORT,'Order rejection evidence mismatch') WHERE NOT EXISTS(
+    SELECT 1 FROM local_mutations m WHERE m.op_id=NEW.op_id AND m.user_id=NEW.user_id
+      AND m.entity_type='PLAYLIST' AND m.operation='PATCH' AND m.queue_state='CONFLICT'
+      AND m.request_hash=NEW.request_hash AND m.server_response=NEW.response_json
+      AND json_type(m.payload,'$.ordered_playlists')='array'
+      AND json_extract(m.server_response,'$.status')=409
+      AND json_extract(m.server_response,'$.code')='PLAYLIST_ORDER_CHANGED');
+END;
+CREATE TRIGGER playlist_order_dismissal_no_replace BEFORE INSERT ON playlist_order_dismissals
+WHEN EXISTS(SELECT 1 FROM playlist_order_dismissals WHERE op_id=NEW.op_id)
+BEGIN SELECT RAISE(ABORT,'Order decision exists'); END;
+CREATE TRIGGER playlist_order_dismissal_no_update BEFORE UPDATE ON playlist_order_dismissals
+BEGIN SELECT RAISE(ABORT,'Order decision immutable'); END;
+CREATE TRIGGER playlist_order_dismissal_no_delete BEFORE DELETE ON playlist_order_dismissals
+BEGIN SELECT RAISE(ABORT,'Order decision retained'); END;
+CREATE TRIGGER playlist_order_dismissed_request_immutable BEFORE UPDATE ON local_mutations
+WHEN EXISTS(SELECT 1 FROM playlist_order_dismissals WHERE op_id=OLD.op_id)
+BEGIN SELECT RAISE(ABORT,'Rejected order retained'); END;
+
 CREATE TABLE local_cleanup_confirmations (
  token TEXT NOT NULL PRIMARY KEY CHECK(length(token)=36),
  user_id TEXT NOT NULL,

@@ -30,12 +30,10 @@ class MusicRowSurface extends StatelessWidget {
       enabled: enabled && onTap != null,
       selected: selected,
       child: Material(
-        color: compact ? AppColors.compactRowBackground : AppColors.surface,
+        color: Theme.of(context).colorScheme.surface,
         shape: RoundedRectangleBorder(
           borderRadius: radius,
-          side: BorderSide(
-            color: compact ? AppColors.compactRowBorder : AppColors.line,
-          ),
+          side: BorderSide(color: Theme.of(context).colorScheme.outline),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(

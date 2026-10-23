@@ -70,7 +70,7 @@ void main() {
             ),
           ),
         );
-        await tester.tap(find.text('백업 ZIP 선택'));
+        await tester.tap(find.text('파일 선택'));
         await tester.pump();
         active = false;
         notifier.notifyListeners();
@@ -152,7 +152,7 @@ void main() {
             ),
           ),
         );
-        await tester.tap(find.text('백업 ZIP 선택'));
+        await tester.tap(find.text('파일 선택'));
         await tester.pumpAndSettle();
         final after = (await tester.runAsync(store.captureExportLocal))!;
         // This is a newly generated read timestamp, not a stored data field.

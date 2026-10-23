@@ -30,15 +30,15 @@ void main() {
   test('키와 버전 표시 계약을 지킨다', () {
     expect(formatVersionCode(VersionCode.normal), '일반 반주');
     expect(formatMusicalKey(MusicalKey.original), '원키');
-    expect(
-      formatMusicalKey(MusicalKey(mode: KeyMode.male, shift: 0)),
-      '남 0',
-    );
+    expect(formatMusicalKey(MusicalKey(mode: KeyMode.male, shift: 0)), '남');
     expect(
       formatMusicalKey(MusicalKey(mode: KeyMode.female, shift: 1)),
       '여 +1',
     );
-    expect(() => MusicalKey(mode: KeyMode.original, shift: 13), throwsRangeError);
+    expect(
+      () => MusicalKey(mode: KeyMode.original, shift: 13),
+      throwsRangeError,
+    );
     expect(formatSongTier(null), '미정');
     expect(formatRecordingTier(RecordingTier.s), 'S');
   });
@@ -62,8 +62,16 @@ void main() {
         final value => throw StateError('Unknown field: $value'),
       };
       final result = validateInput(field, input['value']! as String);
-      expect(result.actual, expected['actual'], reason: testCase['id'] as String);
-      expect(result.isValid, expected['valid'], reason: testCase['id'] as String);
+      expect(
+        result.actual,
+        expected['actual'],
+        reason: testCase['id'] as String,
+      );
+      expect(
+        result.isValid,
+        expected['valid'],
+        reason: testCase['id'] as String,
+      );
     }
   });
 }

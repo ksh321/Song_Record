@@ -52,6 +52,10 @@ class MySqlSnapshotSourceRowsTests {
         UUID owner=owner(),other=owner();song(other,UUID.randomUUID(),"other-owner-private");
         UUID linkedSong=UUID.randomUUID(),recording=UUID.randomUUID(),device=UUID.randomUUID();
         song(owner,linkedSong,"linked song");
+        assertThat(jdbc.queryForObject("SELECT is_suitable FROM song WHERE id=?",Boolean.class,bytes(linkedSong))).isFalse();
+        jdbc.update("UPDATE song SET is_suitable=TRUE WHERE id=?",bytes(linkedSong));
+        UUID playlist=UUID.randomUUID();
+        jdbc.update("INSERT INTO playlist(id,user_id,name,icon) VALUES(?,?,'heart list','heart')",bytes(playlist),bytes(owner));
         for(int i=0;i<100;i++)song(owner,UUID.randomUUID(),"local-note-"+i);
         jdbc.update("INSERT INTO device(id,user_id,display_name,last_seen_at) VALUES(?,?,'fixture',?)",bytes(device),bytes(owner),LocalDateTime.ofInstant(NOW,ZoneOffset.UTC));
         jdbc.update("INSERT INTO recording(id,user_id,origin_device_id,song_id,note,recorded_at,timezone_id,timezone_offset_minutes) VALUES(?,?,?,?,'recording',?,'UTC',0)",bytes(recording),bytes(owner),bytes(device),bytes(linkedSong),LocalDateTime.ofInstant(NOW,ZoneOffset.UTC));
@@ -89,6 +93,11 @@ class MySqlSnapshotSourceRowsTests {
         var row=new JsonMapper().readTree(page.entries().getFirst().payload());
         assertThat(row.get("user_id").asText()).isEqualTo(owner.toString());
         assertThat(row.has("tier")).isTrue();assertThat(row.has("song_tier")).isFalse();
+        String suitable=jdbc.queryForObject("SELECT CAST(payload AS CHAR) FROM snapshot_entry WHERE snapshot_id=? AND entity='SONG' AND resource_id=?",String.class,bytes(attempt.id()),bytes(linkedSong));
+        assertThat(new JsonMapper().readTree(suitable).get("is_suitable").isBoolean()).isTrue();
+        assertThat(new JsonMapper().readTree(suitable).get("is_suitable").asBoolean()).isTrue();
+        String list=jdbc.queryForObject("SELECT CAST(payload AS CHAR) FROM snapshot_entry WHERE snapshot_id=? AND entity='PLAYLIST' AND resource_id=?",String.class,bytes(attempt.id()),bytes(playlist));
+        assertThat(new JsonMapper().readTree(list).get("icon").asText()).isEqualTo("heart");
         String recorded=jdbc.queryForObject("SELECT CAST(payload AS CHAR) FROM snapshot_entry WHERE snapshot_id=? AND entity='RECORDING'",String.class,bytes(attempt.id()));
         assertThat(new JsonMapper().readTree(recorded).get("song_id").asText()).isEqualTo(linkedSong.toString());
         assertThat(jdbc.queryForObject("SELECT last_change_seq FROM user_sync_state WHERE user_id=?",Long.class,bytes(owner))).isEqualTo(8);

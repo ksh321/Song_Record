@@ -123,9 +123,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(scopes.single.period, ChartPeriod.monthly);
       expect(find.text('원본 (LIVE)'), findsOneWidget);
-      expect(find.text('제공자 기준 기간 · 정확 집계 날짜 미제공'), findsOneWidget);
+      expect(find.text('제공자 기준 기간 · 정확 집계 날짜 미제공'), findsNothing);
+      await tester.tap(find.text('출처 정보'));
+      await tester.pumpAndSettle();
       expect(find.text('출처: MANANA'), findsOneWidget);
-      expect(find.textContaining('서버 수집:'), findsOneWidget);
+      expect(find.textContaining('서버 수집:'), findsNothing);
+        await tester.scrollUntilVisible(find.textContaining('이전 정상 자료'), 100,
+            scrollable: find.byType(Scrollable).first);
       expect(find.textContaining('이전 정상 자료'), findsOneWidget);
       await tester.tap(find.text('주간'));
       await tester.pumpAndSettle();

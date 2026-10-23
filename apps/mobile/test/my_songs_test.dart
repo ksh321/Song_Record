@@ -156,7 +156,7 @@ void main() {
       await tester.pump();
       expect(find.text('등록된 내 곡이 없습니다'), findsOneWidget);
       expect(find.text('0곡'), findsOneWidget);
-      await tester.tap(find.text('새 곡 찾기'));
+      await tester.tap(find.text('내 곡 등록'));
       expect(finds, 1);
       await tester.pumpWidget(const SizedBox());
       await tester.runAsync(() => data.close());

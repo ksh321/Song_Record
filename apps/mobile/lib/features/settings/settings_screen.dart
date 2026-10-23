@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/routing/app_routes.dart';
 
+import '../../core/theme/app_appearance.dart';
+import '../../core/widgets/feature_icon.dart';
 import '../auth/auth_session.dart';
 import '../auth/identity_link.dart';
 import '../auth/identity_link_screen.dart';
@@ -39,6 +40,7 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('설정'),
+        actions: const [ThemeToggle()],
         leading: IconButton(
           tooltip: '뒤로가기',
           onPressed: () => Navigator.of(context).maybePop(),
@@ -50,7 +52,12 @@ class SettingsScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(AppSpacing.lg),
           children: [
-            Text('나에게 맞는 노래 기록', style: Theme.of(context).textTheme.titleLarge),
+            const Card(
+              child: ListTile(
+                leading: FeatureIcon(Icons.people_outline),
+                title: Text('나의 노래기록'),
+              ),
+            ),
             const SizedBox(height: AppSpacing.md),
             for (final (label, icon, builder) in [
               ('보관량과 고정', Icons.storage_outlined, storageBuilder),
@@ -59,7 +66,7 @@ class SettingsScreen extends StatelessWidget {
             ])
               Card(
                 child: ListTile(
-                  leading: Icon(icon),
+                  leading: FeatureIcon(icon),
                   title: Text(label),
                   subtitle: builder == null
                       ? const Text('현재 연결 정보를 확인할 수 없습니다.')
@@ -76,7 +83,7 @@ class SettingsScreen extends StatelessWidget {
             if (backupBuilder != null)
               Card(
                 child: ListTile(
-                  leading: const Icon(Icons.archive_outlined),
+                  leading: const FeatureIcon(Icons.archive_outlined),
                   title: const Text('백업 내보내기'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.push<void>(
@@ -88,7 +95,7 @@ class SettingsScreen extends StatelessWidget {
             if (trashBuilder != null)
               Card(
                 child: ListTile(
-                  leading: const Icon(Icons.delete_outline),
+                  leading: const FeatureIcon(Icons.delete_outline),
                   title: const Text('휴지통'),
                   onTap: () => Navigator.push<void>(
                     context,
@@ -99,7 +106,7 @@ class SettingsScreen extends StatelessWidget {
             if (syncController != null)
               Card(
                 child: ListTile(
-                  leading: const Icon(Icons.sync),
+                  leading: const FeatureIcon(Icons.sync),
                   title: const Text('동기화 상태'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push<void>(
@@ -112,7 +119,7 @@ class SettingsScreen extends StatelessWidget {
             if (identityLink != null)
               Card(
                 child: ListTile(
-                  leading: const Icon(Icons.link),
+                  leading: const FeatureIcon(Icons.link),
                   title: const Text('로그인 계정 연결'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push<void>(
@@ -127,7 +134,7 @@ class SettingsScreen extends StatelessWidget {
             if (authController != null)
               Card(
                 child: ListTile(
-                  leading: const Icon(Icons.logout),
+                  leading: const FeatureIcon(Icons.logout),
                   title: const Text('로그아웃'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push<void>(
@@ -140,7 +147,7 @@ class SettingsScreen extends StatelessWidget {
             if (deletionBuilder != null)
               Card(
                 child: ListTile(
-                  leading: const Icon(Icons.person_remove_outlined),
+                  leading: const FeatureIcon(Icons.person_remove_outlined),
                   title: const Text('계정 탈퇴'),
                   onTap: () => Navigator.of(context)
                       .push<void>(MaterialPageRoute(builder: deletionBuilder!)),
@@ -154,7 +161,7 @@ class SettingsScreen extends StatelessWidget {
               const SizedBox(height: AppSpacing.sm),
               Card(
                 child: ListTile(
-                  leading: const Icon(Icons.monitor_heart_outlined),
+                  leading: const FeatureIcon(Icons.monitor_heart_outlined),
                   title: const Text('서버 연결 확인'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () =>

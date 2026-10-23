@@ -14,6 +14,7 @@ class AppShell extends StatefulWidget {
     this.tabBuilder,
     this.searchBuilder,
     this.chartBuilder,
+    this.manualBuilder,
     this.songsBuilder,
     this.recordingBuilder,
     this.playlistsBuilder,
@@ -25,6 +26,7 @@ class AppShell extends StatefulWidget {
   final WidgetBuilder? recordingBuilder;
   final WidgetBuilder? playlistsBuilder;
   final WidgetBuilder? chartBuilder;
+  final WidgetBuilder? manualBuilder;
   final Widget Function(BuildContext, VoidCallback)? songsBuilder;
 
   /// Allows a separate preview/test to exercise future tab bodies.
@@ -77,6 +79,12 @@ class _AppShellState extends State<AppShell> {
         _selectTab(AppTab.charts.index);
       case SongDiscoveryDestination.search:
         _selectTab(AppTab.search.index);
+      case SongDiscoveryDestination.manual:
+        final builder = widget.manualBuilder;
+        if (builder != null) {
+          await Navigator.of(context)
+              .push<void>(MaterialPageRoute(builder: builder));
+        }
       case SongDiscoveryDestination.mySongs:
         break; // Only offered by callers with a playlist context.
     }

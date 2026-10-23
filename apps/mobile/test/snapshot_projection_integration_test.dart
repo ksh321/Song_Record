@@ -25,10 +25,14 @@ import 'support/business_snapshot_fixture.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  test('initial business copy survives delta failure and reopening before send',
-      initialProjectionSurvivesDeltaFailure);
-  test('initial publication retains canonical and conflict resolution ledgers',
-      initialProjectionPreservesResolutionEvidence);
+  test(
+    'initial business copy survives delta failure and reopening before send',
+    initialProjectionSurvivesDeltaFailure,
+  );
+  test(
+    'initial publication retains canonical and conflict resolution ledgers',
+    initialProjectionPreservesResolutionEvidence,
+  );
 }
 
 Future<void> initialProjectionPreservesResolutionEvidence() async {
@@ -37,7 +41,9 @@ Future<void> initialProjectionPreservesResolutionEvidence() async {
   const target = '33333333-3333-4333-8333-333333333333';
   const source = '44444444-4444-4444-8444-444444444444';
   final tagId = canonical.uid(90), recId = canonical.uid(91);
-  final directory = await Directory.systemTemp.createTemp('sr-snapshot-evidence-');
+  final directory = await Directory.systemTemp.createTemp(
+    'sr-snapshot-evidence-',
+  );
   final manager = AccountStoreManager(
     environment: AppEnvironment.dev,
     directory: () async => directory,
@@ -46,96 +52,189 @@ Future<void> initialProjectionPreservesResolutionEvidence() async {
   );
   try {
     var store = await manager.openAccount(owner);
-    await store.saveEdit(LocalEdit(
-      opId: canonical.uid(100), entity: LocalEntity.tag, entityId: tagId,
-      operation: LocalOperation.create, baseRevision: 0,
-      draft: {'id': tagId, 'name': 'tag'},
-      changes: {'id': tagId, 'name': 'tag'},
-    ));
-    expect(await store.acknowledgeMutation((await store.claimMutation())!, tag(tagId)), isTrue);
-    await store.saveEdit(LocalEdit(
-      opId: canonical.uid(101), entity: LocalEntity.tag, entityId: tagId,
-      operation: LocalOperation.patch, baseRevision: 1,
-      draft: tag(tagId, name: 'local'), changes: {'base_revision': 1, 'name': 'local'},
-    ));
-    expect(await store.deferMutation(
-      (await store.claimMutation())!, 'CONFLICT', 'REVISION_CONFLICT', status: 409,
-      serverSnapshot: tag(tagId, name: 'remote', revision: 2),
-    ), isTrue);
+    await store.saveEdit(
+      LocalEdit(
+        opId: canonical.uid(100),
+        entity: LocalEntity.tag,
+        entityId: tagId,
+        operation: LocalOperation.create,
+        baseRevision: 0,
+        draft: {'id': tagId, 'name': 'tag'},
+        changes: {'id': tagId, 'name': 'tag'},
+      ),
+    );
+    expect(
+      await store.acknowledgeMutation(
+        (await store.claimMutation())!,
+        tag(tagId),
+      ),
+      isTrue,
+    );
+    await store.saveEdit(
+      LocalEdit(
+        opId: canonical.uid(101),
+        entity: LocalEntity.tag,
+        entityId: tagId,
+        operation: LocalOperation.patch,
+        baseRevision: 1,
+        draft: tag(tagId, name: 'local'),
+        changes: {'base_revision': 1, 'name': 'local'},
+      ),
+    );
+    expect(
+      await store.deferMutation(
+        (await store.claimMutation())!,
+        'CONFLICT',
+        'REVISION_CONFLICT',
+        status: 409,
+        serverSnapshot: tag(tagId, name: 'remote', revision: 2),
+      ),
+      isTrue,
+    );
     await store.resolveMetadataConflict(
       expected: (await store.pendingMutations()).single,
-      expectedLocalJson: (await store.readMetadata(LocalEntity.tag, tagId))!.localJson,
-      replacementOpId: canonical.uid(102), choices: {'name': ConflictChoice.local},
+      expectedLocalJson: (await store.readMetadata(
+        LocalEntity.tag,
+        tagId,
+      ))!.localJson,
+      replacementOpId: canonical.uid(102),
+      choices: {'name': ConflictChoice.local},
     );
-    expect(await store.acknowledgeMutation(
-      (await store.claimMutation())!, tag(tagId, name: 'local', revision: 3),
-    ), isTrue);
-    await store.saveEdit(LocalEdit(
-      opId: canonical.uid(110), entity: LocalEntity.song, entityId: source,
-      operation: LocalOperation.create, baseRevision: 0,
-      draft: {...canonical.song(source), 'note': 'source private'},
-      changes: {'id': source, 'source_type': 'TJ', 'source_token': 'opaque-proof',
-        'note': 'source private'},
-    ));
+    expect(
+      await store.acknowledgeMutation(
+        (await store.claimMutation())!,
+        tag(tagId, name: 'local', revision: 3),
+      ),
+      isTrue,
+    );
+    await store.saveEdit(
+      LocalEdit(
+        opId: canonical.uid(110),
+        entity: LocalEntity.song,
+        entityId: source,
+        operation: LocalOperation.create,
+        baseRevision: 0,
+        draft: {...canonical.song(source), 'note': 'source private'},
+        changes: {
+          'id': source,
+          'source_type': 'TJ',
+          'source_token': 'opaque-proof',
+          'note': 'source private',
+        },
+      ),
+    );
     final request = (await store.claimMutation())!;
-    await store.saveEdit(LocalEdit(
-      opId: canonical.uid(111), entity: LocalEntity.song, entityId: source,
-      operation: LocalOperation.patch, baseRevision: 0,
-      draft: {...canonical.song(source), 'note': 'later private edit'},
-      changes: {'base_revision': 0, 'note': 'later private edit'},
-    ));
+    await store.saveEdit(
+      LocalEdit(
+        opId: canonical.uid(111),
+        entity: LocalEntity.song,
+        entityId: source,
+        operation: LocalOperation.patch,
+        baseRevision: 0,
+        draft: {...canonical.song(source), 'note': 'later private edit'},
+        changes: {'base_revision': 0, 'note': 'later private edit'},
+      ),
+    );
     final recording = <String, dynamic>{
-      ...recordingWire('RecordingDraft'), 'id': recId, 'song_id': source,
+      ...recordingWire('RecordingDraft'),
+      'id': recId,
+      'song_id': source,
       'note': 'recording private',
     };
-    final recordingFields = {...recording}..removeWhere((key, _) => {
-      'revision', 'updated_at', 'origin_device_id', 'link_revision',
-      'lifecycle_state', 'condition_name_snapshot',
-    }.contains(key));
-    await store.saveEdit(LocalEdit(
-      opId: canonical.uid(112), entity: LocalEntity.recording, entityId: recId,
-      operation: LocalOperation.create, baseRevision: 0,
-      draft: recording, changes: recordingFields,
-    ));
-    expect(await store.applyCanonicalSongReceipt(request, MutationResponse(200,
-      jsonEncode({'created': false, 'canonical_song_id': target,
-        'song': canonical.song(target)}),
-    )), isTrue);
+    final recordingFields = {...recording}
+      ..removeWhere(
+        (key, _) => {
+          'revision',
+          'updated_at',
+          'origin_device_id',
+          'link_revision',
+          'lifecycle_state',
+          'condition_name_snapshot',
+        }.contains(key),
+      );
+    await store.saveEdit(
+      LocalEdit(
+        opId: canonical.uid(112),
+        entity: LocalEntity.recording,
+        entityId: recId,
+        operation: LocalOperation.create,
+        baseRevision: 0,
+        draft: recording,
+        changes: recordingFields,
+      ),
+    );
+    expect(
+      await store.applyCanonicalSongReceipt(
+        request,
+        MutationResponse(
+          200,
+          jsonEncode({
+            'created': false,
+            'canonical_song_id': target,
+            'song': canonical.song(target),
+          }),
+        ),
+      ),
+      isTrue,
+    );
     Future<Map<dynamic, dynamic>> tables() async =>
         (jsonDecode(await store.recoveryData()) as Map)['tables'] as Map;
     final before = await tables();
     for (final name in [
-      'song_aliases', 'mutation_mapping_holds', 'mutation_supersessions',
-      'canonical_edit_intents', 'mutation_conflict_resolutions', 'mutation_wire_requests',
+      'song_aliases',
+      'mutation_mapping_holds',
+      'mutation_supersessions',
+      'canonical_edit_intents',
+      'mutation_conflict_resolutions',
+      'mutation_wire_requests',
     ]) {
       expect(before[name], isNotEmpty, reason: 'Exercise real $name evidence');
     }
-    final sourceDraft = (await store.readMetadata(LocalEntity.song, source))!.localJson;
-    final recordingDraft = (await store.readMetadata(LocalEntity.recording, recId))!.localJson;
+    final sourceDraft = (await store.readMetadata(
+      LocalEntity.song,
+      source,
+    ))!.localJson;
+    final recordingDraft = (await store.readMetadata(
+      LocalEntity.recording,
+      recId,
+    ))!.localJson;
     final fixture = businessSnapshotFixture();
     replaceBusinessSnapshotRows(fixture, 'SONG', [
       {...canonical.song(target, revision: 3), 'user_id': owner},
     ]);
     await store.beginSnapshotDownload(token, jsonEncode(fixture['manifest']));
     for (final page in fixture['pages'] as List) {
-      await store.appendSnapshotPage(token, page['entity'] as String, 0, jsonEncode(page));
+      await store.appendSnapshotPage(
+        token,
+        page['entity'] as String,
+        0,
+        jsonEncode(page),
+      );
     }
     await store.verifySnapshotDownload(token);
     await store.applySnapshotDownload(token);
     Future<void> preserved() async {
       final after = await tables();
       for (final name in before.keys) {
-        if (name == 'metadata_copies' || name == 'sync_cursors' ||
+        if (name == 'metadata_copies' ||
+            name == 'sync_cursors' ||
             (name as String).startsWith('snapshot_')) {
           continue;
         }
         expect(after[name], before[name], reason: 'Preserve $name');
       }
       expect((await store.readMetadata(LocalEntity.song, target))!.revision, 3);
-      expect((await store.readMetadata(LocalEntity.song, source))!.localJson, sourceDraft);
-      expect((await store.readMetadata(LocalEntity.recording, recId))!.localJson, recordingDraft);
+      expect(
+        (await store.readMetadata(LocalEntity.song, source))!.localJson,
+        sourceDraft,
+      );
+      expect(
+        (await store.readMetadata(LocalEntity.recording, recId))!.localJson,
+        recordingDraft,
+      );
       expect(await store.readCursor(), 7);
     }
+
     await preserved();
     await manager.logout();
     store = await manager.openAccount(owner);
@@ -143,8 +242,10 @@ Future<void> initialProjectionPreservesResolutionEvidence() async {
     await preserved();
   } finally {
     await manager.logout();
-    expect(directory.path.split(Platform.pathSeparator).last,
-        startsWith('sr-snapshot-evidence-'));
+    expect(
+      directory.path.split(Platform.pathSeparator).last,
+      startsWith('sr-snapshot-evidence-'),
+    );
     await directory.delete(recursive: true);
   }
 }
@@ -168,15 +269,17 @@ Future<void> initialProjectionSurvivesDeltaFailure() async {
   try {
     var store = await manager.openAccount(owner);
     final draft = songChange(song, 1, title: 'offline title');
-    await store.saveEdit(LocalEdit(
-      opId: editOperation,
-      entity: LocalEntity.song,
-      entityId: song,
-      operation: LocalOperation.create,
-      baseRevision: 0,
-      draft: draft,
-      changes: draft,
-    ));
+    await store.saveEdit(
+      LocalEdit(
+        opId: editOperation,
+        entity: LocalEntity.song,
+        entityId: song,
+        operation: LocalOperation.create,
+        baseRevision: 0,
+        draft: draft,
+        changes: draft,
+      ),
+    );
     Future<Map<dynamic, dynamic>> tables() async =>
         (jsonDecode(await store.recoveryData()) as Map)['tables'] as Map;
     final original = await tables();
@@ -186,20 +289,27 @@ Future<void> initialProjectionSurvivesDeltaFailure() async {
       expect(await store.hasCompleteBaseline(), isFalse);
       if (request.method == 'POST') {
         expect(request.operationId, operation);
-        return SnapshotHttpResponse(202, jsonEncode({
-          'operation_id': operation,
-          'snapshot_token': token,
-          'status': 'BUILDING',
-          'status_url': '/v1/sync/snapshots/$token',
-        }));
+        return SnapshotHttpResponse(
+          202,
+          jsonEncode({
+            'operation_id': operation,
+            'snapshot_token': token,
+            'status': 'BUILDING',
+            'status_url': '/v1/sync/snapshots/$token',
+          }),
+        );
       }
       final entity = request.query['entity'];
-      return SnapshotHttpResponse(200, jsonEncode(
-        entity == null ? fixture['manifest'] :
-            (fixture['pages'] as List).singleWhere(
-              (dynamic page) => page['entity'] == entity,
-            ),
-      ));
+      return SnapshotHttpResponse(
+        200,
+        jsonEncode(
+          entity == null
+              ? fixture['manifest']
+              : (fixture['pages'] as List).singleWhere(
+                  (dynamic page) => page['entity'] == entity,
+                ),
+        ),
+      );
     };
     final changes = FeedTransport();
     final sender = Sender();
@@ -214,7 +324,9 @@ Future<void> initialProjectionSurvivesDeltaFailure() async {
       expect(jsonDecode(copy.serverJson!)['note'], '한글 🎵');
       expect(copy.localJson, canonicalJson(draft));
       final view = await store.snapshotMetadataView(
-        LocalEntity.song, song, expectedToken: token,
+        LocalEntity.song,
+        song,
+        expectedToken: token,
       );
       expect(view.baseline!.token, token);
       expect(view.baseline!.entry!.payload['note'], '한글 🎵');
@@ -227,26 +339,40 @@ Future<void> initialProjectionSurvivesDeltaFailure() async {
         beforeFailedDelta = await tables();
         return const ChangeFeedResponse(503, '{}');
       }
-      return ChangeFeedResponse(200, jsonEncode({
-        'after_seq': 7, 'next_seq': 8, 'head_seq': 8, 'has_more': false,
-        'changes': [{
-          'change_seq': 8, 'entity_type': 'SONG', 'entity_id': song,
-          'revision': 2, 'operation': 'UPSERT',
-          'payload': songChange(song, 2, title: 'later delta title'),
-        }],
-      }));
+      return ChangeFeedResponse(
+        200,
+        jsonEncode({
+          'after_seq': 7,
+          'next_seq': 8,
+          'head_seq': 8,
+          'has_more': false,
+          'changes': [
+            {
+              'change_seq': 8,
+              'entity_type': 'SONG',
+              'entity_id': song,
+              'revision': 2,
+              'operation': 'UPSERT',
+              'payload': songChange(song, 2, title: 'later delta title'),
+            },
+          ],
+        }),
+      );
     };
     SnapshotSyncBackend backendFor() => SnapshotSyncBackend(
       receiver: SnapshotReceiver(
-        store: store, transport: snapshots,
-        newOperationId: () => operation, clock: () => now,
+        store: store,
+        transport: snapshots,
+        newOperationId: () => operation,
+        clock: () => now,
       ),
       session: () async => session,
       now: () => now,
       outgoing: ChangeFeedSyncBackend(
         outgoing: sender,
         receiver: ChangeFeedReceiver(
-          store: store, transport: changes,
+          store: store,
+          transport: changes,
           isSessionCurrent: (value) => identical(value, session),
         ),
         session: () async => session,
@@ -267,8 +393,10 @@ Future<void> initialProjectionSurvivesDeltaFailure() async {
     expect(sender.sends, 0);
     expect(await store.readCursor(), 7);
     expect(await tables(), beforeFailedDelta);
-    final raw = (await store.snapshotBaselineRecord('SONG', song))!
-        .entry!.canonicalPayload;
+    final raw = (await store.snapshotBaselineRecord(
+      'SONG',
+      song,
+    ))!.entry!.canonicalPayload;
     final snapshotRequests = snapshots.requests.length;
     await manager.logout();
     manager = managerFor();
@@ -289,11 +417,17 @@ Future<void> initialProjectionSurvivesDeltaFailure() async {
     expect(copy.revision, 2);
     expect(jsonDecode(copy.serverJson!)['title'], 'later delta title');
     expect(copy.localJson, canonicalJson(draft));
-    expect((await store.snapshotBaselineRecord('SONG', song))!
-        .entry!.canonicalPayload, raw);
+    expect(
+      (await store.snapshotBaselineRecord(
+        'SONG',
+        song,
+      ))!.entry!.canonicalPayload,
+      raw,
+    );
     final after = await tables();
     for (final name in original.keys) {
-      if (name == 'metadata_copies' || name == 'sync_cursors' ||
+      if (name == 'metadata_copies' ||
+          name == 'sync_cursors' ||
           (name as String).startsWith('snapshot_')) {
         continue;
       }
@@ -301,8 +435,10 @@ Future<void> initialProjectionSurvivesDeltaFailure() async {
     }
   } finally {
     await manager.logout();
-    expect(directory.path.split(Platform.pathSeparator).last,
-        startsWith('sr-snapshot-delta-'));
+    expect(
+      directory.path.split(Platform.pathSeparator).last,
+      startsWith('sr-snapshot-delta-'),
+    );
     await directory.delete(recursive: true);
   }
 }

@@ -6,6 +6,9 @@ import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_store.dart';
 import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/sync/local_repository.dart';
+import 'package:song_record/core/widgets/feature_icon.dart';
+import 'package:song_record/features/playlists/playlist_access.dart';
+import 'package:song_record/features/playlists/playlist_library.dart';
 import 'package:song_record/features/recorder/recording_song_picker.dart';
 import 'package:song_record/features/search/karaoke_search.dart';
 import 'package:song_record/features/search/karaoke_search_screen.dart';
@@ -32,13 +35,24 @@ void main() {
     await root.delete(recursive: true);
   });
 
-  Future<void> mount(WidgetTester t, {bool outage = false}) async {
+  Future<void> mount(
+    WidgetTester t, {
+    bool outage = false,
+    bool sources = false,
+  }) async {
     final rows = await t.runAsync(() => repo.watchActiveSongs().first);
     addTearDown(() async {
       await t.pumpWidget(const SizedBox());
     });
     await t.pumpWidget(
       MaterialApp(
+        builder: sources
+            ? (_, child) => PlaylistAccess(
+                library: () => PlaylistLibrary(repo),
+                wakeSync: () {},
+                child: child!,
+              )
+            : null,
         home: RecordingSongPicker(
           recordingId: rec,
           repository: repo,
@@ -81,6 +95,56 @@ void main() {
         'note': '',
       },
     ),
+  );
+
+  testWidgets(
+    'shared source cards preserve capture while navigating and selecting',
+    (t) async {
+      await t.runAsync(
+        () => song('00000000-0000-4000-8000-000000001979', '검사 곡', '검사 가수'),
+      );
+      await mount(t, sources: true);
+      expect(find.byType(FeatureIcon), findsNWidgets(4));
+      expect(find.text('직접 등록'), findsOneWidget);
+      await t.runAsync(() => t.tap(find.text('플레이리스트')));
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await t.pumpAndSettle();
+      expect(find.text('아직 플레이리스트가 없어요.'), findsOneWidget);
+      Navigator.of(t.element(find.text('아직 플레이리스트가 없어요.'))).pop();
+      await t.pumpAndSettle();
+      await t.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 150)),
+      );
+      await t.pump();
+      await t.tap(find.text('내 곡'));
+      await t.pumpAndSettle();
+      await t.runAsync(() async {
+        await t.tap(find.text('검사 곡'));
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        while ((await repo.pendingRecordings()).single['input_selection'] ==
+            null) {
+          if (DateTime.now().isAfter(deadline)) {
+            fail('곡 선택 저장이 5초 안에 완료되지 않았습니다.');
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+        }
+        // SQLite publication can precede the final widget state microtask.
+        await Future<void>.delayed(Duration.zero);
+      });
+      await t.pump();
+      expect(find.text('선택한 곡: 검사 곡'), findsOneWidget);
+      await t.tap(find.text('다른 곳에서 선택'));
+      await t.pumpAndSettle();
+      expect(find.byType(FeatureIcon), findsNWidgets(4));
+      await t.runAsync(() async {
+        final row = (await repo.pendingRecordings()).single;
+        expect(row['metadata_state'], 'DRAFT');
+        expect(row['input_selection']['title_snapshot'], '검사 곡');
+        expect(row['file'], spec());
+      });
+    },
   );
 
   testWidgets(
@@ -176,9 +240,9 @@ void main() {
       await t.tap(find.text('찾는 곡 없음 확인'));
       await t.pumpAndSettle();
       await t.enterText(find.byKey(const ValueKey('song-artist')), '직접 가수');
-      await t.ensureVisible(find.text('이 기기에 저장'));
+      await t.ensureVisible(find.text('저장'));
       await t.runAsync(() async {
-        await t.tap(find.text('이 기기에 저장'));
+        await t.tap(find.text('저장'));
         await Future<void>.delayed(const Duration(milliseconds: 200));
       });
       await t.runAsync(

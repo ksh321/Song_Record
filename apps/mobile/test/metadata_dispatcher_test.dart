@@ -293,7 +293,11 @@ void main() {
         contains('old custom'),
       );
       expect(await audio.readAsBytes(), [1, 3, 5, 7]);
-      expect(await upgraded.claimMutation(), isNull);
+      final restored = (await upgraded.claimMutation())!;
+      expect(restored.path, '/v1/conditions');
+      expect(restored.mutation.entityId, id(52));
+      expect(jsonDecode(restored.body), {'id': id(52), 'name': 'old custom'});
+      expect((await upgraded.pendingMutations()).length, 2);
       expect(await upgraded.recoveryData(), contains('mutation_wire_requests'));
     },
   );
@@ -668,6 +672,7 @@ void main() {
             'version_code': 'NORMAL',
             'tier': null,
             'note': 'remote',
+            'is_suitable': false,
             'lifecycle_state': 'ACTIVE',
             'representative_key_mode': null,
             'representative_key_shift': null,

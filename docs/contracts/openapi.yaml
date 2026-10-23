@@ -104,7 +104,7 @@ paths:
       operationId: restoreTrash
       summary: 같은 삭제 묶음의 선택 항목 복원
       x-implementation-status: implemented
-      description: 서버 보관 기간 안의 항목만 복원한다. 원래 삭제 이력·만료는 불변이며 별도 작업 revision을 비교한다. 변경된 곡 연결은 덮어쓰지 않고 대표·고정을 자동 재지정하지 않는다. 남아 있는 목록의 끝에 중복 없이 복원하고 이미 활성인 항목·위치는 유지한다. 삭제된 목록은 재생성하지 않는다.
+      description: 서버 보관 기간 안의 항목만 복원한다. 원래 삭제 이력·만료는 불변이며 별도 작업 revision을 비교한다. 변경된 곡 연결은 덮어쓰지 않고 대표·고정을 자동 재지정하지 않는다. 남아 있는 목록의 끝에 중복 없이 복원하고 이미 활성인 항목·위치는 유지한다. 삭제된 목록은 재생성하지 않는다. SONG_AND_RECORDINGS에서 곡 ID만 선택하면 함께 삭제한 녹음은 휴지통에 남는다. 복원 TJ 곡은 같은 계정의 활성 후보에 기존 항목 ID와 위치를 유지해 연결하며, 같은 목록의 숨긴 과거 항목을 중복 복원하지 않는다.
       requestBody:
         required: true
         content:
@@ -272,6 +272,42 @@ paths:
           $ref: '#/components/responses/Error404'
         '500':
           $ref: '#/components/responses/Error500'
+  /playlists/{id}/library-order:
+    parameters:
+    - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+    - $ref: '#/components/parameters/DeviceId'
+    - $ref: '#/components/parameters/IdempotencyKey'
+    put:
+      operationId: reorderPlaylistLibrary
+      summary: 계정의 활성 플레이리스트 목록 순서를 함께 저장
+      x-implementation-status: implemented
+      description: ordered_playlists에 해당 계정의 모든 활성 목록을 각 revision과 함께 정확히 한 번씩 전달한다. 경로 id도 포함하며 base_revision이 일치해야 한다. 계정 잠금과 UUID 순서의 행 잠금 후 모든 display_order를 0부터 교체하고 각 revision·변경 피드를 증가시킨다. 목록 구성이나 revision이 달라지면 PLAYLIST_ORDER_CHANGED 409로 전체 취소한다. 다른 기기는 전체 사본과 변경 피드에서 display_order를 받아 정렬하며 조회 페이지 커서는 기존 UUID 기준을 유지한다. 같은 멱등키 재전송은 원래 응답을 그대로 반환한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [base_revision, ordered_playlists]
+              properties:
+                base_revision: {type: integer, format: int64, minimum: 1}
+                ordered_playlists:
+                  type: array
+                  minItems: 1
+                  maxItems: 1000
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [id, base_revision]
+                    properties:
+                      id: {type: string, format: uuid}
+                      base_revision: {type: integer, format: int64, minimum: 1}
+      responses:
+        '200': {description: 'playlist는 경로 id의 헤더, playlists는 요청 순서의 전체 헤더 배열. 각 display_order는 배열 위치, revision은 요청값 +1.'}
+        '400': {$ref: '#/components/responses/Error400'}
+        '401': {$ref: '#/components/responses/Error401'}
+        '409': {$ref: '#/components/responses/Error409'}
   /playlists/{id}/order:
     parameters:
     - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
@@ -356,6 +392,8 @@ paths:
               properties:
                 id: {type: string, format: uuid}
                 name: {type: string, minLength: 1, maxLength: 100}
+                icon: {type: string, enum: [music, mic, heart, star, headphones, sun]}
+                display_order: {type: integer, format: int64, minimum: 0, description: 백업 복원 시 지정 가능. 생략한 새 목록은 마지막에 추가.}
       responses:
         '201': {description: 새 목록 — id/name/revision/deleted_at/updated_at}
         '200': {description: 동일 UUID의 기존 활성 목록 — 편집값 덮어쓰기 없음}
@@ -380,6 +418,8 @@ paths:
               required: [name, base_revision]
               properties:
                 name: {type: string, minLength: 1, maxLength: 100}
+                icon: {type: string, enum: [music, mic, heart, star, headphones, sun]}
+                display_order: {type: integer, format: int64, minimum: 0, description: 백업 복원 시 지정 가능. 일반 정렬은 library-order 사용.}
                 base_revision: {type: integer, minimum: 1}
       responses:
         '200': {description: 이름 변경 후 목록 — revision 증가}
@@ -420,6 +460,7 @@ paths:
       operationId: addPlaylistItem
       summary: 활성 내 곡 또는 검증된 TJ 후보 추가 — 서버가 키·ID·위치 계산
       x-implementation-status: implemented
+      description: 중복 판정은 같은 목록의 활성 항목에만 적용한다. 휴지통 곡도 검증된 TJ 후보로 새로 담을 수 있으며 곡을 생성하거나 복원하지 않는다. 과거 숨긴 항목과 삭제 이력은 유지한다.
       parameters:
       - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
@@ -2826,18 +2867,30 @@ paths:
     get:
       operationId: listConditions
       summary: listConditions
-      description: D06 고정 컨디션 카탈로그. 사용자 정의/이름 변경/archive를 제공하지 않는다.
+      description: 계정별 기본/사용자 컨디션 목록. code를 녹음의 condition_code에 사용한다. 기본 항목은 기존 VERY_GOOD/GOOD/NORMAL/BAD
+        코드, 사용자 항목은 UUID 코드다. state=ACTIVE(기본)/ARCHIVED/ALL 및 정규화 이름·UUID 커서 정렬을 지원한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - name: state
+        in: query
+        schema:
+          type: string
+          enum:
+          - ACTIVE
+          - ARCHIVED
+          - ALL
+          default: ACTIVE
       responses:
         '200':
           description: 성공
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ConditionCatalog'
+                $ref: '#/components/schemas/ConditionPage'
         '400':
           $ref: '#/components/responses/Error400'
         '401':
@@ -2853,78 +2906,126 @@ paths:
     post:
       operationId: createCondition
       summary: createCondition
-      description: D06 읽기 전용 카탈로그. 인증 후 405 CONDITION_CATALOG_READ_ONLY.
+      description: 계정별 컨디션 생성. 사용자 정의 code는 id와 같은 UUID이며 직접 지정할 수 없다. 이름은 공백 제거 후 1~50
+        code point, 활성 정규화 이름 중복은 409. 기본 컨디션도 계정별로 수정/보관할 수 있다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
       responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condition'
+        '201':
+          description: 생성
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condition'
+        '400':
+          $ref: '#/components/responses/Error400'
         '401':
           $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
         '500':
           $ref: '#/components/responses/Error500'
         '503':
           $ref: '#/components/responses/Error503'
-        '405':
-          description: CONDITION_CATALOG_READ_ONLY
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConditionCreate'
   /conditions/{id}:
     patch:
       operationId: renameCondition
       summary: renameCondition
-      description: D06 읽기 전용 카탈로그. 인증 후 405 CONDITION_CATALOG_READ_ONLY.
+      description: revision을 검사하여 활성 컨디션 이름만 수정한다. 과거 recording_tag.name_snapshot은 변경하지
+        않는다. 이름 중복/보관 컨디션/버전 충돌은 409.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
       - name: id
         in: path
         required: true
         schema:
           $ref: '#/components/schemas/Uuid'
       responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condition'
+        '400':
+          $ref: '#/components/responses/Error400'
         '401':
           $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
         '500':
           $ref: '#/components/responses/Error500'
         '503':
           $ref: '#/components/responses/Error503'
-        '405':
-          description: CONDITION_CATALOG_READ_ONLY
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConditionPatch'
   /conditions/{id}/archive:
     post:
       operationId: archiveCondition
       summary: archiveCondition
-      description: D06 읽기 전용 카탈로그. 인증 후 405 CONDITION_CATALOG_READ_ONLY.
+      description: 컨디션를 물리 삭제하지 않고 archived_at을 기록한다. 기존 녹음 관계와 당시 이름은 유지하며 신규 선택은 차단한다.
+        이미 보관된 컨디션의 최초 보관 시각은 유지한다.
       x-implementation-status: implemented
       parameters:
       - $ref: '#/components/parameters/RequestId'
       - $ref: '#/components/parameters/DeviceId'
+      - $ref: '#/components/parameters/IdempotencyKey'
       - name: id
         in: path
         required: true
         schema:
           $ref: '#/components/schemas/Uuid'
       responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Condition'
+        '400':
+          $ref: '#/components/responses/Error400'
         '401':
           $ref: '#/components/responses/Error401'
+        '404':
+          $ref: '#/components/responses/Error404'
+        '409':
+          $ref: '#/components/responses/Error409'
         '500':
           $ref: '#/components/responses/Error500'
         '503':
           $ref: '#/components/responses/Error503'
-        '405':
-          description: CONDITION_CATALOG_READ_ONLY
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiErrorResponse'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConditionArchive'
   /account/deletion-device-confirmations:
     post:
       operationId: confirmDeletionForOriginalDevice
@@ -3880,6 +3981,9 @@ components:
       type: object
       additionalProperties: false
       properties:
+        is_suitable:
+          type: boolean
+          description: 실력 티어와 별도인 계정 소유자의 어울리는 곡 표시. 생성 생략은 false, PATCH 생략은 유지.
         deleted_at:
           anyOf:
           - $ref: '#/components/schemas/UtcInstant'
@@ -3950,6 +4054,9 @@ components:
       type: object
       additionalProperties: false
       properties:
+        is_suitable:
+          type: boolean
+          description: 실력 티어와 별도인 계정 소유자의 어울리는 곡 표시. 생성 생략은 false, PATCH 생략은 유지.
         base_revision:
           $ref: '#/components/schemas/Revision'
         title:
@@ -3977,12 +4084,15 @@ components:
       required:
       - base_revision
       description: 누락=유지. note null은 빈 메모, tier null은 미정. 대표 키는 기존 값과 합친 뒤 두 필드가 함께
-        null이거나 유효한 모드와 -12~12 정수여야 하며 ORIGINAL은 0만 허용한다. source_type/tj_number/id/user_id/언어/대표
+        null이거나 유효한 모드와 -12~12 정수여야 하며 ORIGINAL도 원곡 기준 반음 조절값 -12~12를 허용한다. source_type/tj_number/id/user_id/언어/대표
         녹음 ID는 변경 금지. 새 요청으로 수락한 PATCH는 동일값·빈 수정이라도 revision을 1 증가시킨다.
     SongCreate:
       type: object
       additionalProperties: false
       properties:
+        is_suitable:
+          type: boolean
+          description: 실력 티어와 별도인 계정 소유자의 어울리는 곡 표시. 생성 생략은 false, PATCH 생략은 유지.
         id:
           $ref: '#/components/schemas/Uuid'
         source_type:
@@ -4002,6 +4112,7 @@ components:
           type: string
           enum:
           - TJ_NOT_FOUND
+          - USER_ENTERED
         version_code:
           $ref: '#/components/schemas/VersionCode'
         tier:
@@ -4034,7 +4145,7 @@ components:
         not:
           required:
           - source_token
-      description: TJ 원본은 서버가 source_token으로 검증한다. MANUAL은 곡명·가수와 사용자 확인 사유 TJ_NOT_FOUND가
+      description: TJ 원본은 서버가 source_token으로 검증한다. MANUAL은 곡명·가수와 사용자 확인 사유 TJ_NOT_FOUND 또는 명시적 직접 등록 USER_ENTERED가
         필수이며 번호 직접 입력은 거절한다. 검색 장애를 미발견으로 바꾸지 않는다. 같은 UUID 또는 기존 TJ 번호는 입력값으로 덮어쓰지
         않는다. version_code 생략 시 NORMAL, note 생략 또는 null은 빈 메모다.
     TjSongCreate:
@@ -4179,7 +4290,7 @@ components:
           $ref: '#/components/schemas/VersionCode'
         condition_code:
           anyOf:
-          - $ref: '#/components/schemas/ConditionCode'
+          - $ref: '#/components/schemas/ConditionReference'
           - type: 'null'
         tag_ids:
           $ref: '#/components/schemas/TagIds'
@@ -4509,7 +4620,7 @@ components:
           maximum: 1080
         condition_code:
           anyOf:
-          - $ref: '#/components/schemas/ConditionCode'
+          - $ref: '#/components/schemas/ConditionReference'
           - type: 'null'
       required:
       - id
@@ -4613,7 +4724,7 @@ components:
           - type: 'null'
         condition_code:
           anyOf:
-          - $ref: '#/components/schemas/ConditionCode'
+          - $ref: '#/components/schemas/ConditionReference'
           - type: 'null'
         tag_ids:
           $ref: '#/components/schemas/TagIds'
@@ -4674,7 +4785,7 @@ components:
           - key_shift
           properties:
             key_shift:
-              const: 0
+              $ref: '#/components/schemas/KeyShift'
       description: DRAFT는 입력 미정 null/누락 허용. SAVED는 제목·가수·키·버전 필수. 관계 없는 녹음도 허용. 녹음
         생성은 음성 업로드가 아니다.
     TierPatch:
@@ -4919,7 +5030,7 @@ components:
       oneOf:
       - $ref: '#/components/schemas/ConditionCode'
       - $ref: '#/components/schemas/Uuid'
-      description: 과거 커스텀 UUID 읽기/필터 호환. 신규 입력은 ConditionCode만 허용한다.
+      description: 계정 소유의 활성 기본 코드 또는 사용자 정의 UUID. 같은 코드의 기존 녹음은 당시 이름을 보존한다.
     ConditionName:
       type: string
       minLength: 1

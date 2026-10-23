@@ -48,7 +48,7 @@ class ContentState extends StatelessWidget {
                   ContentPhase.waiting => Icons.schedule,
                 },
                 size: 32,
-                color: AppColors.muted,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             const SizedBox(height: AppSpacing.lg),
             Text(

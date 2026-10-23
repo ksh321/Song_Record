@@ -21,24 +21,27 @@ class ConditionTests {
         setup.f.jdbc.update("UPDATE recording SET condition_code=?,condition_name_snapshot=? WHERE id=?",custom.toString(),"당시 이름",bytes(setup.setup.id));
         setup.f.jdbc.update("UPDATE condition_definition SET name='바뀐 기본값',archived_at=CURRENT_TIMESTAMP WHERE code='GOOD'");
     }
-    @Test void fixedCatalogIgnoresLegacyNamesAndArchive()throws Exception{
+    @Test void ownedCatalogReflectsNamesAndArchive()throws Exception{
         seedLegacy();
         var r=setup.setup.setup.mvc.perform(get("/v1/conditions").header("Authorization",auth()).header("X-Device-Id",device())).andReturn().getResponse();
         assertThat(r.getStatus()).isEqualTo(200);assertThat(r.getHeader("Cache-Control")).isEqualTo("no-store");
-        assertThat(setup.json.readTree(r.getContentAsString())).isEqualTo(setup.json.readTree(setup.json.writeValueAsString(new ConditionService.Catalog(ConditionCatalog.ITEMS))));
-        assertThat(setup.setup.setup.mvc.perform(get("/v1/conditions").header("Authorization",auth()).header("X-Device-Id",device()).param("state","ALL")).andReturn().getResponse().getStatus()).isEqualTo(400);
+        var items=setup.json.readTree(r.getContentAsString()).get("items");
+        assertThat(items.size()).isEqualTo(4);
+        assertThat(r.getContentAsString()).contains("이전 정의").doesNotContain("바뀐 기본값");
+        var all=setup.setup.setup.mvc.perform(get("/v1/conditions").header("Authorization",auth()).header("X-Device-Id",device()).param("state","ALL")).andReturn().getResponse();
+        assertThat(all.getStatus()).isEqualTo(200);
+        assertThat(setup.json.readTree(all.getContentAsString()).get("items").size()).isEqualTo(5);
         assertThat(setup.setup.setup.mvc.perform(get("/v1/conditions")).andReturn().getResponse().getStatus()).isEqualTo(401);
     }
     @Test void headSupportsAdvertisedReadMethod()throws Exception{
         var r=setup.setup.setup.mvc.perform(head("/v1/conditions").header("Authorization",auth()).header("X-Device-Id",device())).andReturn().getResponse();
         assertThat(r.getStatus()).isEqualTo(200);assertThat(r.getContentAsByteArray()).isEmpty();
     }
-    @Test void writesAre405EvenWithoutJsonBodyAndNeverCreateReceipts()throws Exception{
+    @Test void invalidWritesNeverCreateReceipts()throws Exception{
         long receipts=setup.setup.setup.count("mutation_receipt");
-        for(var request:List.of(post("/v1/conditions"),patch("/v1/conditions/invalid"),post("/v1/conditions/invalid/archive"))){
-            var r=setup.setup.setup.mvc.perform(request.header("Authorization",auth()).header("X-Device-Id",device())).andReturn().getResponse();
-            assertThat(r.getStatus()).isEqualTo(405);assertThat(r.getContentAsString()).contains("CONDITION_CATALOG_READ_ONLY");
-            assertThat(r.getHeader("Cache-Control")).isEqualTo("no-store");
+        for(var request:List.of(post("/v1/conditions"),patch("/v1/conditions/"+UUID.randomUUID()),post("/v1/conditions/"+UUID.randomUUID()+"/archive"))){
+            var r=setup.setup.setup.mvc.perform(request.header("Authorization",auth()).header("X-Device-Id",device()).header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content("{}")).andReturn().getResponse();
+            assertThat(r.getStatus()).isEqualTo(400);
         }
         assertThat(setup.setup.setup.count("mutation_receipt")).isEqualTo(receipts);
         assertThat(setup.setup.setup.mvc.perform(post("/v1/conditions")).andReturn().getResponse().getStatus()).isEqualTo(401);
@@ -47,13 +50,16 @@ class ConditionTests {
         seedLegacy();var c=setup.setup.setup.context;
         ConditionDatabaseChecks.verify(setup.f.jdbc,c.getBean(ConditionService.class),c.getBean(RecordingDrafts.class),c.getBean(RecordingEditing.class),auth(),device(),setup.f.registration.userId(),setup.setup.id);
     }
-    @Test void legacyReadFilterAndOwnershipRemainWhileNewUuidSelectionIsRejected()throws Exception{
+    @Test void ownedSelectionAndOtherAccountRejection()throws Exception{
         seedLegacy();String old=setup.f.jdbc.queryForObject("SELECT condition_code FROM recording WHERE id=?",String.class,bytes(setup.setup.id));
         var r=setup.listing.list("condition_code",old);assertThat(setup.json.readTree(r.getContentAsString()).get("count").asInt()).isEqualTo(1);
-        assertThat(setup.edit(Map.of("base_revision",1,"condition_code",old)).getStatus()).isEqualTo(400);
+        assertThat(setup.edit(Map.of("base_revision",1,"condition_code",old)).getStatus()).isEqualTo(200);
         var p=setup.f.other.principal();var tokens=setup.f.sessions.issue(new AccountRegistrationService.Registration(p.userId(),p.deviceId(),false));
         var denied=setup.setup.setup.mvc.perform(patch("/v1/recordings/"+setup.setup.id).header("Authorization","Bearer "+tokens.accessToken()).header("X-Device-Id",p.deviceId()).header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content("{\"base_revision\":1,\"condition_code\":\"GOOD\"}")).andReturn().getResponse();
         assertThat(denied.getStatus()).isEqualTo(404);
+        var rename=setup.setup.setup.mvc.perform(patch("/v1/conditions/"+old).header("Authorization","Bearer "+tokens.accessToken()).header("X-Device-Id",p.deviceId()).header("Idempotency-Key",UUID.randomUUID()).contentType("application/json").content(setup.json.writeValueAsString(Map.of("base_revision",1,"name","타계정")))).andReturn().getResponse();
+        assertThat(rename.getStatus()).isEqualTo(404);
+
         assertThat(setup.f.jdbc.queryForObject("SELECT condition_code FROM recording WHERE id=?",String.class,bytes(setup.setup.id))).isEqualTo(old);
     }
 }

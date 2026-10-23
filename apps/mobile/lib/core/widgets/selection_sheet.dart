@@ -36,7 +36,7 @@ Future<SelectionResult<T>?> showSelectionSheet<T>({
     useSafeArea: true,
     isScrollControlled: true,
     showDragHandle: false,
-    backgroundColor: AppColors.sheetBackground,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     barrierColor: AppColors.sheetScrim,
     barrierLabel: '선택 취소',
     shape: const RoundedRectangleBorder(

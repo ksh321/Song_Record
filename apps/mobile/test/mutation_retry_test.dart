@@ -14,6 +14,7 @@ import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/sync/sync_controller.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 
+import 'change_payload_validation_test.dart' show songChange;
 import 'metadata_dispatcher_test.dart' show id, tag, FakeTransport;
 
 Future<void> idleAfter(
@@ -78,6 +79,115 @@ void main() {
     await manager.logout();
     await root.delete(recursive: true);
   });
+
+  for (final sample in [
+    ('VALIDATION_FAILED', 400, -3, true),
+    ('VALIDATION_FAILED', 400, 0, false),
+    ('VALIDATION_FAILED', 400, 13, false),
+    ('OTHER_VALIDATION', 400, -3, false),
+    ('VALIDATION_FAILED', 422, -3, false),
+  ]) {
+    test(
+      'original reference recovery is explicit and scoped: $sample',
+      () async {
+        final initial = songChange(id(99), 1);
+        await repo.save(
+          repo.prepareCreate(
+            entity: LocalEntity.song,
+            entityId: id(99),
+            draft: initial,
+            changes: {
+              'source_type': 'MANUAL',
+              'title': 'server',
+              'artist': 'artist',
+            },
+          ),
+        );
+        expect(
+          await repo.dispatch(
+            transport: FakeTransport(
+              (_) async => MutationResponse(
+                201,
+                jsonEncode({
+                  'created': true,
+                  'canonical_song_id': id(99),
+                  'song': initial,
+                }),
+              ),
+            ),
+            session: session,
+          ),
+          1,
+        );
+        final patch = repo.preparePatch(
+          entity: LocalEntity.song,
+          entityId: id(99),
+          baseRevision: 1,
+          draft: {
+            ...initial,
+            'representative_key_mode': 'ORIGINAL',
+            'representative_key_shift': sample.$3,
+          },
+          changes: {
+            'representative_key_mode': 'ORIGINAL',
+            'representative_key_shift': sample.$3,
+          },
+        );
+        await repo.save(patch);
+        late MutationRequest original;
+        final failed = FakeTransport((r) async {
+          original = r;
+          return MutationResponse(
+            sample.$2,
+            jsonEncode({
+              'error': {'code': sample.$1},
+            }),
+          );
+        });
+        await repo.dispatch(transport: failed, session: session);
+        final before = (await repo.retryStatus(patch.opId))!;
+        expect(before.originalKeyCorrection, sample.$4);
+        expect(before.canRetryManually, sample.$4);
+        expect(await repo.dispatch(transport: failed, session: session), 0);
+        expect(failed.calls, 1); // No automatic release or budget reset.
+        expect(
+          await repo.retryMutation(patch.opId, expectedAttempt: 0),
+          isFalse,
+        );
+        expect(
+          await repo.retryMutation(patch.opId, expectedAttempt: 1),
+          sample.$4,
+        );
+        if (!sample.$4) return;
+        expect(
+          await repo.retryMutation(patch.opId, expectedAttempt: 1),
+          isFalse,
+        );
+        final corrected = {
+          ...initial,
+          'revision': 2,
+          'representative_key_mode': 'ORIGINAL',
+          'representative_key_shift': -3,
+        };
+        expect(
+          await repo.dispatch(
+            transport: FakeTransport((r) async {
+              expect(r.mutation.opId, original.mutation.opId);
+              expect(r.body, original.body);
+              expect(r.hash, original.hash);
+              expect(r.attempt, 2);
+              return MutationResponse(200, jsonEncode(corrected));
+            }),
+            session: session,
+          ),
+          1,
+        );
+        expect(await repo.pendingWork(), isEmpty);
+        final after = (await repo.retryStatus(patch.opId))!;
+        expect(after.automaticRetriesClaimed, before.automaticRetriesClaimed);
+      },
+    );
+  }
 
   // manual auth followup guard: queued lifecycle work must honor 401/403.
   for (final status in [401, 403]) {

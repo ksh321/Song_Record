@@ -18,6 +18,40 @@ class PlaylistTests {
   s.f.jdbc.execute("CREATE UNIQUE INDEX playlist_proof ON deletion_ledger(user_id,entity_type,entity_id)");
   new ResourceDatabasePopulator(new ClassPathResource("job-schema.sql")).populate(s.f.keeper);
  }
+ @Test void iconCreateRenameAndReplayPreserveTheSelectedIcon()throws Exception{
+  UUID id=UUID.randomUUID();String op=UUID.randomUUID().toString();
+  String body=json.writeValueAsString(Map.of("id",id.toString(),"name","아이콘 목록","icon","heart"));
+  var first=s.mvc.perform(post("/v1/playlists").header("Authorization","Bearer "+s.f.tokens.accessToken()).header("X-Device-Id",s.f.registration.deviceId()).header("Idempotency-Key",op).contentType("application/json").content(body)).andReturn().getResponse();
+  assertThat(first.getStatus()).isEqualTo(201);assertThat(json.readTree(first.getContentAsString()).get("icon").asText()).isEqualTo("heart");
+  var replay=s.mvc.perform(post("/v1/playlists").header("Authorization","Bearer "+s.f.tokens.accessToken()).header("X-Device-Id",s.f.registration.deviceId()).header("Idempotency-Key",op).contentType("application/json").content(body)).andReturn().getResponse();
+  assertThat(replay.getContentAsString()).isEqualTo(first.getContentAsString());
+  var changed=s.mvc.perform(patch("/v1/playlists/"+id).header("Authorization","Bearer "+s.f.tokens.accessToken()).header("X-Device-Id",s.f.registration.deviceId()).header("Idempotency-Key",UUID.randomUUID().toString()).contentType("application/json").content(json.writeValueAsString(Map.of("name","새 이름","base_revision",1)))).andReturn().getResponse();
+  assertThat(changed.getStatus()).isEqualTo(200);assertThat(json.readTree(changed.getContentAsString()).get("icon").asText()).isEqualTo("heart");
+ }
+ @Test void libraryOrderIsAtomicReplayedAndRejectsStaleOrIncompleteMembership()throws Exception{
+  UUID a=UUID.randomUUID(),b=UUID.randomUUID();create(a,"첫 목록");create(b,"둘째 목록");
+  String op=UUID.randomUUID().toString();
+  String body=json.writeValueAsString(Map.of("base_revision",1,"ordered_playlists",List.of(Map.of("id",b.toString(),"base_revision",1),Map.of("id",a.toString(),"base_revision",1))));
+  var service=s.context.getBean(PlaylistService.class);String auth="Bearer "+s.f.tokens.accessToken(),device=s.f.registration.deviceId().toString();
+  assertThat(s.mvc.perform(put("/v1/playlists/"+a+"/library-order").contentType("application/json").content(body)).andReturn().getResponse().getStatus()).isEqualTo(401);
+  var http=s.mvc.perform(put("/v1/playlists/"+a+"/library-order").header("Authorization",auth).header("X-Device-Id",device).header("Idempotency-Key",op).contentType("application/json").content(body)).andReturn().getResponse();
+  assertThat(http.getStatus()).isEqualTo(200);assertThat(http.getHeader("Cache-Control")).isEqualTo("no-store");
+  var reply=service.reorderLibrary(auth,device,op,a.toString(),body);
+  assertThat(reply.body()).isEqualTo(http.getContentAsString());
+  var result=json.readTree(reply.body());assertThat(reply.status()).isEqualTo(200);
+  assertThat(result.get("playlists").get(0).get("id").asText()).isEqualTo(b.toString());
+  assertThat(result.get("playlists").get(0).get("display_order").asLong()).isZero();
+  assertThat(result.get("playlists").get(1).get("display_order").asLong()).isEqualTo(1);
+  assertThat(result.get("playlist").get("revision").asLong()).isEqualTo(2);
+  assertThat(service.reorderLibrary(auth,device,op,a.toString(),body).body()).isEqualTo(reply.body());
+  var before=s.f.jdbc.queryForList("SELECT id,name,icon,display_order,revision FROM playlist ORDER BY id");
+  assertThatThrownBy(()->service.reorderLibrary(auth,device,UUID.randomUUID().toString(),a.toString(),body)).isInstanceOf(com.ksh321.songrecord.api.web.ApiException.class);
+  String omitted=json.writeValueAsString(Map.of("base_revision",2,"ordered_playlists",List.of(Map.of("id",a.toString(),"base_revision",2))));
+  assertThatThrownBy(()->service.reorderLibrary(auth,device,UUID.randomUUID().toString(),a.toString(),omitted)).isInstanceOf(com.ksh321.songrecord.api.web.ApiException.class);
+  String foreign=json.writeValueAsString(Map.of("base_revision",2,"ordered_playlists",List.of(Map.of("id",a.toString(),"base_revision",2),Map.of("id",UUID.randomUUID().toString(),"base_revision",2))));
+  assertThatThrownBy(()->service.reorderLibrary(auth,device,UUID.randomUUID().toString(),a.toString(),foreign)).isInstanceOf(com.ksh321.songrecord.api.web.ApiException.class);
+  assertThat(s.f.jdbc.queryForList("SELECT id,name,icon,display_order,revision FROM playlist ORDER BY id")).usingRecursiveComparison().isEqualTo(before);
+ }
  @Test void removingOneItemPreservesOtherListsSongsAndRecordings()throws Exception{
   s.postBody(s.f.key,s.body(""));UUID a=UUID.randomUUID(),b=UUID.randomUUID(),recording=UUID.randomUUID();create(a,"첫 목록");create(b,"다른 목록");
   s.f.jdbc.update("INSERT INTO recording(id,user_id,song_id,revision,lifecycle_state) VALUES(?,?,?,1,'ACTIVE')",bytes(recording),bytes(s.f.registration.userId()),bytes(s.id));

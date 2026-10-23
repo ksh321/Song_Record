@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:song_record/app/app_tab.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 
+import '../core/theme/app_appearance.dart';
+
 /// Navigation context for one tab, retained only for this shell's lifetime.
 /// This is UI selection, not account data or process-death restoration.
 class TabNavigation extends ChangeNotifier {
@@ -129,9 +131,13 @@ class _TabPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: (MediaQuery.textScalerOf(context)
-                    .scale(AppTypography.songDetailTitleSize) * 1.4 + 16)
-            .clamp(kToolbarHeight, double.infinity).toDouble(),
+        toolbarHeight:
+            (MediaQuery.textScalerOf(context)
+                            .scale(AppTypography.songDetailTitleSize) *
+                        1.4 +
+                    16)
+                .clamp(kToolbarHeight, double.infinity)
+                .toDouble(),
         title: Tooltip(
           message: title,
           child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -145,6 +151,7 @@ class _TabPage extends StatelessWidget {
               )
             : null,
         actions: [
+          const ThemeToggle(),
           IconButton(
             tooltip: '설정',
             onPressed: openSettings,

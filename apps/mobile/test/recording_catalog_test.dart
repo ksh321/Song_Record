@@ -17,6 +17,7 @@ import 'package:song_record/features/recorder/recording_pages.dart';
 import 'recording_filter_test.dart' as filters;
 import 'recording_input_test.dart' as input;
 import 'support/completed_capture_fixture.dart';
+import 'support/recording_view_fixture.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -207,7 +208,7 @@ void main() {
             home: Scaffold(
               body: SingleChildScrollView(
                 child: RecordingList(
-                  rows: rows,
+                  rows: rows.map(recordingViewFixture).toList(),
                   metadataComplete: complete,
                   onOpen: (_) {},
                 ),

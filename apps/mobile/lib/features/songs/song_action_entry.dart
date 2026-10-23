@@ -2,31 +2,61 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/app_tokens.dart';
 import '../auth/auth_session.dart';
+import '../playlists/playlist_access.dart';
 import 'my_song_detail.dart';
 
 enum SongAction { playlistAdd, delete }
 
 /// P17 provides navigation only. P19/P20 supply mutation workflows and server previews.
 class SongActionEntry extends StatefulWidget {
-  const SongActionEntry({required this.action, required this.detail, this.auth, super.key});
+  const SongActionEntry({
+    required this.action,
+    required this.detail,
+    this.auth,
+    super.key,
+  });
   final SongAction action;
   final MySongDetail detail;
   final AuthController? auth;
   @override
   State<SongActionEntry> createState() => _SongActionEntryState();
 }
+
 class _SongActionEntryState extends State<SongActionEntry> {
   late final String scope = tag();
   bool invalidated = false;
-  String tag() => '${widget.auth?.phase}:${widget.auth?.session?.userId}:${widget.auth?.session?.deviceId}';
+  String tag() =>
+      '${widget.auth?.phase}:${widget.auth?.session?.userId}:${widget.auth?.session?.deviceId}';
   bool get current => !invalidated && scope == tag();
-  void changed() { if (mounted && tag() != scope) setState(() => invalidated = true); }
+  void changed() {
+    if (mounted && tag() != scope) setState(() => invalidated = true);
+  }
+
   @override
-  void initState() { super.initState(); widget.auth?.addListener(changed); }
+  void initState() {
+    super.initState();
+    widget.auth?.addListener(changed);
+  }
+
   @override
-  void dispose() { widget.auth?.removeListener(changed); super.dispose(); }
+  void dispose() {
+    widget.auth?.removeListener(changed);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final access = context.dependOnInheritedWidgetOfExactType<PlaylistAccess>();
+    if (current && widget.action == SongAction.playlistAdd && access != null) {
+      final library = access.library();
+      if (library != null) {
+        return AddSongToPlaylistScreen(
+          library: library,
+          songId: widget.detail.song!.view.id.value,
+          wakeSync: access.wakeSync,
+        );
+      }
+    }
     Widget body() => SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -58,7 +88,9 @@ class _SongActionEntryState extends State<SongActionEntry> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.action == SongAction.playlistAdd ? '플레이리스트 추가' : '곡 삭제'),
+        title: Text(
+          widget.action == SongAction.playlistAdd ? '플레이리스트 추가' : '곡 삭제',
+        ),
       ),
       body: body(),
     );

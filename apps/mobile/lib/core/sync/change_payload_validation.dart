@@ -15,13 +15,18 @@ void validatePlaylistDeletion(Map<String, dynamic> value) {
   _require(revision is int && revision > 0 && revision <= 9223372036854775807);
   _require(value['status'] == 'DELETED');
   final Object? deletedAt = value['deleted_at'];
-  _require(deletedAt is String &&
-      RegExp(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$')
-          .hasMatch(deletedAt));
+  _require(
+    deletedAt is String &&
+        RegExp(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$')
+            .hasMatch(deletedAt),
+  );
   final parsed = DateTime.tryParse(deletedAt as String);
-  _require(parsed != null && parsed.year >= 1000 &&
-      parsed.toUtc().toIso8601String().substring(0, 19) ==
-          deletedAt.substring(0, 19));
+  _require(
+    parsed != null &&
+        parsed.year >= 1000 &&
+        parsed.toUtc().toIso8601String().substring(0, 19) ==
+            deletedAt.substring(0, 19),
+  );
 }
 
 /// Current change writers emit SONG, RECORDING and TAG snapshots. This validates
@@ -75,7 +80,6 @@ void validateChangePayload(LocalEntity entity, Map<String, dynamic> value) {
     choice(mode, {'ORIGINAL', 'MALE', 'FEMALE'}, nullable: true);
     number(shift, -12, 12, nullable: true);
     _require((value[mode] == null) == (value[shift] == null));
-    _require(value[mode] != 'ORIGINAL' || value[shift] == 0);
   }
 
   const common = {'id', 'revision', 'updated_at'};
@@ -96,8 +100,11 @@ void validateChangePayload(LocalEntity entity, Map<String, dynamic> value) {
           'representative_key_mode',
           'representative_key_shift',
         },
-        {'created_at', 'latest_recorded_at', 'deleted_at'},
+        {'created_at', 'latest_recorded_at', 'deleted_at', 'is_suitable'},
       );
+      if (value.containsKey('is_suitable')) {
+        _require(value['is_suitable'] is bool);
+      }
       choice('source_type', {'TJ', 'MANUAL'});
       final tj = value['tj_number'];
       _require(
@@ -128,7 +135,7 @@ void validateChangePayload(LocalEntity entity, Map<String, dynamic> value) {
       text('name', 1, 50);
       time('archived_at', nullable: true);
     case LocalEntity.recordingCondition:
-      // D06 keeps old definitions readable; this never enables custom writes.
+      // USER-181: default codes and owned UUID definitions share one wire shape.
       fields({...common, 'name', 'code', 'archived_at'}, {});
       text('name', 1, 50);
       time('archived_at', nullable: true);
@@ -142,7 +149,27 @@ void validateChangePayload(LocalEntity entity, Map<String, dynamic> value) {
     case LocalEntity.playlist:
       // Header shape from the account snapshot source. Item ordering has its
       // own parent-revision contract and is not inferred from this header.
-      fields({...common, 'name', 'deleted_at'}, {'created_at'});
+      fields(
+        {...common, 'name', 'deleted_at'},
+        {'created_at', 'icon', 'display_order'},
+      );
+      if (value.containsKey('display_order')) {
+        _require(
+          value['display_order'] is int && (value['display_order'] as int) >= 0,
+        );
+      }
+      if (value.containsKey('icon')) {
+        _require(
+          {
+            'music',
+            'mic',
+            'heart',
+            'star',
+            'headphones',
+            'sun',
+          }.contains(value['icon']),
+        );
+      }
       text('name', 1, 100);
       time('deleted_at', nullable: true);
       if (value.containsKey('created_at')) time('created_at');

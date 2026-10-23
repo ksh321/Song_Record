@@ -123,12 +123,33 @@ void main() {
       expect(review.local['note'], 'my offline note');
       expect(review.server['note'], 'other device note');
       final newest = {...remote, 'revision': 3, 'note': 'newest server note'};
-      await store.applyChangeFeed(ChangeFeedPage.decode(jsonEncode({
-        'after_seq': 8, 'next_seq': 9, 'head_seq': 9, 'has_more': false,
-        'changes': [{'change_seq': 9, 'entity_type': 'SONG', 'entity_id': target,
-          'revision': 3, 'operation': 'UPSERT', 'payload': newest}],
-      }), owner: owner, expectedAfter: 8), snapshotToken: token);
-      await expectLater(repository.resolve(review, {'note': ConflictChoice.local}), throwsStateError);
+      await store.applyChangeFeed(
+        ChangeFeedPage.decode(
+          jsonEncode({
+            'after_seq': 8,
+            'next_seq': 9,
+            'head_seq': 9,
+            'has_more': false,
+            'changes': [
+              {
+                'change_seq': 9,
+                'entity_type': 'SONG',
+                'entity_id': target,
+                'revision': 3,
+                'operation': 'UPSERT',
+                'payload': newest,
+              },
+            ],
+          }),
+          owner: owner,
+          expectedAfter: 8,
+        ),
+        snapshotToken: token,
+      );
+      await expectLater(
+        repository.resolve(review, {'note': ConflictChoice.local}),
+        throwsStateError,
+      );
       final refreshed = await repository.review(original.opId);
       expect(refreshed.server['revision'], 3);
       expect(refreshed.mutation.serverResponse, conflict.serverResponse);

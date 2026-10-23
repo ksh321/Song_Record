@@ -1,0 +1,1 @@
+ALTER TABLE playlist ADD COLUMN icon VARCHAR(16) NOT NULL DEFAULT 'music';

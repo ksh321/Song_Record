@@ -5,10 +5,7 @@ import 'dart:io';
 import 'api_error.dart';
 
 class HealthResponse {
-  const HealthResponse({
-    required this.status,
-    required this.rawBody,
-  });
+  const HealthResponse({required this.status, required this.rawBody});
 
   final String status;
   final String rawBody;
@@ -58,15 +55,10 @@ class HealthClient {
 
       final decoded = jsonDecode(body);
       if (decoded is! Map<String, dynamic> || decoded['status'] is! String) {
-        throw const HealthCheckException(
-          '서버 health 응답 형식이 올바르지 않습니다.',
-        );
+        throw const HealthCheckException('서버 health 응답 형식이 올바르지 않습니다.');
       }
 
-      return HealthResponse(
-        status: decoded['status'] as String,
-        rawBody: body,
-      );
+      return HealthResponse(status: decoded['status'] as String, rawBody: body);
     } on TimeoutException {
       throw const HealthCheckException('서버 응답 시간이 초과됐습니다.');
     } on SocketException {
@@ -74,9 +66,7 @@ class HealthClient {
         '서버에 연결할 수 없습니다. API 주소와 서버 실행 상태를 확인하세요.',
       );
     } on FormatException {
-      throw const HealthCheckException(
-        '서버가 올바른 JSON을 반환하지 않았습니다.',
-      );
+      throw const HealthCheckException('서버가 올바른 JSON을 반환하지 않았습니다.');
     } finally {
       client.close(force: true);
     }

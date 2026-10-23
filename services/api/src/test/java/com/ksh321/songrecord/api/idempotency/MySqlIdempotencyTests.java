@@ -19,6 +19,31 @@ import static com.ksh321.songrecord.api.songs.SongQueryKeys.bytes;
 /** CI-only, real InnoDB and V6 receipt DDL. Authentication itself is covered by IdempotencyTests. */
 @EnabledIfEnvironmentVariable(named="P07_MYSQL_CI", matches="true")
 class MySqlIdempotencyTests {
+    @Test void originalReferenceMigrationPreservesRowsAndPairRangeGuards() throws Exception {
+        String name=database+"_original_key";admin.execute("CREATE DATABASE "+name);
+        try {
+            var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
+            var db=new JdbcTemplate(ds);
+            db.execute("CREATE TABLE song(id INT PRIMARY KEY,representative_key_mode VARCHAR(10),representative_key_shift INT,CONSTRAINT ck_song_representative_key CHECK ((representative_key_mode IS NULL AND representative_key_shift IS NULL) OR (representative_key_mode IS NOT NULL AND representative_key_shift IS NOT NULL AND representative_key_mode IN ('ORIGINAL','MALE','FEMALE') AND representative_key_shift BETWEEN -12 AND 12 AND (representative_key_mode<>'ORIGINAL' OR representative_key_shift=0))))");
+            db.execute("CREATE TABLE recording(id INT PRIMARY KEY,key_mode VARCHAR(10),key_shift INT,CONSTRAINT ck_recording_key CHECK ((key_mode IS NULL AND key_shift IS NULL) OR (key_mode IS NOT NULL AND key_shift IS NOT NULL AND key_mode IN ('ORIGINAL','MALE','FEMALE') AND key_shift BETWEEN -12 AND 12 AND (key_mode<>'ORIGINAL' OR key_shift=0))))");
+            db.update("INSERT INTO song VALUES(1,'ORIGINAL',0),(2,NULL,NULL)");
+            db.update("INSERT INTO recording VALUES(1,'ORIGINAL',0),(2,NULL,NULL)");
+            assertThatThrownBy(()->db.update("UPDATE song SET representative_key_shift=-3 WHERE id=1")).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            new org.springframework.jdbc.datasource.init.ResourceDatabasePopulator(new org.springframework.core.io.FileSystemResource("src/main/resources/db/migration/V33__original_reference_key_shift.sql")).execute(ds);
+            for(int shift:java.util.List.of(-12,-3,0,3,12)) {
+                db.update("UPDATE song SET representative_key_shift=? WHERE id=1",shift);
+                db.update("UPDATE recording SET key_shift=? WHERE id=1",shift);
+                assertThat(db.queryForObject("SELECT representative_key_shift FROM song WHERE id=1",Integer.class)).isEqualTo(shift);
+                assertThat(db.queryForObject("SELECT key_shift FROM recording WHERE id=1",Integer.class)).isEqualTo(shift);
+            }
+            for(String assignment:java.util.List.of("key_shift=13","key_shift=-13","key_shift=NULL","key_mode='BAD'","key_mode=NULL")) {
+                assertThatThrownBy(()->db.update("UPDATE recording SET "+assignment+" WHERE id=1")).isInstanceOf(org.springframework.dao.DataAccessException.class);
+                assertThatThrownBy(()->db.update("UPDATE song SET "+assignment.replace("key_","representative_key_")+" WHERE id=1")).isInstanceOf(org.springframework.dao.DataAccessException.class);
+            }
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM song",Integer.class)).isEqualTo(2);
+            assertThat(db.queryForObject("SELECT COUNT(*) FROM recording",Integer.class)).isEqualTo(2);
+        } finally {admin.execute("DROP DATABASE "+name);}
+    }
     private static String mysqlBase() {
         String configured = System.getenv("P10_MYSQL_PORT");
         int port = configured == null ? 3306 : Integer.parseInt(configured);
@@ -203,10 +228,14 @@ class MySqlIdempotencyTests {
         var changes=syncService();
         String core=Files.readString(Path.of("src/main/resources/db/migration/V2__account_song_recording.sql"));
         int start=core.indexOf("CREATE TABLE song (");jdbc.execute(core.substring(start,core.indexOf(';',start)));
+        jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V31__song_suitability.sql")));
         String lists=Files.readString(Path.of("src/main/resources/db/migration/V4__playlists_and_classifications.sql"));
         for(String table:java.util.List.of("playlist","playlist_item")){
             start=lists.indexOf("CREATE TABLE "+table+" (");jdbc.execute(lists.substring(start,lists.indexOf(';',start)));
         }
+        jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V32__playlist_icon.sql")));
+        jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V35__playlist_display_order.sql")));
+        jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V36__playlist_visible_identity.sql")));
         for(String command:java.util.List.of("CREATE PROCEDURE p04_playlist_item_identity", "CREATE TRIGGER trg_playlist_item_before_insert", "CREATE TRIGGER trg_playlist_item_before_update")) {
             start=lists.indexOf(command);jdbc.execute(lists.substring(start,lists.indexOf("$$",start)));
         }
@@ -274,6 +303,35 @@ class MySqlIdempotencyTests {
         var removed=listsService.removeItem("Bearer test","device",removeOp,list.toString(),item,removeBody);assertThat(removed.status()).isEqualTo(200);assertThat(json.readTree(removed.body()).get("items").size()).isEqualTo(1);
         assertThat(listsService.removeItem("Bearer test","device",removeOp,list.toString(),item,removeBody)).isEqualTo(removed);assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM playlist_item",Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForList("SELECT * FROM song ORDER BY id")).usingRecursiveComparison().isEqualTo(songBefore);
+        var itemsBefore=jdbc.queryForList("SELECT * FROM playlist_item ORDER BY id");
+        UUID another=UUID.randomUUID();
+        listsService.create("Bearer test","device",UUID.randomUUID().toString(),json.writeValueAsString(java.util.Map.of("id",another.toString(),"name","second","icon","heart")));
+        assertThat(jdbc.queryForObject("SELECT display_order FROM playlist WHERE id=?",Long.class,bytes(another))).isEqualTo(1);
+        String libraryBody=json.writeValueAsString(java.util.Map.of("base_revision",7,"ordered_playlists",java.util.List.of(java.util.Map.of("id",another.toString(),"base_revision",1),java.util.Map.of("id",list.toString(),"base_revision",7))));
+        String libraryOp=UUID.randomUUID().toString();
+        var libraryReply=listsService.reorderLibrary("Bearer test","device",libraryOp,list.toString(),libraryBody);
+        assertThat(libraryReply.status()).isEqualTo(200);
+        assertThat(listsService.reorderLibrary("Bearer test","device",libraryOp,list.toString(),libraryBody)).isEqualTo(libraryReply);
+        assertThat(jdbc.queryForObject("SELECT display_order FROM playlist WHERE id=?",Long.class,bytes(another))).isZero();
+        assertThat(jdbc.queryForObject("SELECT display_order FROM playlist WHERE id=?",Long.class,bytes(list))).isEqualTo(1);
+        assertThatThrownBy(()->listsService.reorderLibrary("Bearer test","device",UUID.randomUUID().toString(),list.toString(),libraryBody)).isInstanceOfSatisfying(ApiException.class,e->assertThat(e.code()).isEqualTo("PLAYLIST_ORDER_CHANGED"));
+        assertThat(jdbc.queryForList("SELECT * FROM playlist_item ORDER BY id")).usingRecursiveComparison().isEqualTo(itemsBefore);
+        assertThat(jdbc.queryForList("SELECT * FROM song ORDER BY id")).usingRecursiveComparison().isEqualTo(songBefore);
+        // V36: real triggers and generated unique keys keep hidden history while
+        // allowing one new visible candidate, then preserve its ID and position.
+        var added=listsService.addItem("Bearer test","device",UUID.randomUUID().toString(),list.toString(),json.writeValueAsString(java.util.Map.of("source_token",token,"base_revision",8)));
+        String hidden=json.readTree(added.body()).get("item_id").asText();
+        jdbc.update("UPDATE playlist_item SET hidden_by_batch_id=? WHERE id=?",bytes(UUID.randomUUID()),bytes(UUID.fromString(hidden)));
+        var fresh=listsService.addItem("Bearer test","device",UUID.randomUUID().toString(),list.toString(),json.writeValueAsString(java.util.Map.of("source_token",token,"base_revision",9)));
+        String freshId=json.readTree(fresh.body()).get("item_id").asText();assertThat(freshId).isNotEqualTo(hidden);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM playlist_item WHERE entry_key='tj:00123'",Integer.class)).isEqualTo(2);
+        var dedup=listsService.addItem("Bearer test","device",UUID.randomUUID().toString(),list.toString(),json.writeValueAsString(java.util.Map.of("source_token",token,"base_revision",10)));
+        assertThat(json.readTree(dedup.body()).get("item_id").asText()).isEqualTo(freshId);
+        assertThatThrownBy(()->jdbc.update("UPDATE playlist_item SET hidden_by_batch_id=NULL WHERE id=?",bytes(UUID.fromString(hidden)))).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+        long preservedPosition=jdbc.queryForObject("SELECT position FROM playlist_item WHERE id=?",Long.class,bytes(UUID.fromString(freshId)));
+        new org.springframework.transaction.support.TransactionTemplate(manager).execute(status->changes.write(account,()->new com.ksh321.songrecord.api.sync.AccountChanges.Batch<>(true,com.ksh321.songrecord.api.playlists.PlaylistService.linkNewSong(jdbc,revisions,account,song,"00123",clock))));
+        assertThat(jdbc.queryForObject("SELECT position FROM playlist_item WHERE id=?",Long.class,bytes(UUID.fromString(freshId)))).isEqualTo(preservedPosition);
+        assertThat(jdbc.queryForObject("SELECT song_id FROM playlist_item WHERE id=?",byte[].class,bytes(UUID.fromString(freshId)))).isEqualTo(bytes(song));
     }
     @Test void rollbackLeavesNoReceiptAndRetrySucceeds() {
         assertThatThrownBy(()->service.execute(account,key,"POST","/v1/songs","{}",()->{effect();throw new IllegalStateException();})).isInstanceOf(IllegalStateException.class);
@@ -286,6 +344,8 @@ class MySqlIdempotencyTests {
         String migration=Files.readString(Path.of("src/main/resources/db/migration/V4__playlists_and_classifications.sql"));
         int start=migration.indexOf("CREATE TABLE playlist (");
         jdbc.execute(migration.substring(start,migration.indexOf(';',start)));
+        jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V32__playlist_icon.sql")));
+        jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V35__playlist_display_order.sql")));
         var id=UUID.randomUUID();var owner=access.revalidate(account).userId();
         byte[] idBytes=ByteBuffer.allocate(16).putLong(id.getMostSignificantBits()).putLong(id.getLeastSignificantBits()).array();
         byte[] ownerBytes=ByteBuffer.allocate(16).putLong(owner.getMostSignificantBits()).putLong(owner.getLeastSignificantBits()).array();
@@ -631,7 +691,10 @@ class MySqlIdempotencyTests {
     }
 
     void installSongQueryKeys() throws Exception {
+        jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V31__song_suitability.sql")));
         jdbc.execute("CREATE TABLE playlist(id BINARY(16) PRIMARY KEY,user_id BINARY(16),name VARCHAR(100),revision BIGINT DEFAULT 1,deleted_at TIMESTAMP(3),created_at TIMESTAMP(3),updated_at TIMESTAMP(3))");
+        jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V32__playlist_icon.sql")));
+        jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V35__playlist_display_order.sql")));
         jdbc.execute("CREATE TABLE playlist_item(id BINARY(16) PRIMARY KEY,user_id BINARY(16),playlist_id BINARY(16),song_id BINARY(16),candidate_brand VARCHAR(2),candidate_number VARCHAR(20),candidate_snapshot VARCHAR(4000),entry_key VARCHAR(64),position BIGINT,hidden_by_batch_id BINARY(16),created_at TIMESTAMP(3),updated_at TIMESTAMP(3),UNIQUE(playlist_id,entry_key))");
         String ddl=Files.readString(Path.of("src/main/resources/db/migration/V10__song_query_keys.sql"));
         int start=ddl.indexOf("CREATE TABLE song_query_key (");jdbc.execute(ddl.substring(start,ddl.indexOf(';',start)));
@@ -748,6 +811,7 @@ class MySqlIdempotencyTests {
             int start=core.indexOf("CREATE TABLE "+table+" (");jdbc.execute(core.substring(start,core.indexOf(';',start)));
         }
         int fk=core.indexOf("ALTER TABLE song");jdbc.execute(core.substring(fk,core.indexOf(';',fk)));
+        jdbc.execute(Files.readString(Path.of("src/main/resources/db/migration/V31__song_suitability.sql")));
         var principal=access.revalidate(account);when(access.authenticate("Bearer test","device")).thenReturn(account);when(account.principal()).thenReturn(principal);
         byte[] owner=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.userId()),device=com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(principal.deviceId());
         UUID song=UUID.randomUUID(),otherSong=UUID.randomUUID(),recording=UUID.randomUUID();
@@ -1032,7 +1096,7 @@ class MySqlIdempotencyTests {
         } finally {admin.execute("DROP DATABASE "+name);}
     }
 
-    @Test void mysqlConditionsPreserveV15DataAndEnforceD06AfterUpgrade() throws Exception {
+    @Test void mysqlConditionsPreserveV15AndV16HistoryAndAllowOwnedDefinitions() throws Exception {
         String name=database+"_conditions";admin.execute("CREATE DATABASE "+name);
         try {
             var ds=new DriverManagerDataSource(mysqlBase()+name+"?allowPublicKeyRetrieval=true&useSSL=false","root",System.getenv("P07_MYSQL_PASSWORD"));
@@ -1069,7 +1133,7 @@ class MySqlIdempotencyTests {
             assertThat(db.queryForObject("SELECT condition_name_snapshot FROM recording_condition_history WHERE recording_id=? AND source_revision=1",String.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isEqualTo("😀".repeat(50));
             assertThatThrownBy(()->db.update("DELETE FROM recording_condition_history WHERE recording_id=?",com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isInstanceOf(org.springframework.dao.DataAccessException.class);
             assertThat(db.queryForObject("SELECT COUNT(*) FROM recording_condition_history WHERE recording_id=?",Integer.class,com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isEqualTo(1);
-            var conditions=new com.ksh321.songrecord.api.classifications.ConditionService(access);
+            var conditions=new com.ksh321.songrecord.api.classifications.ConditionService(db,access,mutations,new com.ksh321.songrecord.api.revision.CreationGuard(db,access,manager),revisions,changes,pages,clock);
             com.ksh321.songrecord.api.classifications.ConditionDatabaseChecks.verify(db,conditions,drafts,editing,"Bearer test",principal.deviceId().toString(),principal.userId(),legacy);
             assertThatThrownBy(()->db.update("UPDATE recording SET condition_code=? WHERE id=?",custom.toString(),com.ksh321.songrecord.api.songs.SongQueryKeys.bytes(legacy))).isInstanceOf(org.springframework.dao.DataAccessException.class);
             assertThat(flyway.migrate().migrationsExecuted).isZero();

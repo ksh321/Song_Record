@@ -62,15 +62,26 @@ final class CanonicalActions implements CanonicalConflictActions {
   Completer<void>? pending;
   ConflictChoice? choice;
   @override
-  Future<List<CanonicalConflictReview>> canonicalCandidates() async => [await reviewCanonical('candidate')];
+  Future<List<CanonicalConflictReview>> canonicalCandidates() async => [
+    await reviewCanonical('candidate'),
+  ];
   @override
-  Future<CanonicalConflictReview> reviewCanonical(String intentId) async => CanonicalConflictReview(
-    intentId: intentId, state: 'OPEN', evidence: '{}',
-    serverJson: jsonEncode({...songChange(payloadId, 2), 'note': '서버 개인 메모'}),
-    candidateJson: '{"note":"보존된 개인 메모"}',
-  );
+  Future<CanonicalConflictReview> reviewCanonical(String intentId) async =>
+      CanonicalConflictReview(
+        intentId: intentId,
+        state: 'OPEN',
+        evidence: '{}',
+        serverJson: jsonEncode({
+          ...songChange(payloadId, 2),
+          'note': '서버 개인 메모',
+        }),
+        candidateJson: '{"note":"보존된 개인 메모"}',
+      );
   @override
-  Future<void> resolveCanonical(CanonicalConflictReview review, ConflictChoice selected) async {
+  Future<void> resolveCanonical(
+    CanonicalConflictReview review,
+    ConflictChoice selected,
+  ) async {
     calls++;
     choice = selected;
     await pending?.future;
@@ -79,31 +90,65 @@ final class CanonicalActions implements CanonicalConflictActions {
 }
 
 void main() {
-  testWidgets('canonical choice shows both sides, blocks double taps and permits review after stale save', (tester) async {
-    final actions = CanonicalActions()..pending = Completer<void>()..fail = true;
-    await tester.pumpWidget(MaterialApp(home: CanonicalConflictScreen(actions: actions, intentId: 'candidate')));
-    await tester.pumpAndSettle();
-    expect(find.text('서버 값: 서버 개인 메모'), findsOneWidget);
-    expect(find.text('이 기기 입력: 보존된 개인 메모'), findsOneWidget);
-    expect(actions.calls, 0);
-    await tester.tap(find.text('이 기기 입력 사용'));
-    await tester.pump();
-    expect(tester.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, '이 기기 입력 사용')).onPressed, isNull);
-    expect(actions.calls, 1);
-    actions.pending!.complete();
-    await tester.pumpAndSettle();
-    expect(find.textContaining('정보가 바뀌었거나'), findsOneWidget);
-    await tester.tap(find.text('다시 확인'));
-    await tester.pumpAndSettle();
-    expect(find.text('서버 값: 서버 개인 메모'), findsOneWidget);
-    expect(actions.calls, 1);
-  });
-  testWidgets('canonical cancellation leaves the candidate untouched', (tester) async {
+  testWidgets(
+    'canonical choice shows both sides, blocks double taps and permits review after stale save',
+    (tester) async {
+      final actions = CanonicalActions()
+        ..pending = Completer<void>()
+        ..fail = true;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CanonicalConflictScreen(
+            actions: actions,
+            intentId: 'candidate',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('서버 값: 서버 개인 메모'), findsOneWidget);
+      expect(find.text('이 기기 입력: 보존된 개인 메모'), findsOneWidget);
+      expect(actions.calls, 0);
+      await tester.tap(find.text('이 기기 입력 사용'));
+      await tester.pump();
+      expect(
+        tester
+            .widget<OutlinedButton>(
+              find.widgetWithText(OutlinedButton, '이 기기 입력 사용'),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(actions.calls, 1);
+      actions.pending!.complete();
+      await tester.pumpAndSettle();
+      expect(find.textContaining('정보가 바뀌었거나'), findsOneWidget);
+      await tester.tap(find.text('다시 확인'));
+      await tester.pumpAndSettle();
+      expect(find.text('서버 값: 서버 개인 메모'), findsOneWidget);
+      expect(actions.calls, 1);
+    },
+  );
+  testWidgets('canonical cancellation leaves the candidate untouched', (
+    tester,
+  ) async {
     final actions = CanonicalActions();
-    await tester.pumpWidget(MaterialApp(home: Builder(builder: (context) => TextButton(
-      onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CanonicalConflictScreen(actions: actions, intentId: 'candidate'))),
-      child: const Text('검토 열기'),
-    ))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => CanonicalConflictScreen(
+                  actions: actions,
+                  intentId: 'candidate',
+                ),
+              ),
+            ),
+            child: const Text('검토 열기'),
+          ),
+        ),
+      ),
+    );
     await tester.tap(find.text('검토 열기'));
     await tester.pumpAndSettle();
     await tester.pageBack();

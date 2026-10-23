@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 import '../database/local_models.dart';
+import '../domain/condition_types.dart';
 import '../domain/identifiers.dart';
+import 'playlist_library_order_receipt.dart';
 import 'recording_save_contract.dart';
 
 /// Durable wire identity. Credentials are deliberately supplied only at send time.
@@ -60,6 +62,19 @@ final class MutationRequest {
     if (m.entity == LocalEntity.playlist &&
         m.operation == LocalOperation.patch) {
       final decoded = jsonDecode(m.payload);
+      if (decoded is Map<String, dynamic> &&
+          decoded.containsKey('ordered_playlists')) {
+        if (!validLibraryOrder(decoded, m.entityId, m.baseRevision)) {
+          return null;
+        }
+        return MutationRequest(
+          mutation: m,
+          method: 'PUT',
+          path: '/v1/playlists/${m.entityId}/library-order',
+          body: m.payload,
+          attempt: m.attemptCount + 1,
+        );
+      }
       if (decoded is Map<String, dynamic> &&
           decoded.containsKey('remove_item_id')) {
         if (decoded.length != 2 ||
@@ -186,6 +201,7 @@ final class MutationRequest {
       LocalEntity.song => 'songs',
       LocalEntity.recording => 'recordings',
       LocalEntity.tag => 'tags',
+      LocalEntity.recordingCondition => 'conditions',
       LocalEntity.playlist => 'playlists',
       _ => null,
     };
@@ -289,6 +305,7 @@ final class MutationRequest {
         'manual_reason',
         'version_code',
         'tier',
+        'is_suitable',
         'note',
       },
       (LocalEntity.song, false) => {
@@ -297,6 +314,7 @@ final class MutationRequest {
         'artist',
         'version_code',
         'tier',
+        'is_suitable',
         'note',
         'representative_key_mode',
         'representative_key_shift',
@@ -330,10 +348,17 @@ final class MutationRequest {
         'condition_code',
         'tag_ids',
       },
-      (LocalEntity.playlist, true) => {'id', 'name'},
-      (LocalEntity.playlist, false) => {'base_revision', 'name'},
+      (LocalEntity.playlist, true) => {'id', 'name', 'icon', 'display_order'},
+      (LocalEntity.playlist, false) => {
+        'base_revision',
+        'name',
+        'icon',
+        'display_order',
+      },
       (LocalEntity.tag, true) => {'id', 'name'},
       (LocalEntity.tag, false) => {'base_revision', 'name'},
+      (LocalEntity.recordingCondition, true) => {'id', 'name'},
+      (LocalEntity.recordingCondition, false) => {'base_revision', 'name'},
       _ => <String>{},
     };
     if (decoded.keys.any((key) => !allowed.contains(key))) return null;
@@ -347,8 +372,7 @@ final class MutationRequest {
       return null;
     }
     final condition = decoded['condition_code'];
-    if (condition != null &&
-        !{'VERY_GOOD', 'GOOD', 'NORMAL', 'BAD'}.contains(condition)) {
+    if (condition != null && !validConditionCode(condition)) {
       return null;
     }
     return MutationRequest(

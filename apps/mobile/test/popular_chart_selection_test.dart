@@ -183,8 +183,8 @@ void main() {
       await open(t);
       await t.tap(find.text('이 TJ 곡 선택'));
       await t.pumpAndSettle();
-      await t.ensureVisible(find.text('이 기기에 저장'));
-      await t.tap(find.text('이 기기에 저장'));
+      await t.ensureVisible(find.text('저장'));
+      await t.tap(find.text('저장'));
       await t.pumpAndSettle();
       expect(saves, 1);
       expect(drafts.single.candidate!.sourceToken, 's1.original');
@@ -211,8 +211,8 @@ void main() {
       await open(t);
       await t.tap(find.text('이 TJ 곡 선택'));
       await t.pumpAndSettle();
-      await t.ensureVisible(find.text('이 기기에 저장'));
-      await t.tap(find.text('이 기기에 저장'));
+      await t.ensureVisible(find.text('저장'));
+      await t.tap(find.text('저장'));
       await t.pumpAndSettle();
       expect(saves, 1);
       final chip = t.widget<ChoiceChip>(
@@ -220,7 +220,7 @@ void main() {
       );
       chip.onSelected!(true);
       await t.pump();
-      await t.tap(find.text('이 기기에 저장'));
+      await t.tap(find.text('저장'));
       await t.pumpAndSettle();
       expect(saves, 1);
     },

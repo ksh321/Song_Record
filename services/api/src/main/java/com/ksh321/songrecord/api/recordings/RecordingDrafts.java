@@ -32,7 +32,7 @@ public final class RecordingDrafts {
                 return changes.write(account,()->{
                     var now=LocalDateTime.ofInstant(clock.instant(),ZoneOffset.UTC).truncatedTo(ChronoUnit.MILLIS);
                     jdbc.update("INSERT INTO recording(id,user_id,origin_device_id,song_id,title_snapshot,artist_snapshot,version_code,key_mode,key_shift,note,condition_code,condition_name_snapshot,recorded_at,timezone_id,timezone_offset_minutes,metadata_state,lifecycle_state,revision,link_revision,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT','ACTIVE',1,1,?,?)",
-                        bytes(request.id),bytes(owner),bytes(principal.deviceId()),linkedSong==null?null:bytes(linkedSong),request.title,request.artist,request.version,request.keyMode,request.keyShift,request.note,request.condition,request.condition==null?null:com.ksh321.songrecord.api.classifications.ConditionCatalog.name(request.condition),LocalDateTime.ofInstant(request.time,ZoneOffset.UTC),request.zone,request.offset,now,now);
+                        bytes(request.id),bytes(owner),bytes(principal.deviceId()),linkedSong==null?null:bytes(linkedSong),request.title,request.artist,request.version,request.keyMode,request.keyShift,request.note,request.condition,com.ksh321.songrecord.api.classifications.ConditionSelection.name(jdbc,owner,request.condition),LocalDateTime.ofInstant(request.time,ZoneOffset.UTC),request.zone,request.offset,now,now);
                     RecordingQueryKeys.insert(jdbc,owner,request.id,request.title);
                     String payload=JSON.writeValueAsString(snapshot(owner,request.id));
                     return new AccountChanges.Batch<>(new IdempotentMutations.Reply(201,payload),List.of(new AccountChanges.Change(AccountChanges.Entity.RECORDING,request.id,1,AccountChanges.Operation.UPSERT,payload)));
@@ -84,14 +84,14 @@ public final class RecordingDrafts {
         String version=root.has("version_code")?text(root,"version_code",false):"NORMAL";if(!Set.of("NORMAL","MR","LIVE").contains(version))throw invalid();
         String mode=text(root,"key_mode",true);var shift=root.get("key_shift");Integer key=null;
         if(shift!=null && !shift.isNull()){if(!shift.isIntegralNumber() || !shift.canConvertToInt() || shift.asInt() < -12 || shift.asInt()>12)throw invalid();key=shift.asInt();}
-        if((mode==null)!=(key==null) || mode!=null && (!Set.of("ORIGINAL","MALE","FEMALE").contains(mode) || mode.equals("ORIGINAL") && key!=0))throw invalid();
+        if((mode==null)!=(key==null) || mode!=null && (!Set.of("ORIGINAL","MALE","FEMALE").contains(mode)))throw invalid();
         String rawNote=text(root,"note",true);var note=InputContracts.validate(InputContracts.Field.NOTE,rawNote==null?"":rawNote);if(!note.valid())throw invalid();
         String time=text(root,"recorded_at",false),zone=text(root,"timezone_id",false);Instant instant;
         if(!time.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,3})?Z") || zone.length()>64 || !ZoneId.getAvailableZoneIds().contains(zone))throw invalid();
         try{instant=OffsetDateTime.parse(time).toInstant();int year=instant.atOffset(ZoneOffset.UTC).getYear();if(year<1000 || year>9999)throw invalid();}catch(DateTimeException e){throw invalid();}
         var offset=root.get("timezone_offset_minutes");if(offset==null || !offset.isIntegralNumber() || !offset.canConvertToInt() || offset.asInt() < -1080 || offset.asInt()>1080)throw invalid();
         String condition=text(root,"condition_code",true);
-        if(condition!=null && !com.ksh321.songrecord.api.classifications.ConditionCatalog.contains(condition))throw invalid();
+        if(condition!=null && !com.ksh321.songrecord.api.classifications.ConditionReference.valid(condition))throw invalid();
         return new Draft(id,song==null?null:parseUuid(song),title,artist,version,mode,key,note.normalized(),condition,instant,zone,offset.asInt());
     }
     private static String name(JsonNode root,String field,InputContracts.Field contract){String text=text(root,field,true);if(text==null)return null;var result=InputContracts.validate(contract,text);if(result.normalized().isEmpty())return null;if(!result.valid())throw invalid();return result.normalized();}

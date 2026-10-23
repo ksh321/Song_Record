@@ -16,6 +16,8 @@ Map<String, dynamic> projectSnapshotMetadata(
     LocalEntity.playlist => {
       'id',
       'name',
+      'icon',
+      'display_order',
       'revision',
       'deleted_at',
       'created_at',
@@ -31,6 +33,7 @@ Map<String, dynamic> projectSnapshotMetadata(
       'artist',
       'version_code',
       'tier',
+      'is_suitable',
       'note',
       'lifecycle_state',
       'representative_recording_id',

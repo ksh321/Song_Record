@@ -25,7 +25,7 @@ class ImportCandidateHolds extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(hold.searchQuery.isEmpty ? '보류된 목록 후보' : hold.searchQuery),
+              Text(hold.searchQuery.isEmpty ? '다시 선택할 곡' : hold.searchQuery),
               Text(hold.reason),
               OutlinedButton(
                 onPressed: () => onTjSearch(hold),

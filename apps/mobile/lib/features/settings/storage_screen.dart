@@ -72,6 +72,15 @@ class StorageView {
       .toList();
 }
 
+String formatBytes(int bytes) {
+  if (bytes >= 1000000000) {
+    return '${(bytes / 1000000000).toStringAsFixed(1)} GB';
+  }
+  if (bytes >= 1000000) return '${(bytes / 1000000).toStringAsFixed(1)} MB';
+  if (bytes >= 1000) return '${(bytes / 1000).toStringAsFixed(1)} KB';
+  return '$bytes B';
+}
+
 typedef PinCommand = Future<void> Function(
   String method,
   String path,
@@ -332,15 +341,58 @@ class _StorageState extends State<StorageScreen> {
             child: const Text('새로고침'),
           ),
           if (data case final current?) ...[
-            for (final field in StorageView.labels.entries)
-              ListTile(
-                title: Text(field.value),
-                trailing: Text(
-                  '${current.usage[field.key]}${field.key.endsWith('_bytes') ? ' B' : '개'}',
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('서버 보관량'),
+                    const SizedBox(height: 16),
+                    Text(
+                      '${formatBytes(current.usage['used_bytes'] as int)} / ${formatBytes(current.usage['quota_bytes'] as int)}',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 16),
+                    LinearProgressIndicator(
+                      value: (current.usage['quota_bytes'] as int) == 0
+                          ? 0
+                          : ((current.usage['used_bytes'] as int) /
+                                    (current.usage['quota_bytes'] as int))
+                                .clamp(0.0, 1.0),
+                      minHeight: 10,
+                      borderRadius: BorderRadius.circular(99),
+                      backgroundColor: Theme.of(context).colorScheme.primary
+                          .withValues(alpha: .14),
+                      semanticsLabel: '서버 보관량',
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '고정 보관 ${current.usage['pinned_used']} / ${current.usage['pinned_limit']}개 · 업로드 대기 ${formatBytes(current.usage['reserved_bytes'] as int)}',
+                    ),
+                  ],
                 ),
               ),
-            const Text(
-              '휴지통·정리 대기·보호 중인 사본은 사용 중 용량에 포함되며 서로 겹칠 수 있어요. 합산하지 않습니다. 고정을 해제해도 용량은 즉시 줄지 않아요.',
+            ),
+            ExpansionTile(
+              title: const Text('사용량 자세히 보기'),
+              children: [
+                for (final field in StorageView.labels.entries)
+                  ListTile(
+                    title: Text(field.value),
+                    trailing: Text(
+                      field.key.endsWith('_bytes')
+                          ? formatBytes(current.usage[field.key] as int)
+                          : '${current.usage[field.key]}개',
+                    ),
+                  ),
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    '휴지통·정리 대기·보호 중인 사본은 사용 중 용량에 포함되며 서로 겹칠 수 있어요. 고정을 해제해도 용량은 즉시 줄지 않아요.',
+                  ),
+                ),
+              ],
             ),
             if (current.usage['waiting_by_reason'] is Map)
               for (final waiting

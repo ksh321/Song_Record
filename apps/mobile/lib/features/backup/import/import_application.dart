@@ -58,6 +58,7 @@ Future<ImportOutcome> applyReviewedImport({
             (row['payload'] as Map)['representative_recording_id'] as String,
   };
   const ranks = {
+    'RECORDING_CONDITION': 0,
     'TAG': 0,
     'SONG': 1,
     'PLAYLIST': 2,
@@ -169,6 +170,11 @@ Future<ImportOutcome> applyReviewedImport({
                   jsonEncode(p[f]) != jsonEncode(current[f]))
                 f: p[f],
           };
+          if (entity == 'PLAYLIST' &&
+              (changed.containsKey('icon') ||
+                  changed.containsKey('display_order'))) {
+            changed['name'] = p['name'];
+          }
           // Separate endpoint semantics must not be mixed into a generic PATCH.
           if (changed.containsKey('tier') && entity == 'RECORDING') {
             final tier = changed.remove('tier');
@@ -206,6 +212,7 @@ Future<ImportOutcome> applyReviewedImport({
           'id': id,
           ...pick([
             'source_type',
+            'is_suitable',
             'title',
             'artist',
             'version_code',
@@ -215,8 +222,20 @@ Future<ImportOutcome> applyReviewedImport({
           'manual_reason': p['manual_reason'] ?? 'TJ_NOT_FOUND',
         });
       } else if (entity == 'PLAYLIST' ||
-          entity == 'TAG' && p['archived_at'] == null) {
-        command('CREATE', 0, p, {'id': id, 'name': p['name']});
+          {'TAG', 'RECORDING_CONDITION'}.contains(entity) &&
+              p['archived_at'] == null) {
+        if (entity == 'RECORDING_CONDITION' && p['code'] != id) {
+          throw StateError(
+            'Receive the account default conditions before importing',
+          );
+        }
+        command('CREATE', 0, p, {
+          'id': id,
+          'name': p['name'],
+          if (entity == 'PLAYLIST' && p.containsKey('icon')) 'icon': p['icon'],
+          if (entity == 'PLAYLIST' && p.containsKey('display_order'))
+            'display_order': p['display_order'],
+        });
       } else if (entity == 'RECORDING' && p['metadata_state'] == 'SAVED') {
         final spec = p['file'] ?? specs[id];
         if (spec is! Map) {

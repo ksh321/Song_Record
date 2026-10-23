@@ -75,7 +75,7 @@ public final class RecordingSaving {
         for(String name:List.of("title_snapshot","artist_snapshot")){Object value=values.get(name);if(!(value instanceof String text) || !InputContracts.validate(name.equals("title_snapshot")?InputContracts.Field.TITLE:InputContracts.Field.ARTIST,text).valid())throw invalid();}
         if(!Set.of("NORMAL","MR","LIVE").contains(Objects.toString(values.get("version_code"),"")))throw invalid();
         Object mode=values.get("key_mode"),shift=values.get("key_shift");
-        if(!Set.of("ORIGINAL","MALE","FEMALE").contains(Objects.toString(mode,"")) || !(shift instanceof Number n) || n.intValue() < -12 || n.intValue()>12 || "ORIGINAL".equals(mode) && n.intValue()!=0)throw invalid();
+        if(!Set.of("ORIGINAL","MALE","FEMALE").contains(Objects.toString(mode,"")) || !(shift instanceof Number n) || n.intValue() < -12 || n.intValue()>12)throw invalid();
     }
     private static long number(JsonNode value,long min,long max){if(value==null || !value.isIntegralNumber() || !value.canConvertToLong() || value.asLong()<min || value.asLong()>max)throw invalid();return value.asLong();}
     private static String text(JsonNode value){if(value==null || !value.isTextual())throw invalid();return value.asText();}

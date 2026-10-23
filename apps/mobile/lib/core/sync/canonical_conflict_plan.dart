@@ -6,8 +6,14 @@ import 'conflict_resolution_plan.dart';
 import 'mutation_request.dart';
 
 const canonicalSongFields = <String>{
-  'title', 'artist', 'version_code', 'tier', 'note',
-  'representative_key_mode', 'representative_key_shift',
+  'title',
+  'artist',
+  'version_code',
+  'tier',
+  'note',
+  'is_suitable',
+  'representative_key_mode',
+  'representative_key_shift',
 };
 
 /// Different song identities have no shared editing baseline. Every differing
@@ -32,12 +38,16 @@ final class CanonicalConflictReview {
     final captured = jsonDecode(evidence);
     if (captured is! Map || captured['copies'] is! List) return null;
     for (final copy in captured['copies'] as List<dynamic>) {
-      if (copy is Map && copy['entity_id'] == server['id'] && copy['local_payload'] is String) {
-        return jsonDecode(copy['local_payload'] as String) as Map<String, dynamic>;
+      if (copy is Map &&
+          copy['entity_id'] == server['id'] &&
+          copy['local_payload'] is String) {
+        return jsonDecode(copy['local_payload'] as String)
+            as Map<String, dynamic>;
       }
     }
     return null;
   }
+
   @override
   String toString() => 'CanonicalConflictReview[REDACTED]';
 }
@@ -46,7 +56,8 @@ abstract interface class CanonicalConflictActions {
   Future<List<CanonicalConflictReview>> canonicalCandidates();
   Future<CanonicalConflictReview> reviewCanonical(String intentId);
   Future<void> resolveCanonical(
-    CanonicalConflictReview review, ConflictChoice choice,
+    CanonicalConflictReview review,
+    ConflictChoice choice,
   );
 }
 
@@ -75,24 +86,30 @@ String? prepareCanonicalPatch(
     }
     if (patch.containsKey('representative_key_mode') ||
         patch.containsKey('representative_key_shift')) {
-      for (final key in ['representative_key_mode', 'representative_key_shift']) {
+      for (final key in [
+        'representative_key_mode',
+        'representative_key_shift',
+      ]) {
         patch[key] = candidate.containsKey(key) ? candidate[key] : server[key];
       }
     }
   }
   if (patch.isEmpty) return null;
   final body = canonicalJson({'base_revision': server['revision'], ...patch});
-  if (MutationRequest.prepare(QueuedMutation(
-    opId: server['id'] as String,
-    localOrder: 0,
-    entity: LocalEntity.song,
-    entityId: server['id'] as String,
-    operation: LocalOperation.patch,
-    state: 'PENDING',
-    baseRevision: server['revision'] as int,
-    payload: body,
-    attemptCount: 0,
-  )) == null) {
+  if (MutationRequest.prepare(
+        QueuedMutation(
+          opId: server['id'] as String,
+          localOrder: 0,
+          entity: LocalEntity.song,
+          entityId: server['id'] as String,
+          operation: LocalOperation.patch,
+          state: 'PENDING',
+          baseRevision: server['revision'] as int,
+          payload: body,
+          attemptCount: 0,
+        ),
+      ) ==
+      null) {
     throw StateError('Canonical selection has no PATCH route');
   }
   return body;

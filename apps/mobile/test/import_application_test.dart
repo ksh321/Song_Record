@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_store.dart';
 import 'package:song_record/core/database/local_models.dart';
+import 'package:song_record/core/sync/metadata_response.dart';
+import 'package:song_record/core/sync/mutation_request.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/backup/export/export_baseline.dart';
 import 'package:song_record/features/backup/export/export_data.dart';
@@ -68,6 +70,20 @@ void main() {
         'recording_inputs': const [],
         'copies': [
           {
+            'entity_type': 'RECORDING_CONDITION',
+            'entity_id': id(505),
+            'server_revision': 0,
+            'server_payload': null,
+            'tombstone': 0,
+            'local_payload': jsonEncode({
+              'id': id(505),
+              'code': id(505),
+              'name': '컨디션 복원',
+              'archived_at': null,
+            }),
+          },
+
+          {
             'entity_type': 'SONG',
             'entity_id': id(502),
             'server_revision': 0,
@@ -81,6 +97,7 @@ void main() {
               'lifecycle_state': 'ACTIVE',
               'version_code': 'LIVE',
               'note': '보존할 메모',
+              'is_suitable': true,
             }),
           },
           {
@@ -89,7 +106,12 @@ void main() {
             'server_revision': 0,
             'server_payload': null,
             'tombstone': 0,
-            'local_payload': jsonEncode({'id': id(503), 'name': '복원 목록'}),
+            'local_payload': jsonEncode({
+              'id': id(503),
+              'name': '복원 목록',
+              'icon': 'heart',
+              'display_order': 7,
+            }),
           },
           {
             'entity_type': 'PLAYLIST_ITEM',
@@ -110,7 +132,7 @@ void main() {
     final data = ExportData.fromBaseline(baseline),
         manifest = ExportManifest.fromBaseline(
           baseline,
-          metadataCount: 3,
+          metadataCount: 4,
           files: const [],
         );
     final decision = ImportDecision(
@@ -153,12 +175,34 @@ void main() {
         requireCurrent: store.requireActive,
         held: 0,
       );
-      expect(result.information, 2);
+      expect(result.information, 3);
       expect(
         result.pending,
         greaterThan(0),
       ); // A list relation is not counted before its server ACK.
       final queued = await store.pendingMutations();
+      final condition = queued.singleWhere(
+        (m) => m.entity == LocalEntity.recordingCondition,
+      );
+      final request = MutationRequest.prepare(condition)!;
+      expect(request.path, '/v1/conditions');
+      expect(jsonDecode(request.body), {'id': id(505), 'name': '컨디션 복원'});
+      final receipt = decodeMetadataSnapshot(
+        request,
+        MutationResponse(
+          201,
+          jsonEncode({
+            'id': id(505),
+            'code': id(505),
+            'name': '컨디션 복원',
+            'revision': 1,
+            'archived_at': null,
+            'updated_at': '2026-10-23T00:00:00Z',
+          }),
+        ),
+      );
+      expect(receipt['code'], id(505));
+
       expect(
         queued.any(
           (m) =>
@@ -170,6 +214,26 @@ void main() {
       expect(result.files, 0);
       final saved = await store.readMetadata(LocalEntity.song, id(502));
       expect(jsonDecode(saved!.localJson!)['note'], '보존할 메모');
+      expect(jsonDecode(saved.localJson!)['is_suitable'], isTrue);
+      final restoredPlaylist = await store.readMetadata(
+        LocalEntity.playlist,
+        id(503),
+      );
+      expect(jsonDecode(restoredPlaylist!.localJson!)['icon'], 'heart');
+      expect(jsonDecode(restoredPlaylist.localJson!)['display_order'], 7);
+      expect(
+        jsonDecode(
+          queued.firstWhere((m) => m.entity == LocalEntity.playlist).payload,
+        )['display_order'],
+        7,
+      );
+      final songMutation = queued.firstWhere(
+        (m) => m.entity == LocalEntity.song,
+      );
+      expect(
+        jsonEncode(jsonDecode(songMutation.payload)),
+        contains('is_suitable'),
+      );
       final count = (await store.pendingMutations()).length;
       await applyReviewedImport(
         store: store,

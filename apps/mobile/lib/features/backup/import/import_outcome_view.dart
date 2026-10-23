@@ -16,10 +16,10 @@ class ImportOutcomeView extends StatelessWidget {
           '확인된 정보': result.information,
           '검증된 이 기기 파일': result.files,
           '누락 파일': result.missingFiles,
-          '보류': result.held,
-          '충돌': result.conflicts,
+          '이번에 가져오지 않은 항목': result.held,
+          '현재 기록과 내용이 다른 항목': result.conflicts,
           '적용 대기': result.pending,
-          '현재 서버 정책의 업로드 후보': result.uploadCandidates.length,
+          '서버 보관 확인이 필요한 녹음': result.uploadCandidates.length,
         }.entries)
           ListTile(title: Text(entry.key), trailing: Text('${entry.value}')),
         const Text(

@@ -45,9 +45,6 @@ public final class DomainTypes {
             if (shift < -12 || shift > 12) {
                 throw new IllegalArgumentException("키 이동은 -12~+12 범위여야 합니다.");
             }
-            if (mode == KeyMode.ORIGINAL && shift != 0) {
-                throw new IllegalArgumentException("원키의 이동값은 0이어야 합니다.");
-            }
         }
 
         public static MusicalKey original() { return new MusicalKey(KeyMode.ORIGINAL, 0); }
@@ -63,7 +60,7 @@ public final class DomainTypes {
 
     public static String formatKey(MusicalKey key) {
         if (key == null) return "미정";
-        if (key.mode == KeyMode.ORIGINAL) return "원키";
+        if (key.mode == KeyMode.ORIGINAL) return key.shift == 0 ? "원키" : "원키 " + (key.shift > 0 ? "+" : "") + key.shift;
         var prefix = key.mode == KeyMode.MALE ? "남" : "여";
         var shift = key.shift > 0 ? "+" + key.shift : Integer.toString(key.shift);
         return prefix + " " + shift;

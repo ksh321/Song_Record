@@ -107,8 +107,6 @@ void main() {
     expect(status.isRecording, isFalse);
   });
 
-
-
   test('복구하지 못한 중단 파일 상태를 변환한다', () {
     final status = RecorderStatus.fromMap(const {
       'phase': 'error',

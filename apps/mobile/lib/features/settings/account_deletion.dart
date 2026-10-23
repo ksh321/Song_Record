@@ -6,7 +6,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../core/domain/account_deletion_confirmation.dart';
 import '../../core/domain/identifiers.dart';
-
 import '../auth/auth_session.dart';
 import '../auth/identity_link.dart';
 import 'deletion_status.dart';

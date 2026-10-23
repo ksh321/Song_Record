@@ -30,7 +30,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('강조색을 바꿔도 실제 녹음 시작·종료 버튼은 빨강을 유지한다', (tester) async {
+  testWidgets('녹음 시작·종료 버튼은 사용자 강조색을 따른다', (tester) async {
     for (final accent in AppAccent.values) {
       for (final phase in [RecorderPhase.idle, RecorderPhase.recording]) {
         await tester.pumpWidget(
@@ -61,7 +61,7 @@ void main() {
             ),
           ),
         );
-        expect((shape.decoration! as BoxDecoration).color, AppColors.recording);
+        expect((shape.decoration! as BoxDecoration).color, accent.background);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox.shrink());
       }

@@ -17,9 +17,9 @@ import org.springframework.transaction.support.*;
 /** A database-only edit inside the caller's mutation transaction. */
 public final class RevisionChanges {
     public enum Resource {
-        SONG("song", "source_type,tj_number,title,artist,version_code,note,representative_key_mode,representative_key_shift,song_tier,representative_recording_id,lifecycle_state,deleted_at"),
+        SONG("song", "source_type,tj_number,title,artist,version_code,note,representative_key_mode,representative_key_shift,song_tier,is_suitable,representative_recording_id,lifecycle_state,deleted_at"),
         RECORDING("recording", "song_id,title_snapshot,artist_snapshot,version_code,key_mode,key_shift,tier,note,metadata_state,lifecycle_state,link_revision,condition_code,condition_name_snapshot,deleted_at"),
-        PLAYLIST("playlist", "name,deleted_at"),
+        PLAYLIST("playlist", "name,icon,display_order,deleted_at"),
         TAG("tag", "name,archived_at"),
         CONDITION("condition_definition", "code,name,archived_at");
         private final String table, columns;

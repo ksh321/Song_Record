@@ -28,7 +28,7 @@ class SongCreationTests {
     @BeforeEach void setup() throws Exception {
         f.setup();new ResourceDatabasePopulator(new ClassPathResource("revision-schema.sql"),new ClassPathResource("change-log-schema.sql")).populate(f.keeper);
         f.jdbc.execute("ALTER TABLE playlist ADD created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP");
-        f.jdbc.execute("CREATE TABLE playlist_item(id BINARY(16) PRIMARY KEY,user_id BINARY(16),playlist_id BINARY(16),song_id BINARY(16),candidate_brand VARCHAR(2),candidate_number VARCHAR(20),candidate_snapshot VARCHAR(4000),entry_key VARCHAR(64),position BIGINT,hidden_by_batch_id BINARY(16),created_at TIMESTAMP(3),updated_at TIMESTAMP(3),UNIQUE(playlist_id,entry_key))");
+        f.jdbc.execute("CREATE TABLE playlist_item(id BINARY(16) PRIMARY KEY,user_id BINARY(16),playlist_id BINARY(16),song_id BINARY(16),candidate_brand VARCHAR(2),candidate_number VARCHAR(20),candidate_snapshot VARCHAR(4000),entry_key VARCHAR(64),position BIGINT,hidden_by_batch_id BINARY(16),created_at TIMESTAMP(3),updated_at TIMESTAMP(3),visible_entry_key VARCHAR(64) GENERATED ALWAYS AS (CASE WHEN hidden_by_batch_id IS NULL THEN entry_key ELSE NULL END),visible_song_id BINARY(16) GENERATED ALWAYS AS (CASE WHEN hidden_by_batch_id IS NULL THEN song_id ELSE NULL END),UNIQUE(playlist_id,visible_entry_key),UNIQUE(playlist_id,visible_song_id))");
         f.jdbc.execute("ALTER TABLE song ADD created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP");
         f.jdbc.execute("ALTER TABLE song ADD reserved_tj_number VARCHAR(20) GENERATED ALWAYS AS (CASE WHEN lifecycle_state='PURGED' THEN NULL ELSE tj_number END)");
         f.jdbc.execute("CREATE UNIQUE INDEX test_song_number ON song(user_id,reserved_tj_number)");
@@ -54,6 +54,14 @@ class SongCreationTests {
     String body(String extra){return "{\"id\":\""+id+"\",\"source_type\":\"TJ\",\"source_token\":\"valid\""+extra+"}";}
     org.springframework.mock.web.MockHttpServletResponse postBody(String key,String body) throws Exception {var result=mvc.perform(post("/v1/songs").header("Authorization","Bearer "+f.tokens.accessToken()).header("X-Device-Id",f.registration.deviceId()).header("Idempotency-Key",key).contentType("application/json").content(body)).andReturn();return result.getResponse();}
     int count(String table){return f.jdbc.queryForObject("SELECT COUNT(*) FROM "+table,Integer.class);}
+    @Test void explicitManualEntryAndSuitabilityArePersisted() throws Exception {
+        var request=Map.of("id",id.toString(),"source_type","MANUAL","manual_reason","USER_ENTERED","title","직접 입력","artist","가수","is_suitable",true);
+        var body=new tools.jackson.databind.json.JsonMapper().writeValueAsString(request);
+        var first=postBody(f.key,body);assertThat(first.getStatus()).isEqualTo(201);
+        assertThat(f.jdbc.queryForObject("SELECT is_suitable FROM song",Boolean.class)).isTrue();
+        assertThat(postBody(f.key,body).getContentAsString()).isEqualTo(first.getContentAsString());
+        assertThat(count("song")).isEqualTo(1);
+    }
     @Test void creates201WithDefaultsAndOneAtomicChange(){
         try {var r=postBody(f.key,body(""));assertThat(r.getStatus()).isEqualTo(201);assertThat(r.getHeader("Cache-Control")).isEqualTo("no-store");assertThat(r.getContentAsString()).contains("\"created\":true","\"version_code\":\"NORMAL\"","\"revision\":1");}
         catch(Exception e){throw new RuntimeException(e);}

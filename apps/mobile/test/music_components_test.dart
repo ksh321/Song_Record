@@ -88,7 +88,7 @@ void main() {
     expect(taps, 1);
   });
 
-  testWidgets('후보는 개인 값 없이 출처와 순위를 표시하고 플리에서는 번호를 숨긴다', (tester) async {
+  testWidgets('후보는 개인 값 없이 출처와 순위를 표시하고 플리에서도 번호를 표시한다', (tester) async {
     for (final placement in CandidatePlacement.values) {
       await show(
         tester,
@@ -102,17 +102,12 @@ void main() {
       expect(find.text('일반 반주'), findsNothing);
       expect(find.byType(MusicalKeyBadge), findsNothing);
       expect(find.text('미정'), findsNothing);
-      expect(
-        find.text('TJ 00123'),
-        placement == CandidatePlacement.playlist
-            ? findsNothing
-            : findsOneWidget,
-      );
+      expect(find.text('TJ 00123'), findsOneWidget);
       if (placement == CandidatePlacement.chart) {
         expect(find.text('2'), findsOneWidget);
       }
       if (placement == CandidatePlacement.playlist) {
-        expect(find.text('내 곡 미등록'), findsOneWidget);
+        expect(find.text('내 곡 미등록'), findsNothing);
       }
     }
     expect(
@@ -136,9 +131,11 @@ void main() {
       );
       expect(find.text('당시 제목'), findsOneWidget);
       expect(find.text('당시 가수'), findsOneWidget);
-      expect(find.text('2026.09.23 01:05 · 03:07'), findsOneWidget);
-      expect(find.text('LIVE · 남 0 · 티어 C'), findsOneWidget);
-      expect(find.text(availability.label), findsOneWidget);
+      expect(find.text('2026.09.23 01:05'), findsOneWidget);
+      expect(find.text('03:07'), findsOneWidget);
+      expect(find.text('남'), findsOneWidget);
+      expect(find.text('C'), findsOneWidget);
+      expect(find.text(availability.label), findsNothing);
       await tester.tap(find.text('당시 제목'));
     }
     expect(taps, RecordingFileAvailability.values.length);
@@ -290,10 +287,7 @@ void main() {
           matching: find.byType(DecoratedBox),
         ),
       );
-      expect(
-        (box.decoration as BoxDecoration).color,
-        AppColors.keyFemaleBackground,
-      );
+      expect((box.decoration as BoxDecoration).color, const Color(0xFF6E3051));
       expect(find.text('여 +1'), findsOneWidget);
     }
   });

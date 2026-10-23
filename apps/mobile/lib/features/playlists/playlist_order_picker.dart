@@ -5,9 +5,11 @@ class PlaylistOrderPicker extends StatefulWidget {
     super.key,
     required this.items,
     required this.titles,
+    this.title = '목록 순서 변경',
   });
   final List<Map<String, dynamic>> items;
   final Map<String, String> titles;
+  final String title;
   @override
   State<PlaylistOrderPicker> createState() => _PlaylistOrderPickerState();
 }
@@ -23,32 +25,37 @@ class _PlaylistOrderPickerState extends State<PlaylistOrderPicker> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          const Text('목록 순서 변경'),
-          const Text('위·아래 버튼으로 순서를 바꾸고 저장해 주세요.'),
+          Text(widget.title),
+          const Text('항목을 길게 눌러 옮기거나 위·아래 버튼을 사용하세요.'),
           Expanded(
-            child: ListView(
+            child: ReorderableListView(
+              buildDefaultDragHandles: false,
+              onReorderItem: move,
               children: [
                 for (var i = 0; i < ids.length; i++)
-                  ListTile(
+                  ReorderableDelayedDragStartListener(
                     key: ValueKey(ids[i]),
-                    title: Text(widget.titles[ids[i]] ?? '목록 항목'),
-                    leading: Text('${i + 1}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: '${i + 1}번 위로',
-                          onPressed: i == 0 ? null : () => move(i, i - 1),
-                          icon: const Icon(Icons.arrow_upward),
-                        ),
-                        IconButton(
-                          tooltip: '${i + 1}번 아래로',
-                          onPressed: i == ids.length - 1
-                              ? null
-                              : () => move(i, i + 1),
-                          icon: const Icon(Icons.arrow_downward),
-                        ),
-                      ],
+                    index: i,
+                    child: ListTile(
+                      title: Text(widget.titles[ids[i]] ?? '목록 항목'),
+                      leading: Text('${i + 1}'),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: '${i + 1}번 위로',
+                            onPressed: i == 0 ? null : () => move(i, i - 1),
+                            icon: const Icon(Icons.arrow_upward),
+                          ),
+                          IconButton(
+                            tooltip: '${i + 1}번 아래로',
+                            onPressed: i == ids.length - 1
+                                ? null
+                                : () => move(i, i + 1),
+                            icon: const Icon(Icons.arrow_downward),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
               ],

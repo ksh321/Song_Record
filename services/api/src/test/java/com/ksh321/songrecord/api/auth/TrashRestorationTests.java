@@ -23,6 +23,30 @@ class TrashRestorationTests {
         var listed=f.s.mvc.perform(get("/v1/trash").header("Authorization","Bearer "+f.f.tokens.accessToken()).header("X-Device-Id",f.f.registration.deviceId())).andReturn().getResponse();
         assertThat(f.json.readTree(listed.getContentAsString()).get("items").size()).isZero();assertThat(f.f.jdbc.queryForObject("SELECT COUNT(*) FROM deletion_batch",Integer.class)).isEqualTo(1);
     }
+    @Test void selectedSongKeepsDeletedRecordingsAndLinksNewCandidateWithoutRevivingHiddenDuplicate()throws Exception{
+        f.f.jdbc.update("UPDATE playlist_item SET entry_key='tj:990001'");
+        String b=batch("SONG_AND_RECORDINGS");
+        var recordingBefore=f.f.jdbc.queryForMap("SELECT * FROM recording");
+        UUID candidate=UUID.randomUUID(),otherParent=UUID.randomUUID(),otherCandidate=UUID.randomUUID();
+        f.f.jdbc.update("INSERT INTO playlist(id,user_id,name,created_at) VALUES(?,?,'new candidate list',CURRENT_TIMESTAMP)",bytes(otherParent),bytes(f.owner()));
+        for(var pair:List.of(Map.entry(f.parent,candidate),Map.entry(otherParent,otherCandidate)))
+            f.f.jdbc.update("INSERT INTO playlist_item(id,user_id,playlist_id,candidate_brand,candidate_number,candidate_snapshot,entry_key,position,created_at,updated_at) VALUES(?,?,?,'TJ','990001',?,'tj:990001',19,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)",bytes(pair.getValue()),bytes(f.owner()),bytes(pair.getKey()),"{\"title\":\"candidate\",\"artist\":\"artist\"}");
+        String op=UUID.randomUUID().toString();var response=restore(b,op,1,List.of(f.s.id.toString()));
+        assertThat(response.getStatus()).isEqualTo(200);assertThat(response.getContentAsString()).contains("DUPLICATE_ACTIVE");
+        assertThat(f.f.jdbc.queryForMap("SELECT * FROM recording")).usingRecursiveComparison().isEqualTo(recordingBefore);
+        assertThat(f.f.jdbc.queryForObject("SELECT lifecycle_state FROM song",String.class)).isEqualTo("ACTIVE");
+        assertThat(f.f.jdbc.queryForObject("SELECT hidden_by_batch_id FROM playlist_item WHERE id=?",byte[].class,bytes(f.item))).isEqualTo(bytes(UUID.fromString(b)));
+        for(UUID id:List.of(candidate,otherCandidate)){
+            assertThat(f.f.jdbc.queryForObject("SELECT song_id FROM playlist_item WHERE id=?",byte[].class,bytes(id))).isEqualTo(bytes(f.s.id));
+            assertThat(f.f.jdbc.queryForObject("SELECT position FROM playlist_item WHERE id=?",Long.class,bytes(id))).isEqualTo(19);
+        }
+        assertThat(f.f.jdbc.queryForObject("SELECT COUNT(*) FROM playlist_item WHERE hidden_by_batch_id IS NULL",Integer.class)).isEqualTo(2);
+        var before=f.f.jdbc.queryForList("SELECT * FROM playlist_item ORDER BY id");
+        assertThat(restore(b,op,1,List.of(f.s.id.toString())).getContentAsString()).isEqualTo(response.getContentAsString());
+        assertThat(f.f.jdbc.queryForList("SELECT * FROM playlist_item ORDER BY id")).usingRecursiveComparison().isEqualTo(before);
+        // Database uniqueness still prevents a second visible item and old-row resurrection.
+        assertThatThrownBy(()->f.f.jdbc.update("UPDATE playlist_item SET hidden_by_batch_id=NULL WHERE id=?",bytes(f.item))).isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
+    }
     @Test void laterRelinkIsNotOverwrittenBySongRestoration()throws Exception{
         String b=batch("SONG_ONLY");UUID original=f.s.id;f.s.id=UUID.randomUUID();assertThat(f.s.postBody(UUID.randomUUID().toString(),f.s.body("").replace("valid","second")).getStatus()).isEqualTo(201);UUID later=f.s.id;
         f.f.jdbc.update("UPDATE recording SET song_id=?,link_revision=link_revision+1,revision=revision+1 WHERE id=?",bytes(later),bytes(f.recording));

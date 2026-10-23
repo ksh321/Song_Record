@@ -120,7 +120,8 @@ final class ChangeFeedPage {
       final operation = row['operation'];
       _valid(operation == 'UPSERT' || operation == 'DELETE');
       _valid(row['payload'] is Map<String, dynamic>);
-      final payload = normalizedValues[index]['payload'] as Map<String, dynamic>;
+      final payload =
+          normalizedValues[index]['payload'] as Map<String, dynamic>;
       _valid(!payload.containsKey('user_id') || payload['user_id'] == owner);
       _valid(!payload.containsKey('id') || payload['id'] == id);
       _valid(

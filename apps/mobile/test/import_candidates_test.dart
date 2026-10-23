@@ -266,7 +266,7 @@ void main() {
           ),
         ),
       );
-      expect(find.textContaining('자동 변환하지'), findsOneWidget);
+      expect(find.textContaining('같은 곡을 TJ에서 찾아 다시 선택'), findsOneWidget);
       expect(chosen, isNull);
       await tester.tap(find.text('TJ에서 찾아 다시 선택'));
       await tester.pump();

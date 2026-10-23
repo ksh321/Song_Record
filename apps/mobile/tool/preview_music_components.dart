@@ -5,6 +5,7 @@ import 'package:song_record/core/domain/recording_snapshot.dart';
 import 'package:song_record/core/domain/song_types.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
+import 'package:song_record/core/widgets/feature_icon.dart';
 import 'package:song_record/core/widgets/music_view_data.dart';
 import 'package:song_record/core/widgets/recording_roles_card.dart';
 import 'package:song_record/core/widgets/recording_row.dart';
@@ -24,6 +25,7 @@ class MusicComponentsPreview extends StatefulWidget {
 class _MusicComponentsPreviewState extends State<MusicComponentsPreview> {
   AppAccent _accent = AppAccent.initial;
   bool _largeText = false;
+  bool _light = false;
   final _song = RegisteredSongViewData(
     id: SongId('00000000-0000-4000-8000-000000000001'),
     title: '아주 긴 곡 제목이 여러 줄이 되어도 끝까지 확인할 수 있는 연습곡',
@@ -56,7 +58,7 @@ class _MusicComponentsPreviewState extends State<MusicComponentsPreview> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: AppTheme.dark(accent: _accent),
+      theme: AppTheme.preview(accent: _accent, light: _light),
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(
           textScaler: _largeText
@@ -86,7 +88,16 @@ class _MusicComponentsPreviewState extends State<MusicComponentsPreview> {
             artist: '후보 가수',
           );
           return Scaffold(
-            appBar: AppBar(title: const Text('행·요약 미리보기')),
+            appBar: AppBar(
+              title: const Text('베타 UI 미리보기'),
+              actions: [
+                IconButton(
+                  tooltip: '다크 모드 전환',
+                  onPressed: () => setState(() => _light = !_light),
+                  icon: const Icon(Icons.dark_mode_outlined),
+                ),
+              ],
+            ),
             body: SafeArea(
               child: ListView(
                 padding: const EdgeInsets.all(AppSpacing.lg),
@@ -97,7 +108,9 @@ class _MusicComponentsPreviewState extends State<MusicComponentsPreview> {
                     spacing: AppSpacing.sm,
                     runSpacing: AppSpacing.xs,
                     children: [
-                      for (final accent in AppAccent.values)
+                      for (final accent in AppAccent.values.where(
+                        (a) => a != AppAccent.white,
+                      ))
                         ChoiceChip(
                           label: Text(accent.label),
                           selected: _accent == accent,
@@ -110,6 +123,16 @@ class _MusicComponentsPreviewState extends State<MusicComponentsPreview> {
                     title: const Text('큰 글자 2배 미리보기'),
                     value: _largeText,
                     onChanged: (value) => setState(() => _largeText = value),
+                  ),
+                  const Wrap(
+                    spacing: 12,
+                    children: [
+                      FeatureIcon(Icons.music_note_outlined),
+                      FeatureIcon(Icons.queue_music),
+                      FeatureIcon(Icons.search),
+                      FeatureIcon(Icons.edit_outlined),
+                      FeatureIcon(Icons.people_outline),
+                    ],
                   ),
                   _heading('등록곡'),
                   SongRow.registered(

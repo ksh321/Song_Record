@@ -15,12 +15,16 @@ class SongRegistrationDraft {
     required this.title,
     required this.artist,
     this.note = '',
+    this.isSuitable = false,
     this.version = VersionCode.normal,
     this.candidate,
     this.manualApproval,
+    this.directEntry = false,
   }) {
     intent.validate();
-    if ((candidate == null) == (manualApproval == null) ||
+    if ((candidate == null
+            ? (manualApproval == null && !directEntry)
+            : (manualApproval != null || directEntry)) ||
         candidate != null && candidate!.brand != KaraokeBrand.tj) {
       throw ArgumentError('Verified TJ or confirmed manual input is required');
     }
@@ -28,8 +32,10 @@ class SongRegistrationDraft {
   final SearchIntent intent;
   final String title, artist, note;
   final VersionCode version;
+  final bool isSuitable;
   final KaraokeCandidate? candidate;
   final ManualSearchApproval? manualApproval;
+  final bool directEntry;
 
   LocalEdit prepare(LocalRepository repository) {
     final t = validateInput(InputField.title, title),
@@ -42,12 +48,13 @@ class SongRegistrationDraft {
     final changes = <String, Object?>{
       'source_type': c == null ? 'MANUAL' : 'TJ',
       if (c == null)
-        'manual_reason': 'TJ_NOT_FOUND'
+        'manual_reason': directEntry ? 'USER_ENTERED' : 'TJ_NOT_FOUND'
       else
         'source_token': c.sourceToken,
       'title': t.value,
       'artist': a.value,
       'note': n.value,
+      'is_suitable': isSuitable,
       'version_code': version.name.toUpperCase(),
     };
     final draft = <String, Object?>{
@@ -56,6 +63,7 @@ class SongRegistrationDraft {
       'title': t.value,
       'artist': a.value,
       'note': n.value,
+      'is_suitable': isSuitable,
       'version_code': changes['version_code'],
       'lifecycle_state': 'ACTIVE',
       'tier': null,

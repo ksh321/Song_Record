@@ -49,7 +49,7 @@ public final class RecordingEditing {
                     // Keep the previous selected value before replacing it; the same transaction
                     // rolls this history back if the recording/change-log write fails.
                     jdbc.update("INSERT INTO recording_condition_history(user_id,recording_id,source_revision,condition_code,condition_name_snapshot) SELECT user_id,id,revision,condition_code,condition_name_snapshot FROM recording WHERE user_id=? AND id=? AND condition_code IS NOT NULL AND NOT EXISTS (SELECT 1 FROM recording_condition_history h WHERE h.user_id=recording.user_id AND h.recording_id=recording.id AND h.source_revision=recording.revision)",bytes(owner),bytes(recording));
-                    fields.put("condition_name_snapshot",code==null?null:com.ksh321.songrecord.api.classifications.ConditionCatalog.name((String)code));
+                    fields.put("condition_name_snapshot",com.ksh321.songrecord.api.classifications.ConditionSelection.name(jdbc,owner,(String)code));
                 }
                 if(!fields.isEmpty()){
                     String assignments=String.join(",",fields.keySet().stream().map(k->k+"=?").toList());
@@ -120,7 +120,7 @@ public final class RecordingEditing {
                 case "version_code" -> fields.put(k,choice(v,false,Set.of("NORMAL","MR","LIVE")));
                 case "key_mode" -> fields.put(k,choice(v,true,Set.of("ORIGINAL","MALE","FEMALE")));
                 case "key_shift" -> fields.put(k,v.isNull()?null:integer(v,-12,12));
-                case "condition_code" -> {String code=text(v,true);if(code!=null && !com.ksh321.songrecord.api.classifications.ConditionCatalog.contains(code))throw invalid();fields.put(k,code);}
+                case "condition_code" -> {String code=text(v,true);if(code!=null && !com.ksh321.songrecord.api.classifications.ConditionReference.valid(code))throw invalid();fields.put(k,code);}
                 case "tag_ids" -> {
                     if(!v.isArray())throw invalid();var values=new TreeSet<UUID>(Comparator.comparing(UUID::toString));
                     for(var entry:v){try{String t=text(entry,false);UUID u=UUID.fromString(t);if(!u.toString().equals(t))throw invalid();if(!values.add(u))throw invalid();}catch(IllegalArgumentException ex){throw invalid();}}
@@ -136,7 +136,7 @@ public final class RecordingEditing {
     }
     private static void validateMerged(Map<String,Object> values,String state){
         Object mode=values.get("key_mode"),shift=values.get("key_shift");
-        if((mode==null)!=(shift==null) || mode!=null && (!(shift instanceof Number n) || n.intValue() < -12 || n.intValue()>12 || "ORIGINAL".equals(mode) && n.intValue()!=0))throw invalid();
+        if((mode==null)!=(shift==null) || mode!=null && (!(shift instanceof Number n) || n.intValue() < -12 || n.intValue()>12))throw invalid();
         if("SAVED".equals(state) && (values.get("title_snapshot")==null || values.get("artist_snapshot")==null || mode==null))throw invalid();
     }
     private static LocalDateTime utc(String value){

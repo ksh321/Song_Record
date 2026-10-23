@@ -96,7 +96,8 @@ void main() {
           id: RecordingId(candidate['id']! as String),
           recordedAt: DateTime.parse(candidate['recorded_at']! as String),
           tier: _tier(candidate['tier'] as String?),
-          eligible: candidate['lifecycle'] == 'ACTIVE' &&
+          eligible:
+              candidate['lifecycle'] == 'ACTIVE' &&
               candidate['metadata'] == 'SAVED' &&
               candidate['valid_file_manifest'] == true,
         );
@@ -112,8 +113,9 @@ void main() {
       expect(result.representative?.value, expected['representative']);
       expect(result.latest?.value, expected['latest']);
       expect(result.lowestTier?.value, expected['lowest']);
-      final expectedIds =
-          (expected['unique_ids']! as List<Object?>).cast<String>().toSet();
+      final expectedIds = (expected['unique_ids']! as List<Object?>)
+          .cast<String>()
+          .toSet();
       final actualIds = result.uniqueIds.map((id) => id.value).toSet();
       expect(actualIds.length, expectedIds.length);
       expect(actualIds.containsAll(expectedIds), isTrue);

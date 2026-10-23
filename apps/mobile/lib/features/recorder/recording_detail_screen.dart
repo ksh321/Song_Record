@@ -18,6 +18,7 @@ class RecordingDetailScreen extends StatefulWidget {
     required this.repository,
     required this.isCurrent,
     this.wakeSync,
+    this.classificationBuilder,
     this.trash,
     super.key,
   });
@@ -25,6 +26,7 @@ class RecordingDetailScreen extends StatefulWidget {
   final LocalRepository repository;
   final bool Function(LocalRepository) isCurrent;
   final VoidCallback? wakeSync;
+  final WidgetBuilder? classificationBuilder;
   final TrashActions? trash;
   @override
   State<RecordingDetailScreen> createState() => _RecordingDetailScreenState();
@@ -128,6 +130,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => RecordingInputScreen(
+                        classificationBuilder: widget.classificationBuilder,
                         recording: row,
                         repository: widget.repository,
                         isCurrent: widget.isCurrent,

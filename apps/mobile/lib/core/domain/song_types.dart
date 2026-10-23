@@ -41,7 +41,7 @@ String formatMusicalKey(MusicalKey key) {
     KeyMode.male => '남',
     KeyMode.female => '여',
   };
-  if (key.mode == KeyMode.original && key.shift == 0) return mode;
+  if (key.shift == 0) return mode;
   final shift = key.shift > 0 ? '+${key.shift}' : '${key.shift}';
   return '$mode $shift';
 }

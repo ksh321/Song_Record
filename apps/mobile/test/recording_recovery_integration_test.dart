@@ -156,6 +156,117 @@ void main() {
     }
   });
 
+  test('owned custom condition keeps the recording name across rename, archive and restart', () async {
+    const conditionId = '00000000-0000-4000-8000-000000001831';
+    await repo.save(
+      repo.prepareCreate(
+        entity: LocalEntity.recordingCondition,
+        entityId: conditionId,
+        draft: {'code': conditionId, 'name': '목이 편함', 'archived_at': null},
+        changes: {'name': '목이 편함'},
+      ),
+    );
+    expect(
+      (await repo.selectableRecordingConditions()).single['name'],
+      '목이 편함',
+    );
+    await repo.saveRecordingInput(rec, {
+      ...input.fields(),
+      'condition_code': conditionId,
+    }, repo.recordingSaveOperationIds());
+    final saved = jsonDecode(
+      (await repo.read(LocalEntity.recording, rec))!.localJson!,
+    ) as Map<String, dynamic>;
+    expect(saved['condition_name_snapshot'], '목이 편함');
+    final definition = (await repo.read(
+      LocalEntity.recordingCondition,
+      conditionId,
+    ))!;
+    await repo.save(
+      repo.preparePatch(
+        entity: LocalEntity.recordingCondition,
+        entityId: conditionId,
+        baseRevision: definition.revision,
+        draft: {
+          'code': conditionId,
+          'name': '목 상태 좋음',
+          'archived_at': '2026-10-23T00:00:00Z',
+        },
+        changes: {'name': '목 상태 좋음'},
+      ),
+    );
+    await repo.saveRecordingDetails(
+      rec,
+      {
+        ...input.fields()..remove('song_id'),
+        'tier': null,
+        'condition_code': conditionId,
+        'note': '메모 수정',
+      },
+      repo.recordingEditOperationIds(),
+      saved,
+      0,
+    );
+    expect((await repo.selectableRecordingConditions()), isEmpty);
+    expect(
+      jsonDecode(
+        (await repo.read(LocalEntity.recording, rec))!.localJson!,
+      )['condition_name_snapshot'],
+      '목이 편함',
+    );
+    expect(await store.readLocalAudio(rec), bytes);
+    await manager.logout();
+    store = await manager.openAccount(owner);
+    repo = LocalRepository(store);
+    final reopened = jsonDecode(
+      (await repo.read(LocalEntity.recording, rec))!.localJson!,
+    ) as Map<String, dynamic>;
+    expect(reopened['condition_name_snapshot'], '목이 편함');
+    await repo.saveRecordingDetails(
+      rec,
+      {
+        ...input.fields()..remove('song_id'),
+        'tier': null,
+        'condition_code': null,
+      },
+      repo.recordingEditOperationIds(),
+      reopened,
+      0,
+    );
+    final cleared = jsonDecode(
+      (await repo.read(LocalEntity.recording, rec))!.localJson!,
+    ) as Map<String, dynamic>;
+    await expectLater(
+      repo.saveRecordingDetails(
+        rec,
+        {
+          ...input.fields()..remove('song_id'),
+          'tier': null,
+          'condition_code': conditionId,
+        },
+        repo.recordingEditOperationIds(),
+        cleared,
+        0,
+      ),
+      throwsStateError,
+    );
+    expect(
+      jsonDecode(
+        (await repo.read(LocalEntity.recording, rec))!.localJson!,
+      )['condition_code'],
+      isNull,
+    );
+    await manager.logout();
+    store = await manager.openAccount(other);
+    repo = LocalRepository(store);
+    expect(
+      (await repo.selectableRecordingConditions()).any(
+        (r) => r['code'] == conditionId,
+      ),
+      isFalse,
+    );
+  });
+
   test('multiple tags keep historical names after rename/archive and condition can be cleared without changing audio', () async {
     const secondTag = '00000000-0000-4000-8000-000000001821';
     for (final tag in [other, secondTag]) {
@@ -242,6 +353,7 @@ void main() {
                       recording: row,
                       repository: repo,
                       isCurrent: (_) => true,
+                      conditionLoader: () async => [],
                       tagLoader: () async => [],
                     ),
                   ),

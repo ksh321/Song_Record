@@ -15,6 +15,7 @@ const importEditableFields = <String, Set<String>>{
     'artist',
     'version_code',
     'tier',
+    'is_suitable',
     'note',
     'representative_key_mode',
     'representative_key_shift',
@@ -33,7 +34,7 @@ const importEditableFields = <String, Set<String>>{
     'condition_code',
     'tag_ids',
   },
-  'PLAYLIST': {'name'},
+  'PLAYLIST': {'name', 'icon', 'display_order'},
   'TAG': {'name'},
   'RECORDING_CONDITION': {'name'},
 };

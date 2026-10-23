@@ -167,12 +167,14 @@ Future<bool?> canonicalReferenceEdge(
       before['entity_type'] != original.read<String>('entity_type') ||
       before['entity_id'] != original.read<String>('entity_id') ||
       before['server_revision'] is! int ||
-      (before['server_payload'] != null && before['server_payload'] is! String) ||
+      (before['server_payload'] != null &&
+          before['server_payload'] is! String) ||
       before['local_payload'] is! String ||
       before['tombstone'] != 0 ||
       edge.read<String>('order_root_op_id') != original.read<String>('op_id') ||
       edge.read<int>('logical_order') != original.read<int>('local_order') ||
-      replacement.read<int>('local_order') <= original.read<int>('local_order')) {
+      replacement.read<int>('local_order') <=
+          original.read<int>('local_order')) {
     return false;
   }
   final frozen = await _select(
@@ -188,13 +190,16 @@ Future<bool?> canonicalReferenceEdge(
     hasFrozenRequest: frozen.isNotEmpty,
   );
   return plan != null &&
-      replacement.read<String>('op_id') == _identity(canonicalJson({
-        'contract': _contract,
-        'user_id': db.userId,
-        'original_op_id': original.read<String>('op_id'),
-        'mapping_op_id': aliases.single.read<String>('mapping_op_id'),
-        'payload': plan.payloadJson,
-      })) &&
+      replacement.read<String>('op_id') ==
+          _identity(
+            canonicalJson({
+              'contract': _contract,
+              'user_id': db.userId,
+              'original_op_id': original.read<String>('op_id'),
+              'mapping_op_id': aliases.single.read<String>('mapping_op_id'),
+              'payload': plan.payloadJson,
+            }),
+          ) &&
       replacement.read<String>('payload') == plan.payloadJson &&
       original.read<String>('entity_type') ==
           replacement.read<String>('entity_type') &&
@@ -245,7 +250,8 @@ Future<bool> materializeCanonicalReferences(
         serverSong['source_type'] != 'TJ' ||
         serverSong['lifecycle_state'] != 'ACTIVE' ||
         serverSong['tj_number'] != receipt.snapshot['tj_number'] ||
-        serverSong['revision'] != canonical.single.read<int>('server_revision')) {
+        serverSong['revision'] !=
+            canonical.single.read<int>('server_revision')) {
       continue;
     }
 
@@ -486,10 +492,7 @@ Future<bool> _canFollow(
       server['revision'] != copy.revision) {
     return false;
   }
-  final edges = await _select(
-    db,
-    'SELECT * FROM mutation_supersessions',
-  );
+  final edges = await _select(db, 'SELECT * FROM mutation_supersessions');
   final rows = await _select(
     db,
     'SELECT rowid AS local_order,* FROM local_mutations WHERE entity_type=? AND entity_id=? ORDER BY rowid',
@@ -503,7 +506,8 @@ Future<bool> _canFollow(
     final old = byId[edge.read<String>('original_op_id')];
     final next = byId[edge.read<String>('replacement_op_id')];
     if (old == null && next == null) continue;
-    if (old == null || next == null ||
+    if (old == null ||
+        next == null ||
         edge.read<String>('mapping_source_id') != source) {
       return false;
     }
@@ -555,9 +559,11 @@ Future<bool> _canFollow(
                   ),
         );
   if (previous.isEmpty ||
-      previous.any((r) =>
-          r.read<String>('queue_state') != 'ACKED' ||
-          !eligibility.allows(r.read<String>('op_id')))) {
+      previous.any(
+        (r) =>
+            r.read<String>('queue_state') != 'ACKED' ||
+            !eligibility.allows(r.read<String>('op_id')),
+      )) {
     return false;
   }
   final prior = _mutation(previous.last);

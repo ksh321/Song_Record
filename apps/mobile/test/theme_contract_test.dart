@@ -7,9 +7,9 @@ import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 
 void main() {
-  // Independent source of truth: the original checked-in reference JSON.
+  // Independent source of truth: the approved UI03 contract (original reference is preserved).
   final reference = jsonDecode(
-    File('../../docs/reference/ui_reference_palette.json').readAsStringSync(),
+    File('../../docs/contracts/beta-ui03-palette.json').readAsStringSync(),
   ) as Map<String, dynamic>;
   final colors = reference['colors'] as Map<String, dynamic>;
   final semantic = reference['semanticColors'] as Map<String, dynamic>;
@@ -21,7 +21,7 @@ void main() {
   Color hex(Object? value) =>
       Color(0xFF000000 | int.parse((value as String).substring(1), radix: 16));
 
-  test('8가지 강조색의 순서·이름·배경·글자는 원본 JSON과 일치한다', () {
+  test('저장 호환 강조색과 승인된 시안03 팔레트가 일치한다', () {
     expect(AppAccent.initial.id, reference['defaultAccentId']);
     expect(
       AppAccent.values.map((accent) => accent.id),

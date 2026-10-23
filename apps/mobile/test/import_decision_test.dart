@@ -56,6 +56,72 @@ ValidatedImport decisionFixture({String? issue, String? issueId}) {
 }
 
 void main() {
+  testWidgets('valid file automatically reaches preview once without import', (
+    tester,
+  ) async {
+    final validation = Completer<ValidatedImport>();
+    var checks = 0, previews = 0;
+    final controller = ImportDecision(
+      validate: (_) {
+        checks++;
+        return validation.future;
+      },
+      requireCurrent: () {},
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ImportDecisionScreen(
+          controller: controller,
+          onApproved: (consent) {
+            controller.requireConsent(consent);
+            expect(consent.partial, false);
+            previews++;
+          },
+          onCancel: () {},
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(checks, 1);
+    expect(previews, 0);
+    expect(find.text('백업 검사'), findsNothing);
+    validation.complete(decisionFixture());
+    await tester.pumpAndSettle();
+    expect(previews, 1);
+    expect(controller.phase, ImportDecisionPhase.approved);
+    await tester.pump();
+    expect(previews, 1);
+  });
+
+  testWidgets('cancel during automatic check cannot open a late preview', (
+    tester,
+  ) async {
+    final validation = Completer<ValidatedImport>();
+    var previews = 0, cancelled = false;
+    final controller = ImportDecision(
+      validate: (_) => validation.future,
+      requireCurrent: () {},
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ImportDecisionScreen(
+          controller: controller,
+          onApproved: (_) => previews++,
+          onCancel: () => cancelled = true,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text('취소'));
+    validation.complete(decisionFixture());
+    await tester.pumpAndSettle();
+    expect(cancelled, true);
+    expect(previews, 0);
+    expect(controller.phase, ImportDecisionPhase.cancelled);
+  });
+
   test(
     'damage blocks whole restore with no automatic partial approval',
     () async {

@@ -347,7 +347,7 @@ class _RecorderPanelState extends State<RecorderPanel>
                   ? _stop
                   : _start,
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.text,
+                foregroundColor: Theme.of(context).colorScheme.onSurface,
                 minimumSize: const Size(116, 116),
               ),
               child: Column(
@@ -358,7 +358,10 @@ class _RecorderPanelState extends State<RecorderPanel>
                     height: 82,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.muted, width: 3),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.primary,
+                        width: 3,
+                      ),
                     ),
                     alignment: Alignment.center,
                     child: Container(
@@ -370,7 +373,7 @@ class _RecorderPanelState extends State<RecorderPanel>
                       width: recording ? 32 : 64,
                       height: recording ? 32 : 64,
                       decoration: BoxDecoration(
-                        color: AppColors.recording,
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(recording ? 6 : 32),
                       ),
                     ),

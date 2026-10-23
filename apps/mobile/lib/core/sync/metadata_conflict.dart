@@ -24,6 +24,7 @@ ThreeWayComparison? compareMetadataConflict(
       !{
         LocalEntity.song,
         LocalEntity.tag,
+        LocalEntity.recordingCondition,
         LocalEntity.recording,
       }.contains(mutation.entity) ||
       mutation.basePayload == null ||
@@ -76,7 +77,10 @@ ThreeWayComparison? compareMetadataConflict(
         base['tj_number'] != server['tj_number']) {
       throw const FormatException('Immutable song source changed');
     }
-  } else if (mutation.entity == LocalEntity.tag &&
+  } else if ({
+        LocalEntity.tag,
+        LocalEntity.recordingCondition,
+      }.contains(mutation.entity) &&
       (base['archived_at'] != null || server['archived_at'] != null)) {
     return null;
   }
@@ -164,7 +168,11 @@ ThreeWayComparison? compareMetadataConflict(
     base: base,
     localChanges: changes,
     server: server,
-    editableFields: mutation.entity == LocalEntity.tag
+    editableFields:
+        {
+          LocalEntity.tag,
+          LocalEntity.recordingCondition,
+        }.contains(mutation.entity)
         ? {'name'}
         : {
             'title',
@@ -172,6 +180,7 @@ ThreeWayComparison? compareMetadataConflict(
             'version_code',
             'tier',
             'note',
+            'is_suitable',
             'representative_key_mode',
             'representative_key_shift',
           },

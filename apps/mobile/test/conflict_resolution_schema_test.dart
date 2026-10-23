@@ -99,21 +99,51 @@ void main() {
   final rejected = throwsA(isA<sqlite.SqliteException>());
 
   test('pending review evidence is immutable and cannot claim or fake ACK its original', () async {
-    final row = await db.customSelect('SELECT rowid AS local_order,* FROM local_mutations WHERE op_id=?',
-      variables: [Variable(replacement)]).getSingle();
+    final row = await db
+        .customSelect(
+          'SELECT rowid AS local_order,* FROM local_mutations WHERE op_id=?',
+          variables: [Variable(replacement)],
+        )
+        .getSingle();
     Future<void> save({String choices = '{}', String user = owner}) =>
-        db.customStatement('INSERT INTO pending_edit_resolutions VALUES(?,?,NULL,?,?,?,?,0)',
-          [replacement, user, snapshot(3), choices, canonicalJson(row.data), row.read<int>('local_order')]);
+        db.customStatement(
+          'INSERT INTO pending_edit_resolutions VALUES(?,?,NULL,?,?,?,?,0)',
+          [
+            replacement,
+            user,
+            snapshot(3),
+            choices,
+            canonicalJson(row.data),
+            row.read<int>('local_order'),
+          ],
+        );
     await expectLater(save(choices: '{"name":true}'), rejected);
     await expectLater(save(user: target), rejected);
-    await expectLater(db.customStatement('INSERT INTO pending_edit_resolutions VALUES(?,?,NULL,?,?,?,?,0)',
-      [original, owner, snapshot(3), '{}', '{}', 1]), rejected);
+    await expectLater(
+      db.customStatement(
+        'INSERT INTO pending_edit_resolutions VALUES(?,?,NULL,?,?,?,?,0)',
+        [original, owner, snapshot(3), '{}', '{}', 1],
+      ),
+      rejected,
+    );
     final before = await originals();
     await save();
     await expectLater(save(), rejected);
-    await expectLater(db.customStatement("UPDATE pending_edit_resolutions SET choices='{}'"), rejected);
-    await expectLater(db.customStatement('DELETE FROM pending_edit_resolutions'), rejected);
-    await expectLater(db.customStatement('UPDATE local_mutations SET attempt_count=1 WHERE op_id=?', [replacement]), rejected);
+    await expectLater(
+      db.customStatement("UPDATE pending_edit_resolutions SET choices='{}'"),
+      rejected,
+    );
+    await expectLater(
+      db.customStatement('DELETE FROM pending_edit_resolutions'),
+      rejected,
+    );
+    await expectLater(
+      db.customStatement(
+        'UPDATE local_mutations SET attempt_count=1 WHERE op_id=?',
+        [replacement],
+      ),
+      rejected,
+    );
     expect(await originals(), before);
     // A syntactically valid but incomplete choice must not grant eligibility.
     final mapping = await readMappingEligibility(db);

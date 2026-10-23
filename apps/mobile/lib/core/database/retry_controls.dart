@@ -21,6 +21,7 @@ final class RetryStatus {
     required this.lastAttemptKind,
     required this.nextAttemptAt,
     this.mappingEligible = true,
+    this.originalKeyCorrection = false,
   });
 
   final String opId;
@@ -39,10 +40,11 @@ final class RetryStatus {
 
   /// A read-only mapping gate, independent of the persisted retry mode/budget.
   final bool mappingEligible;
+  final bool originalKeyCorrection;
 
   bool get canRetryManually =>
       mappingEligible &&
-      queueState == 'RETRY' &&
+      (queueState == 'RETRY' || originalKeyCorrection) &&
       (mode == 'AUTO' || mode == 'MANUAL_REQUIRED' || mode == 'BLOCKED');
 
   bool eligible(DateTime now, {bool includeFutureAutomatic = false}) {
@@ -79,7 +81,11 @@ final class RetryControls {
 
   static const _select = '''
     SELECT m.op_id,m.queue_state,m.attempt_count,m.next_attempt_at,
-      c.automatic_retries_claimed,c.retry_mode,c.last_attempt_kind
+      c.automatic_retries_claimed,c.retry_mode,c.last_attempt_kind,
+      m.entity_type,m.operation,m.payload,m.base_payload,m.server_response,
+      EXISTS(SELECT 1 FROM mutation_wire_requests w WHERE w.op_id=m.op_id
+        AND w.http_method='PATCH' AND w.relative_path=('/v1/songs/' || m.entity_id)
+        AND w.body_json=m.payload) AS original_key_wire
     FROM local_mutations m
     JOIN mutation_retry_controls c ON c.op_id=m.op_id
   ''';
@@ -87,6 +93,7 @@ final class RetryControls {
   RetryStatus _decode(QueryRow row, {bool mappingEligible = true}) {
     final due = row.readNullable<int>('next_attempt_at');
     return RetryStatus(
+      originalKeyCorrection: _originalKeyCorrection(row),
       mappingEligible: mappingEligible,
       opId: row.read<String>('op_id'),
       queueState: row.read<String>('queue_state'),
@@ -100,6 +107,41 @@ final class RetryControls {
           ? null
           : DateTime.fromMillisecondsSinceEpoch(due, isUtc: true),
     );
+  }
+
+  // The old server rejected a now-supported original-reference offset. Only
+  // an explicit manual retry may release this exact retained PATCH; it never
+  // resets attempts, changes the frozen body, or grants automatic retries.
+  bool _originalKeyCorrection(QueryRow row) {
+    if (row.read<String>('queue_state') != 'FAILED' ||
+        row.read<String>('entity_type') != 'SONG' ||
+        row.read<String>('operation') != 'PATCH' ||
+        row.read<int>('attempt_count') < 1 ||
+        row.read<int>('original_key_wire') != 1) {
+      return false;
+    }
+    try {
+      final response = jsonDecode(
+        row.readNullable<String>('server_response') ?? '{}',
+      );
+      final payload = jsonDecode(row.read<String>('payload'));
+      final base = jsonDecode(row.readNullable<String>('base_payload') ?? '{}');
+      if (response is! Map ||
+          payload is! Map ||
+          base is! Map ||
+          response['status'] != 400 ||
+          response['code'] != 'VALIDATION_FAILED') {
+        return false;
+      }
+      final merged = {...base, ...payload};
+      final shift = merged['representative_key_shift'];
+      return merged['representative_key_mode'] == 'ORIGINAL' &&
+          shift is int &&
+          shift != 0 &&
+          shift.abs() <= 12;
+    } on FormatException {
+      return false;
+    }
   }
 
   Future<RetryStatus?> status(String opId) async {
@@ -233,6 +275,14 @@ final class RetryControls {
         !current.canRetryManually) {
       return false;
     }
+    if (current.originalKeyCorrection) {
+      final released = await _change(
+        "UPDATE local_mutations SET queue_state='RETRY',updated_at=? "
+        "WHERE op_id=? AND queue_state='FAILED' AND attempt_count=?",
+        [nowMs, opId, expectedAttempt],
+      );
+      if (released != 1) return false;
+    }
     final changed = await _change(
       '''
         UPDATE mutation_retry_controls SET retry_mode='MANUAL_READY'
@@ -245,7 +295,12 @@ final class RetryControls {
       ''',
       [opId, expectedAttempt],
     );
-    if (changed != 1) return false;
+    if (changed != 1) {
+      if (current.originalKeyCorrection) {
+        throw StateError('Key correction retry authorization changed');
+      }
+      return false;
+    }
     await database.customStatement(
       '''
         UPDATE local_mutations SET next_attempt_at=NULL,updated_at=?
@@ -424,7 +479,11 @@ final class RetryControls {
             (method == 'DELETE' &&
                 RegExp('^/v1/playlists/${m.entityId}/items/[0-9a-f-]{36}\$')
                     .hasMatch(path)) ||
-            (method == 'PUT' && path == '/v1/playlists/${m.entityId}/order'))) {
+            (method == 'PUT' &&
+                {
+                  '/v1/playlists/${m.entityId}/order',
+                  '/v1/playlists/${m.entityId}/library-order',
+                }.contains(path)))) {
       final expected = MutationRequest.prepare(m);
       if (expected == null ||
           expected.path != path ||

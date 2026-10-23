@@ -54,9 +54,12 @@ void main() {
       draft: draft,
       changes: draft,
     );
-    expect(command.entityId, matches(
-      r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
-    ));
+    expect(
+      command.entityId,
+      matches(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+      ),
+    );
     expect(command.opId, isNot(command.entityId));
     draft['title'] = 'caller changed';
     await repo.save(command);
@@ -71,92 +74,116 @@ void main() {
     expect(queued.baseRevision, 0);
     expect(queued.state, 'PENDING');
     expect(queued.attemptCount, 0);
-    expect(jsonDecode(queued.payload), {'id': command.entityId, 'title': 'before'});
+    expect(jsonDecode(queued.payload), {
+      'id': command.entityId,
+      'title': 'before',
+    });
     await repo.save(command);
     expect(await repo.pending(), hasLength(1));
-    expect((await repo.read(LocalEntity.song, command.entityId))!.localJson,
-        contains('before'));
+    expect(
+      (await repo.read(LocalEntity.song, command.entityId))!.localJson,
+      contains('before'),
+    );
   });
 
-  test('offline edits retain each intent and old retry cannot rewind draft', () async {
-    final repo = LocalRepository(await manager.openAccount(owner));
-    final create = repo.prepareCreate(
-      entity: LocalEntity.recording,
-      draft: {'note': 'first'},
-      changes: {'metadata_state': 'DRAFT', 'note': 'first'},
-    );
-    await repo.save(create);
-    for (final note in ['second', 'third']) {
-      await repo.save(repo.preparePatch(
+  test(
+    'offline edits retain each intent and old retry cannot rewind draft',
+    () async {
+      final repo = LocalRepository(await manager.openAccount(owner));
+      final create = repo.prepareCreate(
         entity: LocalEntity.recording,
-        entityId: create.entityId,
-        baseRevision: 0,
-        draft: {'note': note},
-        changes: {'note': note},
-      ));
-    }
-    await repo.save(create);
-    expect(await repo.pending(), hasLength(3));
-    expect((await repo.pending()).map((e) => e.opId).toSet(), hasLength(3));
-    expect((await repo.read(LocalEntity.recording, create.entityId))!.localJson,
-        contains('third'));
-  });
+        draft: {'note': 'first'},
+        changes: {'metadata_state': 'DRAFT', 'note': 'first'},
+      );
+      await repo.save(create);
+      for (final note in ['second', 'third']) {
+        await repo.save(
+          repo.preparePatch(
+            entity: LocalEntity.recording,
+            entityId: create.entityId,
+            baseRevision: 0,
+            draft: {'note': note},
+            changes: {'note': note},
+          ),
+        );
+      }
+      await repo.save(create);
+      expect(await repo.pending(), hasLength(3));
+      expect((await repo.pending()).map((e) => e.opId).toSet(), hasLength(3));
+      expect(
+        (await repo.read(LocalEntity.recording, create.entityId))!.localJson,
+        contains('third'),
+      );
+    },
+  );
 
-  test('server baseline and patch target are persisted across reopening', () async {
-    await manager.openAccount(owner);
-    await manager.logout();
-    final db = await raw();
-    await db.customStatement(
-      'INSERT INTO metadata_copies(user_id,entity_type,entity_id,server_revision,server_payload,updated_at) VALUES(?,?,?,7,?,1)',
-      [owner, 'SONG', uuid(10), '{"title":"server"}'],
-    );
-    await db.close();
-    var repo = LocalRepository(await manager.openAccount(owner));
-    final patch = repo.preparePatch(
-      entity: LocalEntity.song,
-      entityId: uuid(10),
-      baseRevision: 7,
-      draft: {'title': 'local'},
-      changes: {'title': 'local'},
-    );
-    await repo.save(patch);
-    await manager.logout();
-    manager = makeManager();
-    repo = LocalRepository(await manager.openAccount(owner));
-    final queued = (await repo.pending()).single;
-    expect(queued.operation, LocalOperation.patch);
-    expect(queued.entityId, uuid(10));
-    expect(queued.baseRevision, 7);
-    expect(jsonDecode(queued.basePayload!), {'title': 'server'});
-    expect(jsonDecode(queued.payload), {'base_revision': 7, 'title': 'local'});
-    expect((await repo.read(LocalEntity.song, uuid(10)))!.revision, 7);
-  });
+  test(
+    'server baseline and patch target are persisted across reopening',
+    () async {
+      await manager.openAccount(owner);
+      await manager.logout();
+      final db = await raw();
+      await db.customStatement(
+        'INSERT INTO metadata_copies(user_id,entity_type,entity_id,server_revision,server_payload,updated_at) VALUES(?,?,?,7,?,1)',
+        [owner, 'SONG', uuid(10), '{"title":"server"}'],
+      );
+      await db.close();
+      var repo = LocalRepository(await manager.openAccount(owner));
+      final patch = repo.preparePatch(
+        entity: LocalEntity.song,
+        entityId: uuid(10),
+        baseRevision: 7,
+        draft: {'title': 'local'},
+        changes: {'title': 'local'},
+      );
+      await repo.save(patch);
+      await manager.logout();
+      manager = makeManager();
+      repo = LocalRepository(await manager.openAccount(owner));
+      final queued = (await repo.pending()).single;
+      expect(queued.operation, LocalOperation.patch);
+      expect(queued.entityId, uuid(10));
+      expect(queued.baseRevision, 7);
+      expect(jsonDecode(queued.basePayload!), {'title': 'server'});
+      expect(jsonDecode(queued.payload), {
+        'base_revision': 7,
+        'title': 'local',
+      });
+      expect((await repo.read(LocalEntity.song, uuid(10)))!.revision, 7);
+    },
+  );
 
-  test('queue write failure rolls back draft and same command can retry', () async {
-    await manager.openAccount(owner);
-    await manager.logout();
-    var db = await raw();
-    await db.customStatement(
-      "CREATE TRIGGER fail_repository_queue BEFORE INSERT ON local_mutations BEGIN SELECT RAISE(ABORT, 'repository failure'); END",
-    );
-    await db.close();
-    var repo = LocalRepository(await manager.openAccount(owner));
-    final command = repo.prepareCreate(
-      entity: LocalEntity.tag,
-      draft: {'name': 'test'},
-      changes: {'name': 'test'},
-    );
-    await expectLater(repo.save(command), throwsA(isA<DriftRemoteException>()));
-    expect(await repo.read(LocalEntity.tag, command.entityId), isNull);
-    expect(await repo.pending(), isEmpty);
-    await manager.logout();
-    db = await raw();
-    await db.customStatement('DROP TRIGGER fail_repository_queue');
-    await db.close();
-    repo = LocalRepository(await manager.openAccount(owner));
-    await repo.save(command);
-    expect((await repo.pending()).single.opId, command.opId);
-  });
+  test(
+    'queue write failure rolls back draft and same command can retry',
+    () async {
+      await manager.openAccount(owner);
+      await manager.logout();
+      var db = await raw();
+      await db.customStatement(
+        "CREATE TRIGGER fail_repository_queue BEFORE INSERT ON local_mutations BEGIN SELECT RAISE(ABORT, 'repository failure'); END",
+      );
+      await db.close();
+      var repo = LocalRepository(await manager.openAccount(owner));
+      final command = repo.prepareCreate(
+        entity: LocalEntity.tag,
+        draft: {'name': 'test'},
+        changes: {'name': 'test'},
+      );
+      await expectLater(
+        repo.save(command),
+        throwsA(isA<DriftRemoteException>()),
+      );
+      expect(await repo.read(LocalEntity.tag, command.entityId), isNull);
+      expect(await repo.pending(), isEmpty);
+      await manager.logout();
+      db = await raw();
+      await db.customStatement('DROP TRIGGER fail_repository_queue');
+      await db.close();
+      repo = LocalRepository(await manager.openAccount(owner));
+      await repo.save(command);
+      expect((await repo.pending()).single.opId, command.opId);
+    },
+  );
 
   test('expired account repository cannot access another account', () async {
     final a = LocalRepository(await manager.openAccount(owner));
@@ -174,64 +201,92 @@ void main() {
     await expectLater(a.pending(), throwsStateError);
   });
 
-  test('inconsistent identity and stale server revision write nothing', () async {
-    final repo = LocalRepository(await manager.openAccount(owner));
-    expect(() => repo.prepareCreate(
-      entity: LocalEntity.song,
-      entityId: uuid(10),
-      draft: {'id': uuid(11)},
-      changes: {},
-    ), throwsArgumentError);
-    expect(() => repo.prepareCreate(
-      entity: LocalEntity.song,
-      draft: {},
-      changes: {'user_id': owner},
-    ), throwsArgumentError);
-    final patch = repo.preparePatch(
-      entity: LocalEntity.song,
-      entityId: uuid(10),
-      baseRevision: 9,
-      draft: {'title': 'local'},
-      changes: {'title': 'local'},
-    );
-    await expectLater(repo.save(patch), throwsStateError);
-    expect(await repo.pending(), isEmpty);
-    expect(await repo.read(LocalEntity.song, uuid(10)), isNull);
-  });
-
-  test('database queue order survives equal times and a backwards clock', () async {
-    await manager.openAccount(owner);
-    await manager.logout();
-    final db = await raw();
-    await db.customStatement(
-      'INSERT INTO metadata_copies(user_id,entity_type,entity_id,updated_at) VALUES(?,?,?,1)',
-      [owner, 'SONG', uuid(10)],
-    );
-    for (final entry in [(90, 100), (10, 100), (20, 1)]) {
-      await db.customStatement(
-        "INSERT INTO local_mutations(op_id,user_id,entity_type,entity_id,operation,base_revision,payload,request_hash,created_at,updated_at) VALUES(?,?,?,?,'CREATE',0,'{}',?,?,?)",
-        [uuid(entry.$1), owner, 'SONG', uuid(10), 'a' * 64, entry.$2, entry.$2],
+  test(
+    'inconsistent identity and stale server revision write nothing',
+    () async {
+      final repo = LocalRepository(await manager.openAccount(owner));
+      expect(
+        () => repo.prepareCreate(
+          entity: LocalEntity.song,
+          entityId: uuid(10),
+          draft: {'id': uuid(11)},
+          changes: {},
+        ),
+        throwsArgumentError,
       );
-    }
-    await db.close();
-    var repo = LocalRepository(await manager.openAccount(owner));
-    expect((await repo.pending()).map((m) => m.opId),
-        [uuid(90), uuid(10), uuid(20)]);
-    expect((await repo.planDispatch()).ready.single.opId, uuid(90));
-    await manager.logout();
-    manager = makeManager();
-    repo = LocalRepository(await manager.openAccount(owner));
-    expect((await repo.pending()).map((m) => m.opId),
-        [uuid(90), uuid(10), uuid(20)]);
-  });
+      expect(
+        () => repo.prepareCreate(
+          entity: LocalEntity.song,
+          draft: {},
+          changes: {'user_id': owner},
+        ),
+        throwsArgumentError,
+      );
+      final patch = repo.preparePatch(
+        entity: LocalEntity.song,
+        entityId: uuid(10),
+        baseRevision: 9,
+        draft: {'title': 'local'},
+        changes: {'title': 'local'},
+      );
+      await expectLater(repo.save(patch), throwsStateError);
+      expect(await repo.pending(), isEmpty);
+      expect(await repo.read(LocalEntity.song, uuid(10)), isNull);
+    },
+  );
+
+  test(
+    'database queue order survives equal times and a backwards clock',
+    () async {
+      await manager.openAccount(owner);
+      await manager.logout();
+      final db = await raw();
+      await db.customStatement(
+        'INSERT INTO metadata_copies(user_id,entity_type,entity_id,updated_at) VALUES(?,?,?,1)',
+        [owner, 'SONG', uuid(10)],
+      );
+      for (final entry in [(90, 100), (10, 100), (20, 1)]) {
+        await db.customStatement(
+          "INSERT INTO local_mutations(op_id,user_id,entity_type,entity_id,operation,base_revision,payload,request_hash,created_at,updated_at) VALUES(?,?,?,?,'CREATE',0,'{}',?,?,?)",
+          [
+            uuid(entry.$1),
+            owner,
+            'SONG',
+            uuid(10),
+            'a' * 64,
+            entry.$2,
+            entry.$2,
+          ],
+        );
+      }
+      await db.close();
+      var repo = LocalRepository(await manager.openAccount(owner));
+      expect((await repo.pending()).map((m) => m.opId), [
+        uuid(90),
+        uuid(10),
+        uuid(20),
+      ]);
+      expect((await repo.planDispatch()).ready.single.opId, uuid(90));
+      await manager.logout();
+      manager = makeManager();
+      repo = LocalRepository(await manager.openAccount(owner));
+      expect((await repo.pending()).map((m) => m.opId), [
+        uuid(90),
+        uuid(10),
+        uuid(20),
+      ]);
+    },
+  );
 
   test('dispatch snapshot remains account scoped', () async {
     final a = LocalRepository(await manager.openAccount(owner));
-    await a.save(a.prepareCreate(
-      entity: LocalEntity.song,
-      draft: {'title': 'private'},
-      changes: {'title': 'private'},
-    ));
+    await a.save(
+      a.prepareCreate(
+        entity: LocalEntity.song,
+        draft: {'title': 'private'},
+        changes: {'title': 'private'},
+      ),
+    );
     expect((await a.planDispatch()).ready, hasLength(1));
     final b = LocalRepository(await manager.openAccount(uuid(2)));
     expect((await b.planDispatch()).ready, isEmpty);

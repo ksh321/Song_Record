@@ -18,7 +18,12 @@ const canonicalTables = [
   'canonical_edit_intents',
   'mutation_mapping_holds',
 ];
-const added = [...canonicalTables, 'mutation_conflict_resolutions', 'pending_edit_resolutions'];
+const added = [
+  ...canonicalTables,
+  'mutation_conflict_resolutions',
+  'pending_edit_resolutions',
+  'playlist_order_dismissals',
+];
 
 Future<void> assertOrderProtected(AccountDatabase db) async {
   final before =
@@ -124,7 +129,7 @@ void main() {
     }
   });
   for (final version in [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
-    test('v$version to v13 preserves old rows, wire, budget, cursor and synthetic file', () async {
+    test('v$version to v14 preserves old rows, wire, budget, cursor and synthetic file', () async {
       final directory = await Directory.systemTemp.createTemp(
         'sr-canonical-migration-',
       );
@@ -314,7 +319,7 @@ void main() {
               .data
               .values
               .single,
-          13,
+          14,
         );
         for (final entry in before.entries) {
           expect(
@@ -632,7 +637,7 @@ void main() {
       }
       expect(exported['format'], 'song-record-local-recovery');
       expect(exported['version'], 2);
-      expect(exported['schema_version'], 13);
+      expect(exported['schema_version'], 14);
       expect(tables['local_mutations'], mutationsBefore);
 
       final mutations = (tables['local_mutations'] as List)

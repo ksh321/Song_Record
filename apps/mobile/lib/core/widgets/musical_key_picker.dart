@@ -37,7 +37,7 @@ abstract final class MusicalKeyPicker {
       useSafeArea: true,
       isScrollControlled: true,
       showDragHandle: false,
-      backgroundColor: AppColors.sheetBackground,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       barrierColor: AppColors.sheetScrim,
       barrierLabel: '키 선택 취소',
       shape: const RoundedRectangleBorder(
@@ -134,9 +134,12 @@ class _KeySheetState extends State<_KeySheet> {
   @override
   Widget build(BuildContext context) {
     final chosen = MusicalKey(mode: _mode, shift: _shift);
-    final itemHeight = (MediaQuery.textScalerOf(context)
-                .scale(AppTypography.keyWheelSelectedSize) + 16)
-        .clamp(AppDimensions.keyWheelItemHeight, double.infinity).toDouble();
+    final itemHeight =
+        (MediaQuery.textScalerOf(context)
+                    .scale(AppTypography.keyWheelSelectedSize) +
+                16)
+            .clamp(AppDimensions.keyWheelItemHeight, double.infinity)
+            .toDouble();
     return SheetSafeArea(
       top: false,
       child: SingleChildScrollView(
@@ -242,8 +245,8 @@ class _KeySheetState extends State<_KeySheet> {
                                           ? FontWeight.w700
                                           : FontWeight.normal,
                                       color: _shift == value
-                                          ? AppColors.text
-                                          : AppColors.muted,
+                                          ? Theme.of(context).colorScheme.onSurface
+                                          : Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
                                 ),

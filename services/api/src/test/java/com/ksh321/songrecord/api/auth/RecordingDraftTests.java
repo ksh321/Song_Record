@@ -14,6 +14,9 @@ class RecordingDraftTests {
         setup.setup();for(String column:List.of("origin_device_id BINARY(16)","timezone_id VARCHAR(64)","timezone_offset_minutes SMALLINT","created_at TIMESTAMP(3)"))setup.f.jdbc.execute("ALTER TABLE recording ADD "+column);
         setup.f.jdbc.execute("ALTER TABLE recording ALTER COLUMN note VARCHAR(8000)");
         setup.f.jdbc.execute("CREATE TABLE recording_query_key(recording_id BINARY(16) PRIMARY KEY,user_id BINARY(16),key_version VARCHAR(64),title_key VARBINARY(2048))");
+        setup.f.jdbc.execute("CREATE TABLE condition_catalog(code VARCHAR(16) PRIMARY KEY,name VARCHAR(50))");
+        setup.f.jdbc.update("INSERT INTO condition_catalog VALUES('GOOD','좋음'),('BAD','안 좋음'),('NORMAL','보통'),('VERY_GOOD','매우 좋음')");
+        com.ksh321.songrecord.api.classifications.ConditionTestSchema.install(setup.f.jdbc);
     }
     @AfterEach void close()throws Exception{setup.close();}
     Map<String,Object> base(){var m=new LinkedHashMap<String,Object>();m.put("id",id.toString());m.put("metadata_state","DRAFT");m.put("recorded_at","2026-09-28T07:00:00.123Z");m.put("timezone_id","Asia/Seoul");m.put("timezone_offset_minutes",540);return m;}
@@ -25,7 +28,7 @@ class RecordingDraftTests {
         assertThat(setup.count("recording")).isEqualTo(1);assertThat(setup.count("change_log")).isEqualTo(1);assertThat(setup.count("mutation_receipt")).isEqualTo(1);
         assertThat(setup.f.jdbc.queryForObject("SELECT entity_type FROM change_log",String.class)).isEqualTo("RECORDING");
     }
-    @Test void conditionInputUsesFixedCatalogOrNullAndServerSnapshot()throws Exception{
+    @Test void conditionInputUsesOwnedCatalogOrNullAndServerSnapshot()throws Exception{
         for(String code:List.of("VERY_GOOD","GOOD","NORMAL","BAD")){
             id=UUID.randomUUID();var body=base();body.put("condition_code",code);
             var response=create(body);assertThat(response.getStatus()).isEqualTo(201);
@@ -35,7 +38,7 @@ class RecordingDraftTests {
         }
         id=UUID.randomUUID();var body=base();body.put("condition_code",null);var response=create(body);
         assertThat(response.getStatus()).isEqualTo(201);assertThat(json.readTree(response.getContentAsString()).get("condition_name_snapshot").isNull()).isTrue();
-        id=UUID.randomUUID();body=base();body.put("condition_code",UUID.randomUUID().toString());assertThat(create(body).getStatus()).isEqualTo(400);
+        id=UUID.randomUUID();body=base();body.put("condition_code",UUID.randomUUID().toString());assertThat(create(body).getStatus()).isEqualTo(404);
         body.put("condition_code","GOOD");body.put("condition_name_snapshot","spoof");assertThat(create(body).getStatus()).isEqualTo(400);
     }
     @Test void retriesNeverDuplicateOrOverwriteExistingDraft()throws Exception{
@@ -43,13 +46,18 @@ class RecordingDraftTests {
         body.put("title_snapshot","overwrite");assertThat(create(key,body).getContentAsString()).contains("IDEMPOTENCY_CONFLICT");var duplicate=create(body);assertThat(duplicate.getStatus()).isEqualTo(200);assertThat(json.readTree(duplicate.getContentAsString()).get("title_snapshot").asText()).isEqualTo("original");assertThat(setup.count("change_log")).isEqualTo(1);
         setup.f.jdbc.update("UPDATE recording SET metadata_state='SAVED'");assertThat(create(body).getContentAsString()).contains("RECORDING_ALREADY_SAVED");assertThat(setup.f.jdbc.queryForObject("SELECT metadata_state FROM recording",String.class)).isEqualTo("SAVED");
     }
+    @Test void originalReferenceDraftRetainsNegativeOffset() throws Exception {
+        var body=base();body.put("key_mode","ORIGINAL");body.put("key_shift",-3);
+        var reply=create(body);assertThat(reply.getStatus()).isEqualTo(201);
+        assertThat(json.readTree(reply.getContentAsString()).get("key_shift").asInt()).isEqualTo(-3);
+    }
     @Test void validatesTimeVersionKeysInputLengthsAndRejectsUnsupportedFields()throws Exception{
         for(var entry:Map.<String,Object>ofEntries(Map.entry("metadata_state","SAVED"),Map.entry("version_code","BAD"),Map.entry("recorded_at","2026-02-30T07:00:00Z"),Map.entry("timezone_id","fake/zone"),Map.entry("timezone_offset_minutes",1081),Map.entry("key_shift",1),Map.entry("key_mode","MALE"),Map.entry("title_snapshot","x".repeat(201)),Map.entry("note","x".repeat(2001)),Map.entry("origin_device_id",UUID.randomUUID().toString()),Map.entry("file",Map.of()),Map.entry("tag_ids",List.of())).entrySet()){
             var body=base();body.put(entry.getKey(),entry.getValue());assertThat(create(body).getStatus()).as(entry.toString()).isEqualTo(400);
         }
         for(String field:List.of("id","metadata_state","recorded_at","timezone_id","timezone_offset_minutes")){var body=base();body.remove(field);assertThat(create(body).getStatus()).isEqualTo(400);}
         var body=base();body.put("version_code",null);assertThat(create(body).getStatus()).isEqualTo(400);
-        body=base();body.put("key_mode","ORIGINAL");body.put("key_shift",1);assertThat(create(body).getStatus()).isEqualTo(400);
+        body=base();body.put("key_mode","ORIGINAL");body.put("key_shift",13);assertThat(create(body).getStatus()).isEqualTo(400);
         body.put("key_shift",0);body.put("note","😀".repeat(2000));assertThat(create(body).getStatus()).isEqualTo(201);
     }
     @Test void songLinkChecksOwnershipAndLifecycleWithoutChangingSnapshots()throws Exception{

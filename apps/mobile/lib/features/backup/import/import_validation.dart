@@ -201,6 +201,7 @@ final class ImportData {
       'pin_release_confirmed',
       'remove_item_id',
       'ordered_item_ids',
+      'ordered_playlists',
       'song_ids',
       'item_id',
       'manual_reason',
@@ -216,6 +217,22 @@ final class ImportData {
     };
     _valid(map.keys.every(allowed.contains));
     for (final item in map.entries) {
+      if (item.key == 'display_order') {
+        _valid(item.value is int && (item.value as int) >= 0);
+      }
+      if (item.key == 'is_suitable') _valid(item.value is bool);
+      if (item.key == 'icon') {
+        _valid(
+          {
+            'music',
+            'mic',
+            'heart',
+            'star',
+            'headphones',
+            'sun',
+          }.contains(item.value),
+        );
+      }
       const objects = {
         'file',
         'input_selection',
@@ -226,7 +243,13 @@ final class ImportData {
         'base',
         'local',
       };
-      const arrays = {'tags', 'tag_ids', 'song_ids', 'ordered_item_ids'};
+      const arrays = {
+        'tags',
+        'tag_ids',
+        'song_ids',
+        'ordered_item_ids',
+        'ordered_playlists',
+      };
       _valid(item.value is! Map || objects.contains(item.key));
       _valid(item.value is! List || arrays.contains(item.key));
       if (item.value != null &&

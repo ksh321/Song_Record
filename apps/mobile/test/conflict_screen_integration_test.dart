@@ -47,7 +47,13 @@ class ObservedActions implements ConflictActions {
 }
 
 void main() {
-  for (final selection in ['local', 'server', 'accountChanged', 'pendingLocal', 'pendingServer']) {
+  for (final selection in [
+    'local',
+    'server',
+    'accountChanged',
+    'pendingLocal',
+    'pendingServer',
+  ]) {
     testWidgets(
       'real conflict screen persists $selection choice without losing original request',
       (tester) async {
@@ -100,18 +106,30 @@ void main() {
           );
           original = (await store.pendingMutations()).single;
           if (selection.startsWith('pending')) {
-            final younger = repository.preparePatch(entity: LocalEntity.tag,
-              entityId: id(10), baseRevision: 1,
-              draft: tag(id(10), name: 'local'), changes: {'name': 'local'});
+            final younger = repository.preparePatch(
+              entity: LocalEntity.tag,
+              entityId: id(10),
+              baseRevision: 1,
+              draft: tag(id(10), name: 'local'),
+              changes: {'name': 'local'},
+            );
             await repository.save(younger);
-            await repository.resolve(await repository.review(original.opId), {'name': ConflictChoice.server});
-            original = (await store.pendingMutations()).singleWhere((m) => m.opId == younger.opId);
+            await repository.resolve(await repository.review(original.opId), {
+              'name': ConflictChoice.server,
+            });
+            original = (await store.pendingMutations()).singleWhere(
+              (m) => m.opId == younger.opId,
+            );
             expect(original.state, 'PENDING');
             expect(original.serverResponse, isNull);
             expect(await store.claimMutation(), isNull);
-            final backend = RepositorySyncBackend(repository,
-              FakeTransport((_) async => throw StateError('read must not send')),
-              () async => throw StateError('read must not authenticate'));
+            final backend = RepositorySyncBackend(
+              repository,
+              FakeTransport(
+                (_) async => throw StateError('read must not send'),
+              ),
+              () async => throw StateError('read must not authenticate'),
+            );
             expect((await backend.load()).single.pendingReview, isTrue);
           }
           originalDraft = (await store.readMetadata(
@@ -156,7 +174,9 @@ void main() {
             });
           }
           final button = find.text(
-            selection == 'server' || selection == 'pendingServer' ? '서버 값 사용' : '이 기기 입력 사용',
+            selection == 'server' || selection == 'pendingServer'
+                ? '서버 값 사용'
+                : '이 기기 입력 사용',
           );
           await tester.ensureVisible(button);
           await tester.runAsync(() async {

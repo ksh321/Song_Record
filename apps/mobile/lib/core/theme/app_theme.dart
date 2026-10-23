@@ -4,6 +4,136 @@ import 'package:song_record/core/theme/accessible_page_transitions.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 
 abstract final class AppTheme {
+  static ThemeData preview({
+    AppAccent accent = AppAccent.initial,
+    bool light = false,
+  }) {
+    final base = dark(accent: accent);
+    final foreground = light ? const Color(0xFF202020) : AppColors.text;
+    final background = light ? const Color(0xFFFAFAFA) : AppColors.background;
+    final surface = light ? Colors.white : AppColors.surface;
+    final muted = light ? const Color(0xFF666666) : AppColors.muted;
+    final line = light ? const Color(0xFFD7D7D7) : AppColors.line;
+    final primary = accent.background;
+    final soft = Color.alphaBlend(
+      primary.withValues(alpha: light ? .14 : .25),
+      surface,
+    );
+    final scheme = base.colorScheme.copyWith(
+      brightness: light ? Brightness.light : Brightness.dark,
+      surface: surface,
+      onSurface: foreground,
+      onSurfaceVariant: muted,
+      surfaceContainerLowest: background,
+      surfaceContainerLow: surface,
+      surfaceContainer: surface,
+      surfaceContainerHigh: soft,
+      surfaceContainerHighest: light
+          ? const Color(0xFFEEEEEE)
+          : AppColors.raised,
+      outline: line,
+      outlineVariant: line,
+      secondaryContainer: soft,
+      onSecondaryContainer: foreground,
+      onPrimary: accent.foreground,
+    );
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: line),
+    );
+    return base.copyWith(
+      brightness: scheme.brightness,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: background,
+      canvasColor: surface,
+      dividerColor: line,
+      disabledColor: muted,
+      textTheme: base.textTheme.apply(
+        bodyColor: foreground,
+        displayColor: foreground,
+      ),
+      iconTheme: IconThemeData(color: foreground),
+      appBarTheme: base.appBarTheme.copyWith(
+        backgroundColor: background,
+        foregroundColor: foreground,
+        titleTextStyle: AppTypography.detailTitle.copyWith(color: foreground),
+        systemOverlayStyle: light
+            ? SystemUiOverlayStyle.dark
+            : SystemUiOverlayStyle.light,
+      ),
+      cardTheme: base.cardTheme.copyWith(
+        color: surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: line),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: primary,
+          foregroundColor: accent.foreground,
+          minimumSize: const Size(48, 48),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: foreground,
+          side: BorderSide(color: line),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: foreground),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          foregroundColor: foreground,
+          focusColor: soft,
+        ),
+      ),
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(
+        fillColor: surface,
+        labelStyle: AppTypography.supporting.copyWith(color: muted),
+        hintStyle: AppTypography.supporting.copyWith(color: muted),
+        border: border,
+        enabledBorder: border,
+        focusedBorder: border.copyWith(
+          borderSide: BorderSide(color: primary, width: 2),
+        ),
+      ),
+      bottomSheetTheme: base.bottomSheetTheme.copyWith(
+        backgroundColor: surface,
+        modalBackgroundColor: surface,
+      ),
+      navigationBarTheme: base.navigationBarTheme.copyWith(
+        backgroundColor: background,
+        labelTextStyle: WidgetStatePropertyAll(
+          TextStyle(fontSize: AppTypography.tabLabelSize, color: foreground),
+        ),
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) => IconThemeData(
+            color: states.contains(WidgetState.selected)
+                ? accent.foreground
+                : muted,
+          ),
+        ),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? primary
+              : Colors.transparent,
+        ),
+        checkColor: WidgetStatePropertyAll(accent.foreground),
+        side: BorderSide(color: muted),
+      ),
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: primary,
+        selectionColor: soft,
+        selectionHandleColor: primary,
+      ),
+    );
+  }
+
   static ThemeData dark({AppAccent accent = AppAccent.initial}) {
     // Explicit colours preserve the reference palette; no generated seed hues.
     final scheme = ColorScheme.dark(

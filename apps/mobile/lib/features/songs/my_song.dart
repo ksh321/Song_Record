@@ -23,6 +23,7 @@ final class MySong {
       version: VersionCode.values.byName(
         (p['version_code'] as String).toLowerCase(),
       ),
+      isSuitable: p['is_suitable'] == true,
       tier: p['tier'] == null
           ? null
           : SongTier.values.byName((p['tier'] as String).toLowerCase()),

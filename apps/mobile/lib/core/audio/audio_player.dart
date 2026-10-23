@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../database/account_store.dart';
+import '../files/recording_download.dart';
 import 'local_audio.dart';
 import 'playback_ticket.dart';
 
@@ -18,9 +20,16 @@ enum PlaybackPhase {
 }
 
 final class PlayerEvent {
-  const PlayerEvent(this.token, this.phase, this.position, this.duration);
+  const PlayerEvent(
+    this.token,
+    this.phase,
+    this.position,
+    this.duration, {
+    this.waveform = const [],
+  });
   final int token, position, duration;
   final PlaybackPhase phase;
+  final List<double> waveform;
 }
 
 abstract interface class AudioPlayerPort {
@@ -33,6 +42,10 @@ abstract interface class AudioPlayerPort {
 }
 
 final class AndroidAudioPlayer implements AudioPlayerPort {
+  AndroidAudioPlayer({SignedAudioDownload? download})
+    : download = download ?? const HttpSignedAudioDownload();
+  final SignedAudioDownload download;
+  int _generation = 0;
   static const commands = MethodChannel('song_record/playback');
   static const updates = EventChannel('song_record/playback_events');
   @override
@@ -44,11 +57,49 @@ final class AndroidAudioPlayer implements AudioPlayerPort {
           PlaybackPhase.values.byName(event['phase'] as String),
           event['position'] as int,
           event['duration'] as int,
+          waveform: [
+            for (final value in event['waveform'] as List? ?? const [])
+              (value as num).toDouble(),
+          ],
         );
       });
   @override
-  Future<int> load(Map<String, Object> source) async =>
-      (await commands.invokeMethod<int>('load', source))!;
+  Future<int> load(Map<String, Object> source) async {
+    final generation = ++_generation;
+    final nativeSource = Map<String, Object>.of(source);
+    if (source['kind'] == 'remote') {
+      final ticket = source['ticket'] as PlaybackTicket;
+      if (ticket.owner != source['userId'] ||
+          ticket.recording != source['recordingId'] ||
+          (!kDebugMode && ticket.url.scheme != 'https')) {
+        throw StateError('Playback source mismatch');
+      }
+      Future<void> guard() async {
+        if (generation != _generation) throw StateError('Playback superseded');
+      }
+
+      final bytes = await download.fetch(ticket, guard);
+      await guard();
+      if (bytes.length != ticket.size ||
+          sha256.convert(bytes).toString() != ticket.checksum) {
+        throw StateError('Playback integrity mismatch');
+      }
+      // The same bounded, verified bytes feed playback and waveform extraction.
+      // No permanent download, second storage request, or signed URL crosses JNI.
+      nativeSource.remove('ticket');
+      nativeSource.remove('url');
+      nativeSource.remove('allowLocalHttp');
+      nativeSource.addAll({
+        'kind': 'memory',
+        'bytes': bytes,
+        'size': ticket.size,
+        'sha256': ticket.checksum,
+      });
+    }
+    if (generation != _generation) throw StateError('Playback superseded');
+    return (await commands.invokeMethod<int>('load', nativeSource))!;
+  }
+
   @override
   Future<void> play(int token) =>
       commands.invokeMethod<void>('play', {'token': token});
@@ -61,7 +112,10 @@ final class AndroidAudioPlayer implements AudioPlayerPort {
     {'token': token, 'position': milliseconds},
   );
   @override
-  Future<void> stop() => commands.invokeMethod<void>('stop');
+  Future<void> stop() {
+    _generation++;
+    return commands.invokeMethod<void>('stop');
+  }
 }
 
 /// No file/metadata mutation. Generation guards reject late account/source callbacks.
@@ -106,6 +160,7 @@ final class AudioPlayback extends ChangeNotifier {
   late final StreamSubscription<PlayerEvent> subscription;
   PlaybackPhase phase = PlaybackPhase.idle;
   int position = 0, duration = 0, _token = 0;
+  List<double> waveform = const [];
   String? _recording;
   PlaybackTicket? _remote;
   bool _renewing = false, _closed = false;
@@ -119,6 +174,9 @@ final class AudioPlayback extends ChangeNotifier {
 
   void _set(PlaybackPhase next) {
     if (_closed) return;
+    if (next == PlaybackPhase.failed || next == PlaybackPhase.unavailable) {
+      waveform = const [];
+    }
     phase = next;
     notifyListeners();
   }
@@ -134,6 +192,7 @@ final class AudioPlayback extends ChangeNotifier {
     _renewing = false;
     position = 0;
     duration = 0;
+    waveform = const [];
     _set(PlaybackPhase.loading);
     try {
       await player.stop();
@@ -162,6 +221,7 @@ final class AudioPlayback extends ChangeNotifier {
           'kind': 'remote',
           'url': ticket.url.toString(),
           'allowLocalHttp': ticket.allowLocalHttp,
+          'ticket': ticket,
         });
       }
       final loaded = await player.load(source);
@@ -278,6 +338,10 @@ final class AudioPlayback extends ChangeNotifier {
     }
     position = event.position;
     duration = event.duration;
+    if (event.waveform.length <= 120 &&
+        event.waveform.every((v) => v.isFinite && v >= 0 && v <= 1)) {
+      waveform = List.unmodifiable(event.waveform);
+    }
     if (event.phase == PlaybackPhase.failed &&
         _remote != null &&
         !_renewing &&
@@ -305,6 +369,7 @@ final class AudioPlayback extends ChangeNotifier {
         'kind': 'remote',
         'url': ticket.url.toString(),
         'allowLocalHttp': ticket.allowLocalHttp,
+        'ticket': ticket,
       });
       await _guard(token);
       duration = loaded;
