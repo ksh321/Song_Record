@@ -4115,6 +4115,15 @@ components:
           - USER_ENTERED
         version_code:
           $ref: '#/components/schemas/VersionCode'
+        representative_key_mode:
+          type: [string, 'null']
+          enum: [ORIGINAL, MALE, FEMALE, null]
+          description: 대표 키 모드. shift와 함께 지정하거나 둘 다 null/생략한다.
+        representative_key_shift:
+          type: [integer, 'null']
+          minimum: -12
+          maximum: 12
+          description: 원곡/남/여 기준 반음 이동. ORIGINAL도 -12~12를 허용한다.
         tier:
           anyOf:
           - $ref: '#/components/schemas/SongTier'
@@ -4126,6 +4135,19 @@ components:
       required:
       - id
       - source_type
+      allOf:
+      - oneOf:
+        - properties:
+            representative_key_mode:
+              type: 'null'
+            representative_key_shift:
+              type: 'null'
+        - required: [representative_key_mode, representative_key_shift]
+          properties:
+            representative_key_mode:
+              type: string
+            representative_key_shift:
+              type: integer
       oneOf:
       - properties:
           source_type:

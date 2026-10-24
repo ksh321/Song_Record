@@ -243,7 +243,7 @@ void main() {
       await t.scrollUntilVisible(
         find.text('저장'),
         180,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find.byType(Scrollable).first,
       );
       await t.ensureVisible(find.text('저장'));
       await t.pumpAndSettle();

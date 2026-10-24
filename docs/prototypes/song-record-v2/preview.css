@@ -184,3 +184,10 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 .phone :is(.item-icon,.review-choice-icon,.v3-source-icon,.v2-avatar),.phone.v4-light :is(.item-icon,.review-choice-icon,.v3-source-icon,.v2-avatar){background:transparent;color:var(--accent);border:1px solid var(--feature-icon-border);border-radius:10px;display:grid;place-items:center;flex-shrink:0}
 .phone .v2-meter,.phone.v4-light .v2-meter{height:10px;border-radius:99px;overflow:hidden;background:color-mix(in srgb,var(--accent) 14%,var(--surface));margin:16px 0 12px}
 .phone .v2-meter>span{display:block;height:100%;width:var(--usage-percent,0%);background:var(--accent);border-radius:inherit}
+
+/* Center candidate confirmation; retain scrolling inside the dialog. */
+.phone .candidate-overlay{align-items:center;padding:20px}
+.phone .candidate-overlay .control-sheet{border-radius:18px;max-height:calc(100% - 40px);box-shadow:0 12px 48px #0005}
+.phone .phone-body{overscroll-behavior-y:contain}
+.phone .registration-note{display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--muted)}
+.phone .registration-note textarea{min-height:100px;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text)}

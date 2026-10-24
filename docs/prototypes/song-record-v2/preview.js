@@ -45,6 +45,8 @@
   const render = () => window.Prototype.render();
   const current = () => window.Prototype.state.screen;
   const error = message => {const target=document.querySelector('.device-holder .v2-action-error');if(target)target.textContent=message;};
+  F.freshManualRegistration=()=>({title:'',artist:'',version:'일반 반주',key:'미정',tier:'미정',note:'',suitable:false});
+  F.manualRegistration=F.freshManualRegistration();
   const data = () => new FormData(document.querySelector('.device-holder .x-form'));
   const list = () => F.playlists.get(state.list);
   const titleOf = item => F.songs.get(item.songId)?.title || item.candidate?.title || F.catalog.get('TJ:'+item.key.slice(3))?.title || '곡';
@@ -111,7 +113,10 @@
       const r=F.recordings.get(state.recordId)||F.recordings.get('r2');
       return `<div class="v2-state"><strong>${e(r.title)}</strong><p>${e(X.fileState(r))}</p></div>`+uiButton(r.pinned?'고정 해제':'고정 보관','pin','','command primary')+routeButton('이 기기의 파일 정리','local-clean')+routeButton('M4A 내보내기','export-file')+routeButton('녹음 삭제','record-delete','command danger');
     }
-    if(id==='v2-manual')return form(input('곡명','title')+input('가수','artist')+select('버전','version',F.versions,'일반 반주')+`<p class="v2-note">TJ 번호 없이 내 곡에 등록해요. 대표 키와 티어는 등록 후 정할 수 있어요.</p>`+actions('내 곡 등록','manual-save'));
+    if(id==='v2-manual'){
+      const d=F.manualRegistration,picker=(kind,title)=>R.block({type:'editField',source:id,scope:'manual',kind,title,value:d[kind]});
+      return form(input('곡명','title',d.title)+input('가수','artist',d.artist)+picker('version','버전')+picker('key','대표 키')+picker('tier','곡 티어')+`<label>메모<textarea name="note" maxlength="2000">${e(d.note)}</textarea></label>`+actions('내 곡 등록','manual-save'));
+    }
     if(id==='v2-backup-status')return group([row('일부 파일 누락','백업에서 빠진 파일 확인','backup-partial','file'),row('복원 전 확인','추가·중복·충돌 항목 확인','import-preview','check'),row('중단된 복원','처리한 항목을 유지하고 이어서 복원','v2-restore-paused','clock'),row('서버에서 삭제된 기록','삭제된 기록은 다시 복원하지 않아요','v2-restore-blocked','people')]);
     if(id==='v2-restore-blocked')return `<div class="v2-state"><strong>일부 기록은 복원할 수 없어요</strong><p>서버에서 이미 삭제된 기록은 백업에 있어도 다시 복원되지 않아요.</p></div>`+routeButton('복원 가능한 항목 확인','import-preview','command primary')+routeButton('돌아가기','backup');
     if(id==='v2-restore-paused')return `<div class="v2-state"><strong>복원을 잠시 멈췄어요</strong><p>완료한 3개 항목은 유지돼요.<br>남은 항목부터 이어서 복원할 수 있어요.</p></div>`+routeButton('이어서 복원','import-done','command primary')+routeButton('나중에 하기','backup');
@@ -257,7 +262,7 @@
       case 'class-edit':{const entries=state.classKind==='태그'?state.tags:state.conditions;state.classEdit={index:Number(d.index),value:entries[Number(d.index)]};go('v2-class-edit');break;}
       case 'class-save':{const value=String(data().get('className')||'').trim(),entries=state.classKind==='태그'?state.tags:state.conditions;if(!value){error('이름을 입력해 주세요.');break;}if(entries.some((n,i)=>n===value&&i!==state.classEdit.index)||state.archived[state.classKind].includes(value)){error('이미 있는 이름이에요.');break;}const previous=state.classEdit.value;entries[state.classEdit.index]=value;for(const r of [...F.recordings.values(),...(F.draft?[F.draft]:[])]){if(state.classKind==='태그')r.tags=(r.tags||[]).map(t=>t===previous?value:t);else if(r.condition===previous)r.condition=value;}go('v2-class');break;}
       case 'class-delete':{const entries=state.classKind==='태그'?state.tags:state.conditions;state.archived[state.classKind].push(...entries.splice(Number(d.index),1));render();break;}
-      case 'manual-save':{const value=data(),title=String(value.get('title')||'').trim(),artist=String(value.get('artist')||'').trim();if(!title||!artist){error('곡명과 가수를 입력해 주세요.');break;}const id='manual:v2-'+Date.now();F.songs.set(id,{id,number:null,title,artist,suitable:value.has('suitable'),version:value.get('version'),key:'미정',tier:'미정',added:Date.now(),active:true,representative:null,note:''});if(F.ui.context?.playlist){const listId=F.ui.context.playlist;F.addToPlaylist(listId,id);go(listId);}else go(F.songRoute(id));break;}
+      case 'manual-save':{const value=data(),title=String(value.get('title')||'').trim(),artist=String(value.get('artist')||'').trim();if(!title||!artist){error('곡명과 가수를 입력해 주세요.');break;}const id='manual:v2-'+Date.now();F.songs.set(id,{id,number:null,title,artist,suitable:value.has('suitable'),version:F.manualRegistration.version,key:F.manualRegistration.key,tier:F.manualRegistration.tier,added:Date.now(),active:true,representative:null,note:String(value.get('note')||'')});F.manualRegistration=F.freshManualRegistration();if(F.ui.context?.playlist){const listId=F.ui.context.playlist;F.addToPlaylist(listId,id);go(listId);}else go(F.songRoute(id));break;}
       case 'export-notes':{const entries=Object.entries(noteStore).filter(([,v])=>v.trim());const text='# 노래기록 UI 시안 03 수정 메모\n\n'+entries.map(([id,n])=>`## ${F.screenMap.get(id)?.name||id} (${id})\n${n}`).join('\n\n');const url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='노래기록-UI-수정메모.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);break;}
     }
   },true);
@@ -450,7 +455,7 @@
     if(screen.id==='live-register'&&F.registration){
       const confirm=body.querySelector('[data-flow="register-confirm"]');
       if(confirm){confirm.textContent=F.ui.context?.draft?'등록하고 녹음 연결':'내 곡 등록';confirm.insertAdjacentHTML('beforebegin',R.block({type:'editField',source:'live-register',scope:'registration',kind:'tier',title:'곡 티어',value:F.registration.values.tier}));}
-
+      body.insertAdjacentHTML('beforeend',`<label class="registration-note">메모<textarea data-registration-note maxlength="2000">${e(F.registration.values.note||'')}</textarea></label>`);
     }
     if(screen.id==='v2-list-menu'){
       body.querySelector('[data-to="v2-list-order"]')?.remove();
@@ -559,7 +564,7 @@
     if(d.ui==='manual-save'&&F.ui.context?.draft){
       event.preventDefault();event.stopImmediatePropagation();const values=new FormData(document.querySelector('.device-holder .x-form')),title=String(values.get('title')||'').trim(),artist=String(values.get('artist')||'').trim();
       if(!title||!artist){document.querySelector('.v2-action-error').textContent='곡명과 가수를 입력해 주세요.';return;}
-      const id='manual:feedback-'+Date.now();F.songs.set(id,{id,number:null,title,artist,suitable:values.has('suitable'),version:values.get('version'),key:'미정',tier:'미정',added:Date.now(),active:true,representative:null,note:''});F.selectSong(id);window.Prototype.returnTo(F.ui.context.draft);return;
+      const id='manual:feedback-'+Date.now();F.songs.set(id,{id,number:null,title,artist,suitable:values.has('suitable'),version:F.manualRegistration.version,key:F.manualRegistration.key,tier:F.manualRegistration.tier,added:Date.now(),active:true,representative:null,note:String(values.get('note')||'')});F.manualRegistration=F.freshManualRegistration();F.selectSong(id);window.Prototype.returnTo(F.ui.context.draft);return;
     }
     if(!d.v3)return;event.preventDefault();event.stopImmediatePropagation();
     switch(d.v3){
@@ -652,7 +657,7 @@
   const sorted=F.sortedSongs;
   F.sortedSongs=function(){return sorted().filter(song=>!F.ui.suitableOnly||song.suitable);};
   const register=F.register;
-  F.register=function(candidate,values){const song=register(candidate,values);song.suitable=Boolean(values?.suitable);return song;};
+  F.register=function(candidate,values){const song=register(candidate,values);song.suitable=Boolean(values?.suitable);song.note=String(values?.note||'');return song;};
   const commit=F.commitSong;
   F.commitSong=function(source){const tx=F.transaction,value=tx?.values.suitable,id=tx?.songId;const result=commit(source);if(id&&!F.transaction)F.songs.get(id).suitable=Boolean(value);return result;};
   // Two contrasting tiers demonstrate that suitability does not imply skill.
@@ -674,7 +679,7 @@
     }
     if(screen.id==='songs')body.querySelector('.options')?.insertAdjacentHTML('afterend',`<label class="suitability-filter"><input type="checkbox" data-suitable="filter" ${F.ui.suitableOnly?'checked':''}>${heart}<span>나에게 어울리는 곡만</span></label>`);
     if(screen.id==='live-register'&&F.registration)body.insertAdjacentHTML('beforeend',choice('registration',F.registration.values.suitable));
-    if(screen.id==='v2-manual')body.querySelector('form')?.insertAdjacentHTML('beforeend',choice('manual',false));
+    if(screen.id==='v2-manual')body.querySelector('form')?.insertAdjacentHTML('beforeend',choice('manual',F.manualRegistration.suitable));
     const song=F.songFor(screen.id);
     if(song){
       const editing=F.editorScreens.has(screen.id),html=choice(editing?'edit':'song',editing?F.transaction?.values.suitable:song.suitable);
@@ -685,7 +690,7 @@
   };
   document.addEventListener('change',event=>{
     const control=event.target,scope=control.dataset?.suitable;if(!scope)return;
-    if(scope==='manual')return;
+    if(scope==='manual'){F.manualRegistration.suitable=control.checked;return;}
     if(scope==='filter')F.ui.suitableOnly=control.checked;
     if(scope==='registration')F.registration.values.suitable=control.checked;
     if(scope==='edit'&&F.transaction)F.transaction.values.suitable=control.checked;
@@ -704,3 +709,23 @@
     window.Prototype.go(requested, true);
   }
 })();
+
+/* Registration drafts survive picker redraws. Candidate confirmation is centered. */
+(() => {
+  const F=window.FLOW,R=window.RENDER,phone=R.phone;
+  document.addEventListener('input', event => {
+    const control=event.target;
+    if (control.matches('[data-registration-note]') && F.registration) F.registration.values.note=control.value;
+    if (window.Prototype.state.screen==='v2-manual' && ['title','artist','note'].includes(control.name)) F.manualRegistration[control.name]=control.value;
+  });
+  R.phone=function(screen,interactive=true){
+    const html=phone(screen,interactive);
+    if(screen.id!=='live-candidate')return html;
+    const parsed=document.createElement('template');parsed.innerHTML=html;
+    const content=parsed.content.querySelector('.phone-body')?.innerHTML||'';
+    const previous=F.nav.entries.at(-2)?.id;
+    const background=F.screenMap.get(previous && previous!=='live-candidate'?previous:'search')||F.screenMap.get('search');
+    return phone(background,false).replace('</article>',`<div class="control-overlay candidate-overlay"><button type="button" class="control-scrim" data-ui="back" aria-label="곡 선택 닫기"></button><section class="control-sheet" role="dialog" aria-modal="true" aria-label="곡 선택"><header class="control-sheet-header"><h3>곡 선택</h3><button type="button" class="control-close" data-ui="back">닫기</button></header>${content}</section></div></article>`);
+  };
+})();
+window.Prototype.render();

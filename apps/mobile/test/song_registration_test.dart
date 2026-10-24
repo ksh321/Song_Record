@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_store.dart';
+import 'package:song_record/core/domain/song_types.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/features/search/karaoke_search.dart';
 import 'package:song_record/features/search/karaoke_search_screen.dart';
@@ -17,6 +18,68 @@ import 'karaoke_search_test.dart' show row;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  for (final direct in [true, false]) {
+    testWidgets(
+      'registration chooses key and tier with heart below memo (direct=$direct)',
+      (t) async {
+        SongRegistrationDraft? saved;
+        await t.pumpWidget(
+          MaterialApp(
+            home: SongRegistrationScreen(
+              directEntry: direct,
+              candidate: direct ? null : row(KaraokeBrand.tj, '00123'),
+              intent: const SearchIntent(),
+              prepare: (draft) {
+                saved = draft;
+                return () async {};
+              },
+            ),
+          ),
+        );
+        await t.enterText(find.byKey(const ValueKey('song-title')), '등록 시험');
+        await t.enterText(find.byKey(const ValueKey('song-artist')), '가수');
+        await t.ensureVisible(find.text('대표 키'));
+        await t.pumpAndSettle();
+        await t.tap(find.text('대표 키'));
+        await t.pumpAndSettle();
+        await t.tap(find.text('여'));
+        await t.pumpAndSettle();
+        await t.tap(find.text('적용'));
+        await t.pumpAndSettle();
+        await t.ensureVisible(find.text('곡 티어'));
+        await t.pumpAndSettle();
+        await t.tap(find.text('곡 티어'));
+        await t.pumpAndSettle();
+        await t.tap(find.text('A'));
+        await t.pumpAndSettle();
+        await t.scrollUntilVisible(
+          find.byKey(const ValueKey('song-note')),
+          180,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await t.enterText(find.byKey(const ValueKey('song-note')), '메모 유지');
+        await t.ensureVisible(find.text('나에게 어울리는 곡'));
+        await t.pumpAndSettle();
+        expect(
+          t.getTopLeft(find.text('나에게 어울리는 곡')).dy,
+          greaterThan(
+            t.getBottomLeft(find.byKey(const ValueKey('song-note'))).dy,
+          ),
+        );
+        await t.scrollUntilVisible(
+          find.text('저장'),
+          180,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await t.tap(find.text('저장'));
+        await t.pumpAndSettle();
+        expect(saved!.musicalKey, MusicalKey(mode: KeyMode.female, shift: 0));
+        expect(saved!.tier, SongTier.a);
+        expect(saved!.note, '메모 유지');
+        expect(saved!.candidate?.sourceToken, direct ? null : 's1.fixture');
+      },
+    );
+  }
   testWidgets(
     'only successful current TJ search offers manual, never waiting, error or KY',
     (tester) async {
@@ -163,7 +226,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('저장'),
         180,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find.byType(Scrollable).first,
       );
       await tester.ensureVisible(find.text('저장'));
       await tester.pumpAndSettle();
@@ -183,7 +246,7 @@ void main() {
       await tester.scrollUntilVisible(
         find.text('저장'),
         180,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find.byType(Scrollable).first,
       );
       await tester.ensureVisible(find.text('저장'));
       await tester.pumpAndSettle();
@@ -234,6 +297,8 @@ void main() {
           artist: '가수',
           directEntry: true,
           isSuitable: true,
+          musicalKey: MusicalKey(mode: KeyMode.original, shift: -3),
+          tier: SongTier.a,
         ).prepare(repo);
         expect(
           jsonDecode(edit.changesJson),
@@ -252,6 +317,15 @@ void main() {
           jsonDecode((await repo.pending()).single.payload),
           containsPair('is_suitable', true),
         );
+        final row = (await repo.watchActiveSongs().first).single;
+        expect(row['representative_key_mode'], 'ORIGINAL');
+        expect(row['representative_key_shift'], -3);
+        expect(row['tier'], 'A');
+        final payload =
+            jsonDecode((await repo.pending()).single.payload) as Map;
+        expect(payload['representative_key_mode'], 'ORIGINAL');
+        expect(payload['representative_key_shift'], -3);
+        expect(payload['tier'], 'A');
       } finally {
         await manager.logout();
         await root.delete(recursive: true);

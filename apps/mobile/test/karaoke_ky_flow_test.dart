@@ -42,7 +42,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('원본 (LIVE)'));
       await tester.pumpAndSettle();
-      expect(find.text('목록에 사용할 TJ 곡 선택'), findsNothing);
+      expect(find.widgetWithText(FilledButton, '곡 선택'), findsNothing);
       expect(selections, isEmpty);
       await tester.tap(find.text('TJ에서 이 곡 찾기'));
       await tester.pumpAndSettle();
@@ -52,7 +52,7 @@ void main() {
       expect(selections, isEmpty);
       await tester.tap(find.text('원본 (LIVE)').last);
       await tester.pumpAndSettle();
-      await tester.tap(find.text('목록에 사용할 TJ 곡 선택'));
+      await tester.tap(find.widgetWithText(FilledButton, '곡 선택'));
       await tester.pumpAndSettle();
       expect(selections, hasLength(1));
       expect(selections.single.candidate.number, '00123');

@@ -364,3 +364,13 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 최초 실제 생성 버튼 명령은 auto-review가 입력확인 승인을 영속 시험항목 생성까지 확대할 수 없다고 거절하여 미실행. 사용자에게 이유를 알리고 초안 실기는 계속했다. 별도 질문에 사용자가 ‘시험 항목 추가·정리 허용’하여 정확 이름 UI03-Input-Tag-1024, UI03-Input-Condition-1024 각1개만 생성. 앱 표시 ‘분류 변경과 기기 반영을 확인했어요’로 API 결과·기기 동기화 확인. 이후 beta force-stop/start 재실행, 목록 두 항목 유지 확인(library-keyboard-restart-personal.png).
 - 사용자 허용 범위대로 두 시험 항목의 삭제 확인창을 거쳐 archive. 기존 컨디션4개/태그0 복귀(library-keyboard-personal-cleaned.png), 추가 개인항목 삭제/녹음/계정 변경 없음. 최종 빈 입력창 다시 열기/닫기에도 실패 없음(library-keyboard-final-no-error.png). 개인 정보/인증값/원음 출력 없음.
 - 실기 후 별도 검토: 이번3파일 diff와 전체1260PASS·분석0·서명/소스246해시·설치바이트·실제 키보드/저장/재실행/시험정리 근거 대조. 현재 대화 모델 검토, 하위에이전트 없음. 구현 변경 추가 없음. 남은 것은 이번 수정 커밋/푸시 및 해당 SHA 필수 Flutter CI. USER-191 완료, 직접 사용자 행동0건.
+
+
+### 2026-10-24 P25-04 곡 등록·중앙 선택창·차트 끝 오류 보완
+- 요구사항: 곡 선택 중앙 팝업/문구 통일, 최초 등록 대표 키·티어 저장과 메모 아래 하트, 마지막 차트 뒤 오류 영역/추가 스크롤 제거. 검색·차트 공통 Dialog, 기존 선택기/동결 재시도·로컬 큐·API INSERT와 기존 DB 열 연결. OpenAPI nullable 키 쌍/범위 계약 보완, 스키마36 유지. HTML 직접/TJ 등록에도 같은 배치·값 보존 반영.
+- 원인: 차트 출처 ExpansionTile의 고유 저장 키가 없어 PageStorage의 double 스크롤 값을 bool로 읽음. 고유 키·상단 출처·clamping/overscroll 차단. 실제 100위에서 추가 fling 후 마지막 위치 유지, 오류 영역 없음.
+- 검증: flutter analyze 0문제, flutter test 전체1265PASS·관련27PASS. 서버 전체845/실패0/일반skip1, 실제MySQL93/skip0와 추가등록1PASS. verify_api_contract.py 와이어7/경계158PASS. 기존 전체 fixture D06 해시 불일치는 기존 미커밋 자료로 별도 유지, 검사 약화 없음.
+- 현재 모델 별도 검토: 후보 TJ 증명/금영 연결/계정·요청 guard, nullable 키쌍/정수·-12~12/ORIGINAL -3, SQL 순서·멱등 재전송·기존 곡 비덮어쓰기, 동결 요청, 키 고유성과 마지막 row, HTML 초안 보존을 실제 diff/테스트로 대조. 하위 에이전트 없음. DB/동기화 연결은 Astra/high 이상 요구 범위이며 실제 모델 설정을 도구로 독립 관측한 값은 미확인으로 구분.
+- USER-195 명시 승인 후 AWS API/작업자 반영PASS. JAR24f26c26db27dfda216dac3ebde38afa5c6b010fa4176e1f9a2c08737000c2be, schema36·DB컨테이너·기존 데이터 지문/수/용량·잠금 유지. 사후 healthy3·계정2/녹음2·실행/개인삭제대기0.
+- 베타 install-r Success/설치바이트 APK accba3328c043d2a35f367dcfba79346935a3afb83b3851d44f4d907c9735678 일치. USER-196 회신 후 실제 SM_A546S에서100위 끝·중앙 곡 선택·대표 키/티어·메모 아래 하트 확인, 저장 없이 취소. 개인자료 생성/삭제 없음. 근거 library-registration-chart-end-clamped/candidate-dialog/form-top/form-bottom/cancelled.png. HTML 중앙 오차0px/등록값 보존/브라우저 오류0 확인.
+- USER-194 승인된 임시 SSH sgr-00049719c1ede36a5만 철회, 기존5개 ID 모두 유지. 제거 화면/로컬 기록 보존. 직접 사용자 행동0건. 이번 소스와 검토된 새 기록만 커밋/푸시한 뒤 해당 SHA 필수 CI가 남음. 개념: 위젯 저장 상태의 키 분리와 등록 데이터의 UI→로컬→API 일관성.

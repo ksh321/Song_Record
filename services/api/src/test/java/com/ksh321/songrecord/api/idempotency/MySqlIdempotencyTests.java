@@ -589,11 +589,14 @@ class MySqlIdempotencyTests {
         var clock=Clock.systemUTC();var manager=new DataSourceTransactionManager(jdbc.getDataSource());
         var candidates=new com.ksh321.songrecord.api.songs.TjCandidates(token->new com.ksh321.songrecord.api.songs.CandidateVerifier.Verified("FIXTURE",com.ksh321.songrecord.api.songs.CandidateVerifier.Brand.TJ,token,"original","artist",clock.instant(),clock.instant().plusSeconds(3600)),clock);
         var creation=new com.ksh321.songrecord.api.songs.SongCreation(jdbc,access,service,new com.ksh321.songrecord.api.revision.CreationGuard(jdbc,access,manager),changes,candidates,clock,new com.ksh321.songrecord.api.revision.RevisionChanges(jdbc,access,manager,clock));
-        String body="{\"id\":\""+UUID.randomUUID()+"\",\"source_type\":\"TJ\",\"source_token\":\"990001\",\"title\":\"edited\"}";
+        String body="{\"id\":\""+UUID.randomUUID()+"\",\"source_type\":\"TJ\",\"source_token\":\"990001\",\"title\":\"edited\",\"representative_key_mode\":\"MALE\",\"representative_key_shift\":3,\"tier\":\"B\"}";
         var first=creation.create("Bearer test","device",key,body);assertThat(first.status()).isEqualTo(201);
         assertThat(creation.create("Bearer test","device",key,body)).isEqualTo(first);
         assertThat(jdbc.queryForObject("SELECT source_title FROM song_source",String.class)).isEqualTo("original");
         assertThat(jdbc.queryForObject("SELECT title FROM song",String.class)).isEqualTo("edited");
+        assertThat(jdbc.queryForObject("SELECT representative_key_mode FROM song",String.class)).isEqualTo("MALE");
+        assertThat(jdbc.queryForObject("SELECT representative_key_shift FROM song",Integer.class)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT song_tier FROM song",String.class)).isEqualTo("B");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM change_log",Integer.class)).isEqualTo(1);
         jdbc.execute("ALTER TABLE song_source ADD CONSTRAINT injected_source CHECK(source_ref <> 'FIXTURE:990002')");
         String next="{\"id\":\""+UUID.randomUUID()+"\",\"source_type\":\"TJ\",\"source_token\":\"990002\"}";

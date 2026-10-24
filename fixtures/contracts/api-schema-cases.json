@@ -1623,5 +1623,108 @@
       "condition_code": "not-a-condition"
     },
     "valid": false
+  },
+  {
+    "schema": "SongCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000111",
+      "source_type": "MANUAL",
+      "manual_reason": "USER_ENTERED",
+      "title": "등록 키",
+      "artist": "가수",
+      "representative_key_mode": "ORIGINAL",
+      "representative_key_shift": -3,
+      "tier": "A"
+    },
+    "valid": true
+  },
+  {
+    "schema": "SongCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000111",
+      "source_type": "MANUAL",
+      "manual_reason": "USER_ENTERED",
+      "title": "등록 키",
+      "artist": "가수",
+      "representative_key_mode": null,
+      "representative_key_shift": null
+    },
+    "valid": true
+  },
+  {
+    "schema": "SongCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000111",
+      "source_type": "MANUAL",
+      "manual_reason": "USER_ENTERED",
+      "title": "등록 키",
+      "artist": "가수",
+      "representative_key_mode": "FEMALE",
+      "representative_key_shift": 12
+    },
+    "valid": true
+  },
+  {
+    "schema": "SongCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000111",
+      "source_type": "MANUAL",
+      "manual_reason": "USER_ENTERED",
+      "title": "등록 키",
+      "artist": "가수",
+      "representative_key_mode": "MALE"
+    },
+    "valid": false
+  },
+  {
+    "schema": "SongCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000111",
+      "source_type": "MANUAL",
+      "manual_reason": "USER_ENTERED",
+      "title": "등록 키",
+      "artist": "가수",
+      "representative_key_shift": 0
+    },
+    "valid": false
+  },
+  {
+    "schema": "SongCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000111",
+      "source_type": "MANUAL",
+      "manual_reason": "USER_ENTERED",
+      "title": "등록 키",
+      "artist": "가수",
+      "representative_key_mode": null,
+      "representative_key_shift": 1
+    },
+    "valid": false
+  },
+  {
+    "schema": "SongCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000111",
+      "source_type": "MANUAL",
+      "manual_reason": "USER_ENTERED",
+      "title": "등록 키",
+      "artist": "가수",
+      "representative_key_mode": "MALE",
+      "representative_key_shift": 13
+    },
+    "valid": false
+  },
+  {
+    "schema": "SongCreate",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000111",
+      "source_type": "MANUAL",
+      "manual_reason": "USER_ENTERED",
+      "title": "등록 키",
+      "artist": "가수",
+      "representative_key_mode": "MALE",
+      "representative_key_shift": 1.5
+    },
+    "valid": false
   }
 ]

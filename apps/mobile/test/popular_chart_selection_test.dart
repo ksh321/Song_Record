@@ -41,6 +41,87 @@ Future<void> open(WidgetTester t) async {
 }
 
 void main() {
+  for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
+    testWidgets(
+      '100th chart row is the finite end without footer storage collision on $platform',
+      (t) async {
+        await t.pumpWidget(
+          MaterialApp(
+            theme: ThemeData(platform: platform),
+            home: Scaffold(
+              body: PopularChartScreen(
+                load: (scope) async => PublishedChart(
+                  scope: scope,
+                  fetchedAt: DateTime.utc(2026),
+                  revision: 1,
+                  stale: false,
+                  items: List.generate(
+                    100,
+                    (i) => ChartItem(
+                      position: i + 1,
+                      number: '${i + 1}',
+                      title: '시험곡 ${i + 1}',
+                      artist: '가수',
+                      sourceToken: 's1.test',
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await t.pumpAndSettle();
+        await t.scrollUntilVisible(find.text('시험곡 100'), 600, maxScrolls: 50);
+        await t.pumpAndSettle();
+        final state = t.state<ScrollableState>(find.byType(Scrollable).first);
+        await t.fling(
+          find.byType(Scrollable).first,
+          const Offset(0, -2000),
+          3000,
+        );
+        await t.pumpAndSettle();
+        expect(state.position.pixels, state.position.maxScrollExtent);
+        expect(state.position.outOfRange, isFalse);
+        expect(find.text('시험곡 100'), findsOneWidget);
+        expect(find.byType(ErrorWidget), findsNothing);
+        expect(t.takeException(), isNull);
+        await t.scrollUntilVisible(find.text('출처 정보'), -600, maxScrolls: 50);
+        await t.pumpAndSettle();
+        await t.tap(find.text('출처 정보'));
+        await t.pumpAndSettle();
+        expect(find.text('출처: MANANA'), findsOneWidget);
+        expect(find.byType(ErrorWidget), findsNothing);
+        expect(t.takeException(), isNull);
+        await t.pumpWidget(const SizedBox());
+      },
+    );
+  }
+  testWidgets('candidate dialog is centered and cancel creates no selection', (
+    t,
+  ) async {
+    var selections = 0;
+    await t.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PopularChartScreen(
+            load: (s) async => chart(s),
+            onSelected: (_) => selections++,
+          ),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+    await open(t);
+    expect(find.byType(Dialog), findsOneWidget);
+    final dialog = t.getRect(find.byType(Dialog));
+    final screen = t.getSize(find.byType(Scaffold).first);
+    expect(dialog.center.dy, closeTo(screen.height / 2, 1));
+    expect(find.widgetWithText(FilledButton, '곡 선택'), findsOneWidget);
+    await t.tap(find.text('취소'));
+    await t.pumpAndSettle();
+    expect(selections, 0);
+  });
+
   testWidgets(
     'TJ exact proof and playlist destination survive selection; cancel adds nothing',
     (t) async {
@@ -67,7 +148,7 @@ void main() {
       await t.pumpAndSettle();
       expect(selected, isEmpty);
       await open(t);
-      await t.tap(find.text('목록에 사용할 TJ 곡 선택'));
+      await t.tap(find.widgetWithText(FilledButton, '곡 선택'));
       await t.pumpAndSettle();
       expect(selected.single.intent, same(intent));
       expect(selected.single.candidate.number, '00123');
@@ -105,7 +186,7 @@ void main() {
       await t.tap(find.text('금영'));
       await t.pumpAndSettle();
       await open(t);
-      expect(find.text('목록에 사용할 TJ 곡 선택'), findsNothing);
+      expect(find.widgetWithText(FilledButton, '곡 선택'), findsNothing);
       await t.tap(find.text('TJ에서 이 곡 찾기'));
       await t.pumpAndSettle();
       expect(queries.single.text, '원본 (LIVE)');
@@ -123,7 +204,7 @@ void main() {
       await t.pumpAndSettle();
       await t.tap(find.text('실제 TJ 결과'));
       await t.pumpAndSettle();
-      await t.tap(find.text('목록에 사용할 TJ 곡 선택'));
+      await t.tap(find.widgetWithText(FilledButton, '곡 선택'));
       await t.pumpAndSettle();
       expect(selected.single.intent, same(intent));
       expect(selected.single.candidate.number, '00999');
@@ -151,7 +232,7 @@ void main() {
     );
     periods.onChanged(ChartPeriod.daily);
     await t.pump();
-    await t.tap(find.text('이 TJ 곡 선택'));
+    await t.tap(find.widgetWithText(FilledButton, '곡 선택'));
     await t.pumpAndSettle();
     expect(selected, isEmpty);
   });
@@ -177,7 +258,7 @@ void main() {
       );
       await t.pumpAndSettle();
       await open(t);
-      await t.tap(find.text('이 TJ 곡 선택'));
+      await t.tap(find.widgetWithText(FilledButton, '곡 선택'));
       await t.pumpAndSettle();
       expect(find.textContaining('TJ 00123'), findsOneWidget);
       await t.tap(find.byTooltip('취소'));
@@ -185,12 +266,12 @@ void main() {
       expect(saves, 0);
       expect(drafts, isEmpty);
       await open(t);
-      await t.tap(find.text('이 TJ 곡 선택'));
+      await t.tap(find.widgetWithText(FilledButton, '곡 선택'));
       await t.pumpAndSettle();
       await t.scrollUntilVisible(
         find.text('저장'),
         180,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find.byType(Scrollable).first,
       );
       await t.ensureVisible(find.text('저장'));
       await t.pumpAndSettle();
@@ -219,12 +300,12 @@ void main() {
       );
       await t.pumpAndSettle();
       await open(t);
-      await t.tap(find.text('이 TJ 곡 선택'));
+      await t.tap(find.widgetWithText(FilledButton, '곡 선택'));
       await t.pumpAndSettle();
       await t.scrollUntilVisible(
         find.text('저장'),
         180,
-        scrollable: find.byType(Scrollable).last,
+        scrollable: find.byType(Scrollable).first,
       );
       await t.ensureVisible(find.text('저장'));
       await t.pumpAndSettle();

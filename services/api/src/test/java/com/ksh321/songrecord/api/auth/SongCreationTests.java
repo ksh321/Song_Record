@@ -62,6 +62,20 @@ class SongCreationTests {
         assertThat(postBody(f.key,body).getContentAsString()).isEqualTo(first.getContentAsString());
         assertThat(count("song")).isEqualTo(1);
     }
+    @Test void creationPersistsRepresentativeKeyAndTierAndReplaysOnce() throws Exception {
+        String body=body(",\"representative_key_mode\":\"ORIGINAL\",\"representative_key_shift\":-3,\"tier\":\"A\"");
+        var first=postBody(f.key,body);assertThat(first.getStatus()).isEqualTo(201);
+        assertThat(postBody(f.key,body).getContentAsString()).isEqualTo(first.getContentAsString());
+        assertThat(f.jdbc.queryForObject("SELECT representative_key_mode FROM song",String.class)).isEqualTo("ORIGINAL");
+        assertThat(f.jdbc.queryForObject("SELECT representative_key_shift FROM song",Integer.class)).isEqualTo(-3);
+        assertThat(f.jdbc.queryForObject("SELECT song_tier FROM song",String.class)).isEqualTo("A");
+        assertThat(count("song")).isEqualTo(1);assertThat(count("change_log")).isEqualTo(1);
+    }
+    @Test void creationRejectsIncompleteOrInvalidRepresentativeKey() throws Exception {
+        for(String extra:List.of(",\"representative_key_mode\":\"MALE\"",",\"representative_key_shift\":1",",\"representative_key_mode\":null,\"representative_key_shift\":1",",\"representative_key_mode\":\"MALE\",\"representative_key_shift\":13",",\"representative_key_mode\":\"MALE\",\"representative_key_shift\":1.5",",\"representative_key_mode\":\"OTHER\",\"representative_key_shift\":0"))
+            assertThat(postBody(UUID.randomUUID().toString(),body(extra)).getStatus()).isEqualTo(400);
+        assertThat(count("song")).isZero();assertThat(count("mutation_receipt")).isZero();
+    }
     @Test void creates201WithDefaultsAndOneAtomicChange(){
         try {var r=postBody(f.key,body(""));assertThat(r.getStatus()).isEqualTo(201);assertThat(r.getHeader("Cache-Control")).isEqualTo("no-store");assertThat(r.getContentAsString()).contains("\"created\":true","\"version_code\":\"NORMAL\"","\"revision\":1");}
         catch(Exception e){throw new RuntimeException(e);}

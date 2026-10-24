@@ -5,7 +5,9 @@ import '../../core/domain/input_validation.dart';
 import '../../core/domain/song_types.dart';
 import '../../core/sync/local_repository.dart';
 import '../../core/widgets/app_icon.dart';
+import '../../core/widgets/musical_key_picker.dart';
 import '../../core/widgets/song_badges.dart';
+import '../../core/widgets/tier_picker.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../../core/widgets/version_picker.dart';
 import 'karaoke_search.dart';
@@ -35,6 +37,8 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
   late final TextEditingController title, artist;
   final note = TextEditingController();
   VersionCode version = VersionCode.normal;
+  MusicalKey? musicalKey;
+  SongTier? tier;
   Future<void> Function()? _savePrepared;
   bool busy = false, isSuitable = false;
   String? error;
@@ -86,6 +90,8 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
           note: note.text,
           version: version,
           isSuitable: isSuitable,
+          musicalKey: musicalKey,
+          tier: tier,
         ),
       );
       await _savePrepared!();
@@ -156,15 +162,6 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
                       readOnly: busy || _savePrepared != null,
                       validator: (v) => validate(InputField.artist, v),
                     ),
-                    const SizedBox(height: 14),
-                    AppLabeledFormField(
-                      fieldKey: const ValueKey('song-note'),
-                      label: '메모',
-                      controller: note,
-                      maxLines: 4,
-                      readOnly: busy || _savePrepared != null,
-                      validator: (v) => validate(InputField.note, v),
-                    ),
                   ],
                 ),
               ),
@@ -184,11 +181,65 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
                 label: '버전',
                 value: formatVersionCode(version),
               ),
-              SongSuitabilityChoice(
-                value: isSuitable,
-                onChanged: busy || _savePrepared != null
+              AppPickerField(
+                label: '대표 키',
+                value: musicalKey == null
+                    ? '미정'
+                    : formatMusicalKey(musicalKey!),
+                onPressed: busy || _savePrepared != null
                     ? null
-                    : (v) => setState(() => isSuitable = v),
+                    : () async {
+                        final result = await MusicalKeyPicker.song(
+                          context: context,
+                          selected: musicalKey,
+                        );
+                        if (mounted &&
+                            !busy &&
+                            _savePrepared == null &&
+                            result != null) {
+                          setState(() => musicalKey = result.value);
+                        }
+                      },
+              ),
+              AppPickerField(
+                label: '곡 티어',
+                value: formatSongTier(tier),
+                onPressed: busy || _savePrepared != null
+                    ? null
+                    : () async {
+                        final result = await TierPicker.song(
+                          context: context,
+                          selected: tier,
+                        );
+                        if (mounted &&
+                            !busy &&
+                            _savePrepared == null &&
+                            result != null) {
+                          setState(() => tier = result.value);
+                        }
+                      },
+              ),
+              const SizedBox(height: 14),
+              AppPanel(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 14),
+                    AppLabeledFormField(
+                      fieldKey: const ValueKey('song-note'),
+                      label: '메모',
+                      controller: note,
+                      maxLines: 4,
+                      readOnly: busy || _savePrepared != null,
+                      validator: (v) => validate(InputField.note, v),
+                    ),
+                    SongSuitabilityChoice(
+                      value: isSuitable,
+                      onChanged: busy || _savePrepared != null
+                          ? null
+                          : (v) => setState(() => isSuitable = v),
+                    ),
+                  ],
+                ),
               ),
               FilledButton(
                 onPressed: busy ? null : _save,

@@ -16,6 +16,8 @@ class SongRegistrationDraft {
     required this.artist,
     this.note = '',
     this.isSuitable = false,
+    this.musicalKey,
+    this.tier,
     this.version = VersionCode.normal,
     this.candidate,
     this.manualApproval,
@@ -33,6 +35,8 @@ class SongRegistrationDraft {
   final String title, artist, note;
   final VersionCode version;
   final bool isSuitable;
+  final MusicalKey? musicalKey;
+  final SongTier? tier;
   final KaraokeCandidate? candidate;
   final ManualSearchApproval? manualApproval;
   final bool directEntry;
@@ -55,6 +59,9 @@ class SongRegistrationDraft {
       'artist': a.value,
       'note': n.value,
       'is_suitable': isSuitable,
+      'representative_key_mode': musicalKey?.mode.name.toUpperCase(),
+      'representative_key_shift': musicalKey?.shift,
+      'tier': tier?.name.toUpperCase(),
       'version_code': version.name.toUpperCase(),
     };
     final draft = <String, Object?>{
@@ -64,9 +71,11 @@ class SongRegistrationDraft {
       'artist': a.value,
       'note': n.value,
       'is_suitable': isSuitable,
+      'representative_key_mode': musicalKey?.mode.name.toUpperCase(),
+      'representative_key_shift': musicalKey?.shift,
+      'tier': tier?.name.toUpperCase(),
       'version_code': changes['version_code'],
       'lifecycle_state': 'ACTIVE',
-      'tier': null,
     };
     return repository.prepareCreate(
       entity: LocalEntity.song,

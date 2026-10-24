@@ -70,7 +70,7 @@ void main() {
       await open();
       await t.tap(find.text('미등록 TJ 후보').last);
       await t.pumpAndSettle();
-      await t.tap(find.text('목록에 사용할 TJ 곡 선택'));
+      await t.tap(find.widgetWithText(FilledButton, '곡 선택'));
       await t.pumpAndSettle();
       expect(result!.intent, same(intent));
       expect(result!.candidate.number, '00555');
