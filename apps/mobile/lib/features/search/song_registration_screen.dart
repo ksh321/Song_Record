@@ -165,6 +165,12 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
                   ],
                 ),
               ),
+              SongSuitabilityChoice(
+                value: isSuitable,
+                onChanged: busy || _savePrepared != null
+                    ? null
+                    : (v) => setState(() => isSuitable = v),
+              ),
               const SizedBox(height: 14),
               AppPickerField(
                 onPressed: busy || _savePrepared != null
@@ -231,12 +237,6 @@ class _SongRegistrationScreenState extends State<SongRegistrationScreen> {
                       maxLines: 4,
                       readOnly: busy || _savePrepared != null,
                       validator: (v) => validate(InputField.note, v),
-                    ),
-                    SongSuitabilityChoice(
-                      value: isSuitable,
-                      onChanged: busy || _savePrepared != null
-                          ? null
-                          : (v) => setState(() => isSuitable = v),
                     ),
                   ],
                 ),

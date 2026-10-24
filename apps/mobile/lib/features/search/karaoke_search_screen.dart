@@ -89,6 +89,7 @@ class _KaraokeSearchScreenState extends State<KaraokeSearchScreen> {
       artist: c.artist,
       number: c.number,
       isTj: c.brand == KaraokeBrand.tj,
+      matchDiscoverySurface: true,
       allowSelect:
           widget.onSelected != null || widget.prepareRegistration != null,
     );

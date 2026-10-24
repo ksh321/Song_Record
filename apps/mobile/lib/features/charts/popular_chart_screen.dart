@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:song_record/core/widgets/app_page_bar.dart';
 
-import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/content_state.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/song_row.dart';
@@ -37,6 +36,7 @@ class PopularChartScreen extends StatefulWidget {
 
 class _PopularChartScreenState extends State<PopularChartScreen> {
   late final PopularChartController controller;
+  final _scroll = ScrollController();
   String? _account;
   String? tag() => widget.auth?.session == null
       ? null
@@ -73,6 +73,7 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
   void dispose() {
     widget.auth?.removeListener(_authChanged);
     controller.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -179,114 +180,119 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
     animation: controller,
     builder: (context, _) {
       final chart = controller.chart;
-      return ScrollConfiguration(
-        behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
-        child: ListView(
-          physics: const ClampingScrollPhysics(),
-          key: const PageStorageKey('popular-chart'),
-          primary: false,
-          padding: AppLayout.bodyPadding,
-          children: [
-            AppBrandTabs<KaraokeBrand>(
-              options: const {KaraokeBrand.tj: 'TJ', KaraokeBrand.ky: '금영'},
-              selected: controller.scope.brand,
-              onChanged: (v) => controller.change(brand: v),
-            ),
-            const SizedBox(height: 14),
-            AppOptions<ChartPeriod>(
-              pills: true,
-              equalWidth: true,
-              options: {for (final p in ChartPeriod.values) p: p.label},
-              selected: controller.scope.period,
-              onChanged: (v) => controller.change(period: v),
-            ),
-            const SizedBox(height: 14),
-            if (chart != null) ...[
-              ExpansionTile(
-                key: PageStorageKey(
-                  'chart-source-${chart.scope.brandCode}-${chart.scope.period.name}',
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context)
+                .copyWith(overscroll: false),
+            child: ListView(
+              controller: _scroll,
+              physics: const ClampingScrollPhysics(),
+              key: const PageStorageKey('popular-chart'),
+              primary: false,
+              padding: AppLayout.bodyPadding,
+              children: [
+                AppBrandTabs<KaraokeBrand>(
+                  options: const {KaraokeBrand.tj: 'TJ', KaraokeBrand.ky: '금영'},
+                  selected: controller.scope.brand,
+                  onChanged: (v) => controller.change(brand: v),
                 ),
-                title: const Text(
-                  '출처 정보',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+                const SizedBox(height: 14),
+                AppOptions<ChartPeriod>(
+                  pills: true,
+                  equalWidth: true,
+                  options: {for (final p in ChartPeriod.values) p: p.label},
+                  selected: controller.scope.period,
+                  onChanged: (v) => controller.change(period: v),
                 ),
-                tilePadding: EdgeInsets.zero,
-                minTileHeight: 44,
-                children: [
-                  const Text('출처: MANANA'),
-                  SelectableText(
-                    chart.scope.sourceUrl,
-                    key: PageStorageKey(
-                      'chart-source-${chart.scope.sourceUrl}',
+                const SizedBox(height: 14),
+                if (chart != null) ...[
+                  Text(
+                    '${controller.scope.period.label} 인기곡',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                     ),
-                    style: AppTypography.supporting,
                   ),
-                ],
-              ),
-              Text(
-                '${controller.scope.period.label} 인기곡',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 16),
-              if (chart.stale)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Text('이전 정상 자료예요. 최신 수집을 완료하지 못했거나 진행 중입니다.'),
-                ),
-              for (final item in chart.items)
-                Padding(
-                  padding: EdgeInsets.zero,
-                  child: SongRow.candidate(
-                    candidate: CandidateSongViewData(
-                      brand: chart.scope.brand == KaraokeBrand.tj
-                          ? CatalogBrand.tj
-                          : CatalogBrand.ky,
-                      number: item.number,
-                      title: item.title,
-                      artist: item.artist,
+                  const SizedBox(height: 16),
+                  if (chart.stale)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text('이전 정상 자료예요. 최신 수집을 완료하지 못했거나 진행 중입니다.'),
                     ),
-                    placement: CandidatePlacement.chart,
-                    rank: item.position,
-                    onTap:
-                        widget.onSelected == null &&
-                            widget.prepareRegistration == null
-                        ? null
-                        : () => _select(chart, item),
+                  for (final item in chart.items)
+                    Padding(
+                      padding: EdgeInsets.zero,
+                      child: SongRow.candidate(
+                        candidate: CandidateSongViewData(
+                          brand: chart.scope.brand == KaraokeBrand.tj
+                              ? CatalogBrand.tj
+                              : CatalogBrand.ky,
+                          number: item.number,
+                          title: item.title,
+                          artist: item.artist,
+                        ),
+                        placement: CandidatePlacement.chart,
+                        rank: item.position,
+                        onTap:
+                            widget.onSelected == null &&
+                                widget.prepareRegistration == null
+                            ? null
+                            : () => _select(chart, item),
+                      ),
+                    ),
+                ] else if (controller.phase == ChartPhase.loading)
+                  const ContentState(
+                    phase: ContentPhase.loading,
+                    title: '차트를 불러오는 중이에요',
+                  )
+                else if (controller.phase == ChartPhase.unavailable) ...[
+                  ContentState(
+                    phase: ContentPhase.empty,
+                    title: '선택한 브랜드·기간의 자료가 없어요',
+                    message: controller.message,
                   ),
-                ),
-            ] else if (controller.phase == ChartPhase.loading)
-              const ContentState(
-                phase: ContentPhase.loading,
-                title: '차트를 불러오는 중이에요',
-              )
-            else if (controller.phase == ChartPhase.unavailable) ...[
-              ContentState(
-                phase: ContentPhase.empty,
-                title: '선택한 브랜드·기간의 자료가 없어요',
-                message: controller.message,
-              ),
-              OutlinedButton(
-                onPressed: () => controller.change(),
-                child: const Text('다시 시도'),
-              ),
-            ] else
-              ContentState(
-                phase: controller.phase == ChartPhase.error
-                    ? ContentPhase.error
-                    : ContentPhase.waiting,
-                title: controller.phase == ChartPhase.error
-                    ? '차트를 불러오지 못했어요'
-                    : '로그인이 필요해요',
-                message: controller.message,
-                onRetry: controller.phase == ChartPhase.error
-                    ? () => controller.change()
-                    : null,
-              ),
-          ],
-        ),
+                  OutlinedButton(
+                    onPressed: () => controller.change(),
+                    child: const Text('다시 시도'),
+                  ),
+                ] else
+                  ContentState(
+                    phase: controller.phase == ChartPhase.error
+                        ? ContentPhase.error
+                        : ContentPhase.waiting,
+                    title: controller.phase == ChartPhase.error
+                        ? '차트를 불러오지 못했어요'
+                        : '로그인이 필요해요',
+                    message: controller.message,
+                    onRetry: controller.phase == ChartPhase.error
+                        ? () => controller.change()
+                        : null,
+                  ),
+              ],
+            ),
+          ),
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: ListenableBuilder(
+              listenable: _scroll,
+              builder: (context, _) =>
+                  !_scroll.hasClients || _scroll.offset < 64
+                  ? const SizedBox.shrink()
+                  : IconButton.filled(
+                      tooltip: '맨 위로',
+                      onPressed: () => _scroll.animateTo(
+                        0,
+                        duration: const Duration(milliseconds: 280),
+                        curve: Curves.easeOutCubic,
+                      ),
+                      icon: const Icon(Icons.keyboard_arrow_up),
+                    ),
+            ),
+          ),
+        ],
       );
     },
   );

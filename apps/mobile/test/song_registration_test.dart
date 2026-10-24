@@ -20,7 +20,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   for (final direct in [true, false]) {
     testWidgets(
-      'registration chooses key and tier with heart below memo (direct=$direct)',
+      'registration chooses key and tier with heart between artist and version (direct=$direct)',
       (t) async {
         SongRegistrationDraft? saved;
         await t.pumpWidget(
@@ -38,6 +38,17 @@ void main() {
         );
         await t.enterText(find.byKey(const ValueKey('song-title')), '등록 시험');
         await t.enterText(find.byKey(const ValueKey('song-artist')), '가수');
+        expect(
+          t.getTopLeft(find.text('나에게 어울리는 곡')).dy,
+          greaterThan(
+            t.getTopLeft(find.byKey(const ValueKey('song-artist'))).dy,
+          ),
+        );
+        expect(
+          t.getTopLeft(find.text('나에게 어울리는 곡')).dy,
+          lessThan(t.getTopLeft(find.text('버전')).dy),
+        );
+        await t.tap(find.text('나에게 어울리는 곡'));
         await t.ensureVisible(find.text('대표 키'));
         await t.pumpAndSettle();
         await t.tap(find.text('대표 키'));
@@ -58,14 +69,6 @@ void main() {
           scrollable: find.byType(Scrollable).first,
         );
         await t.enterText(find.byKey(const ValueKey('song-note')), '메모 유지');
-        await t.ensureVisible(find.text('나에게 어울리는 곡'));
-        await t.pumpAndSettle();
-        expect(
-          t.getTopLeft(find.text('나에게 어울리는 곡')).dy,
-          greaterThan(
-            t.getBottomLeft(find.byKey(const ValueKey('song-note'))).dy,
-          ),
-        );
         await t.scrollUntilVisible(
           find.text('저장'),
           180,
@@ -76,6 +79,7 @@ void main() {
         expect(saved!.musicalKey, MusicalKey(mode: KeyMode.female, shift: 0));
         expect(saved!.tier, SongTier.a);
         expect(saved!.note, '메모 유지');
+        expect(saved!.isSuitable, isTrue);
         expect(saved!.candidate?.sourceToken, direct ? null : 's1.fixture');
       },
     );
@@ -218,6 +222,11 @@ void main() {
       await tester.enterText(
         find.byKey(const ValueKey('song-artist')),
         '직접 가수',
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('song-note')),
+        180,
+        scrollable: find.byType(Scrollable).first,
       );
       await tester.enterText(
         find.byKey(const ValueKey('song-note')),

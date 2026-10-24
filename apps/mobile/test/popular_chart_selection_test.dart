@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/core/widgets/ui_controls.dart';
 import 'package:song_record/features/charts/popular_chart.dart';
 import 'package:song_record/features/charts/popular_chart_screen.dart';
+import 'package:song_record/features/search/karaoke_candidate_dialog.dart';
 import 'package:song_record/features/search/karaoke_search.dart';
 import 'package:song_record/features/search/karaoke_search_screen.dart';
 import 'package:song_record/features/search/search_intent.dart';
@@ -43,7 +44,7 @@ Future<void> open(WidgetTester t) async {
 void main() {
   for (final platform in [TargetPlatform.android, TargetPlatform.iOS]) {
     testWidgets(
-      '100th chart row is the finite end without footer storage collision on $platform',
+      '100th chart row is the finite end without source disclosure on $platform',
       (t) async {
         await t.pumpWidget(
           MaterialApp(
@@ -85,16 +86,52 @@ void main() {
         expect(find.text('시험곡 100'), findsOneWidget);
         expect(find.byType(ErrorWidget), findsNothing);
         expect(t.takeException(), isNull);
-        await t.scrollUntilVisible(find.text('출처 정보'), -600, maxScrolls: 50);
+        expect(find.byType(ExpansionTile), findsNothing);
+        expect(find.text('출처 정보'), findsNothing);
+        expect(find.text('출처: MANANA'), findsNothing);
+        expect(find.byTooltip('맨 위로'), findsOneWidget);
+        await t.tap(find.byTooltip('맨 위로'));
         await t.pumpAndSettle();
-        await t.tap(find.text('출처 정보'));
-        await t.pumpAndSettle();
-        expect(find.text('출처: MANANA'), findsOneWidget);
-        expect(find.byType(ErrorWidget), findsNothing);
-        expect(t.takeException(), isNull);
+        expect(state.position.pixels, 0);
+        expect(find.byTooltip('맨 위로'), findsNothing);
         await t.pumpWidget(const SizedBox());
       },
     );
+  }
+  for (final brightness in Brightness.values) {
+    testWidgets('search candidate matches discovery surface in $brightness', (
+      t,
+    ) async {
+      final theme = ThemeData(
+        brightness: brightness,
+        colorSchemeSeed: Colors.blue,
+      );
+      await t.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => showKaraokeCandidateDialog(
+                  context: context,
+                  title: '곡',
+                  artist: '가수',
+                  number: '123',
+                  isTj: true,
+                  matchDiscoverySurface: true,
+                ),
+                child: const Text('열기'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await t.tap(find.text('열기'));
+      await t.pumpAndSettle();
+      final dialog = t.widget<Dialog>(find.byType(Dialog));
+      expect(dialog.backgroundColor, theme.colorScheme.surface);
+      expect(dialog.surfaceTintColor, Colors.transparent);
+    });
   }
   testWidgets('candidate dialog is centered and cancel creates no selection', (
     t,

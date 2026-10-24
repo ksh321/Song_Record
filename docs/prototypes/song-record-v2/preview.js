@@ -64,7 +64,7 @@
     if(state.chartState==='error') return controls+empty('차트를 불러오지 못했어요','연결을 확인하고 다시 시도해 주세요.','cloud')+uiButton('다시 시도','chart-retry','','command primary');
     if(state.chartState==='empty') return controls+empty('아직 차트가 없어요','다른 기간을 선택해 보세요.','chart');
     if(state.chartState==='loading') return controls+empty('차트를 불러오고 있어요','잠시만 기다려 주세요.','clock');
-    return controls+`<div class="v2-chart-heading"><strong>${state.period} 인기곡</strong><small>최근 갱신 · 오늘 09:00</small></div><div class="v2-chart-rows">`+rows.map((c,i)=>`<button type="button" class="review-ranked" data-flow="candidate" data-candidate="${c.brand}:${c.number}"><span class="review-rank ${i<3?'top':''}">${i+1}</span><span class="review-result-copy"><strong>${e(c.title)}</strong><small>${e(c.artist)}</small></span><span class="review-result-number">${e(c.number)}</span></button>`).join('')+`</div><details class="v2-chart-info"><summary>차트 정보</summary><p><span class="v2-source">출처 · MANANA (${brand})</span><br>수집 시각 · 2026. 10. 19. 09:00<br>제공자가 정한 기간의 순위예요. 정확한 집계 날짜는 제공되지 않아요.</p></details>`;
+    return controls+`<div class="v2-chart-heading"><strong>${state.period} 인기곡</strong><small>최근 갱신 · 오늘 09:00</small></div><div class="v2-chart-rows">`+rows.map((c,i)=>`<button type="button" class="review-ranked" data-flow="candidate" data-candidate="${c.brand}:${c.number}"><span class="review-rank ${i<3?'top':''}">${i+1}</span><span class="review-result-copy"><strong>${e(c.title)}</strong><small>${e(c.artist)}</small></span><span class="review-result-number">${e(c.number)}</span></button>`).join('')+'</div>';
   }
   function settings() {
     return `<div class="v2-profile"><span class="v2-avatar">${ic('people',23)}</span><div><strong>나의 노래기록</strong><small>카카오 계정으로 연결됨</small></div></div><p class="v2-section-title">내 기록 관리</p>`+
@@ -193,7 +193,7 @@
 
   const notes={
     songs:['곡명과 가수를 먼저 읽고, 티어·키는 작은 배지로 확인해요.','검색·보기 전환·정렬·새 곡 찾기를 유지했어요.','곡을 눌러 상세와 수정 화면까지 확인해 보세요.'],
-    charts:['TJ·금영과 일간·주간·월간을 바로 바꿀 수 있어요.','순위·곡명·가수·번호를 한 줄 묶음으로 정리했어요.','출처와 집계 설명은 아래 ‘차트 정보’에 있어요.'],
+    charts:['TJ·금영과 일간·주간·월간을 바로 바꿀 수 있어요.','순위·곡명·가수·번호를 한 줄 묶음으로 정리했어요.','아래로 스크롤하면 작은 버튼으로 맨 위로 돌아갈 수 있어요.'],
     record:['녹음 시작이 가장 먼저 보이는 행동이에요.','입력 대기와 전체 녹음은 아래에서 이어가요.','타이머·완료·곡 선택·나중에 입력 흐름을 확인해 보세요.'],
     playlists:['목록과 곡을 삭제하는 동작을 구분했어요.','이름·순서 변경, 다중 선택과 취소를 눌러볼 수 있어요.','미등록 후보와 중복 추가 방지 흐름도 유지했어요.'],
     search:['제공자 → 검색어 → 검색 종류 순서로 읽혀요.','금영 결과는 TJ에서 찾아 등록하는 흐름을 유지해요.','검색 실패·빈 결과·직접 등록도 확인할 수 있어요.'],
@@ -678,8 +678,8 @@
       row.querySelector('.key')?.before(mark);
     }
     if(screen.id==='songs')body.querySelector('.options')?.insertAdjacentHTML('afterend',`<label class="suitability-filter"><input type="checkbox" data-suitable="filter" ${F.ui.suitableOnly?'checked':''}>${heart}<span>나에게 어울리는 곡만</span></label>`);
-    if(screen.id==='live-register'&&F.registration)body.insertAdjacentHTML('beforeend',choice('registration',F.registration.values.suitable));
-    if(screen.id==='v2-manual')body.querySelector('form')?.insertAdjacentHTML('beforeend',choice('manual',F.manualRegistration.suitable));
+    if(screen.id==='live-register'&&F.registration)body.querySelector('[data-edit-open="version"]')?.insertAdjacentHTML('beforebegin',choice('registration',F.registration.values.suitable));
+    if(screen.id==='v2-manual')body.querySelector('[data-edit-open="version"]')?.insertAdjacentHTML('beforebegin',choice('manual',F.manualRegistration.suitable));
     const song=F.songFor(screen.id);
     if(song){
       const editing=F.editorScreens.has(screen.id),html=choice(editing?'edit':'song',editing?F.transaction?.values.suitable:song.suitable);
@@ -727,5 +727,24 @@
     const background=F.screenMap.get(previous && previous!=='live-candidate'?previous:'search')||F.screenMap.get('search');
     return phone(background,false).replace('</article>',`<div class="control-overlay candidate-overlay"><button type="button" class="control-scrim" data-ui="back" aria-label="곡 선택 닫기"></button><section class="control-sheet" role="dialog" aria-modal="true" aria-label="곡 선택"><header class="control-sheet-header"><h3>곡 선택</h3><button type="button" class="control-close" data-ui="back">닫기</button></header>${content}</section></div></article>`);
   };
+})();
+window.Prototype.render();
+
+/* One compact return-to-top control, shown only after scrolling charts. */
+(() => {
+  const R=window.RENDER,phone=R.phone;
+  R.phone=function(screen,interactive=true){
+    const html=phone(screen,interactive);
+    return ['charts','charts-ky'].includes(screen.id)
+      ? html.replace('</article>','<button type="button" class="chart-to-top" data-chart-top aria-label="맨 위로" hidden>↑</button></article>') : html;
+  };
+  document.addEventListener('scroll', event=>{
+    if(!event.target.matches?.('.phone-body'))return;
+    const button=event.target.closest('.phone')?.querySelector('[data-chart-top]');
+    if(button)button.hidden=event.target.scrollTop<64;
+  },true);
+  document.addEventListener('click',event=>{
+    if(event.target.closest('[data-chart-top]'))event.target.closest('.phone').querySelector('.phone-body').scrollTo({top:0,behavior:'smooth'});
+  });
 })();
 window.Prototype.render();

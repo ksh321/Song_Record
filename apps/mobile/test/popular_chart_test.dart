@@ -104,7 +104,7 @@ void main() {
     a.dispose();
   });
   testWidgets(
-    'default monthly, scope controls, source collection notice and stale remain explicit',
+    'default monthly, scope controls, source hidden and stale remain explicit',
     (tester) async {
       final scopes = <ChartScope>[];
       await tester.pumpWidget(
@@ -124,9 +124,8 @@ void main() {
       expect(scopes.single.period, ChartPeriod.monthly);
       expect(find.text('원본 (LIVE)'), findsOneWidget);
       expect(find.text('제공자 기준 기간 · 정확 집계 날짜 미제공'), findsNothing);
-      await tester.tap(find.text('출처 정보'));
-      await tester.pumpAndSettle();
-      expect(find.text('출처: MANANA'), findsOneWidget);
+      expect(find.text('출처 정보'), findsNothing);
+      expect(find.text('출처: MANANA'), findsNothing);
       expect(find.textContaining('서버 수집:'), findsNothing);
       await tester.scrollUntilVisible(
         find.textContaining('이전 정상 자료'),

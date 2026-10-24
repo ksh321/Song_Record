@@ -11,9 +11,14 @@ Future<String?> showKaraokeCandidateDialog({
   required bool isTj,
   bool allowSelect = true,
   bool allowFindTj = true,
+  bool matchDiscoverySurface = false,
 }) => showDialog<String>(
   context: context,
   builder: (dialogContext) => Dialog(
+    backgroundColor: matchDiscoverySurface
+        ? Theme.of(dialogContext).colorScheme.surface
+        : null,
+    surfaceTintColor: matchDiscoverySurface ? Colors.transparent : null,
     child: SingleChildScrollView(
       padding: AppDimensions.sheetPadding,
       child: Column(
