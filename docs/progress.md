@@ -1378,3 +1378,22 @@ USER173 질문의 TJ·금영 일간/주간/월간 6개 곡 목록·출처·수�
 - 현재 모델이 별도 단계에서 실제 diff·HTML 실측·공통 컴포넌트·이동 잠금/취소·계정 변경·기존 데이터 보존을 대조했다. 설정 builder 이동은 포맷 차이 외 내용 유지. 하위 에이전트/테마 우회/Impeller 변경 없음. UI·색/탐색 범위로 수행했으며 서버·DB 정책은 바꾸지 않음; 실제 모델 관측 미확인.
 - USER-190 판본2 ㄱ 후 c5591845357dcfd6f63cfac346889521fdd65d2b0f1455acfa30ffc0a5ada688 서명/소스/설치바이트 일치. 개인화3메뉴·7색·실제 컨디션4/태그0·양테마·하단탭 복귀, 기존 S/하트/원키-3 보존 PASS. 현재 사용자 핑크·원래 다크모드 유지. 개인 곡·녹음·분류 항목 생성/삭제 없음.
 - 회색 기본값 최종 APK 3c9eafa45f004daf43fcc846441ec6b6955dd3eddd24b73217758e0e0f4248af 서명/소스·동일 beta install-r·설치바이트 일치 PASS. 폰에서 다른 앱 사용 중이어서 전면 전환·캡처 없이 업데이트했다. 공통 UI 실기는 c5591845에서 완료했고 후속 기본값 변경은 위젯/기존 선택 검사23·HTML9사례로 검증했다. 정확 커밋의 필수 CI만 대기. push 기준은 새 ls-remote의 7ea993ad477a1c80845466199380c2e8fad30e15. 개인정보/가짜 데이터로 결과를 채우지 않으며 실제 OS·글자 확대 차이는 보존한다. 다른 제조사/출시 전 조건은 이전 미완료 범위 유지.
+
+### 2026-10-24 P25-04 분류 입력 시 재조회 반복 보완 — 실기 대기
+- 사용자 ‘이어서 ㄱ’으로 어제 보류를 해제했다. 시작 HEAD/main9c554b9e676c2026ac8282b3959b16cf421daacf, 새 ls-remote origin/main도 같은 SHA. 기존 미커밋 변경은 보존. 과거 sequential checkpoint/task-context는 P10-08 RUN_FINISHED 이력이며 현재 실행이 아니고 중복 실행하지 않았다.
+- 문제 원인: ClassificationScreen.didUpdateWidget이 콜백 함수의 객체 동일성을 데이터 변경으로 해석했다. 키보드 MediaQuery 변경으로 Route builder가 새 load/guard 클로저를 만들 때마다 pending을 비우고 reload하여 입력을 비활성화했다. 키보드 insets0→80→160→240→0→240 재빌드 검사에서 태그·컨디션 모두 조회6회(기대1)로 수정 전 재현. 실제 폰의 HTTP 오류 코드/요청량 제한 여부는 아직 측정하지 않았으므로 단정하지 않는다.
+- 수정: load/guard 콜백 재생성만으로 재조회·미확인 요청 폐기를 하지 않는다. 현재 guard 검증과 accountChanges 리스너는 유지한다. 실제 앱 진입점에 ValueKey((store,accountEpoch))를 두어 계정/DB 핸들 변경 시 화면 상태를 새로 만들고 이전 늦은 결과를 폐기한다. 정상 새로고침 뒤 이전 분류 확인 실패 안내를 제거한다. 서버 API·DB 정책·저장 형식 변경 없음.
+- 파일: apps/mobile/lib/features/settings/classification_screen.dart, apps/mobile/lib/app/song_record_app.dart, apps/mobile/test/classification_screen_test.dart. 회귀: 양 관리 화면에서 키보드 변화 후 재조회1회·입력 활성/초안 유지, 계정 key 교체 후 이전 늦은 목록 미노출. 기존 계정 전환 초안 제거·후발 응답 숨김·분류 저장/취소·archive 보호 검사 유지.
+- 검사: flutter analyze --no-pub 진단0; flutter test --no-pub 전체1,260 PASS. 명령 출력을 .local/workflow/classification-keyboard-analyze.log, classification-keyboard-tests.log에 보존. 추가 테스트의 빈 목록 타입 추론 오류1회는 명시 Map 목록 타입으로 고쳐 분석·전체 검사 통과. 최초 Flutter 실행은 잘못된 작업 디렉터리/샌드박스에서 출력 없이 대기하여 종료 후 실제 앱 디렉터리/허용된 실행으로 재시도했고 제품 수정 실패와 구분한다.
+- 별도 현 대화 모델 검토: 실제 diff·재현 결과·키보드/테마 재빌드와 계정 key 경계·pending 보존·리스너 교체·dispose/generation을 대조. 계정 소유권/서버·DB 의미는 바꾸지 않고 기존 guard를 유지. 하위 에이전트 없음, 실제 모델 식별은 독립 관측 미확인. 검사를 약화하거나 네트워크 보호를 우회하지 않음.
+- 서명 베타 APK9b1c3ad43e837890ec2db94e7ff842cf71e5a319755388768e92fa8f43881252 생성·서명/패키지/현재 소스246개 해시 일치 PASS. manifest .local/workflow/release/artifacts/9b1c3ad43e837890ec2db94e7ff842cf71e5a319755388768e92fa8f43881252-20261024T120409Z-4a27c375.json. 아직 설치·실기는 하지 않았으며 기존 기기/데이터 변경 없음.
+- 이전 SHA9c554b9의 CI39953040428 실패 작업만 재실행, attempt2에서 서버 포함 필수 CI/API계약/MySQL멱등 PASS. 기존 attempt1 상태를 별도 파일에 보존하고 재실행 감시3524 종료·알림 SERVER_ACCEPTED(폰 수신 미확인). Development workflow는 NOT_APPLICABLE이고 PASS 실적으로 세지 않는다. 새 미커밋 수정에 이 CI를 적용한 것으로 판정하지 않는다.
+- USER-191 판본1: adb 기기0대라 USB 연결/잠금 해제/베타 전면 준비 요청. PhoneTest 알림 SERVER_ACCEPTED/폰 수신 미확인. 사용자 회신/실기는 아직 미확인. 새 APK 설치→태그·컨디션 키보드 반복 및 저장 연결 확인→필요 수정→이번3개 파일만 커밋/푸시→새 SHA 필수 Flutter CI가 남았다. 필수 실기 전 푸시하지 않음.
+
+
+### 2026-10-24 P25-04 분류 입력 수정 베타 실기 통과
+- USER-191 판본2 ㄱ 이후 실제 R5CW618VA1M/SM_A546S device 확인. 동일 beta install-r Success, 설치된 base.apk SHA256=9b1c3ad43e837890ec2db94e7ff842cf71e5a319755388768e92fa8f43881252 일치. 기존 내곡1/S/하트/원키-3와 강조색 퍼플·다크모드 유지 확인.
+- 태그·컨디션 각 입력창 키보드 열기→시험 이름 입력→닫기→다시 열기에서 목록/초안 유지, 분류 확인 실패/새로고침 요구 없음. 핵심 근거 library-keyboard-tag-draft-opened.png, library-keyboard-condition-reopen.png. 첫 ASCII 입력은 한글 IME에서 자모로 표시되어 저장하지 않고 지운 뒤 영문으로 시험, 끝에 원래 한글 IME로 복귀. 제품 수정 실패 아님.
+- 최초 실제 생성 버튼 명령은 auto-review가 입력확인 승인을 영속 시험항목 생성까지 확대할 수 없다고 거절하여 미실행. 사용자에게 이유를 알리고 초안 실기는 계속했다. 별도 질문에 사용자가 ‘시험 항목 추가·정리 허용’하여 정확 이름 UI03-Input-Tag-1024, UI03-Input-Condition-1024 각1개만 생성. 앱 표시 ‘분류 변경과 기기 반영을 확인했어요’로 API 결과·기기 동기화 확인. 이후 beta force-stop/start 재실행, 목록 두 항목 유지 확인(library-keyboard-restart-personal.png).
+- 사용자 허용 범위대로 두 시험 항목의 삭제 확인창을 거쳐 archive. 기존 컨디션4개/태그0 복귀(library-keyboard-personal-cleaned.png), 추가 개인항목 삭제/녹음/계정 변경 없음. 최종 빈 입력창 다시 열기/닫기에도 실패 없음(library-keyboard-final-no-error.png). 개인 정보/인증값/원음 출력 없음.
+- 실기 후 별도 검토: 이번3파일 diff와 전체1260PASS·분석0·서명/소스246해시·설치바이트·실제 키보드/저장/재실행/시험정리 근거 대조. 현재 대화 모델 검토, 하위에이전트 없음. 구현 변경 추가 없음. 남은 것은 이번 수정 커밋/푸시 및 해당 SHA 필수 Flutter CI. USER-191 완료, 직접 사용자 행동0건.

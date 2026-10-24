@@ -95,11 +95,11 @@ class _ClassificationState extends State<ClassificationScreen> {
       old.accountChanges?.removeListener(accountChanged);
       widget.accountChanges?.addListener(accountChanged);
     }
-    if (old.load != widget.load ||
-        old.requireCurrent != widget.requireCurrent) {
-      pending = null;
-      reload();
-    }
+    // Route builders recreate closures when keyboard/theme metrics change.
+    // Those closures are not a data-source identity: reloading here disables
+    // the focused input and can discard an unconfirmed command. Account changes
+    // are guarded by accountChanges and the account-scoped screen key.
+    accountChanged();
   }
 
   Future<void> reload() async {
@@ -137,6 +137,9 @@ class _ClassificationState extends State<ClassificationScreen> {
         setState(() {
           data = next;
           busy = false;
+          if (message == '분류 정보를 확인하지 못했어요. 새로고침해 주세요.') {
+            message = null;
+          }
         });
       }
     } catch (_) {

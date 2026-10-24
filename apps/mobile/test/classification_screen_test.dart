@@ -195,6 +195,92 @@ void main() {
       accent.dispose();
     },
   );
+  for (final menu in ['태그 관리', '컨디션 관리']) {
+    testWidgets('$menu keyboard rebuild keeps the loaded list and input', (
+      t,
+    ) async {
+      final accent = ValueNotifier(AppAccent.blue);
+      var loads = 0;
+      Widget app(double bottom) => MaterialApp(
+        home: MediaQuery(
+          data: MediaQueryData(viewInsets: EdgeInsets.only(bottom: bottom)),
+          child: Builder(
+            builder: (context) {
+              MediaQuery.viewInsetsOf(context);
+              return ClassificationScreen(
+                key: const ValueKey('same-account'),
+                load: () async {
+                  loads++;
+                  if (loads > 1) throw StateError('unexpected layout reload');
+                  return data();
+                },
+                requireCurrent: () {},
+                accent: accent,
+                saveAccent: (_) async {},
+                command: (_, _, _, _) async {},
+              );
+            },
+          ),
+        ),
+      );
+      await t.pumpWidget(app(0));
+      await t.pumpAndSettle();
+      await t.tap(find.text(menu));
+      await t.pumpAndSettle();
+      await t.enterText(find.byType(TextField), '입력 중');
+      for (final inset in [80.0, 160.0, 240.0, 0.0, 240.0]) {
+        await t.pumpWidget(app(inset));
+        await t.pumpAndSettle();
+      }
+      expect(loads, 1);
+      expect(find.text('분류 정보를 확인하지 못했어요. 새로고침해 주세요.'), findsNothing);
+      expect(t.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+      expect(
+        t.widget<TextField>(find.byType(TextField)).controller!.text,
+        '입력 중',
+      );
+      await t.pumpWidget(const SizedBox());
+      accent.dispose();
+    });
+  }
+
+  testWidgets('account-scoped key discards the old list and late response', (
+    t,
+  ) async {
+    final accent = ValueNotifier(AppAccent.blue);
+    final first = Completer<ClassificationData>();
+    Widget app(String account, Future<ClassificationData> Function() load) =>
+        MaterialApp(
+          home: ClassificationScreen(
+            key: ValueKey(account),
+            load: load,
+            requireCurrent: () {},
+            accent: accent,
+            saveAccent: (_) async {},
+            command: (_, _, _, _) async {},
+          ),
+        );
+    await t.pumpWidget(app('old', () => first.future));
+    await t.pumpWidget(
+      app(
+        'new',
+        () async => (
+          tags: <Map<String, dynamic>>[],
+          conditions: <Map<String, dynamic>>[],
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+    first.complete(data());
+    await t.pumpAndSettle();
+    await t.tap(find.text('태그 관리'));
+    await t.pumpAndSettle();
+    expect(find.text('연습'), findsNothing);
+    expect(find.text('등록한 태그가 없어요.'), findsOneWidget);
+    await t.pumpWidget(const SizedBox());
+    accent.dispose();
+  });
+
   testWidgets('account switch hides late tag data', (t) async {
     final result = Completer<ClassificationData>(),
         n = ChangeNotifier(),

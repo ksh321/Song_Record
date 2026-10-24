@@ -277,6 +277,7 @@ class _SongRecordAppState extends State<SongRecordApp>
         local: kDebugMode && config.environment == AppEnvironment.dev,
       );
       return ClassificationScreen(
+        key: ValueKey((store, epoch)),
         canEdit: syncController != null,
         requireCurrent: guard,
         accountChanges: auth,
