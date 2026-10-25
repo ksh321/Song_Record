@@ -41,6 +41,14 @@ final class LocalRepository
   }
 
   String get userId => _store.userId;
+
+  /// Facades may be recreated; identity belongs to the active account lease.
+  bool sharesActiveStoreWith(LocalRepository other) {
+    _store.requireActive();
+    other._store.requireActive();
+    return identical(_store, other._store);
+  }
+
   Future<void> Function() prepareTrash({
     required LocalEntity entity,
     required Map<String, Object?> expected,

@@ -16,6 +16,7 @@ class KaraokeSearchScreen extends StatefulWidget {
   const KaraokeSearchScreen({
     required this.load,
     this.auth,
+    this.candidateActions,
     this.onSelected,
     this.intent = const SearchIntent(),
     this.initialQuery,
@@ -25,6 +26,7 @@ class KaraokeSearchScreen extends StatefulWidget {
   final KaraokeLoader load;
   final AuthController? auth;
   final ValueChanged<KaraokeSelection>? onSelected;
+  final KaraokeCandidateActions? candidateActions;
   final SearchIntent intent;
   final KaraokeQuery? initialQuery;
   final SongRegistrationPreparer? prepareRegistration;
@@ -85,15 +87,27 @@ class _KaraokeSearchScreenState extends State<KaraokeSearchScreen> {
     final id = controller.requestId;
     final action = await showKaraokeCandidateDialog(
       context: context,
+      actions: widget.onSelected == null && widget.intent.returnRoute == '/'
+          ? widget.candidateActions
+          : null,
       title: c.title,
       artist: c.artist,
       number: c.number,
       isTj: c.brand == KaraokeBrand.tj,
-      matchDiscoverySurface: true,
       allowSelect:
           widget.onSelected != null || widget.prepareRegistration != null,
     );
     if (!mounted || id != controller.requestId || action == null) return;
+    if (c.brand == KaraokeBrand.tj && widget.candidateActions != null) {
+      if (action == 'add-playlist') {
+        await widget.candidateActions!.addToPlaylist(context, c);
+        return;
+      }
+      if (action.startsWith('view-song:')) {
+        await widget.candidateActions!.openSong(context, action.substring(10));
+        return;
+      }
+    }
     if (action == 'use-tj' && c.brand == KaraokeBrand.tj) {
       await _useSelection(KaraokeSelection(c, widget.intent));
       return;

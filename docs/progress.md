@@ -1419,3 +1419,37 @@ USER173 질문의 TJ·금영 일간/주간/월간 6개 곡 목록·출처·수�
 
 - 최신 실기/산출물: 최종 APK5e24939c5ea1a7d609124d25cf4c3e62069676f5a7dc6da10035bfb6e2086355, install-r Success·설치바이트 해시 일치·소스247개 일치. SM_A546S에서 출처 제거/스크롤 후 버튼/상단 복귀/재숨김, 검색번호14260의 두 모드 후보창/가수와 버전 사이 하트/기존 메모 위치를 확인하고 저장 없이 취소. 검사 전 기존 개인곡3개·블루/다크 상태 확인, 종료 때 원래 다크로 복귀. 개인 곡/녹음 생성·삭제 없음. 최신 배경 정정 후 분석0·관련25PASS, 연결 전체1267PASS는 정정 전 공통배경 검사를 포함한 결과로 구분하고 최종 SHA CI에서 전체를 다시 검증.
 - 별도 최종 검토: 검색만 공통 sheet 표면 사용하고 차트 Dialog 기본값은 보존, 버튼 표시 조건/애니메이션/컨트롤러 해제·끝 clamping 유지, 체크 위치 외 저장/동결 재시도 불변, HTML 같은 표면/스크롤 동작 대조. 남은 것은 현재 소스 커밋·필수 Flutter CI. 서버 재배포 불필요.
+
+### 2026-10-24 P25-04 HTML 곡 선택창 전체 구성 이식
+- 사용자 정정: HTML을 기준으로 검색·차트 후보창 전체 구성도 같아야 하며 색은 한곳에서 관리. 앞선 검색 전용 색 분기만 반영한0b95c79는 이 추가 요구의 완료가 아님. HTML은 현재 확정본으로 보존하고 Flutter 공통 showKaraokeCandidateDialog로 두 경로의 헤더·브랜드/번호·곡명/가수·실제 등록/플리 상태·내 곡 등록/보기·플리 추가 카드까지 공유. 배경/카드는 같은 Theme.colorScheme.surface를 사용하고 검색 전용 matchDiscoverySurface 분기 제거.
+- 루트에서 같은 KaraokeCandidateActions를 두 탭에 전달. 등록곡 조회→내 곡 보기, 미등록→기존 대표키/티어 등록 화면, 플리 추가→기존 목록 선택·동일 TJ sourceToken/목록 intent 검증 addSelection/로컬 원자 저장·동기화 경로 재사용. 중복 목록은 비활성화. 계정/기기 lease·epoch/요청·scope 유효성, 금영 TJ 재검색과 녹음/플리 대상 진입 문맥은 보존. DB열/서버/API변경 없음. 개인 데이터 저장 실기는 하지 않고 목록 선택은 취소한다.
+- 관련25PASS(검색/차트×기존곡/미등록의 카드·닫기 무변경·보기/플리 후보 전달, 기존KY/녹음/대상 문맥). 새 검색 시나리오 첫 실패는350ms 입력 지연을 테스트가 진행하지 않아 결과 미생성, 400ms pump로 실제 검색 흐름을 진행해 검증. 경로/들여쓰기 미일치 편집 명령은 미적용으로 구분. 분석 새 조건문9곳 중괄호 보완 후0문제. 전체 검사/새 서명빌드·실기·새SHA CI 진행 중.
+- 별도 검토: 색·구성은 공통 컴포넌트 한곳, 실제 membership Future는 한번 생성/계정 변경 후 반환 차단, 목록 선택 취소/중복/기존곡 보기 무생성, 기존 저장 API의 활성 lease/기준본/원자 큐 검증 재사용, TJ증명·오래된선택 차단 유지. 하위 에이전트 없음.
+
+
+### 2026-10-24 P25-04 사용자 요청으로 중단·내일 재개
+- 사용자 ‘노트북 꺼야 됨, 나머지 내일’ 지시로 구현/검사/폰 조작 중단. 완료 판정·새 커밋/푸시 하지 않음. 현재 HEAD 0b95c79b0e49a80f068d0ce58db3fb8dd9500c81; 해당 SHA Flutter CI PASS/run40103363591·ntfy SERVER_ACCEPTED는 앞선 화면 보완만의 결과이며 현재 미커밋 공통 카드 연결의 CI가 아님.
+- 현재 공통 카드 소스: 분석0·전체1271PASS·관련25PASS, 서명 APKab6a04ddd27b85fa26c661a5e94ba5a51b1f8a8c5b4797db57c40bd326efd8d4 install-r Success/설치바이트 해시 일치. USER-198 ㄱ 후 실제 베타에서 chart 후보를 열었으나 ‘곡 정보를 확인하지 못했어요’ 표시. 실기 FAILED, 카드 동작/계정별 실제 연결 완료 아님. 개인 곡/녹음 생성·삭제·플리 저장 없음.
+- 문제 UI-CANDIDATE-MEMBERSHIP-HANDLE-IDENTITY: 실기 실패1회. main.dart213행의 getter는 같은 활성 store에서 매번 LocalRepository(store)를 새로 생성한다. 새 SongRecordApp 후보 연결4곳의 identical(candidateRepository(),repo)가 같은 계정을 잘못 거절. 원인 확인만 했고 수정 아직 미적용. 모델/시도 이력 초기화하지 않음.
+- 내일 첫 단계: 실제 AccountStore와 매번 새 wrapper를 반환하는 getter를 쓰는 운영 연결 회귀 검사부터 준비, 계정/기기/epoch와 활성 store/lease 기준으로 바로잡아 동일 계정 허용·계정 변경 차단 유지. 두 탭 공통창/취소·기존곡 보기·플리 선택 취소 실기→새 소스 검토/커밋·필수 Flutter CI. 기존 fake 행동 검사만으로 실제 연결 완료 판정하지 않음.
+- 미커밋 제품5파일: SongRecordApp, PopularChartScreen, KaraokeCandidateDialog, KaraokeSearchScreen, popular_chart_selection_test. 기존 다른 미커밋 변경 보존. 최신 checkpoint: .local/workflow/ui-candidate-parity-resume.json. 별도 task-summary 없음. AWS는 유지하며 DB/네트워크/업로드 잠금 변경 없음. 실행 중 제품 검사/빌드/CI 감시 없음. 시안 로컬 서버는 종료하고 내일 python docs/prototypes/song-record-v2/serve.py로 재개. Gradle 공용 daemon은 종료 대상 아님.
+
+
+### 2026-10-25 P25-04 공통 곡 선택창 재개·실제 저장소 비교 수정
+- 사용자 ‘이어서 ㄱ’으로 명시 중단을 해제. HEAD/main 및 새 ls-remote origin/main 모두0b95c79b0e49a80f068d0ce58db3fb8dd9500c81, 이전 원격 CI PASS는 해당 SHA에만 적용. 기존 미커밋5제품파일과 다른 사용자/과거 변경 보존. P10-08 checkpoint는 RUN_FINISHED 이력, 실행 중 제품 검사/빌드/감시 없음 확인 후 중복 없이 재개. 임시 pause permission만 제거하고 P25-04 active.
+- UI-CANDIDATE-MEMBERSHIP-HANDLE-IDENTITY: 실기 실패1회 이력 유지. 새 실제 AccountStore·SongRecordApp 회귀에서 main.dart와 같은 매 호출 LocalRepository(store) getter로 수정 전 Account changed 예외 재현. 초기 시험의 Flutter fake-async/실제 DB 구독 영역이 섞여 대기한 것은 테스트 환경 준비 문제였고 해당 전용 테스트 프로세스만 종료·구독을 runAsync에서 시작하도록 조정했다. 검사 실행 cwd 오류도 제품 수정 실패와 구분.
+- 수정: LocalRepository.sharesActiveStoreWith에서 양쪽 활성 lease를 검증한 뒤 private AccountStore 동일성을 비교. facade 객체는 달라도 같은 활성 store면 통과하고, 같은 계정 재오픈 뒤 폐기된 이전 store는 거절. SongRecordApp의 조회/플리 선택 전후4곳은 이 단일 검증을 재사용하고 기존 사용자·auth phase·accountEpoch 검사는 보존. DB/서버/API 형식 변경 없음.
+- 실제 운영 연결 회귀는 같은 객체를 재사용하는 fake가 아니라 매번 새 facade를 사용한다. 같은 계정 조회 성공/두 탭 candidateActions 공유·계정 변경 중 조회 거절·비의도 큐 생성0, 폐기된 lease 거절을 확인. 관련21PASS. 별도 현재 모델 검토: 활성 저장소 범위와 세션 epoch를 함께 검증하고 원자 저장의 기존 lease 방어 유지, TJ증명/선택 request/scope/intent·등록/보기/플리 취소·개인 자료 보존을 실제 diff/결과와 대조. 하위 에이전트 없음.
+- HTML은 기준 확정본 그대로, 로컬 allowlist server 재개. 검색/차트 공통 Dialog·동일 표면색·두 카드(등록/보기, 플리 추가)와 현재 HTML 구성 재대조. 전체 분석/앱 검사→동일 서명 베타 빌드/업데이트→실기→이번 범위 커밋/필수 Flutter CI 진행 중.
+
+
+### 2026-10-25 P25-04 수정 베타 설치·공통 카드 실기와 최종 확인 대기
+- 최종 분석0, 연결 전체 앱 검사1273PASS; 최종 여백/반경 보완 후 관련·실제 저장소·작은화면·접근성38PASS. 최종 서명 APK ffd7f566a7934d5d1ffd1e0d5726e6b3d0d3cb13c06e21ddc00e2e7a661ac731 install-r Success, 설치 base.apk SHA256 일치·빌드 소스247개 현재 파일 일치. 중간 빌드 중 소스 변경 감지 산출물은 미확정으로 배제.
+- SM_A546S에서 검색/차트 TJ14260의 동일한 두 카드·조회 오류 해소, 플리 선택창 진입/취소·등록 화면 진입/저장 없이 뒤로, 검색 밝은 모드 가독성 확인. 기존 곡 보기와 밝은 차트 후보창은 미확인. chart-dialog-light로 명명된 중간 캡처는 실제 검색/키보드 화면으로 확인되어 해당 검증 근거에서 제외. 입력과 조작이 겹치는 상태에서 즉시 중단, 사용자의 검색문자 수정/삭제하지 않음.
+- 별도 현재 모델 코드 검토: 양쪽 탭은 동일 actions와 Dialog/표면색 한곳을 공유, membership Future는 한번 생성. 실제 AccountStore 양쪽 활성 lease·auth 사용자·epoch와 원래 request/scope/intent/TJ sourceToken 검증 보존. 플리 저장은 명시 목록 선택 뒤 기존 원자 경로만 사용하며 취소는 저장하지 않음. 기존곡 보기의 기존 상세 경로/녹음·플리 전용 후보문맥 유지. 하위 에이전트 없음; 모델 실측 미확인은 임의 표기하지 않음.
+- USER-199: 베타/키보드 닫기/약2분 조작 가능 회신 대기. 요청·직접할일·ntfy SERVER_ACCEPTED 기록, 실제 수신 미확인. 최종 실기 전 커밋/푸시 보류, 현재 HEAD0b95c79의 앞선 CI와 이번 미커밋 소스를 구분. 서버/DB/네트워크/업로드 잠금 변경 없음. 실행 중 앱 검사/빌드/CI감시는 없고 로컬 HTML 미리보기만 유지.
+
+
+### 2026-10-25 P25-04 최종 실기 통과
+- USER-199 ‘폰 검사해도 됨’ 회신 후 베타 전면을 확인. 키보드만 닫고 밝은 차트 TJ14260 공통 카드·텍스트/아이콘 가독성 확인, 원래 다크로 복귀. 기존 TJ59023 안아줘는 ‘내 곡에 있음/내 곡 보기’로 표시되고 실제 기존 상세의 티어A·원키-1·하트가 그대로 열리는 것을 확인. 저장 없이 뒤로 종료. 개인 곡/녹음 생성·삭제·플리 추가 확정 없음.
+- USER-199 직접 행동 완료, 최종 실기 PASS. installed ffd7f566/source247 동일성·분석0·전체1273PASS·최종 관련38PASS 근거 유지. 이번7제품/검사파일과 관련 기록만 커밋하고 정확SHA Flutter CI 확인 예정. 공통 색/구성은 하나의 Dialog와 Theme 표면색에서 관리한다.

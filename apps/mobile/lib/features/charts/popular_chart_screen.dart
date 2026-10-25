@@ -18,12 +18,14 @@ class PopularChartScreen extends StatefulWidget {
   const PopularChartScreen({
     required this.load,
     this.auth,
+    this.candidateActions,
     this.onSelected,
     this.intent = const SearchIntent(),
     this.searchLoad,
     this.prepareRegistration,
     super.key,
   });
+  final KaraokeCandidateActions? candidateActions;
   final SearchIntent intent;
   final KaraokeLoader? searchLoad;
   final SongRegistrationPreparer? prepareRegistration;
@@ -92,6 +94,9 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
     if (!current()) return;
     final action = await showKaraokeCandidateDialog(
       context: context,
+      actions: widget.onSelected == null && widget.intent.returnRoute == '/'
+          ? widget.candidateActions
+          : null,
       title: item.title,
       artist: item.artist,
       number: item.number,
@@ -100,7 +105,10 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
     );
     if (!mounted || !current() || action == null) return;
     KaraokeSelection? selection;
-    if (action == 'use-tj' && chart.scope.brand == KaraokeBrand.tj) {
+    if ((action == 'use-tj' ||
+            action == 'add-playlist' ||
+            action.startsWith('view-song:')) &&
+        chart.scope.brand == KaraokeBrand.tj) {
       selection = KaraokeSelection(
         KaraokeCandidate(
           brand: KaraokeBrand.tj,
@@ -142,6 +150,17 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
         !current() ||
         selection == null ||
         !identical(selection.intent, origin)) {
+      return;
+    }
+    if (widget.candidateActions != null && action == 'add-playlist') {
+      await widget.candidateActions!.addToPlaylist(
+        context,
+        selection.candidate,
+      );
+      return;
+    }
+    if (widget.candidateActions != null && action.startsWith('view-song:')) {
+      await widget.candidateActions!.openSong(context, action.substring(10));
       return;
     }
     final selected = widget.onSelected;

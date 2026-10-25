@@ -18,6 +18,7 @@ import 'package:song_record/features/charts/popular_chart_screen.dart';
 import 'package:song_record/features/health/health_screen.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 import 'package:song_record/features/recorder/recording_workspace.dart';
+import 'package:song_record/features/search/karaoke_candidate_dialog.dart';
 import 'package:song_record/features/search/karaoke_http.dart';
 import 'package:song_record/features/search/karaoke_search.dart';
 import 'package:song_record/features/search/karaoke_search_screen.dart';
@@ -465,6 +466,169 @@ class _SongRecordAppState extends State<SongRecordApp>
         },
       );
     }
+
+    LocalRepository candidateRepository() {
+      final repo = localRepository?.call();
+      if (repo == null ||
+          authController?.phase != AuthPhase.ready ||
+          authController?.session?.userId != repo.userId) {
+        throw StateError('Current account storage is unavailable');
+      }
+      return repo;
+    }
+
+    final candidateActions = localRepository == null
+        ? null
+        : KaraokeCandidateActions(
+            membership: (number) async {
+              final repo = candidateRepository(),
+                  epoch = authController!.accountEpoch;
+              final songs = await repo.watchActiveSongs().first;
+              String? songId;
+              for (final song in songs) {
+                if (song['source_type'] == 'TJ' &&
+                    song['tj_number'] == number) {
+                  songId = song['id'] as String;
+                }
+              }
+              final library = PlaylistLibrary(repo);
+              var count = 0;
+              for (final list in await library.load()) {
+                if ((await library.items(list['id'] as String))
+                    .any((item) => item['entry_key'] == 'tj:$number')) {
+                  count++;
+                }
+              }
+              if (!repo.sharesActiveStoreWith(candidateRepository()) ||
+                  authController!.accountEpoch != epoch) {
+                throw StateError('Account changed');
+              }
+              return CandidateMembership(songId: songId, playlistCount: count);
+            },
+            openSong: (context, songId) async {
+              try {
+                final repo = candidateRepository();
+                await Navigator.of(context).push<void>(
+                  MaterialPageRoute(
+                    builder: (_) => SongDetailScreen(
+                      auth: authController,
+                      trash: trashActions(),
+                      watch: () => repo
+                          .watchSongDetail(songId)
+                          .asyncMap(
+                            (bundle) => MySongDetail.verified(
+                              bundle,
+                              repo.recordingFileStatus,
+                            ),
+                          ),
+                      prepareEdit: (draft) => draft.prepare(repo),
+                      prepareRepresentative: (detail, recording) =>
+                          prepareRepresentative(repo, detail, recording),
+                    ),
+                  ),
+                );
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('곡 정보를 확인하지 못했어요. 다시 선택해 주세요.'),
+                    ),
+                  );
+                }
+              }
+            },
+            addToPlaylist: (context, candidate) async {
+              try {
+                final repo = candidateRepository(),
+                    epoch = authController!.accountEpoch;
+                final library = PlaylistLibrary(repo);
+                final lists = await library.load();
+                final existing = <String>{};
+                for (final list in lists) {
+                  if ((await library.items(list['id'] as String)).any(
+                    (item) => item['entry_key'] == 'tj:${candidate.number}',
+                  )) {
+                    existing.add(list['id'] as String);
+                  }
+                }
+                if (!context.mounted ||
+                    !repo.sharesActiveStoreWith(candidateRepository()) ||
+                    authController!.accountEpoch != epoch) {
+                  return;
+                }
+                final chosen = await showModalBottomSheet<String>(
+                  context: context,
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  showDragHandle: true,
+                  useSafeArea: true,
+                  builder: (sheet) => SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text(
+                            '플레이리스트에 추가',
+                            style: AppTypography.sheetTitle,
+                          ),
+                        ),
+                        if (lists.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Text('먼저 플레이리스트를 만들어 주세요.'),
+                          ),
+                        for (final list in lists)
+                          ListTile(
+                            title: Text(list['name'] as String),
+                            enabled: !existing.contains(list['id']),
+                            trailing: Text(
+                              existing.contains(list['id']) ? '추가됨' : '+',
+                            ),
+                            onTap: () =>
+                                Navigator.pop(sheet, list['id'] as String),
+                          ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(sheet),
+                          child: const Text('취소'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+                if (chosen == null ||
+                    !context.mounted ||
+                    !repo.sharesActiveStoreWith(candidateRepository()) ||
+                    authController!.accountEpoch != epoch) {
+                  return;
+                }
+                await library.addSelection(
+                  chosen,
+                  KaraokeSelection(
+                    candidate,
+                    SearchIntent(
+                      purpose: SearchPurpose.playlist,
+                      playlistId: chosen,
+                      returnRoute: '/playlists/$chosen',
+                    ),
+                  ),
+                );
+                if (context.mounted &&
+                    repo.sharesActiveStoreWith(candidateRepository()) &&
+                    authController!.accountEpoch == epoch) {
+                  unawaited(syncController?.wake() ?? Future<void>.value());
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('플레이리스트에 추가 요청을 저장했어요.')),
+                  );
+                }
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('목록을 확인하지 못했어요. 다시 선택해 주세요.')),
+                  );
+                }
+              }
+            },
+          );
 
     Widget buildSettings(BuildContext context) => SettingsScreen(
       deletionBuilder: authController?.phase == AuthPhase.ready
@@ -937,12 +1101,14 @@ class _SongRecordAppState extends State<SongRecordApp>
                 },
               ),
               chartBuilder: (context) => PopularChartScreen(
+                candidateActions: candidateActions,
                 auth: authController,
                 searchLoad: searchLoad,
                 prepareRegistration: prepareRegistration,
                 load: chartLoad,
               ),
               searchBuilder: (context) => KaraokeSearchScreen(
+                candidateActions: candidateActions,
                 auth: authController,
                 prepareRegistration: prepareRegistration,
                 load: searchLoad,

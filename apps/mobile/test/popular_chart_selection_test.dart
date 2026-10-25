@@ -98,8 +98,89 @@ void main() {
       },
     );
   }
+  for (final fromChart in [true, false]) {
+    for (final owned in [true, false]) {
+      testWidgets('HTML actions shared by chart=$fromChart owned=$owned', (
+        t,
+      ) async {
+        var opened = 0, added = 0, registered = 0;
+        final actions = KaraokeCandidateActions(
+          membership: (_) async => CandidateMembership(
+            songId: owned ? 'own-id' : null,
+            playlistCount: 2,
+          ),
+          openSong: (_, id) async {
+            expect(id, 'own-id');
+            opened++;
+          },
+          addToPlaylist: (_, candidate) async {
+            expect(candidate.number, '00123');
+            added++;
+          },
+        );
+        final candidate = KaraokeCandidate(
+          brand: KaraokeBrand.tj,
+          number: '00123',
+          title: '원본 (LIVE)',
+          artist: '원본 가수',
+          provider: 'MANANA',
+          sourceRef: 'manana:tj:00123',
+          sourceToken: 's1.original',
+          expiresAt: null,
+        );
+        await t.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: fromChart
+                  ? PopularChartScreen(
+                      load: (s) async => chart(s),
+                      candidateActions: actions,
+                      prepareRegistration: (_) {
+                        registered++;
+                        return () async {};
+                      },
+                    )
+                  : KaraokeSearchScreen(
+                      load: (_) async => [candidate],
+                      candidateActions: actions,
+                      initialQuery: const KaraokeQuery(
+                        KaraokeBrand.tj,
+                        KaraokeKind.title,
+                        '원본',
+                      ),
+                      prepareRegistration: (_) {
+                        registered++;
+                        return () async {};
+                      },
+                    ),
+            ),
+          ),
+        );
+        await t.pump(const Duration(milliseconds: 400));
+        await t.pumpAndSettle();
+        await open(t);
+        expect(find.text(owned ? '내 곡 보기' : '내 곡 등록'), findsOneWidget);
+        expect(find.text('플레이리스트에 추가'), findsOneWidget);
+        expect(find.textContaining('플리 2개에 담김'), findsOneWidget);
+        await t.tap(find.text('닫기'));
+        await t.pumpAndSettle();
+        expect(opened + added + registered, 0);
+        await open(t);
+        await t.tap(find.text('플레이리스트에 추가'));
+        await t.pumpAndSettle();
+        expect(added, 1);
+        expect(registered, 0);
+        if (owned) {
+          await open(t);
+          await t.tap(find.text('내 곡 보기'));
+          await t.pumpAndSettle();
+          expect(opened, 1);
+        }
+      });
+    }
+  }
   for (final brightness in Brightness.values) {
-    testWidgets('search candidate matches discovery surface in $brightness', (
+    testWidgets('shared candidate matches discovery surface in $brightness', (
       t,
     ) async {
       final theme = ThemeData(
@@ -118,7 +199,6 @@ void main() {
                   artist: '가수',
                   number: '123',
                   isTj: true,
-                  matchDiscoverySurface: true,
                 ),
                 child: const Text('열기'),
               ),
@@ -136,6 +216,10 @@ void main() {
   testWidgets('candidate dialog is centered and cancel creates no selection', (
     t,
   ) async {
+    t.view.physicalSize = const Size(390, 844);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.resetPhysicalSize);
+    addTearDown(t.view.resetDevicePixelRatio);
     var selections = 0;
     await t.pumpWidget(
       MaterialApp(
@@ -150,9 +234,14 @@ void main() {
     await t.pumpAndSettle();
     await open(t);
     expect(find.byType(Dialog), findsOneWidget);
-    final dialog = t.getRect(find.byType(Dialog));
+    final dialog = t.getRect(
+      find
+          .descendant(of: find.byType(Dialog), matching: find.byType(Material))
+          .first,
+    );
     final screen = t.getSize(find.byType(Scaffold).first);
     expect(dialog.center.dy, closeTo(screen.height / 2, 1));
+    expect(dialog.width, closeTo(screen.width - 40, 1));
     expect(find.widgetWithText(FilledButton, '곡 선택'), findsOneWidget);
     await t.tap(find.text('취소'));
     await t.pumpAndSettle();
