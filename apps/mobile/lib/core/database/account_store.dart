@@ -404,9 +404,7 @@ final class AccountStore {
       (await reservedTjSong(number))?['lifecycle_state'] as String?;
 
   Future<Map<String, dynamic>?> reservedTjSong(String number) => _run(() async {
-    if (!RegExp(r'^\d{5}$').hasMatch(number)) {
-      throw ArgumentError('Invalid TJ number');
-    }
+    final tjNumber = TjNumber(number).value;
     final rows = await _database
         .customSelect(
           "SELECT entity_id,server_payload,local_payload FROM metadata_copies WHERE user_id=? AND entity_type='SONG' AND tombstone=0",
@@ -418,7 +416,7 @@ final class AccountStore {
         final raw = row.readNullable<String>(key);
         if (raw == null) continue;
         final value = jsonDecode(raw) as Map;
-        if (value['tj_number'] == number &&
+        if (value['tj_number'] == tjNumber &&
             value['source_type'] == 'TJ' &&
             {'TRASHED', 'PURGE_PENDING'}.contains(value['lifecycle_state'])) {
           if (value['id'] != row.read<String>('entity_id') ||

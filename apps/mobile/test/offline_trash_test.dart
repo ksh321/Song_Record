@@ -11,6 +11,9 @@ import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/sync/mutation_request.dart';
 import 'package:song_record/core/sync/trash_receipt.dart';
+import 'package:song_record/features/search/karaoke_search.dart';
+import 'package:song_record/features/search/search_intent.dart';
+import 'package:song_record/features/search/song_registration.dart';
 
 import 'change_payload_validation_test.dart' show songChange, recordingWire;
 
@@ -43,7 +46,7 @@ void main() {
     await db.verifyReady();
     song = songChange(id(10), 1)
       ..['source_type'] = 'TJ'
-      ..['tj_number'] = '12345';
+      ..['tj_number'] = '8459';
     record = recordingWire('RecordingEdited')
       ..['id'] = id(20)
       ..['song_id'] = id(10)
@@ -70,6 +73,56 @@ void main() {
     expect(root.path, contains('song_record_offline_trash_'));
     await root.delete(recursive: true);
   });
+  test('four digit search registration saves title and retries without a duplicate', () async {
+    var next = 200;
+    final repository = LocalRepository(store, newId: () => id(next++));
+    final draft = SongRegistrationDraft(
+      intent: const SearchIntent(),
+      title: "Can't Take My Eyes Off You",
+      artist: 'Frankie Valli',
+      candidate: const KaraokeCandidate(
+        brand: KaraokeBrand.tj,
+        number: '8458',
+        title: "Can't Take My Eyes Off You",
+        artist: 'Frankie Valli',
+        provider: 'MANANA',
+        sourceRef: 'manana:tj:8458',
+        sourceToken: 'local-test-proof',
+        expiresAt: null,
+      ),
+    );
+    final edit = draft.prepare(repository);
+    await repository.ensureTjAvailable('8458');
+    await repository.save(edit);
+    await repository.save(edit);
+    final saved = await store.readMetadata(LocalEntity.song, edit.entityId);
+    expect(jsonDecode(saved!.localJson!)['tj_number'], '8458');
+    expect(jsonDecode(saved.localJson!)['title'], "Can't Take My Eyes Off You");
+    expect(await repository.pending(), hasLength(1));
+  });
+  test(
+    'TJ availability accepts contract lengths and rejects invalid identifiers',
+    () async {
+      final repository = LocalRepository(store);
+      for (final number in [
+        '1',
+        '8459',
+        '08459',
+        '12345',
+        '12345678901234567890',
+      ]) {
+        expect(await repository.reservedTjSong(number), isNull);
+        await repository.ensureTjAvailable(number);
+      }
+      for (final number in ['', '84A9', '-8459', '123456789012345678901']) {
+        await expectLater(
+          repository.ensureTjAvailable(number),
+          throwsFormatException,
+        );
+      }
+      expect(await repository.pending(), isEmpty);
+    },
+  );
   test('offline together hides immediately, survives restart and preserves original without a phone-clock expiry', () async {
     final save = LocalRepository(store, newId: () => id(100)).prepareTrash(
       entity: LocalEntity.song,
@@ -78,9 +131,13 @@ void main() {
       command: {'mode': 'SONG_AND_RECORDINGS', 'preview_version': 'a' * 64},
     );
     await save();
-    final offlineReserved = await LocalRepository(store)
-        .reservedTjSong('12345');
+    final offlineReserved = await LocalRepository(store).reservedTjSong('8459');
     expect(offlineReserved!['id'], id(10));
+    await expectLater(
+      LocalRepository(store).ensureTjAvailable('8459'),
+      throwsA(isA<TjTrashReservation>()),
+    );
+    expect(await LocalRepository(store).reservedTjSong('08459'), isNull);
     expect(offlineReserved['pending_changes'], isTrue);
     expect(offlineReserved['deleted_at'], isNull);
     deviceClock = deviceClock.add(const Duration(days: 40));
@@ -137,7 +194,7 @@ void main() {
       )['deleted_at'],
       date,
     );
-    final reserved = await LocalRepository(store).reservedTjSong('12345');
+    final reserved = await LocalRepository(store).reservedTjSong('8459');
     expect(reserved!['deleted_at'], date);
     expect(reserved['pending_changes'], isFalse);
     expect(
