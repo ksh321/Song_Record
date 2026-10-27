@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/domain/song_types.dart';
 import '../../core/files/recording_file_status.dart';
 import '../../core/widgets/app_icon.dart';
+import '../../core/widgets/hold_actions.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/recording_row.dart';
 import '../songs/my_song_detail.dart';
@@ -21,8 +22,10 @@ class RecordingList extends StatefulWidget {
     this.scope = 'test',
     this.metadataComplete = true,
     this.lastSync,
+    this.onDelete,
     super.key,
   });
+  final ValueChanged<Map<String, dynamic>>? onDelete;
   final String scope;
   final bool metadataComplete;
   final DateTime? lastSync;
@@ -34,6 +37,22 @@ class RecordingList extends StatefulWidget {
 
 class _RecordingListState extends State<RecordingList> {
   final pages = RecordingPages();
+  Future<void> hold(Map<String, dynamic> row) async {
+    final scope = widget.scope;
+    final action = await showHoldActions(
+      context,
+      title: row['title_snapshot'] as String? ?? '녹음',
+      deleteLabel: '녹음 삭제',
+    );
+    if (!mounted ||
+        scope != widget.scope ||
+        action != 'delete' ||
+        !widget.rows.any((v) => v['id'] == row['id'])) {
+      return;
+    }
+    widget.onDelete?.call(row);
+  }
+
   @override
   void didUpdateWidget(RecordingList oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -147,10 +166,13 @@ class _RecordingListState extends State<RecordingList> {
           Padding(
             key: ValueKey(row['id']),
             padding: const EdgeInsets.only(top: 8),
-            child: RecordingRow(
-              recording: recordingView(row),
-              onTap: () => widget.onOpen(row),
-              onPlay: () => play(row),
+            child: GestureDetector(
+              onLongPress: widget.onDelete == null ? null : () => hold(row),
+              child: RecordingRow(
+                recording: recordingView(row),
+                onTap: () => widget.onOpen(row),
+                onPlay: () => play(row),
+              ),
             ),
           ),
         if (pages.cursor != null)

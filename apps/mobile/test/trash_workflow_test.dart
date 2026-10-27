@@ -7,6 +7,8 @@ import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_store.dart';
 import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/sync/local_repository.dart';
+import 'package:song_record/features/songs/my_song.dart';
+import 'package:song_record/features/songs/my_songs_screen.dart';
 import 'package:song_record/features/trash/trash_screens.dart';
 import 'package:song_record/features/trash/trash_workflow.dart';
 
@@ -61,6 +63,30 @@ void main() {
     await fixture.synchronize();
   }
 
+  testWidgets('my song long press opens deletion menu without a mutation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MySongsScreen(
+            watch: () => Stream.value([MySong(fixture.songs[trashId(2010)]!)]),
+            onFindSong: () {},
+            trash: flow,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text('녹음 유지 검사 곡'));
+    await tester.pumpAndSettle();
+    expect(find.text('곡 삭제'), findsOneWidget);
+    await tester.tap(find.text('취소'));
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      expect(await fixture.repository.pendingWork(), isEmpty);
+    });
+  });
   test('received equal local/server copy queues frozen song-only request preserving record', () async {
     await delete();
     expect(fixture.records[trashId(2020)]!['lifecycle_state'], 'ACTIVE');
@@ -225,9 +251,17 @@ void main() {
         await tester.pumpWidget(MaterialApp(home: TrashScreen(actions: flow)));
         await Future<void>.delayed(const Duration(milliseconds: 500));
         await tester.pumpAndSettle();
+        expect(find.text('함께 삭제 검사 곡'), findsOneWidget);
+        expect(find.text('보존 녹음 2021'), findsOneWidget);
+        expect(find.textContaining('합성 가수'), findsWidgets);
         await tester.tap(find.text('복원'));
         await tester.pumpAndSettle();
-        await tester.tap(find.textContaining('보존 녹음 2021'));
+        await tester.tap(
+          find.descendant(
+            of: find.byType(CheckboxListTile),
+            matching: find.textContaining('보존 녹음 2021'),
+          ),
+        );
         await tester.pump();
         await tester.ensureVisible(find.text('선택 항목 복원'));
         await tester.tap(find.text('선택 항목 복원'));
@@ -281,7 +315,12 @@ void main() {
           find.widgetWithText(CheckboxListTile, '곡 · 함께 삭제 검사 곡'),
           findsNothing,
         );
-        await tester.tap(find.textContaining('보존 녹음 2021'));
+        await tester.tap(
+          find.descendant(
+            of: find.byType(CheckboxListTile),
+            matching: find.textContaining('보존 녹음 2021'),
+          ),
+        );
         await tester.pump();
         await tester.ensureVisible(find.text('선택 항목 복원'));
         await tester.tap(find.text('선택 항목 복원'));

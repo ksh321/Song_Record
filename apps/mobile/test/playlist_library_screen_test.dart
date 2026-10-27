@@ -102,6 +102,23 @@ void main() {
       });
       await settleReads();
       expect(find.text('플레이리스트'), findsOneWidget);
+      await tester.longPress(find.text('시험 목록'));
+      await tester.pumpAndSettle();
+      expect(find.text('플레이리스트 삭제'), findsOneWidget);
+      expect(
+        find.descendant(of: find.byType(Dialog), matching: find.text('순서 변경')),
+        findsNothing,
+      ); // One playlist still has delete.
+      await tester.tap(find.text('플레이리스트 삭제'));
+      await tester.pumpAndSettle();
+      expect(find.text('플레이리스트를 영구 삭제할까요?'), findsOneWidget);
+      await tester.tap(find.text('취소'));
+      await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        expect((await library.load()).single['name'], '시험 목록');
+        expect(await repo.pendingWork(), isEmpty);
+      });
+
       await chooseIcon('별');
       await tester.runAsync(sync);
       await settleReads();

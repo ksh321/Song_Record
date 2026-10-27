@@ -332,7 +332,11 @@ class TrashWorkflow implements TrashActions {
         requireCurrent();
         if (copy?.serverJson != null) {
           final row = jsonDecode(copy!.serverJson!) as Map;
-          item['title'] = row['title'] ?? row['title_snapshot'];
+          item['title'] =
+              row['title'] ?? row['title_snapshot'] ?? item['title'];
+          item['artist'] =
+              row['artist'] ?? row['artist_snapshot'] ?? item['artist'];
+          item['recorded_at'] = row['recorded_at'] ?? item['recorded_at'];
           item['state'] = item['lifecycle_state'] ?? row['lifecycle_state'];
         }
       }

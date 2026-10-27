@@ -1490,3 +1490,12 @@ USER173 질문의 TJ·금영 일간/주간/월간 6개 곡 목록·출처·수�
 
 - 최종 CI: 18a1f7128e825789598f8c457df079aaac2a47d1 / BaseCommit29652a54914b3e443efa76934d6d986b2b9dceb0 / run40484087151. Scope changed files 및 Flutter analyze/test/Android build success 직접 조회. 서버/MySQL skipped는 영향 없음이며 통과 실적 아님. 오프라인 재실행·기존 대기0 실기와 설치본/소스 일치 완료.
 - 완료 알림 ntfy SERVER_ACCEPTED. 사용자 폰 수신은 미확인. 추가 직접 행동 없음.
+
+### 2026-10-27 P25-04 목록 길게 누르기·휴지통 표시 보완 진행
+- 사용자 4개 UI 변경과 HTML/베타 일치 요청. 기존 완료 이력 유지하고 해당 후속만 active. 현재 main5918457, 로컬 변경 보존. 새 원격 조회는 네트워크 제한 실패로 아직 미확인. 이전 실행기 P10-08 RUN_FINISHED.
+- 길게 누르기 공통 메뉴→기존 순서/삭제 확인 연결, 중립 대화창 배경, 휴지통 곡명/가수/녹음시각. 서버·DB 계약 변경 없음. 개인 데이터 삭제 시험 없음. 관련21PASS 후 최종 전체검사·서명 빌드/실기 진행.
+- 사용자 폰 검사 ㄱ 회신, USB/베타 전면 확인. HTML HTTP200, CUA 및 Windows 스킬 런타임이 kernel assets 경로 오류로 브라우저 직접 대조 미실행. 소스 대조와 베타 실기 준비, 시안 서버63142 유지.
+
+- 최종 실기: APK18bd143a0adb8cd8a746ab5dc9475db4cce9db1e5e77f9fd6e87d4a88b807588 install-r Success/설치 base.apk 해시 일치/소스251파일 일치. SM_A546S에서 내 곡/플리/플리 항목 메뉴, 순서창 long-hold→이동→취소 원래 순서 유지, 새 플리 light/dark·취소, 휴지통 실제 제목·가수·녹음시각 표시 확인. 밝은 모드 확인 후 원래 dark 복구, 내 곡으로 반환. 실제 저장/삭제/복원/녹음 생성 없음.
+- 저장 녹음0으로 녹음 행 길게 누르기는 실기 대상 없음; 실제 RecordingList widget의 longpress/cancel/scope change 및 HTML sample로 검증. 최초 phone swipe가 상세 탭으로 들어간 입력은 메뉴 통과로 세지 않았고 재확인에서 메뉴 표시, 순서 드래그는 DOWN 유지 후 MOVE/UP으로 실제 확인.
+- 최종 영향 검사: 새 플리2·목록/테마 관련7PASS, 별도 최종 playlist display1PASS, trash/my-song16PASS, RecordingList 회귀 PASS. 최종 분석0, 앞선 전체1288PASS 이후 추가는 UI 화면/메뉴 스타일이며 해당 영향 검사 완료. 테스트 locator 보정으로 배경의 같은 글자와 열린 메뉴를 분리.

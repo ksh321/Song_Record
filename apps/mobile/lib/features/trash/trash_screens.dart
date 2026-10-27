@@ -286,7 +286,7 @@ class _TrashScreenState extends State<TrashScreen> {
                 for (final item in choices)
                   CheckboxListTile(
                     title: Text(
-                      '${item['entity_type'] == 'SONG' ? '곡' : '녹음'} · ${item['title'] ?? item['id']}',
+                      '${item['entity_type'] == 'SONG' ? '곡' : '녹음'} · ${item['title'] ?? '제목 정보 없음'}',
                     ),
                     value: selected.contains(item['id']),
                     onChanged: (v) => change(() {
@@ -402,6 +402,27 @@ class _TrashScreenState extends State<TrashScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      for (final item in batch.items)
+                        if (item['entity_type'] == 'SONG' ||
+                            item['entity_type'] == 'RECORDING')
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              item['entity_type'] == 'SONG'
+                                  ? Icons.music_note_outlined
+                                  : Icons.mic_none,
+                            ),
+                            title: Text(item['title'] as String? ?? '제목 정보 없음'),
+                            subtitle: Text(
+                              [
+                                if (item['artist'] is String)
+                                  item['artist'] as String,
+                                if (item['entity_type'] == 'RECORDING') '녹음',
+                                if (item['recorded_at'] != null)
+                                  '${item['recorded_at']}',
+                              ].join(' · '),
+                            ),
+                          ),
                       Text(
                         batch.mode == 'SONG_ONLY'
                             ? '곡만 삭제 · 녹음 유지'

@@ -50,6 +50,10 @@ abstract final class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: background,
       canvasColor: surface,
+      dialogTheme: base.dialogTheme.copyWith(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+      ),
       dividerColor: line,
       disabledColor: muted,
       textTheme: base.textTheme.apply(

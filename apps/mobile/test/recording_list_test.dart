@@ -33,6 +33,44 @@ Map<String, dynamic> row(
 };
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  testWidgets(
+    'hold recording offers deletion, cancel and scope change do not delete',
+    (tester) async {
+      var deleted = 0;
+      final rows = [
+        recordingViewFixture(row('a', '시험 녹음', '2026-10-10T04:00:00Z', 'S')),
+      ];
+      Widget page(String scope) => MaterialApp(
+        home: Scaffold(
+          body: RecordingList(
+            scope: scope,
+            rows: rows,
+            onOpen: (_) {},
+            onDelete: (_) => deleted++,
+          ),
+        ),
+      );
+      await tester.pumpWidget(page('a'));
+      await tester.longPress(find.text('시험 녹음'));
+      await tester.pumpAndSettle();
+      expect(find.text('녹음 삭제'), findsOneWidget);
+      expect(deleted, 0);
+      await tester.tap(find.text('취소'));
+      await tester.pumpAndSettle();
+      expect(deleted, 0);
+      await tester.longPress(find.text('시험 녹음'));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(page('b'));
+      await tester.tap(find.text('녹음 삭제'));
+      await tester.pumpAndSettle();
+      expect(deleted, 0);
+      await tester.longPress(find.text('시험 녹음'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('녹음 삭제'));
+      await tester.pumpAndSettle();
+      expect(deleted, 1);
+    },
+  );
   test('four sorts preserve fileless rows, tier ties use actual instant and deterministic id', () {
     final rows = [
       row('b', '밤', '2026-10-10T12:00:00+09:00', 'S'),

@@ -349,7 +349,7 @@
   function playlistView(list){
     const items=list.items.filter(i=>!i.hiddenBy);
     return `<div class="v3-list-tools"><span>${items.length}곡</span>${button('곡 추가','add-source',`data-list="${e(list.id)}"`,'command primary')}<button type="button" class="v3-more" data-ui="list-menu" data-list="${e(list.id)}" aria-label="플레이리스트 메뉴">⋮</button></div>`+
-      note('곡을 길게 눌러 원하는 위치로 옮기세요.')+`<div class="v3-sortable" data-sort-list="${e(list.id)}">`+items.map(item=>{
+      note('곡을 길게 눌러 순서 변경이나 목록에서 제거를 선택하세요.')+`<div class="v3-sortable" data-sort-list="${e(list.id)}">`+items.map(item=>{
         const own=F.songs.get(item.songId),c=item.candidate||F.catalog.get('TJ:'+item.key.slice(3));
         const route=own?.active?`data-to="${e(F.songRoute(own.id))}"`:`data-v3="list-item" data-list="${e(list.id)}" data-candidate="${e(c.brand+':'+c.number)}"`;
         return dragRow('song',item.id,titleOf(item),`<button type="button" class="v3-list-song" ${route}>${own?.active?`<span class="tier">${e(own.tier)}</span>`:""}<span class="compact-copy"><strong>${e(own?.active?own.title:c.title)}</strong><small>${e(own?.active?own.artist+' · '+own.version:c.artist+' · '+c.brand+' '+c.number)}</small></span>${own?.active?`<span class="key">${e(own.key)}</span>`:icon('chevron',16)}</button>`);
@@ -360,7 +360,7 @@
     return `<div class="v4-playlist-summary"><span>나만의 선곡</span><small>${lists.length}개 목록 · ${count}곡</small></div><div class="v3-sortable v4-playlist-library" data-sort-list="all">`+lists.map((p,index)=>{
       const items=p.items.filter(i=>!i.hiddenBy),titles=items.slice(0,2).map(titleOf).join(' · ');
       return dragRow('list',p.id,p.title,`<button type="button" class="v3-list-song v4-playlist-card" data-to="${e(p.id)}"><span class="v4-playlist-cover" aria-hidden="true">${playlistGlyph(p.icon)}</span><span class="compact-copy"><strong>${e(p.title)}</strong><small>${e(titles||'첫 곡을 담아보세요')}</small></span><span class="v4-playlist-count">${items.length}<small>곡</small></span>${icon('chevron',14)}</button>`);
-    }).join('')+`</div><p class="v3-sort-status" role="status"></p><button type="button" class="command primary v4-playlist-create" data-to="playlist-create">${icon('plus',17)} 새 플레이리스트</button>`+note('목록을 길게 눌러 순서를 바꿀 수 있어요.');
+    }).join('')+`</div><p class="v3-sort-status" role="status"></p><button type="button" class="command primary v4-playlist-create" data-to="playlist-create">${icon('plus',17)} 새 플레이리스트</button>`+note('목록을 길게 눌러 순서 변경이나 삭제를 선택하세요.');
   }
   function recordCard(r){
     const t=String(r.at).padStart(12,'0'),date=`${Number(t.slice(4,6))}월 ${Number(t.slice(6,8))}일 ${Number(t.slice(8,10))<12?'오전':'오후'} ${Number(t.slice(8,10))%12||12}:${t.slice(10,12)}`;
@@ -640,7 +640,7 @@
   });
   const previousAfter=window.EDIT_UI.afterRender;
   window.EDIT_UI.afterRender=function(...args){previousAfter(...args);const id=current();
-    const tips={charts:['수집 시각과 기술 설명을 화면에서 없앴어요.','플리 추가 중에는 선택한 목록에 담는 동작만 보여요.','내 곡 등록 없이도 TJ 곡을 플리에 먼저 담을 수 있어요.'],playlists:['플리에만 담긴 곡을 나중에 내 곡으로 등록할 수 있어요.','곡과 목록을 길게 눌러 드래그해 순서를 바꿔 보세요.','키보드: 행에 초점 → 스페이스 → ↑/↓ → Enter, Esc 취소.'],recordings:['날짜 아래에 티어·곡명·가수·키를 한 줄로 배치했어요.','목록에서는 서버 보관 표시를 생략하고 재생 버튼에 선택한 강조색을 써요.','녹음을 누르면 재생 화면, 우측 ⋮에서 기존 상세로 이동해요.']};
+    const tips={charts:['수집 시각과 기술 설명을 화면에서 없앴어요.','플리 추가 중에는 선택한 목록에 담는 동작만 보여요.','내 곡 등록 없이도 TJ 곡을 플리에 먼저 담을 수 있어요.'],playlists:['플리에만 담긴 곡을 나중에 내 곡으로 등록할 수 있어요.','곡과 목록을 길게 눌러 순서 변경이나 삭제를 선택하세요.','키보드: 행에 초점 → 스페이스 → ↑/↓ → Enter, Esc 취소.'],recordings:['날짜 아래에 티어·곡명·가수·키를 한 줄로 배치했어요.','목록에서는 서버 보관 표시를 생략하고 재생 버튼에 선택한 강조색을 써요.','녹음을 누르면 재생 화면, 우측 ⋮에서 기존 상세로 이동해요.']};
     const section=id==='charts-ky'?'charts':F.listScreens.has(id)?'playlists':id;
     if(tips[section]){const node=document.querySelector('.review-changes');if(node)node.innerHTML=tips[section].map(t=>`<li>${e(t)}</li>`).join('');}
     if(id==='v2-playback'){const node=document.querySelector('.inspector .disclaimer');if(node)node.innerHTML='<strong>음원 없는 재생 시안</strong><br>실제 음원 파형은 베타 반영 때 연결해요. 현재 파형은 배치 확인용이에요. 버튼과 시간 이동만 시연해요.';}
@@ -748,3 +748,46 @@ window.Prototype.render();
   });
 })();
 window.Prototype.render();
+
+
+/* Shared hold menu: actions never delete without a second confirmation. */
+(function(){
+ const F=window.FLOW,P=window.Prototype,e=window.RENDER.esc;
+ let press=null,blockClick=false;
+ const phone=()=>document.querySelector('.device-holder .phone');
+ function close(){document.querySelector('.hold-overlay')?.remove();}
+ function dialog(title,choices){
+  close();const layer=document.createElement('div');layer.className='control-overlay hold-overlay';
+  layer.innerHTML=`<section class="control-sheet" role="dialog" aria-modal="true" aria-label="${e(title)}"><h3>${e(title)}</h3><div class="hold-options"></div><button type="button" class="command secondary hold-cancel">취소</button></section>`;
+  phone().append(layer);const options=layer.querySelector('.hold-options');
+  choices.forEach(([label,action])=>{const b=document.createElement('button');b.type='button';b.className='command secondary';b.textContent=label;b.onclick=()=>{close();action();};options.append(b);});
+  layer.querySelector('.hold-cancel').onclick=close;layer.addEventListener('click',()=>{blockClick=false;});layer.addEventListener('click',ev=>{if(ev.target===layer)close();});layer.querySelector('button')?.focus();
+ }
+
+ function order(listId){
+  const all=listId==='all',list=F.playlists.get(listId);
+  const values=all?[...F.playlists.values()]:list.items.filter(v=>!v.hiddenBy);
+  const label=v=>all?v.title:(F.songs.get(v.songId)?.title||v.candidate?.title||'곡');
+  function draw(){dialog(all?'플레이리스트 순서':'목록 순서 변경',[]);document.querySelector('.hold-overlay').classList.add('hold-order');const area=document.querySelector('.hold-options');
+   values.forEach((v,i)=>{const row=document.createElement('div');row.className='hold-order-row';const text=document.createElement('span');text.textContent=(i+1)+'. '+label(v);row.append(text);
+    for(const [symbol,d] of [['↑',-1],['↓',1]]){const b=document.createElement('button');b.textContent=symbol;b.type='button';b.setAttribute('aria-label',label(v)+(d<0?' 위로':' 아래로'));b.disabled=i+d<0||i+d>=values.length;b.onclick=()=>{[values[i],values[i+d]]=[values[i+d],values[i]];draw();};row.append(b);}area.append(row);
+   });const save=document.createElement('button');save.type='button';save.className='command primary';save.textContent='순서 저장';save.onclick=()=>{if(all){F.playlists.clear();values.forEach(v=>F.playlists.set(v.id,v));}else list.items=[...values,...list.items.filter(v=>v.hiddenBy)];close();P.render();};area.append(save);
+  }draw();
+ }
+ function menu(target){
+  const drag=target.closest('.v3-draggable');
+  if(drag){const id=drag.dataset.dragId,listId=drag.parentElement.dataset.sortList;
+   if(listId==='all'){const list=F.playlists.get(id);if(!list)return;dialog(list.title,[['순서 변경',()=>order('all')],['플레이리스트 삭제',()=>dialog('플레이리스트를 영구 삭제할까요?',[['이 목록만 삭제 · 내 곡과 녹음은 유지',()=>{F.playlists.delete(id);P.render();}]])]]);}
+   else{const list=F.playlists.get(listId),item=list?.items.find(v=>v.id===id);if(!item)return;dialog(F.songs.get(item.songId)?.title||item.candidate?.title||'곡',[['순서 변경',()=>order(listId)],['목록에서 제거',()=>dialog('이 목록에서만 제거할까요?',[['제거 · 내 곡과 녹음은 유지',()=>{list.items=list.items.filter(v=>v.id!==id);P.render();}]])]]);}return;
+  }
+  const recordId=target.closest('[data-record]')?.dataset.record;
+  if(recordId){const r=F.recordings.get(recordId);if(!r)return;dialog(r.title,[['녹음 삭제',()=>dialog('녹음을 휴지통으로 옮길까요?',[['녹음 삭제',()=>{r.active=false;const id='record-batch-'+Date.now();r.trashBatch=id;window.X.batches.set(id,{id,recordOnly:true,records:[{id:r.id}],items:[],deletedAt:Date.now()});P.render();}]])]]);return;}
+  const route=target.closest('[data-to]')?.dataset.to,song=F.songFor(route);if(song?.active)dialog(song.title,[['곡 삭제',()=>dialog('삭제 범위 선택',[['곡만 삭제 · 녹음 유지',()=>{F.deleteSong(song.id,true);P.render();}],['곡과 녹음 함께 삭제',()=>{F.deleteSong(song.id,false);P.render();}]])]]);
+ }
+ function eligible(target){return target.closest('.v3-draggable,.v3-record-copy,.compact-row[data-to^="live-song-"]');}
+ window.addEventListener('pointerdown',ev=>{blockClick=false;const target=eligible(ev.target);if(!target||ev.button!==0||ev.target.closest('.hold-overlay'))return;ev.stopImmediatePropagation();press={target,x:ev.clientX,y:ev.clientY};press.timer=setTimeout(()=>{if(!press)return;blockClick=true;menu(target);press=null;},500);},true);
+ window.addEventListener('pointermove',ev=>{if(press&&Math.hypot(ev.clientX-press.x,ev.clientY-press.y)>8){clearTimeout(press.timer);press=null;}},true);
+ for(const type of ['pointerup','pointercancel'])window.addEventListener(type,()=>{if(press)clearTimeout(press.timer);press=null;},true);
+ window.addEventListener('click',ev=>{if(blockClick&&!ev.target.closest('.hold-overlay')){ev.preventDefault();ev.stopImmediatePropagation();blockClick=false;}},true);
+ window.addEventListener('keydown',ev=>{if(ev.key==='Escape')close();if(ev.key==='ContextMenu'||(ev.shiftKey&&ev.key==='F10')){const t=eligible(ev.target);if(t){ev.preventDefault();menu(t);}}});
+})();

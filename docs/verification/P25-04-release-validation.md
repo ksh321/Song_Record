@@ -469,3 +469,17 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 
 - 최종 CI: 18a1f7128e825789598f8c457df079aaac2a47d1 / BaseCommit29652a54914b3e443efa76934d6d986b2b9dceb0 / run40484087151. Scope changed files 및 Flutter analyze/test/Android build success 직접 조회. 서버/MySQL skipped는 영향 없음이며 통과 실적 아님. 오프라인 재실행·기존 대기0 실기와 설치본/소스 일치 완료.
 - 완료 알림 ntfy SERVER_ACCEPTED. 사용자 폰 수신은 미확인. 추가 직접 행동 없음.
+
+### 2026-10-27 P25-04 목록 길게 누르기·휴지통 식별·새 플리 화면
+- 사용자 요청: 내 곡/녹음/플리/플리 곡의 길게 누르기 삭제 진입, 플리/항목 순서 변경, 새 플리 중립 배경, 휴지통 대상 식별. HTML을 기준으로 베타 UI 일치 추가 요청.
+- 구현: 공통 hold_actions 메뉴에서 기존 확인 경로로 연결. 플리 항목은 목록에서만 제거하며 My Songs/녹음 삭제와 분리. 계정/저장소·화면 변경 후 오래된 메뉴 선택 거절. 기존 영구 삭제 안내·휴지통·오프라인 큐 계약 유지. 서버/API/스키마 변경 없음.
+- 휴지통: 기존 계정별 메타데이터 사본에서 제목/가수/녹음 시각을 읽어 목록과 선택창에 표시. 메타데이터 없는 항목은 UUID 대신 제목 정보 없음으로 구분. 다른 계정 자료를 조회하지 않음.
+- 시안 대조 중 추가 차이: 앱의 작은 새 플리 팝업/저장 → HTML의 별도 화면/상단 취소·만들기/이름/3열 아이콘. PlaylistCreateScreen으로 맞춤. 기본 음표·아이콘 선택·취소 보존. 공통 Dialog 중립 surface/tint 투명, 동일 중앙 길게 누르기 메뉴.
+- 검사: 최초 연결 전체 앱1288PASS, 추가 새 플리 관련7PASS. 최종 분석0. HTML node syntax + 별도 임시 Edge headless의 longpress/cancel/reorder/record-trash/restore PASS, pageerror0. CUA/Windows node runtime kernel assets 경로 오류는 제품 실패와 구분하고 임시 로컬 브라우저로 검증.
+- 검사 보정: 뒤 화면과 메뉴의 같은 순서 변경 문자열을 함께 찾던 테스트는 Dialog 내부로 제한. 휴지통 제목이 목록에도 생겨 복원 선택은 CheckboxListTile 내부로 제한. 기능 검사를 삭제하거나 약화하지 않음. 한 차례 cwd 오류는 제품 수정 실패와 구분.
+- 별도 현재 모델 검토: 실제 diff/기존 삭제 계약/취소 큐 비생성/계정 범위 검사/플리 단독 곡/neutral theme와 원본 화면 대조. 하위 에이전트 없음. 사용자 데이터 삭제 시험 없음.
+- 현재 대기: 최종 서명 설치본·폰 화면 확인·범위 커밋/필수 CI. 이전 설치본이나 검사 성공을 새 설치본 완료로 간주하지 않음.
+
+- 최종 실기: APK18bd143a0adb8cd8a746ab5dc9475db4cce9db1e5e77f9fd6e87d4a88b807588 install-r Success/설치 base.apk 해시 일치/소스251파일 일치. SM_A546S에서 내 곡/플리/플리 항목 메뉴, 순서창 long-hold→이동→취소 원래 순서 유지, 새 플리 light/dark·취소, 휴지통 실제 제목·가수·녹음시각 표시 확인. 밝은 모드 확인 후 원래 dark 복구, 내 곡으로 반환. 실제 저장/삭제/복원/녹음 생성 없음.
+- 저장 녹음0으로 녹음 행 길게 누르기는 실기 대상 없음; 실제 RecordingList widget의 longpress/cancel/scope change 및 HTML sample로 검증. 최초 phone swipe가 상세 탭으로 들어간 입력은 메뉴 통과로 세지 않았고 재확인에서 메뉴 표시, 순서 드래그는 DOWN 유지 후 MOVE/UP으로 실제 확인.
+- 최종 영향 검사: 새 플리2·목록/테마 관련7PASS, 별도 최종 playlist display1PASS, trash/my-song16PASS, RecordingList 회귀 PASS. 최종 분석0, 앞선 전체1288PASS 이후 추가는 UI 화면/메뉴 스타일이며 해당 영향 검사 완료. 테스트 locator 보정으로 배경의 같은 글자와 열린 메뉴를 분리.

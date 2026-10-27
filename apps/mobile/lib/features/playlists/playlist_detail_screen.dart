@@ -7,6 +7,7 @@ import 'package:song_record/core/widgets/app_page_bar.dart';
 import '../../core/sync/local_repository.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/feature_icon.dart';
+import '../../core/widgets/hold_actions.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/song_row.dart';
 import '../../core/widgets/ui_controls.dart';
@@ -419,9 +420,9 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                   key: ValueKey(item['id']),
                   padding: const EdgeInsets.only(top: 8),
                   child: GestureDetector(
-                    onLongPress: busy || parent == null || items.length < 2
+                    onLongPress: busy || parent == null
                         ? null
-                        : reorder,
+                        : () => hold(item),
                     child: row,
                   ),
                 ),
@@ -478,6 +479,33 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  Future<void> hold(Map<String, dynamic> item) async {
+    final library = widget.library;
+    final id = widget.id;
+    final action = await showHoldActions(
+      context,
+      title:
+          songs.where((v) => v['id'] == item['song_id']).firstOrNull?['title']
+              as String? ??
+          (item['candidate_snapshot'] is Map
+              ? item['candidate_snapshot']['title'] as String?
+              : null) ??
+          '곡',
+      deleteLabel: '목록에서 제거',
+      reorder: items.length > 1,
+    );
+    if (!mounted ||
+        !identical(library, widget.library) ||
+        id != widget.id ||
+        busy ||
+        parent == null ||
+        !items.any((v) => v['id'] == item['id'])) {
+      return;
+    }
+    if (action == 'reorder') await reorder();
+    if (action == 'delete') await removeItem(item);
   }
 
   Future<void> reorder() async {

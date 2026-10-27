@@ -194,3 +194,15 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 
 .phone .chart-to-top{position:absolute;right:18px;bottom:88px;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;background:var(--accent);color:var(--on-accent,#fff);font-size:22px;cursor:pointer;box-shadow:0 2px 8px #0003}
 .phone .chart-to-top[hidden]{display:none}
+
+/* All action dialogs use the same neutral theme surface. */
+.phone .hold-overlay {align-items:center;padding:20px}
+.phone .hold-overlay .control-sheet {background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:18px;max-height:80%;overflow:auto;width:100%}
+.phone .hold-order-row {display:flex;align-items:center;gap:12px;padding:8px 0}
+.phone .hold-order-row span {flex:1}
+.phone .hold-order-row button {background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:8px;min-width:40px;min-height:40px}
+
+.phone .hold-options > .command.secondary {background:transparent;border:0;text-align:left;border-radius:0;justify-content:flex-start;min-height:48px;margin:0}
+
+.phone .hold-overlay.hold-order{align-items:flex-end;padding:0}
+.phone .hold-order .control-sheet{height:80%;max-height:80%;border-radius:18px 18px 0 0}

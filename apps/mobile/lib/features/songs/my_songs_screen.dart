@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/content_state.dart';
+import '../../core/widgets/hold_actions.dart';
 import '../../core/widgets/song_row.dart';
 import '../../core/widgets/sort_sheet.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../../routing/tab_navigation.dart';
 import '../auth/auth_session.dart';
+import '../trash/trash_screens.dart';
 import '../trash/trash_workflow.dart';
 import 'my_song.dart';
 import 'my_song_pages.dart';
@@ -153,27 +155,58 @@ class _MySongsScreenState extends State<MySongsScreen> {
     super.dispose();
   }
 
+  Future<void> holdSong(MySong song) async {
+    final request = generation;
+    final actions = widget.trash;
+    if (actions == null) return;
+    final action = await showHoldActions(
+      context,
+      title: song.view.title,
+      deleteLabel: '곡 삭제',
+    );
+    if (!mounted ||
+        generation != request ||
+        tag() != scope ||
+        !identical(actions, widget.trash) ||
+        action != 'delete') {
+      return;
+    }
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => DeleteScreen(
+          actions: actions,
+          id: song.view.id.value,
+          title: song.view.title,
+          auth: widget.auth,
+        ),
+      ),
+    );
+  }
+
   Widget songRow(MySong song) => Padding(
     padding: EdgeInsets.zero,
-    child: SongRow.registered(
-      song: song.view,
-      flat: true,
-      onTap: widget.watchDetail == null
-          ? null
-          : () {
-              FocusManager.instance.primaryFocus?.unfocus();
-              Navigator.of(context).push<void>(
-                MaterialPageRoute(
-                  builder: (_) => SongDetailScreen(
-                    trash: widget.trash,
-                    watch: widget.watchDetail!(song.view.id.value),
-                    auth: widget.auth,
-                    prepareEdit: widget.prepareEdit,
-                    prepareRepresentative: widget.prepareRepresentative,
+    child: GestureDetector(
+      onLongPress: widget.trash == null ? null : () => holdSong(song),
+      child: SongRow.registered(
+        song: song.view,
+        flat: true,
+        onTap: widget.watchDetail == null
+            ? null
+            : () {
+                FocusManager.instance.primaryFocus?.unfocus();
+                Navigator.of(context).push<void>(
+                  MaterialPageRoute(
+                    builder: (_) => SongDetailScreen(
+                      trash: widget.trash,
+                      watch: widget.watchDetail!(song.view.id.value),
+                      auth: widget.auth,
+                      prepareEdit: widget.prepareEdit,
+                      prepareRepresentative: widget.prepareRepresentative,
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+      ),
     ),
   );
 

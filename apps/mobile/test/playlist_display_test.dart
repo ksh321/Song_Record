@@ -77,6 +77,18 @@ void main() {
         expect(find.text('내 곡 미등록'), findsNothing);
         expect(find.text('미정'), findsNWidgets(2)); // registered tier + key only
         expect(find.textContaining('TJ 00555'), findsOneWidget);
+        await tester.longPress(find.text('TJ 검사 곡'));
+        await tester.pumpAndSettle();
+        expect(
+          find.descendant(
+            of: find.byType(Dialog),
+            matching: find.text('순서 변경'),
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('목록에서 제거'), findsOneWidget);
+        await tester.tap(find.text('취소'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('TJ 검사 곡'));
         expect(openedSong, playlistFixtureId(1910));
         await tester.runAsync(() => tester.tap(find.text('미등록 TJ 후보')));

@@ -7,6 +7,7 @@ import 'package:song_record/core/widgets/app_page_bar.dart';
 import '../../core/files/recording_catalog.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/ui_controls.dart';
+import '../trash/trash_screens.dart';
 import '../trash/trash_workflow.dart';
 import 'completed_capture_handoff.dart';
 import 'recorder_gateway.dart';
@@ -213,6 +214,23 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
         scope: snapshot.data!.scope,
         metadataComplete: snapshot.data!.complete,
         lastSync: snapshot.data!.lastSync,
+        onDelete: widget.trash == null
+            ? null
+            : (row) {
+                final repo = widget.repository();
+                if (repo == null || !widget.isCurrent(repo)) return;
+                Navigator.push<void>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DeleteScreen(
+                      actions: widget.trash!,
+                      id: row['id'] as String,
+                      title: row['title_snapshot'] as String? ?? '녹음',
+                      recording: true,
+                    ),
+                  ),
+                );
+              },
         onOpen: (row) {
           final repo = widget.repository();
           if (repo == null || !widget.isCurrent(repo)) return;

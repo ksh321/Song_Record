@@ -3,12 +3,14 @@ import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/feature_icon.dart';
+import '../../core/widgets/hold_actions.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../../routing/tab_navigation.dart';
 import '../auth/auth_session.dart';
 import '../charts/popular_chart.dart';
 import '../search/karaoke_search.dart';
 import '../trash/trash_workflow.dart';
+import 'playlist_create_screen.dart';
 import 'playlist_detail_screen.dart';
 import 'playlist_library.dart';
 import 'playlist_order_picker.dart';
@@ -133,62 +135,71 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
   }
 
   Future<void> edit([Map<String, dynamic>? row]) async {
-    var input = row?['name'] as String? ?? '';
-    var icon = 'music';
+    if (row == null) {
+      final library = widget.library;
+      final result = await Navigator.of(context)
+          .push<({String name, String icon})>(
+            MaterialPageRoute(
+              builder: (_) => PlaylistCreateScreen(
+                icons: playlistIcons,
+                labels: playlistIconLabels,
+              ),
+            ),
+          );
+      if (!mounted || result == null || !identical(library, widget.library)) {
+        return;
+      }
+      await run(() => library.create(result.name, icon: result.icon)());
+      return;
+    }
+    var input = row['name'] as String;
+    final library = widget.library;
     final name = await showDialog<String>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, update) => AlertDialog(
-          title: Text(row == null ? '새 플레이리스트' : '목록 이름 변경'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                initialValue: input,
-                onChanged: (value) => input = value,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: '목록 이름',
-                  helperText: '1~100자 · 같은 이름도 사용할 수 있어요',
-                ),
-              ),
-              if (row == null)
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    for (final entry in playlistIcons.entries)
-                      IconButton(
-                        tooltip: playlistIconLabels[entry.key],
-                        onPressed: () => update(() => icon = entry.key),
-                        isSelected: icon == entry.key,
-                        icon: FeatureIcon(
-                          entry.value,
-                          selected: icon == entry.key,
-                        ),
-                      ),
-                  ],
-                ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('목록 이름 변경'),
+        content: TextFormField(
+          initialValue: input,
+          onChanged: (value) => input = value,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: '목록 이름',
+            helperText: '1~100자 · 같은 이름도 사용할 수 있어요',
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('취소'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, input),
-              child: const Text('저장'),
-            ),
-          ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, input),
+            child: const Text('저장'),
+          ),
+        ],
       ),
     );
-    if (name == null || !mounted) return;
-    await run(
-      () => row == null
-          ? widget.library.create(name, icon: icon)()
-          : widget.library.rename(row, name)(),
+    if (name == null || !mounted || !identical(library, widget.library)) return;
+    await run(() => library.rename(row, name)());
+  }
+
+  Future<void> hold(Map<String, dynamic> row) async {
+    final library = widget.library;
+    final action = await showHoldActions(
+      context,
+      title: row['name'] as String,
+      deleteLabel: '플레이리스트 삭제',
+      reorder: rows.length > 1,
     );
+    if (!mounted ||
+        !identical(library, widget.library) ||
+        busy ||
+        loading ||
+        !rows.any((v) => v['id'] == row['id'])) {
+      return;
+    }
+    if (action == 'reorder') await reorder();
+    if (action == 'delete') await remove(row);
   }
 
   Future<void> reorder() async {
@@ -385,9 +396,7 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
               ),
               margin: const EdgeInsets.only(bottom: 10),
               child: ListTile(
-                onLongPress: busy || loading || rows.length < 2
-                    ? null
-                    : reorder,
+                onLongPress: busy || loading ? null : () => hold(row),
                 leading: FeatureIcon(
                   playlistIcons[row['icon']] ?? Icons.music_note_outlined,
                 ),
