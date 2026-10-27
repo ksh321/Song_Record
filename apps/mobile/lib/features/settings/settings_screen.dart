@@ -11,6 +11,7 @@ import '../auth/auth_session.dart';
 import '../auth/identity_link.dart';
 import '../auth/identity_link_screen.dart';
 import '../auth/logout_screen.dart';
+import '../auth/server_login_card.dart';
 import '../sync/sync_controller.dart';
 import '../sync/sync_screen.dart';
 
@@ -96,6 +97,7 @@ class SettingsScreen extends StatelessWidget {
         child: ListView(
           padding: AppLayout.bodyPadding,
           children: [
+            if (authController != null) ServerLoginCard(auth: authController!),
             const AppPanel(
               child: Row(
                 children: [

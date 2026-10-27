@@ -9,7 +9,8 @@ abstract interface class SnapshotRestartSource {
 
 /// Composes initial receiving with the existing foreground scheduler. No timer
 /// or queued follow-up lives here; the controller remains the single scheduler.
-final class SnapshotSyncBackend implements SyncBackend, SyncStatusSource {
+final class SnapshotSyncBackend
+    implements SyncBackend, SyncStatusSource, AuthenticationRenewalSink {
   SnapshotSyncBackend({
     required this.outgoing,
     required this.receiver,
@@ -21,6 +22,15 @@ final class SnapshotSyncBackend implements SyncBackend, SyncStatusSource {
   final Future<AuthSession> Function() session;
   final DateTime Function() _now;
   bool _complete = false, _authBlocked = false;
+  @override
+  void authenticationRenewed() {
+    _authBlocked = false;
+    if (lastStep == SnapshotStep.authenticationRequired) lastStep = null;
+    if (outgoing is AuthenticationRenewalSink) {
+      (outgoing as AuthenticationRenewalSink).authenticationRenewed();
+    }
+  }
+
   DateTime? _due;
   SnapshotStep? lastStep;
 

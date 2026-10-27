@@ -307,6 +307,8 @@ final class MutationRequest {
         'tier',
         'is_suitable',
         'note',
+        'representative_key_mode',
+        'representative_key_shift',
       },
       (LocalEntity.song, false) => {
         'base_revision',

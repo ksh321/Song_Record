@@ -47,6 +47,24 @@ void main() {
     );
   });
   test(
+    'reauthentication releases auth hold but never a cursor-expired hold',
+    () async {
+      receiver.respond = () async => ChangeFeedStep.authenticationRequired;
+      await backend.send();
+      expect(backend.automaticFollowupAllowed, isFalse);
+      backend.authenticationRenewed();
+      receiver.respond = () async => ChangeFeedStep.caughtUp;
+      await backend.send();
+      expect(sender.sends, 1);
+      receiver.respond = () async => ChangeFeedStep.cursorExpired;
+      await backend.send();
+      backend.authenticationRenewed();
+      expect(backend.automaticFollowupAllowed, isFalse);
+      await backend.send();
+      expect(sender.sends, 1);
+    },
+  );
+  test(
     'more pages defer outgoing work and early wake cannot bypass delay',
     () async {
       receiver.respond = () async => ChangeFeedStep.progressed;

@@ -69,10 +69,11 @@ void main() {
     auth.session = fixtures.session(minutes: 0);
     api.pending = Completer<AuthSession>();
     final refreshing = auth.validSession();
+    final withheld = expectLater(refreshing, throwsA(isA<AuthFailure>()));
     await Future<void>.delayed(Duration.zero);
     final logout = auth.signOut();
     api.pending!.complete(fixtures.session(access: 'rotated'));
-    await refreshing;
+    await withheld;
     await logout;
     expect(api.loggedOut.single.refreshToken, 'refresh-rotated');
     expect(auth.session, isNull);

@@ -168,6 +168,7 @@ Future<void> main() async {
                   AppLifecycleState.resumed,
         );
         activeSync = sync;
+        sync.setNetworkAvailable(controller.networkAvailable);
       } catch (_) {
         activeSync?.dispose();
         activeSync = null;
@@ -199,10 +200,20 @@ Future<void> main() async {
           false;
     },
   );
+  var requiredServerLogin = false;
   controller.addListener(() {
+    final renewed =
+        requiredServerLogin &&
+        !controller.serverLoginRequired &&
+        controller.phase == AuthPhase.ready;
+    requiredServerLogin = controller.serverLoginRequired;
     activeSync?.setEnabled(
-      controller.phase == AuthPhase.ready && !controller.busy,
+      controller.phase == AuthPhase.ready &&
+          !controller.busy &&
+          !controller.serverLoginRequired,
     );
+    activeSync?.setNetworkAvailable(controller.networkAvailable);
+    if (renewed) activeSync?.authenticationRenewed();
   });
   runApp(
     LoginGate(

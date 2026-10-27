@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:song_record/app/song_record_app.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/sync/local_repository.dart';
@@ -31,16 +34,39 @@ class LoginGate extends StatefulWidget {
 }
 
 class _LoginGateState extends State<LoginGate> with WidgetsBindingObserver {
+  StreamSubscription<dynamic>? _network;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    widget.controller.restore();
+    _network = const EventChannel('song_record/network')
+        .receiveBroadcastStream()
+        .listen((value) {
+          if (value is bool) {
+            widget.controller.setNetworkAvailable(value);
+            if (value) _verifyOnline();
+          }
+        }, onError: (Object _) {});
+    widget.controller.restore().then((_) {
+      if (mounted) _verifyOnline();
+    });
+  }
+
+  void _verifyOnline() {
+    final auth = widget.controller;
+    if (auth.phase != AuthPhase.ready || !auth.networkAvailable) return;
+    unawaited(
+      auth.validSession().then<void>(
+        (_) {},
+        onError: (Object _, StackTrace _) {},
+      ),
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _network?.cancel();
     super.dispose();
   }
 

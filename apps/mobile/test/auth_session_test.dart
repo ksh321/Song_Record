@@ -105,6 +105,20 @@ void main() {
     );
   });
   tearDown(() => auth.dispose());
+  test(
+    'login blocks a new validation from rotating the previous credentials',
+    () async {
+      vault.value = jsonEncode(session(minutes: 0).toJson());
+      await auth.restore();
+      final signingIn = auth.reauthenticate('GOOGLE');
+      await expectLater(auth.validSession(), throwsA(isA<AuthFailure>()));
+      await signingIn;
+      expect(api.refreshes, 0);
+      expect(auth.phase, AuthPhase.ready);
+      expect(opened, ['account-a']);
+      expect(jsonDecode(vault.value!)['accessToken'], api.next.accessToken);
+    },
+  );
   test('탈퇴 접수 중 갱신 응답이 기존 계정을 다시 활성화하지 않는다', () async {
     auth.phase = AuthPhase.ready;
     auth.session = session(minutes: 0);
@@ -167,7 +181,7 @@ void main() {
       'account-a',
     );
   });
-  test('재실행은 서버 소유자를 확인하고 같은 계정을 연다', () async {
+  test('재실행은 보안 저장된 계정을 열고 서버 접근 전에 소유자를 확인한다', () async {
     vault.value = jsonEncode(session().toJson());
     await auth.restore();
     expect(auth.phase, AuthPhase.ready);
@@ -178,18 +192,22 @@ void main() {
     vault.value = jsonEncode(session().toJson());
     api.meError = const AuthFailure('offline');
     await auth.restore();
-    expect(auth.phase, AuthPhase.unavailable);
+    expect(auth.phase, AuthPhase.ready);
     expect(vault.value, isNotNull);
-    expect(opened, isEmpty);
+    expect(opened, ['account-a']);
+    await expectLater(auth.validSession(), throwsA(isA<AuthFailure>()));
+    expect(auth.phase, AuthPhase.ready);
     api.meError = null;
-    await auth.restore();
+    await auth.validSession();
     expect(auth.phase, AuthPhase.ready);
   });
   test('서버 소유자가 다르면 다른 계정 저장소를 열지 않는다', () async {
     vault.value = jsonEncode(session().toJson());
     api.meUser = 'account-b';
     await auth.restore();
-    expect(opened, isEmpty);
+    await expectLater(auth.validSession(), throwsA(isA<AuthFailure>()));
+    expect(opened, ['account-a']);
+    expect(closed, 1);
     expect(vault.value, isNull);
     expect(auth.phase, AuthPhase.signedOut);
   });
@@ -219,16 +237,21 @@ void main() {
     });
     await auth.restore();
     expect(api.refreshes, 0);
-    expect(auth.phase, AuthPhase.signedOut);
-    expect(vault.value, isNull);
+    expect(auth.phase, AuthPhase.ready);
+    expect(auth.serverLoginRequired, isTrue);
+    expect(vault.value, isNotNull);
+    await expectLater(auth.validSession(), throwsA(isA<AuthFailure>()));
+    expect(api.refreshes, 0);
   });
-  test('갱신 응답 유실은 재로그인을 요구하고 저장소 핸들만 닫는다', () async {
+  test('갱신 응답 유실은 서버 재로그인을 요구하지만 로컬 저장소는 유지한다', () async {
     auth.session = session(minutes: 0);
+    auth.phase = AuthPhase.ready;
     api.refreshError = const AuthFailure('timeout');
     await expectLater(auth.validSession(), throwsA(isA<AuthFailure>()));
-    expect(auth.phase, AuthPhase.signedOut);
-    expect(vault.value, isNull);
-    expect(closed, 1);
+    expect(auth.phase, AuthPhase.ready);
+    expect(auth.serverLoginRequired, isTrue);
+    expect(vault.value, isNotNull);
+    expect(closed, 0);
     await expectLater(auth.validSession(), throwsA(isA<AuthFailure>()));
     expect(api.refreshes, 1);
   });
@@ -263,4 +286,88 @@ void main() {
   test('세션 문자열은 토큰을 노출하지 않는다', () {
     expect(session().toString(), isNot(contains('refresh-access')));
   });
+  test(
+    'offline cold start opens the same local owner without contacting auth',
+    () async {
+      vault.value = jsonEncode(session(minutes: -10).toJson());
+      auth.setNetworkAvailable(false);
+      api.meError = StateError('must not call server');
+      api.refreshError = StateError('must not rotate offline');
+      await auth.restore();
+      expect(opened, ['account-a']);
+      expect(auth.phase, AuthPhase.ready);
+      await expectLater(auth.validSession(), throwsA(isA<AuthFailure>()));
+      expect(api.refreshes, 0);
+      expect(auth.serverLoginRequired, isFalse);
+      expect(jsonDecode(vault.value!)['refreshPending'], isNull);
+      api.meError = null;
+      api.refreshError = null;
+      auth.setNetworkAvailable(true);
+      expect((await auth.validSession()).userId, 'account-a');
+      expect(api.refreshes, 1);
+      expect(opened, ['account-a']);
+      expect(closed, 0);
+    },
+  );
+  test(
+    'proven unsent refresh preserves credentials for reconnection',
+    () async {
+      vault.value = jsonEncode(session(minutes: -10).toJson());
+      await auth.restore();
+      api.refreshError = const AuthFailure(
+        'no connection',
+        requestNotSent: true,
+      );
+      await expectLater(auth.validSession(), throwsA(isA<AuthFailure>()));
+      expect(auth.phase, AuthPhase.ready);
+      expect(auth.serverLoginRequired, isFalse);
+      expect(jsonDecode(vault.value!)['refreshPending'], isNull);
+      api.refreshError = null;
+      expect((await auth.validSession()).userId, 'account-a');
+      expect(api.refreshes, 2);
+    },
+  );
+  test('expired and revoked credentials never remove local access or permit server calls', () async {
+    vault.value = jsonEncode({
+      ...session().toJson(),
+      'refreshExpiresAt': time.toIso8601String(),
+    });
+    await auth.restore();
+    expect(auth.phase, AuthPhase.ready);
+    expect(auth.serverLoginRequired, isTrue);
+    await expectLater(auth.validSession(), throwsA(isA<AuthFailure>()));
+    expect(api.refreshes, 0);
+    expect(closed, 0);
+  });
+  test('reauthentication cannot switch the local owner and same owner retains store', () async {
+    vault.value = jsonEncode({
+      ...session().toJson(),
+      'serverLoginRequired': true,
+    });
+    await auth.restore();
+    api.next = session(user: 'account-b');
+    await auth.reauthenticate('GOOGLE');
+    expect(auth.session!.userId, 'account-a');
+    expect(auth.serverLoginRequired, isTrue);
+    expect(opened, ['account-a']);
+    api.next = session(access: 'renewed');
+    await auth.reauthenticate('GOOGLE');
+    expect(auth.serverLoginRequired, isFalse);
+    expect(auth.session!.accessToken, 'renewed');
+    expect(opened, ['account-a']);
+    expect(closed, 0);
+  });
+  test(
+    'explicit logout tombstone and malformed vault do not open any owner',
+    () async {
+      vault.value = jsonEncode({'signedOut': true});
+      await auth.restore();
+      expect(auth.phase, AuthPhase.signedOut);
+      expect(opened, isEmpty);
+      vault.value = '{broken';
+      await auth.restore();
+      expect(auth.phase, AuthPhase.unavailable);
+      expect(opened, isEmpty);
+    },
+  );
 }

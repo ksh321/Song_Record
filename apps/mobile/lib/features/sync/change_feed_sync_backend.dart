@@ -6,7 +6,11 @@ import 'sync_controller.dart';
 /// Uses only SyncController's foreground scheduling. Each wake receives at most
 /// one page before sending; it never starts its own timer or a queued request.
 final class ChangeFeedSyncBackend
-    implements SyncBackend, SyncStatusSource, SnapshotRestartSource {
+    implements
+        SyncBackend,
+        SyncStatusSource,
+        SnapshotRestartSource,
+        AuthenticationRenewalSink {
   ChangeFeedSyncBackend({
     required this.outgoing,
     required this.receiver,
@@ -31,6 +35,18 @@ final class ChangeFeedSyncBackend
 
   final DateTime Function() _now;
   bool _blocked = false;
+  @override
+  void authenticationRenewed() {
+    if (lastStep == ChangeFeedStep.authenticationRequired) {
+      _blocked = false;
+      lastStep = null;
+      _due = null;
+    }
+    if (outgoing is AuthenticationRenewalSink) {
+      (outgoing as AuthenticationRenewalSink).authenticationRenewed();
+    }
+  }
+
   DateTime? _due;
   ChangeFeedStep? lastStep;
 

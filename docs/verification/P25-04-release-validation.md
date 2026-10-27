@@ -440,3 +440,29 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 별도 diff 재검토: 공통 TjNumber 사용, 선행0/계정별 휴지통 예약/동일 mutation 재시도 보존. 제품 변경2파일만 포함. 원격 BaseCommit d1180f28cb92e0a5cbc3e115718a4a0969f98d0b 새 ls-remote 확인. 필수 Flutter CI 대기.
 
 - 최종 CI: 6203de80a665526ac805e880c1a14149c42891a2 / BaseCommit d1180f28cb92e0a5cbc3e115718a4a0969f98d0b / run40473609013 필수 Scope 및 Flutter analyze/test/Android build PASS. 서버/MySQL/API계약은 변경 영향 없음으로 NOT_APPLICABLE이며 통과 실적으로 합산하지 않음. ntfy SERVER_ACCEPTED; 사용자 폰 수신 확인은 미확인. 이번 베타 업데이트 요청 완료.
+
+### 2026-10-27 오프라인 재실행 후속
+- 사용자 설명안 승인 후 구현 시작. R002/R036/V06/V46: 최초 온라인 로그인 이후 계정별 로컬 조회·수정·녹음. 서버 인증과 로컬 접근 분리, 명시 로그아웃/확인된 탈퇴/소유자 불일치 보호. refresh 응답 유실은 이전 토큰 재사용 없이 로컬 사용+서버 재로그인 분리. 연결 회복 시 기존 큐 전송. 서버/스키마 변경 없음.
+- 기준 HEAD/새 원격 29652a54914b3e443efa76934d6d986b2b9dceb0. 기존 다수 미커밋 자료 보존, 실행기 checkpoint RUN_FINISHED 확인. 실기 필요성 사전 안내.
+- 구현: AuthController의 보안 저장소 계정 복원과 서버 인증을 분리. 네트워크 연결 감지는 Android 공통 EventChannel로 전달, 재연결 시 기존 sync를 깨움. 서버 재로그인 필요 상태도 로컬 ready 유지. 설정의 동일 계정 재인증은 기존 AccountStore를 닫지 않으며 일반 signIn 계정 전환은 유지. 인증 차단만 해제하고 cursor 만료 보호는 보존.
+- 로컬 검사: 첫 전체 1280PASS/4FAIL은 일반 계정 전환까지 제한한 회귀3건 및 로그아웃 중 token 반환 계약1건. 전자는 reauthenticate 분리로 수정, 후자는 로그아웃 중 token 미반환 검증으로 강화. 각 원인 수정 실패1회, 이후 관련92PASS. 분석 style4건 보완 후0. 잘못된 cwd/telemetry 권한은 환경 실행 오류로 구분.
+- 별도 현재 모델 직접 검토: 로그인 진행 중 새 자동 인증 검증이 시작될 수 있는 경쟁을 회귀로 최초 재현하고 busy guard 추가. 기존 검증은 로그인에서 join, 이후 신규 검증은 거절. 원인 신규 재현1회이며 수정 실패 아님. 최신 flutter analyze --no-pub 0, flutter test --no-pub --reporter expanded 1286PASS. 다른 계정/명시 로그아웃/탈퇴 확인/refresh 응답 유실의 토큰 재사용 방지 회귀 유지. 하위 에이전트 없음, 실제 실행 모델 메타데이터는 별도 관측하지 않음.
+- 실기 전 화면은 내 곡7개 관측. 과거5곡 기록을 현재값으로 간주하지 않음. 최종 설치/오프라인/연결 복구/필수 CI 대기.
+- 최종 APK 278b2c2dd00df0eed1412520fdbf71a68df957cdba57d9fb5766839b2315ccac: 동일서명 install-r Success, 설치 base.apk SHA256 일치. SM_A546S에서 Wi-Fi=0/mobile_data=1 원상태 저장→둘 다0 확인→force-stop/restart→내 곡7개·플리1개·녹음탭 정상. finally에서 Wi-Fi0/data1 원상복구 일치. 재연결 후 내 곡7개 보존. 원본/개인 데이터 변경·삭제 없음.
+- 한계: 현재 계정 녹음0개로 실제 음성 재생 미실행. 기존 녹음 경로는 변경하지 않았고 자동 검사로 보존 확인. 동기화 화면에는 선행 정보/전송 대기 항목이 남아 수동 resume 후에도 유지됨. 인증 오류·오프라인 로그인창 복귀는 없었으나 해당 기존 큐의 서버 반영 완료를 주장하지 않음. 이번 실기 완료 범위는 오프라인 계정/목록 접근 및 네트워크 복구이며 기존 큐 상세 진단은 별도 관측으로 남김.
+- 검토: 새 로컬 접근은 저장된 보안 계정에만 열리며 서버 호출은 validSession으로 검증. 명시 로그아웃/소유자 불일치/확인된 탈퇴는 계속 차단. 재인증은 인증 보류만 풀고 cursor 만료·충돌 보호는 유지. 최종 diff 공백 검사 통과. 제품 커밋/정확SHA Flutter CI 대기.
+
+
+### 2026-10-27 P25-04 사용자 명시 중단 — 오프라인 후속
+- 사용자: 남은 것은 이따, 폰 연결 해제. 즉시 폰 조작 중단. Wi-Fi0/data1 복구 완료, 내 곡 화면으로 반환.
+- 설치본278b2c2d 오프라인 재실행·목록 PASS. 전체1286PASS. 현재 계정 녹음0으로 실기 재생 미검증.
+- 전송 대기 조사: SongRegistrationDraft가 대표 키 두 필드를 포함하지만 MutationRequest.prepare의 SONG/create 허용 필드에 없고 서버 SongCreation은 허용. 해당 누락 수정은 아직 안 함. 재개 시 실제 저장 큐 claim 회귀로 입증 후 두 필드 보완, 기존 대기 정보 유지.
+- 대기 이유 읽기 UI만 추가, 분석0/관련62PASS, 로컬 서명 빌드 진행 중(session49763), 폰 미설치. 사용자 중단 이후 새 제품 작업/커밋/푸시 없음. 기존 미커밋 보존. 재개 근거 .local/workflow/offline-resume.json.
+
+- 중단 정리: 대기 이유 표시 빌드 df8f16a01cda5ca101d5c83a86804134ff3d3e366b3521ce85872656d90e4ad3 완료, 미설치. 실행 선택기 WAIT/running0. 등록 키 필드 수정·실기·커밋/CI는 재개 후.
+
+### 2026-10-27 P25-04 재개 — 등록 전송 허용 목록
+- 사용자 이어서 ㄱ. HEAD/main와 새 원격29652a5 일치, 실행 중 Python/Dart 없음, USB 및 사용자 ㄱ 후 베타 전면 확인. 중복 빌드 없이 재개.
+- 실제 임시 AccountStore에 4자리 TJ 등록 저장 후 claimMutation이 null인 최초 회귀 재현. 서버 SongCreation 허용 항목과 대조해 MutationRequest SONG/create에 representative_key_mode/representative_key_shift 두 필드만 추가. 기존 큐 payload/opId/개인입력 변경 없음. null 키 TJ와 원키-3/S/하트 수동등록 재실행 전송 회귀 추가. 서버/스키마 변경 없음.
+- 최종 재개 검사: flutter analyze --no-pub 지적0, flutter test --no-pub --reporter expanded 1287PASS. 현재 모델 별도 검토에서 SONG/create의 두 키만 추가해 서버 허용 계약과 일치, 기존 payload/opId/재시도·멱등 보호 보존 확인. 대기 안내는 planner 판정 읽기만 추가. 최종 APK52bfb9ef 빌드 완료, 실제 설치/기존 대기 전송 확인 진행.
+- 최종 실기: APK52bfb9efde636c17a2499bfd5f0fa6c4ea76541f68b61b2869002c3d8e2feb04 install-r Success/설치 해시 일치. 대기 목록이 자동 처리되어 동기화 화면 대기 중인 변경 없음·대기 중인 정보 없음 확인(library-offline-wire-sync.png). 개인 곡7·플리1·키/티어/하트 유지. 최종본에서도 Wi-Fi0/data0→완전종료/재실행→내 곡7/플리1/녹음탭 유지, finally Wi-Fi0/data1 복구 일치. 기존 데이터 삭제/재등록/새 녹음 없음. 실제 음성 재생은 현재 계정 녹음0으로 미실행, 기존 오디오 경로 변경 없음. 이전 대기 미해소 기록은 이 최종 결과로 해소.

@@ -45,7 +45,7 @@ class _SyncScreenState extends State<SyncScreen> {
           ? '자동 전송이 멈춰 있어요'
           : '다음 자동 재시도를 기다리고 있어요';
     }
-    return '선행 정보 또는 전송을 기다리고 있어요';
+    return item.waitingMessage ?? '전송을 기다리고 있어요';
   }
 
   Future<void> _review(SyncItem item) async {

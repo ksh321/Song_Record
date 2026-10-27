@@ -8,13 +8,16 @@ import 'package:song_record/core/database/account_database.dart';
 import 'package:song_record/core/database/account_paths.dart';
 import 'package:song_record/core/database/account_store.dart';
 import 'package:song_record/core/database/local_models.dart';
+import 'package:song_record/core/domain/song_types.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/sync/mutation_request.dart';
 import 'package:song_record/core/sync/trash_receipt.dart';
+import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/search/karaoke_search.dart';
 import 'package:song_record/features/search/search_intent.dart';
 import 'package:song_record/features/search/song_registration.dart';
 
+import 'auth_session_test.dart' as auth_fixture;
 import 'change_payload_validation_test.dart' show songChange, recordingWire;
 
 String id(int n) =>
@@ -73,6 +76,58 @@ void main() {
     expect(root.path, contains('song_record_offline_trash_'));
     await root.delete(recursive: true);
   });
+  test(
+    'offline authenticated restart retains real account data and queued edits',
+    () async {
+      await manager.logout();
+      final vault = auth_fixture.Vault()
+        ..value = jsonEncode(auth_fixture.session(user: id(1)).toJson());
+      final api = auth_fixture.Api()..meError = const AuthFailure('offline');
+      final auth = AuthController(
+        api: api,
+        vault: vault,
+        proofs: auth_fixture.Proofs(),
+        now: () => auth_fixture.time,
+        openAccount: (owner) async {
+          store = await manager.openAccount(owner);
+        },
+        closeAccount: manager.logout,
+      )..setNetworkAvailable(false);
+      addTearDown(auth.dispose);
+      await auth.restore();
+      expect(auth.phase, AuthPhase.ready);
+      expect(await store.readMetadata(LocalEntity.song, id(10)), isNotNull);
+      expect(
+        await store.readMetadata(LocalEntity.recording, id(20)),
+        isNotNull,
+      );
+      final repository = LocalRepository(store, newId: () => id(900));
+      await repository.save(
+        repository.preparePatch(
+          entity: LocalEntity.song,
+          entityId: id(10),
+          baseRevision: 1,
+          draft: {...song, 'memo': 'offline edit'},
+          changes: {'memo': 'offline edit'},
+        ),
+      );
+      await manager.logout();
+      await auth.restore();
+      expect(
+        jsonDecode(
+          (await store.readMetadata(LocalEntity.song, id(10)))!.localJson!,
+        )['memo'],
+        'offline edit',
+      );
+      expect(await LocalRepository(store).pending(), hasLength(1));
+      expect(api.logins, 0);
+      expect(api.refreshes, 0);
+      await manager.logout();
+      final other = await manager.openAccount(id(2));
+      expect(await other.readMetadata(LocalEntity.song, id(10)), isNull);
+      expect(await LocalRepository(other).pending(), isEmpty);
+    },
+  );
   test('four digit search registration saves title and retries without a duplicate', () async {
     var next = 200;
     final repository = LocalRepository(store, newId: () => id(next++));
@@ -99,6 +154,11 @@ void main() {
     expect(jsonDecode(saved!.localJson!)['tj_number'], '8458');
     expect(jsonDecode(saved.localJson!)['title'], "Can't Take My Eyes Off You");
     expect(await repository.pending(), hasLength(1));
+    final request = await store.claimMutation();
+    expect(request, isNotNull, reason: 'Saved registration must be sendable');
+    expect(request!.path, '/v1/songs');
+    expect(jsonDecode(request.body)['representative_key_mode'], isNull);
+    expect(jsonDecode(request.body)['representative_key_shift'], isNull);
   });
   test(
     'TJ availability accepts contract lengths and rejects invalid identifiers',
@@ -123,6 +183,30 @@ void main() {
       expect(await repository.pending(), isEmpty);
     },
   );
+  test('manual registration retains selected key tier and heart in queued wire after restart', () async {
+    var next = 300;
+    final repository = LocalRepository(store, newId: () => id(next++));
+    final edit = SongRegistrationDraft(
+      intent: const SearchIntent(),
+      title: 'Offline title',
+      artist: 'Offline artist',
+      directEntry: true,
+      musicalKey: MusicalKey(mode: KeyMode.original, shift: -3),
+      tier: SongTier.s,
+      isSuitable: true,
+    ).prepare(repository);
+    await repository.save(edit);
+    await manager.logout();
+    store = await manager.openAccount(id(1));
+    final request = await store.claimMutation();
+    expect(request, isNotNull);
+    final body = jsonDecode(request!.body);
+    expect(body['representative_key_mode'], 'ORIGINAL');
+    expect(body['representative_key_shift'], -3);
+    expect(body['tier'], 'S');
+    expect(body['is_suitable'], isTrue);
+    expect(request.mutation.opId, edit.opId);
+  });
   test('offline together hides immediately, survives restart and preserves original without a phone-clock expiry', () async {
     final save = LocalRepository(store, newId: () => id(100)).prepareTrash(
       entity: LocalEntity.song,

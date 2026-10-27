@@ -7,9 +7,16 @@ import '../../core/domain/account_deletion_confirmation.dart';
 import 'account_actions.dart';
 
 class AuthFailure implements Exception {
-  const AuthFailure(this.message, {this.status = 0});
+  const AuthFailure(
+    this.message, {
+    this.status = 0,
+    this.requestNotSent = false,
+  });
   final String message;
   final int status;
+
+  /// True only when transport proves that no request could reach the server.
+  final bool requestNotSent;
   @override
   String toString() => message;
 }
@@ -100,6 +107,16 @@ class AuthController extends ChangeNotifier {
   String? message;
   bool busy = false;
   Future<AuthSession>? _refreshing;
+  Future<AuthSession>? _validating;
+  bool serverLoginRequired = false;
+  bool networkAvailable = true;
+  bool _ownerVerified = false;
+
+  void setNetworkAvailable(bool value) {
+    if (networkAvailable == value) return;
+    networkAvailable = value;
+    notifyListeners();
+  }
 
   int _accountEpoch = 0;
   String? _accountTag;
@@ -134,18 +151,19 @@ class AuthController extends ChangeNotifier {
         phase = AuthPhase.signedOut;
         return;
       }
-      if (saved['refreshPending'] == true) {
-        await _requireLogin('로그인 갱신이 중단됐어요. 다시 로그인해 주세요.');
-        return;
-      }
       session = AuthSession.fromJson(saved);
-      final current = await validSession();
-      final user = await api.me(current);
-      if (user != current.userId) {
-        throw const AuthFailure('계정을 다시 확인해 주세요.', status: 401);
-      }
-      await openAccount(user);
+      serverLoginRequired =
+          saved['refreshPending'] == true ||
+          saved['serverLoginRequired'] == true ||
+          !session!.refreshExpiresAt.isAfter(now().toUtc());
+      _ownerVerified = false;
+      // Secure, environment-scoped local identity opens only its own store.
+      // Online authentication is a separate prerequisite for any server request.
+      await openAccount(session!.userId);
       phase = AuthPhase.ready;
+      if (serverLoginRequired) {
+        message = '서버 동기화를 위해 다시 로그인해 주세요. 기기의 기록은 계속 사용할 수 있어요.';
+      }
     } on AuthFailure catch (e) {
       if (e.status == 401) {
         await _requireLogin(e.message);
@@ -162,7 +180,11 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<void> signIn(String provider) async {
+  Future<void> signIn(String provider) => _signIn(provider, false);
+
+  Future<void> reauthenticate(String provider) => _signIn(provider, true);
+
+  Future<void> _signIn(String provider, bool sameAccountOnly) async {
     if (busy) {
       return;
     }
@@ -170,12 +192,36 @@ class AuthController extends ChangeNotifier {
     message = null;
     notifyListeners();
     try {
+      final validating = _validating;
+      if (validating != null) {
+        try {
+          await validating;
+        } catch (_) {
+          /* Online renewal may be unavailable. */
+        }
+      }
       final proof = await proofs.proof(provider);
       final next = await api.login(provider, proof);
-      await closeAccount();
+      final local = sameAccountOnly && phase == AuthPhase.ready
+          ? session
+          : null;
+      if (sameAccountOnly && local == null) {
+        throw const AuthFailure('열린 계정이 없어요. 로그인 화면에서 다시 시작해 주세요.');
+      }
+      if (_acceptedDeletionOwners.contains(next.userId)) {
+        throw const AuthFailure('탈퇴가 확인된 계정은 다시 열 수 없어요.');
+      }
+      if (local != null && local.userId != next.userId) {
+        throw const AuthFailure(
+          '이 기기에 열린 기록과 같은 계정으로 로그인해 주세요. 다른 계정은 로그아웃 후 사용할 수 있어요.',
+        );
+      }
+      if (local == null) await closeAccount();
       await vault.write(jsonEncode(next.toJson()));
       session = next;
-      await openAccount(next.userId);
+      serverLoginRequired = false;
+      _ownerVerified = true;
+      if (local == null) await openAccount(next.userId);
       phase = AuthPhase.ready;
     } on LoginCancelled {
       message = '로그인을 취소했어요.';
@@ -199,7 +245,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
     try {
       await prepareLogout?.call();
-      final rotating = _refreshing;
+      final rotating = _validating ?? _refreshing;
       if (rotating != null) {
         try {
           await rotating;
@@ -280,11 +326,21 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<AuthSession> validSession() async {
+  Future<AuthSession> validSession() =>
+      _validating ??= _validateSession().whenComplete(() => _validating = null);
+
+  Future<AuthSession> _validateSession() async {
     if (_loggingOut) throw const AuthFailure('로그아웃 중이에요.');
+    if (busy) throw const AuthFailure('로그인 처리가 끝난 뒤 다시 시도해 주세요.');
     final current = session;
     if (current == null) {
       throw const AuthFailure('다시 로그인해 주세요.', status: 401);
+    }
+    if (!networkAvailable) {
+      throw const AuthFailure(
+        '오프라인이에요. 기기에 저장하고 연결되면 동기화해요.',
+        requestNotSent: true,
+      );
     }
     if (_refreshing == null && api is DeletionAwareAuthApi) {
       final last = _deletionProbeTimes[current.userId];
@@ -305,17 +361,56 @@ class AuthController extends ChangeNotifier {
         }
       }
     }
-    if (!current.refreshExpiresAt.isAfter(now().toUtc())) {
-      await _requireLogin('로그인이 만료됐어요. 다시 로그인해 주세요.');
+    if (serverLoginRequired ||
+        !current.refreshExpiresAt.isAfter(now().toUtc())) {
+      await _requireServerLogin(current);
       throw const AuthFailure('다시 로그인해 주세요.', status: 401);
     }
-    if (current.accessExpiresAt.isAfter(
-      now().toUtc().add(const Duration(seconds: 30)),
-    )) {
-      return current;
+    final usable =
+        current.accessExpiresAt.isAfter(
+          now().toUtc().add(const Duration(seconds: 30)),
+        )
+        ? current
+        : await (_refreshing ??= _rotate(current)
+              .whenComplete(() => _refreshing = null));
+    if (!_ownerVerified) {
+      try {
+        final owner = await api.me(usable);
+        if (!identical(session, usable) || _loggingOut) {
+          throw const AuthFailure('계정이 바뀌었어요.', status: 401);
+        }
+        if (owner != usable.userId) {
+          await _requireLogin('계정을 다시 확인해 주세요.');
+          throw const AuthFailure('계정이 일치하지 않아요.', status: 401);
+        }
+        _ownerVerified = true;
+      } on AuthFailure catch (error) {
+        if (error.status == 401 && identical(session, usable)) {
+          await _requireServerLogin(usable);
+        }
+        rethrow;
+      }
     }
-    return _refreshing ??= _rotate(current)
-        .whenComplete(() => _refreshing = null);
+    if (!identical(session, usable) || _loggingOut) {
+      throw const AuthFailure('계정이 바뀌었어요.', status: 401);
+    }
+    return usable;
+  }
+
+  Future<void> _requireServerLogin(AuthSession current) async {
+    if (!identical(session, current) ||
+        _acceptedDeletionOwners.contains(current.userId)) {
+      return;
+    }
+    serverLoginRequired = true;
+    message = '서버 동기화를 위해 다시 로그인해 주세요. 기기의 기록은 계속 사용할 수 있어요.';
+    notifyListeners();
+    await vault.write(
+      jsonEncode({...current.toJson(), 'serverLoginRequired': true}),
+    );
+    if (_acceptedDeletionOwners.contains(current.userId)) {
+      await vault.write(jsonEncode({'signedOut': true}));
+    }
   }
 
   Future<AuthSession> _rotate(AuthSession current) async {
@@ -329,7 +424,11 @@ class AuthController extends ChangeNotifier {
         throw const AuthFailure('계정 탈퇴가 접수됐어요.', status: 401);
       }
       if (next.userId != current.userId || next.deviceId != current.deviceId) {
+        await _requireLogin('계정 확인이 필요해요.');
         throw const AuthFailure('계정 확인이 필요해요.', status: 401);
+      }
+      if (!identical(session, current)) {
+        throw const AuthFailure('계정이 바뀌었어요.', status: 401);
       }
       await vault.write(jsonEncode(next.toJson()));
       if (_acceptedDeletionOwners.contains(current.userId)) {
@@ -352,7 +451,13 @@ class AuthController extends ChangeNotifier {
           throw const AuthFailure('계정 탈퇴가 확인됐어요.', status: 401);
         }
       }
-      await _requireLogin('로그인 갱신을 확인하지 못했어요. 다시 로그인해 주세요.');
+      if (identical(session, current) &&
+          error is AuthFailure &&
+          error.requestNotSent) {
+        await vault.write(jsonEncode(current.toJson()));
+        rethrow;
+      }
+      await _requireServerLogin(current);
       throw const AuthFailure('다시 로그인해 주세요.', status: 401);
     }
   }

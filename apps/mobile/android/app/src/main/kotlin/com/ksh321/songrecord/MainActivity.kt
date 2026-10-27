@@ -46,6 +46,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/network")
+            .setStreamHandler(NetworkBridge(this))
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "song_record/device_settings")
             .setMethodCallHandler { call, result ->
                 val preferences = getSharedPreferences("song_record_device_settings", MODE_PRIVATE)

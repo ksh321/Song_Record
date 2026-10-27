@@ -6,16 +6,35 @@ import '../../core/database/account_store.dart';
 import '../../core/database/local_models.dart';
 import '../../core/sync/canonical_conflict_plan.dart';
 import '../../core/sync/conflict_review.dart';
+import '../../core/sync/dependency_planner.dart';
 import '../../core/sync/local_repository.dart';
 import '../../core/sync/mutation_transport.dart';
 import '../../core/uploads/upload_dispatcher.dart';
 import '../auth/auth_session.dart';
 
 final class SyncItem {
-  const SyncItem(this.mutation, this.retry, {this.pendingReview = false});
+  const SyncItem(
+    this.mutation,
+    this.retry, {
+    this.pendingReview = false,
+    this.waitReason,
+  });
   final QueuedMutation mutation;
   final RetryStatus? retry;
   final bool pendingReview;
+  final DispatchWaitReason? waitReason;
+  String? get waitingMessage => switch (waitReason) {
+    DispatchWaitReason.earlierMutation => '앞서 저장한 변경이 전송되면 이어서 보낼 수 있어요',
+    DispatchWaitReason.missingDependency => '연결된 곡이나 분류가 먼저 서버에 저장되어야 해요',
+    DispatchWaitReason.deletedTarget => '연결된 정보가 삭제되어 확인이 필요해요',
+    DispatchWaitReason.unresolvedBaseline => '이 항목의 서버 저장 확인을 기다리고 있어요',
+    DispatchWaitReason.staleBaseline => '서버의 최신 정보를 먼저 받아야 해요',
+    DispatchWaitReason.unsupported ||
+    DispatchWaitReason.invalidPayload => '저장한 정보를 전송할 수 있는 형식인지 확인이 필요해요',
+    DispatchWaitReason.mappingBlocked => '같은 곡으로 연결하는 처리가 끝나야 해요',
+    DispatchWaitReason.superseded => '같은 내용의 다른 변경을 먼저 처리하고 있어요',
+    _ => null,
+  };
 }
 
 abstract interface class SyncBackend {
@@ -30,7 +49,12 @@ abstract interface class SyncStatusSource {
   String? get statusMessage;
 }
 
-final class RepositorySyncBackend implements SyncBackend, SyncStatusSource {
+abstract interface class AuthenticationRenewalSink {
+  void authenticationRenewed();
+}
+
+final class RepositorySyncBackend
+    implements SyncBackend, SyncStatusSource, AuthenticationRenewalSink {
   RepositorySyncBackend(
     this.repository,
     this.transport,
@@ -42,6 +66,11 @@ final class RepositorySyncBackend implements SyncBackend, SyncStatusSource {
   final MutationTransport transport;
   final Future<AuthSession> Function() session;
   bool _authenticationBlocked = false;
+  @override
+  void authenticationRenewed() {
+    _authenticationBlocked = false;
+  }
+
   int _unlinkedRecordings = 0;
   @override
   String? get statusMessage => _unlinkedRecordings == 0
@@ -52,6 +81,7 @@ final class RepositorySyncBackend implements SyncBackend, SyncStatusSource {
   @override
   Future<List<SyncItem>> load() async {
     final result = <SyncItem>[];
+    final plan = await repository.planDispatch();
     for (final mutation in await repository.pendingWork()) {
       var pendingReview = false;
       if (mutation.state == 'PENDING' && mutation.attemptCount == 0) {
@@ -69,6 +99,7 @@ final class RepositorySyncBackend implements SyncBackend, SyncStatusSource {
           mutation,
           await repository.retryStatus(mutation.opId),
           pendingReview: pendingReview,
+          waitReason: plan.waiting[mutation.opId]?.reason,
         ),
       );
     }
@@ -143,11 +174,14 @@ final class SyncController extends ChangeNotifier {
   bool loaded = false;
   bool busy = false;
   bool _foreground = true, _enabled = false, _disposed = false;
+  bool _networkAvailable = true;
+  bool _authenticationRenewed = false;
   bool _wakeRequested = false;
   int _loadGeneration = 0, _timerGeneration = 0, _failures = 0;
   VoidCallback? _cancel;
   DateTime? _recoveryAt;
-  bool get maySend => !_disposed && _foreground && _enabled;
+  bool get maySend =>
+      !_disposed && _foreground && _enabled && _networkAvailable;
   bool get needsResume => _failures >= 3;
 
   void _cancelTimer() {
@@ -169,6 +203,20 @@ final class SyncController extends ChangeNotifier {
     _foreground = foreground;
     _cancelTimer();
     notifyListeners();
+    if (maySend) unawaited(wake());
+  }
+
+  void setNetworkAvailable(bool available) {
+    if (_disposed || _networkAvailable == available) return;
+    _networkAvailable = available;
+    _cancelTimer();
+    if (maySend) unawaited(wake());
+  }
+
+  /// A successful explicit login may clear only authentication-related holds.
+  void authenticationRenewed() {
+    if (_disposed) return;
+    _authenticationRenewed = true;
     if (maySend) unawaited(wake());
   }
 
@@ -195,7 +243,7 @@ final class SyncController extends ChangeNotifier {
 
   Future<void> wake() async {
     if (!maySend) return;
-    if (!busy && _failures > 0 && _failures < 3) {
+    if (!busy && !_authenticationRenewed && _failures > 0 && _failures < 3) {
       final remaining = _recoveryAt?.difference(_now().toUtc());
       if (remaining != null && remaining > Duration.zero) {
         _installTimer(remaining);
@@ -226,12 +274,23 @@ final class SyncController extends ChangeNotifier {
     // Authentication blocks survive a later lifecycle wake or scheduled timer,
     // not only the follow-up queued while the original request was in flight.
     // Explicit recovery remains distinct from these automatic triggers.
-    if (!maySend || (!resetFailures && !backend.automaticFollowupAllowed)) {
+    if (!maySend ||
+        (!resetFailures &&
+            !_authenticationRenewed &&
+            !backend.automaticFollowupAllowed)) {
       return;
     }
     if (busy) {
       _wakeRequested = true;
       return;
+    }
+    if (_authenticationRenewed) {
+      _authenticationRenewed = false;
+      if (backend is AuthenticationRenewalSink) {
+        (backend as AuthenticationRenewalSink).authenticationRenewed();
+      }
+      resetFailures = true;
+      if (!backend.automaticFollowupAllowed) return;
     }
     if (resetFailures) {
       _failures = 0;
@@ -275,8 +334,8 @@ final class SyncController extends ChangeNotifier {
           final followup =
               _wakeRequested &&
               maySend &&
-              _failures == 0 &&
-              backend.automaticFollowupAllowed;
+              (_failures == 0 || _authenticationRenewed) &&
+              (backend.automaticFollowupAllowed || _authenticationRenewed);
           _wakeRequested = false;
           if (followup) {
             scheduleMicrotask(() => unawaited(wake()));

@@ -99,7 +99,7 @@ void main() {
     mode = 'invalid';
     expect(await api.confirmDeletion(session()), isNull);
   });
-  test('reconnection confirms deleted owner before reopening and unknown response preserves data', () async {
+  test('reconnection confirms deleted owner before server use and unknown response preserves data', () async {
     final vault = Vault()..value = jsonEncode(session().toJson()),
         api = Aware(session());
     var opened = 0, deleted = 0;
@@ -120,8 +120,9 @@ void main() {
       'deletion_confirmed': true,
     });
     await controller.restore();
+    await expectLater(controller.validSession(), throwsA(isA<AuthFailure>()));
     expect(controller.phase, AuthPhase.signedOut);
-    expect(opened, 0);
+    expect(opened, 1);
     expect(deleted, 1);
     expect(controller.session, isNull);
     controller.dispose();
@@ -142,7 +143,7 @@ void main() {
     await second.restore();
     expect(second.phase, AuthPhase.ready);
     expect(deleted, 1);
-    expect(opened, 1);
+    expect(opened, 2);
     second.dispose();
   });
   test(

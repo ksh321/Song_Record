@@ -110,6 +110,27 @@ class ScheduleHarness {
 }
 
 void main() {
+  test(
+    'offline scheduler retains work and reconnect sends without a user retry',
+    () async {
+      final backend = Backend();
+      final sync = SyncController(backend);
+      addTearDown(sync.dispose);
+      sync.setNetworkAvailable(false);
+      sync.setEnabled(true);
+      await sync.wake();
+      expect(backend.sends, 0);
+      await sync.refresh();
+      expect(sync.items, hasLength(1));
+      sync.setNetworkAvailable(true);
+      await flush();
+      expect(backend.sends, 1);
+      expect(backend.maximumConcurrent, 1);
+      sync.setNetworkAvailable(true);
+      await flush();
+      expect(backend.sends, 1);
+    },
+  );
   testWidgets(
     'preserved unlinked recording notice remains visible with an empty queue',
     (tester) async {
