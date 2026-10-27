@@ -466,3 +466,6 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 실제 임시 AccountStore에 4자리 TJ 등록 저장 후 claimMutation이 null인 최초 회귀 재현. 서버 SongCreation 허용 항목과 대조해 MutationRequest SONG/create에 representative_key_mode/representative_key_shift 두 필드만 추가. 기존 큐 payload/opId/개인입력 변경 없음. null 키 TJ와 원키-3/S/하트 수동등록 재실행 전송 회귀 추가. 서버/스키마 변경 없음.
 - 최종 재개 검사: flutter analyze --no-pub 지적0, flutter test --no-pub --reporter expanded 1287PASS. 현재 모델 별도 검토에서 SONG/create의 두 키만 추가해 서버 허용 계약과 일치, 기존 payload/opId/재시도·멱등 보호 보존 확인. 대기 안내는 planner 판정 읽기만 추가. 최종 APK52bfb9ef 빌드 완료, 실제 설치/기존 대기 전송 확인 진행.
 - 최종 실기: APK52bfb9efde636c17a2499bfd5f0fa6c4ea76541f68b61b2869002c3d8e2feb04 install-r Success/설치 해시 일치. 대기 목록이 자동 처리되어 동기화 화면 대기 중인 변경 없음·대기 중인 정보 없음 확인(library-offline-wire-sync.png). 개인 곡7·플리1·키/티어/하트 유지. 최종본에서도 Wi-Fi0/data0→완전종료/재실행→내 곡7/플리1/녹음탭 유지, finally Wi-Fi0/data1 복구 일치. 기존 데이터 삭제/재등록/새 녹음 없음. 실제 음성 재생은 현재 계정 녹음0으로 미실행, 기존 오디오 경로 변경 없음. 이전 대기 미해소 기록은 이 최종 결과로 해소.
+
+- 최종 CI: 18a1f7128e825789598f8c457df079aaac2a47d1 / BaseCommit29652a54914b3e443efa76934d6d986b2b9dceb0 / run40484087151. Scope changed files 및 Flutter analyze/test/Android build success 직접 조회. 서버/MySQL skipped는 영향 없음이며 통과 실적 아님. 오프라인 재실행·기존 대기0 실기와 설치본/소스 일치 완료.
+- 완료 알림 ntfy SERVER_ACCEPTED. 사용자 폰 수신은 미확인. 추가 직접 행동 없음.
