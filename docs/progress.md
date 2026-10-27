@@ -1471,3 +1471,5 @@ USER173 질문의 TJ·금영 일간/주간/월간 6개 곡 목록·출처·수�
 - 사용자 베타 켜 둠 회신 후 SM_A546S에서 Frankie 검색→TJ8459→내 곡 등록, 기존 원키-2/S/어울리는곡/일반반주/빈메모로 저장 성공. 기존4곡→5곡, 앱 재실행 후 같은 값 유지. 실기 library-tj-saved/library-tj-library/library-tj-restarted.png. 서버 DB 직접 조회는 하지 않았으므로 서버 저장 완료를 이 실기만으로 주장하지 않음.
 - 번호 검색8459에서는 유사5자리 결과만 관측됐으나 가수Frankie 검색에서 정확한8459를 찾음. 검색 결과 문제는 이번 로컬 저장 실패 원인과 구분해 후속 관측으로 남김. 키보드 한영 전환 조작은 환경 입력 문제이며 수정 실패 횟수 아님.
 - 별도 diff 재검토: 공통 TjNumber 사용, 선행0/계정별 휴지통 예약/동일 mutation 재시도 보존. 제품 변경2파일만 포함. 원격 BaseCommit d1180f28cb92e0a5cbc3e115718a4a0969f98d0b 새 ls-remote 확인. 필수 Flutter CI 대기.
+
+- 최종 CI: 6203de80a665526ac805e880c1a14149c42891a2 / BaseCommit d1180f28cb92e0a5cbc3e115718a4a0969f98d0b / run40473609013 필수 Scope 및 Flutter analyze/test/Android build PASS. 서버/MySQL/API계약은 변경 영향 없음으로 NOT_APPLICABLE이며 통과 실적으로 합산하지 않음. ntfy SERVER_ACCEPTED; 사용자 폰 수신 확인은 미확인. 이번 베타 업데이트 요청 완료.
