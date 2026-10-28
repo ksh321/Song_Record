@@ -370,8 +370,8 @@
   const time=value=>F.renderHelpers.duration(Math.floor(value))+'.'+Math.floor((value%1)*10);
   function playback(){
     const r=F.recordings.get(s.record)||F.recordings.get('r2'),available=r.local||r.cloud==='보관됨';
-    const bars=Array.from({length:74},(_,i)=>`<i style="height:${10+Math.round(Math.abs(Math.sin(i*1.7)*Math.cos(i*.23))*70)}%"></i>`).join('');
-    return `<div class="v3-player"><div class="v3-player-time" data-v3-time>${time(s.position)}</div><p class="v3-player-total">${time(r.duration)}</p><div class="v3-wave" data-wave-seek tabindex="0" role="slider" aria-label="재생 위치" aria-valuemin="0" aria-valuemax="${r.duration}" aria-valuenow="${s.position}">${bars}<span class="v3-playhead" style="left:${s.position/r.duration*100}%"></span></div><div class="v3-play-controls">${button('↶ 5','skip','data-seconds="-5" aria-label="5초 뒤로"','v3-skip')}${button(s.playing?'Ⅱ':'▶','play',`aria-label="${s.playing?'일시 정지':'재생'}" ${available?'':'disabled'}`,'v3-play-main')}${button('5 ↷','skip','data-seconds="5" aria-label="5초 앞으로"','v3-skip')}</div><p class="v3-player-state">${e(X.fileState(r))}</p></div>`;
+    const bars=Array.from({length:Math.ceil(r.duration/Math.min(r.duration,30)*100)},(_,i)=>`<i style="height:${10+Math.round(Math.abs(Math.sin(i*1.7)*Math.cos(i*.23))*70)}%"></i>`).join('');
+    return `<div class="v3-player"><div class="v3-player-time" data-v3-time>${time(s.position)}</div><p class="v3-player-total">${time(r.duration)}</p><div class="v3-wave" data-wave-seek tabindex="0" role="slider" aria-label="재생 위치" aria-valuemin="0" aria-valuemax="${r.duration}" aria-valuenow="${s.position}"><div class="v3-wave-track" style="width:${r.duration/Math.min(r.duration,30)*100}%;transform:translateX(${-s.position/r.duration*100}%)">${bars}</div><span class="v3-playhead"></span></div><div class="v3-play-controls">${button('↶ 5','skip','data-seconds="-5" aria-label="5초 뒤로"','v3-skip')}${button(s.playing?'Ⅱ':'▶','play',`aria-label="${s.playing?'일시 정지':'재생'}" ${available?'':'disabled'}`,'v3-play-main')}${button('5 ↷','skip','data-seconds="5" aria-label="5초 앞으로"','v3-skip')}</div><p class="v3-player-state">${e(X.fileState(r))}</p></div>`;
   }
   function backupSummary(example='review',done=false){
     return `<div class="v3-import-summary">${field(done?'가져온 기록':'가져올 기록','내 곡 3개 · 녹음 정보 8개 · 녹음 파일 7개')}`+
@@ -609,22 +609,22 @@
     }
   },true);
   window.addEventListener('input',event=>{if(event.target.hasAttribute('data-v3-seek')){s.position=Number(event.target.value);updatePlayer();}});
-  let wavePointer = null;
+  let wavePointer = null, waveOriginX = 0, waveOriginPosition = 0;
   function seekWave(event) {
     const wave = document.querySelector('.device-holder [data-wave-seek]');
     const recording = F.recordings.get(s.record);
     if (!wave || !recording) return;
     const rect = wave.getBoundingClientRect();
-    s.position = Math.max(0, Math.min(recording.duration, (event.clientX - rect.left) / rect.width * recording.duration));
+    s.position = Math.max(0, Math.min(recording.duration, waveOriginPosition - (event.clientX - waveOriginX) / rect.width * Math.min(recording.duration, 30)));
     wave.setAttribute('aria-valuenow', s.position);
     updatePlayer();
   }
-  window.addEventListener('pointerdown', event => {const wave=event.target.closest('[data-wave-seek]');if(!wave)return;wavePointer=event.pointerId;wave.setPointerCapture(event.pointerId);seekWave(event);});
+  window.addEventListener('pointerdown', event => {const wave=event.target.closest('[data-wave-seek]');if(!wave)return;wavePointer=event.pointerId;waveOriginX=event.clientX;waveOriginPosition=s.position;wave.setPointerCapture(event.pointerId);});
   window.addEventListener('pointermove', event => {if(wavePointer===event.pointerId)seekWave(event);});
   for(const name of ['pointerup','pointercancel'])window.addEventListener(name,event=>{if(event.pointerId===wavePointer)wavePointer=null;});
   window.addEventListener('keydown',event=>{if(!event.target.matches('[data-wave-seek]')||!['ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();const r=F.recordings.get(s.record);s.position=Math.max(0,Math.min(r.duration,s.position+(event.key==='ArrowLeft'?-5:5)));updatePlayer();});
-  function updatePlayer(){const r=F.recordings.get(s.record);if(!r)return;const root=document.querySelector('.device-holder');const timeNode=root?.querySelector('[data-v3-time]');if(timeNode)timeNode.textContent=time(s.position);const slider=root?.querySelector('[data-v3-seek]');if(slider)slider.value=s.position;const head=root?.querySelector('.v3-playhead');if(head)head.style.left=s.position/r.duration*100+'%';}
-  setInterval(()=>{if(current()!=='v2-playback'){s.playing=false;return;}if(!s.playing)return;const duration=F.recordings.get(s.record)?.duration||0;s.position=Math.min(duration,s.position+.1);updatePlayer();if(s.position>=duration){s.playing=false;render();}},100);
+  function updatePlayer(){const r=F.recordings.get(s.record);if(!r)return;const root=document.querySelector('.device-holder');const timeNode=root?.querySelector('[data-v3-time]');if(timeNode)timeNode.textContent=time(s.position);const slider=root?.querySelector('[data-v3-seek]');if(slider)slider.value=s.position;const track=root?.querySelector('.v3-wave-track');if(track)track.style.transform=`translateX(${-s.position/r.duration*100}%)`;const wave=root?.querySelector('[data-wave-seek]');if(wave)wave.setAttribute('aria-valuenow',s.position);}
+  setInterval(()=>{if(current()!=='v2-playback'){s.playing=false;return;}if(!s.playing||wavePointer!==null)return;const duration=F.recordings.get(s.record)?.duration||0;s.position=Math.min(duration,s.position+.1);updatePlayer();if(s.position>=duration){s.playing=false;render();}},100);
   // Pointer drag is provisional until release; Escape/cancel restores the saved order.
   function beginDrag(row,pointer){s.drag.originalRows=[...s.drag.container.children];row.classList.add('v3-dragging');row.setAttribute('aria-grabbed','true');s.drag.active=true;s.drag.row=row;if(pointer!==null){row.setPointerCapture(pointer);const r=row.getBoundingClientRect(),ghost=row.cloneNode(true);ghost.classList.add('v3-drag-ghost');
  // The floating copy leaves the phone theme subtree: carry its resolved colors.

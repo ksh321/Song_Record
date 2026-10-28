@@ -376,3 +376,7 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 .phone.pl-ordering .v4-playlist-summary>.pl-edit-tools{position:absolute;inset:0;padding:0;margin:0;pointer-events:auto}
 .phone.pl-ordering .v3-draggable{background:transparent;border:0;padding:0}
 .phone.pl-ordering .v3-draggable>.v3-list-song{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;min-height:78px}
+
+/* Fixed center playhead; drag the waveform beneath it in either theme. */
+.phone .v3-wave-track{position:absolute;left:50%;top:0;height:100%;display:flex;align-items:center;gap:2px;will-change:transform}
+.phone .v3-player .v3-playhead{left:50%;transform:translateX(-1px);pointer-events:none}

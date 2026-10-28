@@ -32,6 +32,8 @@ class RecordingPlayerScreen extends StatefulWidget {
 class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
   late final AudioPlayback player;
   int? scrubPosition;
+  double scrubOriginX = 0;
+  int scrubOriginPosition = 0;
 
   @override
   void initState() {
@@ -118,9 +120,13 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
                 height: 135,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
+                    final visibleDuration = player.duration.clamp(1, 30000);
                     void scrub(double x) => setState(() {
                       scrubPosition =
-                          (x / constraints.maxWidth * player.duration)
+                          (scrubOriginPosition -
+                                  (x - scrubOriginX) /
+                                      constraints.maxWidth *
+                                      visibleDuration)
                               .round()
                               .clamp(0, player.duration);
                     });
@@ -164,14 +170,12 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
                       child: GestureDetector(
                         key: const ValueKey('playback-waveform'),
                         behavior: HitTestBehavior.opaque,
-                        onTapUp: seekable
-                            ? (event) {
-                                scrub(event.localPosition.dx);
-                                commit();
-                              }
-                            : null,
                         onHorizontalDragStart: seekable
-                            ? (event) => scrub(event.localPosition.dx)
+                            ? (event) {
+                                scrubOriginX = event.localPosition.dx;
+                                scrubOriginPosition = player.position;
+                                setState(() => scrubPosition = player.position);
+                              }
                             : null,
                         onHorizontalDragUpdate: seekable
                             ? (event) => scrub(event.localPosition.dx)
@@ -188,6 +192,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
                                 : (scrubPosition ?? player.position) /
                                       player.duration,
                             Theme.of(context).colorScheme.primary,
+                            player.duration / visibleDuration,
                           ),
                         ),
                       ),
@@ -272,17 +277,20 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
 }
 
 class _Waveform extends CustomPainter {
-  _Waveform(this.peaks, this.progress, this.color);
+  _Waveform(this.peaks, this.progress, this.color, this.scale);
   final List<double> peaks;
   final double progress;
   final Color color;
+  final double scale;
   @override
   void paint(Canvas canvas, Size size) {
-    if (peaks.isEmpty) return;
-    final step = size.width / peaks.length;
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+    final trackWidth = size.width * scale;
+    final step = peaks.isEmpty ? 0.0 : trackWidth / peaks.length;
     canvas.drawLine(
-      Offset(size.width * progress, 0),
-      Offset(size.width * progress, size.height),
+      Offset(size.width / 2, 0),
+      Offset(size.width / 2, size.height),
       Paint()
         ..color = color
         ..strokeWidth = 2,
@@ -295,18 +303,23 @@ class _Waveform extends CustomPainter {
         )
         ..strokeWidth = (step * .6).clamp(1.0, 3.0)
         ..strokeCap = StrokeCap.round;
-      final x = (i + .5) * step;
+      final x = size.width / 2 + (i + .5) * step - progress * trackWidth;
+      if (x < -3 || x > size.width + 3) {
+        continue;
+      }
       canvas.drawLine(
         Offset(x, (size.height - height) / 2),
         Offset(x, (size.height + height) / 2),
         paint,
       );
     }
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(_Waveform oldDelegate) =>
       oldDelegate.peaks != peaks ||
       oldDelegate.progress != progress ||
-      oldDelegate.color != color;
+      oldDelegate.color != color ||
+      oldDelegate.scale != scale;
 }

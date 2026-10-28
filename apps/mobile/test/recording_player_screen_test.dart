@@ -106,11 +106,35 @@ void main() {
         final waveform = find.byKey(const ValueKey('playback-waveform'));
         final box = tester.getRect(waveform);
         await tester.dragFrom(
-          Offset(box.left + 10, box.center.dy),
-          Offset(box.width * .7, 0),
+          Offset(box.right - 10, box.center.dy),
+          Offset(-box.width * .7, 0),
         );
         await tester.pump();
         expect(port.seekAt, greaterThan(0));
+        port.stream.add(
+          PlayerEvent(
+            port.sources.last['token'] as int,
+            PlaybackPhase.playing,
+            5000,
+            10000,
+          ),
+        );
+        await tester.pump();
+        await tester.dragFrom(
+          Offset(box.left + 10, box.center.dy),
+          Offset(box.width * .3, 0),
+        );
+        await tester.pump();
+        expect(port.seekAt, inExclusiveRange(0, 5000));
+        port.stream.add(
+          PlayerEvent(
+            port.sources.last['token'] as int,
+            PlaybackPhase.playing,
+            0,
+            10000,
+          ),
+        );
+        await tester.pump();
         await tester.tap(find.byTooltip('5초 뒤로'));
         expect(port.seekAt, 0);
         await tester.tap(find.byTooltip('5초 앞으로'));
