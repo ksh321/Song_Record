@@ -114,6 +114,10 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
       child: AnimatedBuilder(
         animation: player,
         builder: (context, _) {
+          final controlIconColor =
+              Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black;
           final playing = player.phase == PlaybackPhase.playing;
           final seekable = {
             PlaybackPhase.playing,
@@ -260,6 +264,8 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                     IconButton(
                       tooltip: '5초 뒤로',
                       style: IconButton.styleFrom(
+                        foregroundColor: controlIconColor,
+                        disabledForegroundColor: controlIconColor,
                         minimumSize: const Size(52, 52),
                       ),
                       onPressed: seekable
@@ -272,7 +278,11 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                               ),
                             )
                           : null,
-                      icon: const AppIcon(Icons.replay_5, size: skipIconSize),
+                      icon: AppIcon(
+                        Icons.replay_5,
+                        size: skipIconSize,
+                        color: controlIconColor,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     IconButton.filled(
@@ -303,6 +313,8 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                     IconButton(
                       tooltip: '5초 앞으로',
                       style: IconButton.styleFrom(
+                        foregroundColor: controlIconColor,
+                        disabledForegroundColor: controlIconColor,
                         minimumSize: const Size(52, 52),
                       ),
                       onPressed: seekable
@@ -315,7 +327,11 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                               ),
                             )
                           : null,
-                      icon: const AppIcon(Icons.forward_5, size: skipIconSize),
+                      icon: AppIcon(
+                        Icons.forward_5,
+                        size: skipIconSize,
+                        color: controlIconColor,
+                      ),
                     ),
                   ],
                 ),

@@ -6,6 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/audio/audio_player.dart';
 import 'package:song_record/core/database/account_store.dart';
+import 'package:song_record/core/theme/app_theme.dart';
+import 'package:song_record/core/widgets/app_icon.dart';
 import 'package:song_record/features/recorder/recording_player_screen.dart';
 
 import '../tool/local_preservation_fixture.dart';
@@ -50,6 +52,47 @@ void main() {
         expect(find.text('00:12.0'), findsOneWidget);
         expect(find.text('가수 · 곡 원키'), findsOneWidget);
         expect(find.byTooltip('설정'), findsNothing);
+        for (final light in [false, true]) {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: AppTheme.preview(light: light),
+              home: RecordingPlayerScreen(
+                recordingId: preservationId(2),
+                createPlayer: () => player,
+                autoplay: false,
+                title: '가수 · 곡 원키',
+                initialDuration: 12000,
+                onDetails: () => opened++,
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final expected = light ? Colors.black : Colors.white;
+          for (final icon in [Icons.replay_5, Icons.forward_5]) {
+            final actual = tester.widget<AppIcon>(
+              find.byWidgetPredicate((w) => w is AppIcon && w.icon == icon),
+            );
+            expect(actual.color, expected);
+          }
+          for (final tip in ['5초 뒤로', '5초 앞으로']) {
+            final button = tester.widget<IconButton>(
+              find.byWidgetPredicate(
+                (w) => w is IconButton && w.tooltip == tip,
+              ),
+            );
+            expect(button.onPressed, isNull);
+            expect(
+              button.style!.foregroundColor!.resolve({WidgetState.disabled}),
+              expected,
+            );
+            expect(button.style!.foregroundColor!.resolve({}), expected);
+          }
+          expect(
+            AppTheme.preview(light: light).snackBarTheme.backgroundColor,
+            light ? const Color(0xFFE8E8E8) : const Color(0xFF303030),
+          );
+        }
+
         await tester.tap(find.byTooltip('녹음 상세 메뉴'));
         expect(opened, 1);
         expect(port.plays, 0);

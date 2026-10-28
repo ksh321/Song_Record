@@ -75,6 +75,7 @@ class TabNavigator extends StatefulWidget {
     required this.active,
     required this.rootBuilder,
     required this.openSettings,
+    this.onRootBack,
     super.key,
   });
 
@@ -82,6 +83,7 @@ class TabNavigator extends StatefulWidget {
   final bool active;
   final WidgetBuilder rootBuilder;
   final VoidCallback openSettings;
+  final VoidCallback? onRootBack;
 
   @override
   State<TabNavigator> createState() => TabNavigatorState();
@@ -150,11 +152,13 @@ class TabNavigatorState extends State<TabNavigator> {
       navigation: _navigation,
       child: NavigatorPopHandler<Object?>(
         enabled: widget.active,
-        onPopWithResult: (result) {
-          // Inactive handlers can also receive a blocked outer pop callback.
-          if (widget.active) {
-            _navigation._navigatorKey.currentState!.pop(result);
-          }
+        onPopWithResult: (result) async {
+          // Only the visible tab consumes the blocked outer pop. maybePop
+          // preserves form/selection PopScope guards before tab history.
+          if (!widget.active) return;
+          final handled = await _navigation._navigatorKey.currentState!
+              .maybePop(result);
+          if (mounted && widget.active && !handled) widget.onRootBack?.call();
         },
         child: Navigator(
           key: _navigation._navigatorKey,

@@ -50,6 +50,14 @@ abstract final class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: background,
       canvasColor: surface,
+      snackBarTheme: base.snackBarTheme.copyWith(
+        backgroundColor: light
+            ? const Color(0xFFE8E8E8)
+            : const Color(0xFF303030),
+        contentTextStyle: base.textTheme.bodyMedium?.copyWith(
+          color: foreground,
+        ),
+      ),
       dialogTheme: base.dialogTheme.copyWith(
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,

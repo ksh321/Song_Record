@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/app/app_shell.dart';
 import 'package:song_record/app/song_record_app.dart';
@@ -12,6 +13,73 @@ import 'package:song_record/network/health_client.dart';
 import 'package:song_record/routing/tab_navigation.dart';
 
 void main() {
+  testWidgets('back follows tab history; only recorder double back exits', (
+    tester,
+  ) async {
+    final gateway = _ShellRecorderGateway();
+    var exits = 0;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'SystemNavigator.pop') exits++;
+        return null;
+      },
+    );
+    try {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AppShell(
+            recorderGateway: gateway,
+            tabBuilder: (context, tab) => Text(tab.name),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      int selected() => tester
+          .widget<NavigationBar>(find.byType(NavigationBar))
+          .selectedIndex;
+      Future<void> back() async {
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+      }
+
+      await _selectTab(tester, '인기 차트');
+      await _selectTab(tester, '플레이리스트');
+      await _selectTab(tester, '검색');
+      await back();
+      expect(selected(), 3);
+      expect(exits, 0);
+      await back();
+      expect(selected(), 1);
+      await back();
+      expect(selected(), 0);
+      await back();
+      expect(selected(), 2);
+      expect(exits, 0);
+      await back();
+      expect(find.text('종료하려면 다시 누르세요'), findsOneWidget);
+      expect(exits, 0);
+      await back();
+      expect(exits, 1);
+      await _selectTab(tester, '내 곡');
+      await _selectTab(tester, '녹음');
+      await back();
+      expect(exits, 1);
+      await tester.pump(const Duration(seconds: 3));
+      await back();
+      expect(exits, 1);
+      await back();
+      expect(exits, 2);
+    } finally {
+      await tester.pumpWidget(const SizedBox());
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      );
+      await gateway.dispose();
+    }
+  });
+
   testWidgets(
     'production screen builders keep detail inside its tab navigator',
     (tester) async {

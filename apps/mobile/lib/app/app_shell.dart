@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:song_record/app/app_tab.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/content_state.dart';
@@ -43,6 +46,44 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   AppTab _selectedTab = AppTab.songs;
+  final List<AppTab> _tabHistory = [];
+  Timer? _exitTimer;
+
+  @override
+  void dispose() {
+    _exitTimer?.cancel();
+    super.dispose();
+  }
+
+  void _rootBack() {
+    if (_selectedTab != AppTab.recording) {
+      final previous = _tabHistory.isEmpty
+          ? AppTab.recording
+          : _tabHistory.removeLast();
+      setState(() {
+        _selectedTab = previous;
+        _visitedTabs.add(previous);
+        _exitTimer?.cancel();
+      });
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      return;
+    }
+    if (_exitTimer?.isActive ?? false) {
+      _exitTimer?.cancel();
+      SystemNavigator.pop();
+      return;
+    }
+    _exitTimer = Timer(const Duration(seconds: 2), () {});
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('종료하려면 다시 누르세요'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+  }
+
   final Set<AppTab> _visitedTabs = {AppTab.songs};
   final _tabKeys = {
     for (final tab in AppTab.values) tab: GlobalKey<TabNavigatorState>(),
@@ -60,7 +101,10 @@ class _AppShellState extends State<AppShell> {
       _tabKeys[tab]?.currentState?.popToRoot();
       return;
     }
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     setState(() {
+      _tabHistory.add(_selectedTab);
+      _exitTimer?.cancel();
       _selectedTab = tab;
       _visitedTabs.add(tab);
     });
@@ -112,60 +156,64 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _selectedTab.index,
-        sizing: StackFit.expand,
-        children: [
-          for (final tab in AppTab.values)
-            ExcludeFocus(
-              key: ValueKey(tab),
-              excluding: tab != _selectedTab,
-              child: TickerMode(
-                enabled: tab == _selectedTab,
-                // Open once on first visit. In particular, startup does not
-                // create the recorder or request microphone permissions.
-                child: _visitedTabs.contains(tab)
-                    ? TabNavigator(
-                        key: _tabKeys[tab],
-                        tab: tab,
-                        active: tab == _selectedTab,
-                        openSettings: _openSettings,
-                        rootBuilder: (context) =>
-                            widget.tabBuilder?.call(context, tab) ??
-                            _buildTab(tab, context),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ),
-        ],
-      ),
-      bottomNavigationBar: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(color: Theme.of(context).colorScheme.outline),
-          ),
-        ),
-        child: NavigationBar(
-          animationDuration:
-              MediaQuery.of(context).disableAnimations ||
-                  MediaQuery.of(context).accessibleNavigation
-              ? Duration.zero
-              : null,
-          selectedIndex: _selectedTab.index,
-          onDestinationSelected: _selectTab,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          labelPadding: EdgeInsets.zero,
-          destinations: [
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        body: IndexedStack(
+          index: _selectedTab.index,
+          sizing: StackFit.expand,
+          children: [
             for (final tab in AppTab.values)
-              NavigationDestination(
-                key: ValueKey('tab-${tab.name}'),
-                icon: AppIcon(tab.icon, size: 22),
-                selectedIcon: AppIcon(tab.selectedIcon, size: 22),
-                label: tab.label,
-                tooltip: tab.label,
+              ExcludeFocus(
+                key: ValueKey(tab),
+                excluding: tab != _selectedTab,
+                child: TickerMode(
+                  enabled: tab == _selectedTab,
+                  // Open once on first visit. In particular, startup does not
+                  // create the recorder or request microphone permissions.
+                  child: _visitedTabs.contains(tab)
+                      ? TabNavigator(
+                          key: _tabKeys[tab],
+                          tab: tab,
+                          active: tab == _selectedTab,
+                          onRootBack: _rootBack,
+                          openSettings: _openSettings,
+                          rootBuilder: (context) =>
+                              widget.tabBuilder?.call(context, tab) ??
+                              _buildTab(tab, context),
+                        )
+                      : const SizedBox.shrink(),
+                ),
               ),
           ],
+        ),
+        bottomNavigationBar: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(color: Theme.of(context).colorScheme.outline),
+            ),
+          ),
+          child: NavigationBar(
+            animationDuration:
+                MediaQuery.of(context).disableAnimations ||
+                    MediaQuery.of(context).accessibleNavigation
+                ? Duration.zero
+                : null,
+            selectedIndex: _selectedTab.index,
+            onDestinationSelected: _selectTab,
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            labelPadding: EdgeInsets.zero,
+            destinations: [
+              for (final tab in AppTab.values)
+                NavigationDestination(
+                  key: ValueKey('tab-${tab.name}'),
+                  icon: AppIcon(tab.icon, size: 22),
+                  selectedIcon: AppIcon(tab.selectedIcon, size: 22),
+                  label: tab.label,
+                  tooltip: tab.label,
+                ),
+            ],
+          ),
         ),
       ),
     );

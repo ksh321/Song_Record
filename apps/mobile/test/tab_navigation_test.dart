@@ -113,13 +113,13 @@ void main() {
     await tester.pumpAndSettle();
     await openItem(tester, 'songs', 0);
     await selectTab(tester, 'search');
-    // maybePop returns false at the shell root; the platform owns app exit.
+    // Shell consumes root back and restores the previous tab without popping its detail.
     final root = Navigator.of(
       tester.element(find.byType(NavigationBar)),
       rootNavigator: true,
     );
-    expect(await root.maybePop(), isFalse);
-    await selectTab(tester, 'songs');
+    expect(await root.maybePop(), isTrue);
+    await tester.pumpAndSettle();
     expect(find.text('내 곡 샘플 1 상세'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

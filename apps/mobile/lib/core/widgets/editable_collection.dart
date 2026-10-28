@@ -244,6 +244,9 @@ class _EditableCollectionState extends State<EditableCollection> {
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Checkbox(
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        visualDensity: VisualDensity.compact,
                                         value:
                                             ids.isNotEmpty &&
                                             selected.length ==
@@ -268,6 +271,7 @@ class _EditableCollectionState extends State<EditableCollection> {
                                     ],
                                   ),
                                   enabled ? toggleAll : null,
+                                  leftPadding: 4,
                                 ),
                                 _control(
                                   context,
@@ -432,31 +436,35 @@ class _EditableCollectionState extends State<EditableCollection> {
     );
   }
 
-  Widget _control(BuildContext context, Widget child, VoidCallback? tap) =>
-      Material(
-        color: Theme.of(context).colorScheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: Theme.of(context).colorScheme.outline),
-        ),
-        child: InkWell(
-          onTap: tap,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            alignment: Alignment.center,
-            child: DefaultTextStyle(
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-              child: child,
-            ),
+  Widget _control(
+    BuildContext context,
+    Widget child,
+    VoidCallback? tap, {
+    double leftPadding = 12,
+  }) => Material(
+    color: Theme.of(context).colorScheme.surface,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(10),
+      side: BorderSide(color: Theme.of(context).colorScheme.outline),
+    ),
+    child: InkWell(
+      onTap: tap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        height: 44,
+        padding: EdgeInsets.only(left: leftPadding, right: 12),
+        alignment: Alignment.center,
+        child: DefaultTextStyle(
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
           ),
+          child: child,
         ),
-      );
+      ),
+    ),
+  );
 }
 
 class _CollectionBar extends SliverPersistentHeaderDelegate {

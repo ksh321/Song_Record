@@ -388,3 +388,11 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 /* Playback transport uses the same modest spacing and skip size as beta. */
 .phone .v3-play-controls{gap:12px}
 .phone .v3-skip{width:52px;min-width:52px;min-height:52px;font-size:27px}
+
+/* One transport icon color for play/pause and both skip controls. */
+.phone{--playback-control-icon:#fff}
+.phone.v4-light{--playback-control-icon:#000}
+.phone .v3-player .v3-play-controls .v3-skip{color:var(--playback-control-icon)}
+
+.phone .v3-player .v3-play-controls .v3-play-main{color:var(--on-accent)}
+.phone:is(.pl-selecting,.bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) :is(.pl-all,.bulk-all){padding-left:5px}
