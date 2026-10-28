@@ -624,7 +624,19 @@
   for(const name of ['pointerup','pointercancel'])window.addEventListener(name,event=>{if(event.pointerId===wavePointer)wavePointer=null;});
   window.addEventListener('keydown',event=>{if(!event.target.matches('[data-wave-seek]')||!['ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();const r=F.recordings.get(s.record);s.position=Math.max(0,Math.min(r.duration,s.position+(event.key==='ArrowLeft'?-5:5)));updatePlayer();});
   function updatePlayer(){const r=F.recordings.get(s.record);if(!r)return;const root=document.querySelector('.device-holder');const timeNode=root?.querySelector('[data-v3-time]');if(timeNode)timeNode.textContent=time(s.position);const slider=root?.querySelector('[data-v3-seek]');if(slider)slider.value=s.position;const track=root?.querySelector('.v3-wave-track');if(track)track.style.transform=`translateX(${-s.position/r.duration*100}%)`;const wave=root?.querySelector('[data-wave-seek]');if(wave)wave.setAttribute('aria-valuenow',s.position);}
-  setInterval(()=>{if(current()!=='v2-playback'){s.playing=false;return;}if(!s.playing||wavePointer!==null)return;const duration=F.recordings.get(s.record)?.duration||0;s.position=Math.min(duration,s.position+.1);updatePlayer();if(s.position>=duration){s.playing=false;render();}},100);
+  let lastPlayerFrame = null;
+  function animatePlayer(now) {
+    const delta = lastPlayerFrame === null ? 0 : Math.min((now-lastPlayerFrame)/1000,.1);
+    lastPlayerFrame = now;
+    if(current()!=='v2-playback') s.playing=false;
+    if(s.playing && wavePointer===null && !document.hidden){
+      const duration=F.recordings.get(s.record)?.duration||0;
+      s.position=Math.min(duration,s.position+delta);updatePlayer();
+      if(s.position>=duration){s.playing=false;render();}
+    }
+    requestAnimationFrame(animatePlayer);
+  }
+  requestAnimationFrame(animatePlayer);
   // Pointer drag is provisional until release; Escape/cancel restores the saved order.
   function beginDrag(row,pointer){s.drag.originalRows=[...s.drag.container.children];row.classList.add('v3-dragging');row.setAttribute('aria-grabbed','true');s.drag.active=true;s.drag.row=row;if(pointer!==null){row.setPointerCapture(pointer);const r=row.getBoundingClientRect(),ghost=row.cloneNode(true);ghost.classList.add('v3-drag-ghost');
  // The floating copy leaves the phone theme subtree: carry its resolved colors.

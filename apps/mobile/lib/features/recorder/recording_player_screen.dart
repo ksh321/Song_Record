@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/audio/audio_player.dart';
@@ -29,9 +30,33 @@ class RecordingPlayerScreen extends StatefulWidget {
   State<RecordingPlayerScreen> createState() => _RecordingPlayerScreenState();
 }
 
-class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
+class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
+    with SingleTickerProviderStateMixin {
   late final AudioPlayback player;
+  late final Ticker motion;
+  final positionClock = Stopwatch();
   int? scrubPosition;
+
+  // Native position reports arrive every 500ms. Interpolate only that interval;
+  // stale events must not make a stalled player appear to keep playing.
+  int get visiblePosition =>
+      (player.position +
+              (player.phase == PlaybackPhase.playing
+                  ? positionClock.elapsedMilliseconds.clamp(0, 500)
+                  : 0))
+          .clamp(0, player.duration);
+
+  void syncMotion() {
+    positionClock.reset();
+    if (player.phase == PlaybackPhase.playing) {
+      positionClock.start();
+      if (!motion.isActive) motion.start();
+    } else {
+      positionClock.stop();
+      motion.stop();
+    }
+  }
+
   double scrubOriginX = 0;
   int scrubOriginPosition = 0;
 
@@ -39,11 +64,18 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
   void initState() {
     super.initState();
     player = widget.createPlayer();
+    motion = createTicker((_) {
+      if (mounted && scrubPosition == null) setState(() {});
+    });
+    player.addListener(syncMotion);
     if (widget.autoplay) unawaited(player.start(widget.recordingId));
   }
 
   @override
   void dispose() {
+    player.removeListener(syncMotion);
+    motion.dispose();
+    positionClock.stop();
     player.dispose();
     super.dispose();
   }
@@ -92,7 +124,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
               const SizedBox(height: 40),
               Center(
                 child: Text(
-                  time(scrubPosition ?? player.position),
+                  time(scrubPosition ?? visiblePosition),
                   style: const TextStyle(
                     fontSize: 52,
                     fontWeight: FontWeight.w400,
@@ -117,7 +149,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
               ),
               const SizedBox(height: 40),
               SizedBox(
-                height: 135,
+                height: 185,
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final visibleDuration = player.duration.clamp(1, 30000);
@@ -140,7 +172,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
 
                     return Semantics(
                       label: '재생 위치',
-                      value: time(scrubPosition ?? player.position),
+                      value: time(scrubPosition ?? visiblePosition),
                       increasedValue: time(
                         (player.position + 5000).clamp(0, player.duration),
                       ),
@@ -173,8 +205,8 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
                         onHorizontalDragStart: seekable
                             ? (event) {
                                 scrubOriginX = event.localPosition.dx;
-                                scrubOriginPosition = player.position;
-                                setState(() => scrubPosition = player.position);
+                                scrubOriginPosition = visiblePosition;
+                                setState(() => scrubPosition = visiblePosition);
                               }
                             : null,
                         onHorizontalDragUpdate: seekable
@@ -189,7 +221,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
                             player.waveform,
                             player.duration == 0
                                 ? 0
-                                : (scrubPosition ?? player.position) /
+                                : (scrubPosition ?? visiblePosition) /
                                       player.duration,
                             Theme.of(context).colorScheme.primary,
                             player.duration / visibleDuration,
@@ -200,7 +232,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
                   },
                 ),
               ),
-              const SizedBox(height: 96),
+              const SizedBox(height: 112),
               if (player.phase == PlaybackPhase.loading)
                 const Center(child: CircularProgressIndicator())
               else if (player.phase == PlaybackPhase.failed ||

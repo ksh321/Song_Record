@@ -103,6 +103,46 @@ void main() {
         await tester.pump();
         expect(find.byTooltip('일시정지'), findsOneWidget);
         expect(find.byType(Slider), findsNothing);
+        // Smooth display advances between native reports, but never runs away
+        // past one reporting interval when playback reports stop arriving.
+        port.stream.add(
+          PlayerEvent(
+            port.sources.last['token'] as int,
+            PlaybackPhase.playing,
+            4000,
+            10000,
+          ),
+        );
+        await tester.pump();
+        await Future<void>.delayed(const Duration(milliseconds: 160));
+        await tester.pump();
+        expect(find.text('00:04.0'), findsNothing);
+        expect(player.position, 4000);
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        await tester.pump();
+        expect(find.text('00:04.5'), findsOneWidget);
+        port.stream.add(
+          PlayerEvent(
+            port.sources.last['token'] as int,
+            PlaybackPhase.paused,
+            4000,
+            10000,
+          ),
+        );
+        await tester.pump();
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+        await tester.pump();
+        expect(find.text('00:04.0'), findsOneWidget);
+        port.stream.add(
+          PlayerEvent(
+            port.sources.last['token'] as int,
+            PlaybackPhase.playing,
+            0,
+            10000,
+          ),
+        );
+        await tester.pump();
+
         final waveform = find.byKey(const ValueKey('playback-waveform'));
         final box = tester.getRect(waveform);
         await tester.dragFrom(

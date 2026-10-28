@@ -380,3 +380,7 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 /* Fixed center playhead; drag the waveform beneath it in either theme. */
 .phone .v3-wave-track{position:absolute;left:50%;top:0;height:100%;display:flex;align-items:center;gap:2px;will-change:transform}
 .phone .v3-player .v3-playhead{left:50%;transform:translateX(-1px);pointer-events:none}
+
+/* Shared playback geometry in both themes. */
+.phone .v3-wave{height:185px}
+.phone .v3-play-controls{margin-top:112px}

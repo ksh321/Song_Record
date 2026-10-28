@@ -688,3 +688,13 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 수정 후 재생 관련11개 PASS, analyze0. HTML 두 테마에서 드래그 후 시간 변화·중앙선 좌표 불변·별도 슬라이더 없음 PASS. 로그 ui-fixed-playhead-tests/analyze, ui-six-browser-check. 설치·실기·커밋/CI는 다음 단계.
 
 - 정정본 설치: 1ee029c3286528020e770fee92219c40744e8b23b47d3ac1df4f2655542e5b80 install -r Success, 소스 해시 대조 통과. 사용자 ㄱ 회신 후 기존3.7초 녹음에서 재생0.6초, 오른쪽 드래그1.2초, 왼쪽 드래그2.0초 화면을 확인. 모든 화면 중앙선 x 동일, 파형만 이동. 개인 데이터 생성/삭제 없음. 실기 중 전면 이탈 시 입력을 멈추고 베타만 다시 열어 확인.
+
+- 고정 기준선 정정 최종: 673fd6930ac26813e6b0d1c850fc50b1052f7a22, Base6b1463. CI40638509434 필수 Scope/Flutter analyze·test·Android build PASS. 미영향 서버/MySQL skipped는 통과로 계산하지 않음. 기존 감시기 ntfy SERVER_ACCEPTED(수신 확인 아님), 중복 완료 알림 없음. 설치1ee029c·실기·검토 근거 일치, 이번 요청 완료.
+
+### P25-04 파형 확대·연속 이동 — 2026-10-28
+- 사용자 요청: 파형 확대, 재생 버튼 아래 배치, 끊기는 이동 보완. 중앙 고정 기준선 유지.
+- 원인: Android PlaybackBridge 위치 보고500ms, HTML setInterval100ms를 화면에 그대로 반영. 앱 표시 위치만 Ticker/단조 시계로 최대500ms 보간하고 실제 위치 이벤트가 오면 재동기화. 정지/완료/실패 시 Ticker 정지, 화면 종료 시 dispose. 실제 오디오·서버·파일은 변경하지 않음.
+- 파형 높이135→185, 컨트롤 위 간격96→112; 두 테마 동일. HTML은 requestAnimationFrame과 실제 경과 시간으로 이동, 비활성 탭 복귀 시 큰 점프 제한.
+- 재생11 PASS: 이벤트 사이 표시 진행/원본 재생 위치 불변/500ms 상한/일시정지 멈춤/기존 탐색·완료 후 재생 포함. HTML 두 테마·고정선·탐색 PASS, 400ms 중59개 연속 프레임 값 확인. 분석/서명 빌드·실기 진행 중.
+
+- 분석0, 별도 현재 모델 코드 검토 완료. 타이머는 화면 생명주기에 귀속, 실제 AudioPlayback 위치/계정 경계 불변, 비재생 시 예측 없음. 서명본 ffe2ee064f43ecdf09db83580bc57d789fe9197bdfc5a0f50a463639c95b9d51 소스 대조 후 install-r Success. 폰 기존13.2초 녹음 재생·중앙선·확대파형·아래 컨트롤 한 화면 확인(library-smooth-play/playing). 개인 곡/녹음 생성·삭제 없음.
