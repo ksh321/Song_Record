@@ -424,3 +424,8 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 /* Recording rows share key colors but use a text-height badge. */
 .phone .v3-record-song .key{height:auto;min-height:22px;padding:3px 4px;line-height:1.2;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}
 .phone :is([data-flow="pick-record-song"],[data-v3="record-pick"]){border:0;border-bottom:1px solid var(--line,#393939);border-radius:0;background:transparent}
+
+/* Compact selection rows; representative choices retain their own sizing. */
+.phone .phone-body :is([data-flow="pick-record-song"],[data-v3="record-pick"]){min-height:60px;padding:8px 0;margin:0;gap:10px}
+.phone .phone-body :is([data-flow="pick-record-song"],[data-v3="record-pick"]) .compact-copy small{margin-top:3px}
+.phone .phone-body [data-flow="representative"]{border:0;border-bottom:1px solid var(--line,#393939);border-radius:0;background:transparent}

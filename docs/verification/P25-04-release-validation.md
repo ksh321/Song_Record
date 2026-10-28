@@ -800,3 +800,15 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 서명 APK4f6dcaf05b63c9140e0fb68c93ed60acae78e65e5b4937d4148659fc93b2050b 준비, 전체 소스/파일SHA 일치. 현재 adb 연결0개. USER-211 USB/잠금 해제 대기, 개인 자료 생성·삭제 없음. 필수 설치/실기 전이므로 커밋·푸시·CI 미실행. 기존 설치본f7ecc79 보존. 남은 순서: USB 확인→install-r→기기SHA/기존 화면 확인→커밋/푸시→필수CI.
 
 - USER-211 사용자 ㄱ 후 USB 실제 확인, 연결 재인식1회 뒤 APK4f6dcaf0 install-r Success·기기SHA/전체 소스 일치. 기존 곡 상세 스크롤→맨 위로 표시/클릭→상단 복귀·숨김 실기 PASS. 전체 녹음3개 기존 행과 얇은 키 표시 확인, 목록은 화면 안에 들어 스크롤 버튼 없음(정상). 긴 목록은 공통 wrapper 위젯/HTML 길이 보조 검사로 검증. 입력대기0개라 실기 선택/새 녹음 생성하지 않고 기존 선택 회귀27검사로 확인. 개인정보 생성·삭제 없음. 커밋/필수CI 진행.
+
+- 최종 완료: a2a2db5932016a4c301372de9b923a6deb6864a7/Base5bb3255, 필수 CI40673190908 PASS.27검사·분석0·HTML 양쪽 모드 PASS. APK4f6dcaf0 설치/소스·기기SHA 일치, 곡상세 상단복귀 및 녹음키 높이 확인. 전체녹음3개는 화면 안에 들어 버튼 숨김 정상, 긴목록은 격리검사. 입력대기0개로 새녹음/선택저장 실기 없음. 개인자료 생성·삭제 없음. ntfy 기존CI감시기 SERVER_ACCEPTED(수신 미확인), 중복 알림 없음.
+
+### P25-04 곡 선택 행 여백 축소·대표 녹음 구분선 — 2026-10-28
+- 사용자 요청: 직전 추가한 녹음 후 곡 선택 구분선의 위아래 공백을 줄이되 여백 유지. 대표 녹음 선택 항목 사이 구분선 추가.
+- RecordingSongPicker 공통 songChoice에 ListTileTheme(minTileHeight60/minVerticalPadding6/standard density)를 적용, 등록곡·플리 후보곡 동일 사용. 제목/가수 폰트와 선택 콜백 유지. 문자열 길이/배율에 따라 높이는 확장 가능.
+- showSelectionSheet에 showDividers 기본false 옵션만 추가하고 SongDetailScreen 대표 선택 호출에서 true. 선택 Semantics/null 선택/취소/검증과 다른 공통 선택창 표시는 유지, 선은 theme outlineVariant 사용.
+- HTML 선택 행60px 최소/8px 상하 padding/가수 간격3px, 대표 선택은 기존 높이를 유지하고 공통 --line 하단선만 추가. 두 테마 실제행62px 및 대표선1px PASS(브라우저 fixture의 representativeSong은 연결 녹음이 있는 모의 곡으로 선택).
+- 검사: flutter test test/selection_sheets_test.dart test/recording_song_picker_test.dart test/song_representative_test.dart test/song_detail_test.dart --reporter expanded →22 PASS. flutter analyze 지적0(36.8초). 로그 .local/workflow/compact-choice-*.
+- 현재 모델 별도 검토: 옵션 기본값으로 범위 제한, 기존 값/해제/취소 보존, 폰트·동적 높이·테마 선·내 곡/후보 공통 적용 확인. UI만 변경, 계정/DB/동기화/삭제 판단 변경 없음. 서명 빌드/설치·기존 대표 선택 취소 실기 및 필수CI 진행 예정. 새 녹음·선택 저장/삭제 없이 진행.
+
+- 최종 서명 APK9840ddd9526736b8b0f73318b8a23c7484cb3fb0a9f5901934b703e26126259d install-r Success, 소스/기기APK SHA 일치. 기존 곡의 대표 녹음 선택창에서 실제 항목 사이 선 확인 후 뒤로 취소(설정 저장 없음). 곡 선택 높이는 기존 격리 선택 회귀/HTML62px 검증 사용, 새 녹음은 만들지 않음. 개인 자료 생성·삭제 없음. 대상 커밋 필수 CI 진행.

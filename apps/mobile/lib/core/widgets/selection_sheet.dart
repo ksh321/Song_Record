@@ -24,6 +24,7 @@ Future<SelectionResult<T>?> showSelectionSheet<T>({
   required T selected,
   required List<SelectionOption<T>> options,
   String? description,
+  bool showDividers = false,
 }) {
   final choices = List<SelectionOption<T>>.unmodifiable(options);
   if (choices.isEmpty ||
@@ -74,24 +75,37 @@ Future<SelectionResult<T>?> showSelectionSheet<T>({
             ],
             const SizedBox(height: AppSpacing.md),
             for (final option in choices)
-              Semantics(
-                selected: option.value == selected,
-                inMutuallyExclusiveGroup: true,
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(option.label, style: AppTypography.sheetOption),
-                  subtitle: option.description == null
-                      ? null
-                      : Text(
-                          option.description!,
-                          style: AppTypography.supporting,
-                        ),
-                  trailing: option.value == selected
-                      ? const AppIcon(Icons.check, semanticLabel: '선택됨')
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  border: showDividers && option != choices.last
+                      ? Border(
+                          bottom: BorderSide(
+                            color: Theme.of(sheetContext)
+                                .colorScheme
+                                .outlineVariant,
+                          ),
+                        )
                       : null,
-                  onTap: () =>
-                      Navigator.of(sheetContext)
-                          .pop(SelectionResult<T>(option.value)),
+                ),
+                child: Semantics(
+                  selected: option.value == selected,
+                  inMutuallyExclusiveGroup: true,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(option.label, style: AppTypography.sheetOption),
+                    subtitle: option.description == null
+                        ? null
+                        : Text(
+                            option.description!,
+                            style: AppTypography.supporting,
+                          ),
+                    trailing: option.value == selected
+                        ? const AppIcon(Icons.check, semanticLabel: '선택됨')
+                        : null,
+                    onTap: () =>
+                        Navigator.of(sheetContext)
+                            .pop(SelectionResult<T>(option.value)),
+                  ),
                 ),
               ),
             const SizedBox(height: AppSpacing.sm),

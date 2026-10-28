@@ -283,7 +283,14 @@ class _RecordingSongPickerState extends State<RecordingSongPicker> {
           ),
         ),
       ),
-      child: child,
+      child: ListTileTheme(
+        data: ListTileTheme.of(context).copyWith(
+          minTileHeight: 60,
+          minVerticalPadding: 6,
+          visualDensity: VisualDensity.standard,
+        ),
+        child: child,
+      ),
     ),
   );
 

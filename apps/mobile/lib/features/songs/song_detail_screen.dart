@@ -147,6 +147,7 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
       final result = await showSelectionSheet<String?>(
         context: context,
         title: '대표 녹음 선택',
+        showDividers: true,
         selected: value.roles.representative?.value,
         options: [
           for (final r in value.recordings)
