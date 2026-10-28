@@ -11,6 +11,7 @@ import '../../core/widgets/content_state.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/recording_roles_card.dart';
 import '../../core/widgets/recording_row.dart';
+import '../../core/widgets/scroll_to_top_button.dart';
 import '../../core/widgets/selection_sheet.dart';
 import '../../core/widgets/song_badges.dart';
 import '../../core/widgets/ui_controls.dart';
@@ -249,215 +250,222 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
   Widget song(MySongDetail detail) {
     final view = detail.song!.view;
     final value = detail;
-    return ListView(
-      padding: AppLayout.bodyPadding,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
-          child: Column(
-            children: [
-              Text(
-                view.title,
-                style: const TextStyle(
-                  fontSize: 22,
-                  height: 1.5,
-                  fontWeight: FontWeight.w700,
+    return ScrollToTopView(
+      builder: (scroll) => ListView(
+        controller: scroll,
+        padding: AppLayout.bodyPadding,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+            child: Column(
+              children: [
+                Text(
+                  view.title,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    height: 1.5,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${view.artist} · ${view.tjNumber == null ? '직접 등록' : 'TJ ${view.tjNumber!.value}'}',
-                style: TextStyle(
-                  fontSize: 12,
-                  height: 1.8,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                const SizedBox(height: 8),
+                Text(
+                  '${view.artist} · ${view.tjNumber == null ? '직접 등록' : 'TJ ${view.tjNumber!.value}'}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.8,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (widget.recordingId == null &&
-                  value.song != null &&
-                  !changedAccount)
-                PopupMenuButton<String>(
-                  tooltip: '곡 메뉴',
-                  icon: const AppIcon(Icons.more_vert),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'playlist', child: Text('플레이리스트 추가')),
-                    PopupMenuItem(value: 'delete', child: Text('곡 삭제')),
-                  ],
-                  onSelected: (action) => Navigator.of(context).push<void>(
-                    MaterialPageRoute(
-                      builder: (_) => action == 'delete' && widget.trash != null
-                          ? DeleteScreen(
-                              actions: widget.trash!,
-                              id: value.song!.view.id.value,
-                              title: value.song!.view.title,
-                              auth: widget.auth,
-                            )
-                          : SongActionEntry(
-                              action: action == 'delete'
-                                  ? SongAction.delete
-                                  : SongAction.playlistAdd,
-                              detail: value,
+          Align(
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (widget.recordingId == null &&
+                    value.song != null &&
+                    !changedAccount)
+                  PopupMenuButton<String>(
+                    tooltip: '곡 메뉴',
+                    icon: const AppIcon(Icons.more_vert),
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'playlist',
+                        child: Text('플레이리스트 추가'),
+                      ),
+                      PopupMenuItem(value: 'delete', child: Text('곡 삭제')),
+                    ],
+                    onSelected: (action) => Navigator.of(context).push<void>(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            action == 'delete' && widget.trash != null
+                            ? DeleteScreen(
+                                actions: widget.trash!,
+                                id: value.song!.view.id.value,
+                                title: value.song!.view.title,
+                                auth: widget.auth,
+                              )
+                            : SongActionEntry(
+                                action: action == 'delete'
+                                    ? SongAction.delete
+                                    : SongAction.playlistAdd,
+                                detail: value,
+                                auth: widget.auth,
+                              ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          AppPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text('곡 정보', style: TextStyle(fontSize: 13)),
+                    ),
+                    if (widget.prepareEdit != null)
+                      TextButton.icon(
+                        icon: const AppIcon(Icons.edit_outlined, size: 14),
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(0, 36),
+                          padding: EdgeInsets.zero,
+                        ),
+                        onPressed: () => Navigator.of(context).push<bool>(
+                          MaterialPageRoute(
+                            builder: (_) => SongEditScreen(
+                              draft: SongEditDraft(detail),
+                              prepare: widget.prepareEdit!,
                               auth: widget.auth,
                             ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        AppPanel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text('곡 정보', style: TextStyle(fontSize: 13)),
-                  ),
-                  if (widget.prepareEdit != null)
-                    TextButton.icon(
-                      icon: const AppIcon(Icons.edit_outlined, size: 14),
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size(0, 36),
-                        padding: EdgeInsets.zero,
-                      ),
-                      onPressed: () => Navigator.of(context).push<bool>(
-                        MaterialPageRoute(
-                          builder: (_) => SongEditScreen(
-                            draft: SongEditDraft(detail),
-                            prepare: widget.prepareEdit!,
-                            auth: widget.auth,
                           ),
                         ),
+                        label: const Text('곡 수정'),
                       ),
-                      label: const Text('곡 수정'),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: _info('버전', formatVersionCode(view.version)),
-                    ),
-                    VerticalDivider(
-                      width: 24,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    Expanded(
-                      child: _info(
-                        '대표 키',
-                        view.musicalKey == null
-                            ? '미정'
-                            : formatMusicalKey(view.musicalKey!),
-                      ),
-                    ),
-                    VerticalDivider(
-                      width: 24,
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
-                    Expanded(child: _info('곡 티어', formatSongTier(view.tier))),
                   ],
                 ),
-              ),
-            ],
-          ),
-        ),
-        SongSuitabilityChoice(
-          value: view.isSuitable,
-          onChanged: savingSuitability || widget.prepareEdit == null
-              ? null
-              : (v) async {
-                  if (changedAccount || tag() != scope) return;
-                  final draft = SongEditDraft(detail)..isSuitable = v;
-                  final command = widget.prepareEdit!(draft);
-                  setState(() => savingSuitability = true);
-                  try {
-                    await command();
-                  } catch (_) {
-                    if (mounted && tag() == scope) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('표시를 저장하지 못했어요. 다시 시도해 주세요.'),
+                const SizedBox(height: 12),
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _info('버전', formatVersionCode(view.version)),
+                      ),
+                      VerticalDivider(
+                        width: 24,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                      Expanded(
+                        child: _info(
+                          '대표 키',
+                          view.musicalKey == null
+                              ? '미정'
+                              : formatMusicalKey(view.musicalKey!),
                         ),
-                      );
-                    }
-                  } finally {
-                    if (mounted) setState(() => savingSuitability = false);
-                  }
-                },
-        ),
-        AppPanel(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '메모',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                      VerticalDivider(
+                        width: 24,
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                      Expanded(child: _info('곡 티어', formatSongTier(view.tier))),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                view.note.isEmpty ? '아직 작성하지 않았어요.' : view.note,
-                style: const TextStyle(fontSize: 15, height: 1.6),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        RecordingRolesCard(
-          songId: view.id,
-          selection: detail.roles,
-          recordings: {for (final r in detail.recordings) r.id: r},
-          onChooseRepresentative:
-              widget.prepareRepresentative == null || choosing
-              ? null
-              : () => chooseRepresentative(detail),
-          onOpenRecording: openRecording,
-        ),
-        if (representativeError != null) ...[
-          Text(representativeError!),
-          TextButton(
-            onPressed: choosing ? null : () => chooseRepresentative(detail),
-            child: const Text('같은 대표 변경 다시 저장'),
+          SongSuitabilityChoice(
+            value: view.isSuitable,
+            onChanged: savingSuitability || widget.prepareEdit == null
+                ? null
+                : (v) async {
+                    if (changedAccount || tag() != scope) return;
+                    final draft = SongEditDraft(detail)..isSuitable = v;
+                    final command = widget.prepareEdit!(draft);
+                    setState(() => savingSuitability = true);
+                    try {
+                      await command();
+                    } catch (_) {
+                      if (mounted && tag() == scope) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('표시를 저장하지 못했어요. 다시 시도해 주세요.'),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => savingSuitability = false);
+                    }
+                  },
           ),
-        ],
-        if (choosing) const Text('대표 저장 중'),
-        const SizedBox(height: AppSpacing.lg),
-        Text('연결 녹음 (${detail.recordings.length})'),
-        if (detail.recordings.isEmpty) const Text('연결된 녹음이 없어요.'),
-        for (final r in detail.recordings)
-          Padding(
-            padding: const EdgeInsets.only(top: AppSpacing.sm),
-            child: RecordingRow(
-              recording: r,
-              onTap: () => Navigator.of(context).push<void>(
-                MaterialPageRoute(
-                  builder: (_) => SongDetailScreen(
-                    watch: widget.watch,
-                    auth: widget.auth,
-                    recordingId: r.id.value,
+          AppPanel(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '메모',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  view.note.isEmpty ? '아직 작성하지 않았어요.' : view.note,
+                  style: const TextStyle(fontSize: 15, height: 1.6),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          RecordingRolesCard(
+            songId: view.id,
+            selection: detail.roles,
+            recordings: {for (final r in detail.recordings) r.id: r},
+            onChooseRepresentative:
+                widget.prepareRepresentative == null || choosing
+                ? null
+                : () => chooseRepresentative(detail),
+            onOpenRecording: openRecording,
+          ),
+          if (representativeError != null) ...[
+            Text(representativeError!),
+            TextButton(
+              onPressed: choosing ? null : () => chooseRepresentative(detail),
+              child: const Text('같은 대표 변경 다시 저장'),
+            ),
+          ],
+          if (choosing) const Text('대표 저장 중'),
+          const SizedBox(height: AppSpacing.lg),
+          Text('연결 녹음 (${detail.recordings.length})'),
+          if (detail.recordings.isEmpty) const Text('연결된 녹음이 없어요.'),
+          for (final r in detail.recordings)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.sm),
+              child: RecordingRow(
+                recording: r,
+                onTap: () => Navigator.of(context).push<void>(
+                  MaterialPageRoute(
+                    builder: (_) => SongDetailScreen(
+                      watch: widget.watch,
+                      auth: widget.auth,
+                      recordingId: r.id.value,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        const SizedBox(height: AppSpacing.lg),
-      ],
+          const SizedBox(height: AppSpacing.lg),
+        ],
+      ),
     );
   }
 

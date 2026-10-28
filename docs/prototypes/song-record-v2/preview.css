@@ -192,7 +192,7 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 .phone .registration-note{display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--muted)}
 .phone .registration-note textarea{min-height:100px;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text)}
 
-.phone .chart-to-top{position:absolute;right:18px;bottom:88px;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;background:var(--accent);color:var(--on-accent,#fff);font-size:22px;cursor:pointer;box-shadow:0 2px 8px #0003}
+.phone .chart-to-top{z-index:20;position:absolute;right:18px;bottom:88px;width:38px;height:38px;border:1px solid var(--line);border-radius:50%;background:var(--accent);color:var(--on-accent,#fff);font-size:22px;cursor:pointer;box-shadow:0 2px 8px #0003}
 .phone .chart-to-top[hidden]{display:none}
 
 /* All action dialogs use the same neutral theme surface. */
@@ -420,3 +420,7 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 .phone .v3-list-tools.pl-actions-compact>span{flex:0 0 auto;margin-right:auto}
 
 .phone.bulk-selecting .chart-to-top{display:none}
+
+/* Recording rows share key colors but use a text-height badge. */
+.phone .v3-record-song .key{height:auto;min-height:22px;padding:3px 4px;line-height:1.2;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center}
+.phone :is([data-flow="pick-record-song"],[data-v3="record-pick"]){border:0;border-bottom:1px solid var(--line,#393939);border-radius:0;background:transparent}

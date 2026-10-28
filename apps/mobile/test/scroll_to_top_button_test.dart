@@ -7,7 +7,7 @@ void main() {
     testWidgets(
       'shared top button appears after scroll and returns to zero reduced=$reduced',
       (tester) async {
-        final scroll = ScrollController();
+        late ScrollController scroll;
         await tester.pumpWidget(
           MaterialApp(
             builder: (context, child) => MediaQuery(
@@ -15,21 +15,17 @@ void main() {
               child: child!,
             ),
             home: Scaffold(
-              body: Stack(
-                children: [
-                  ListView(
-                    controller: scroll,
+              body: ScrollToTopView(
+                builder: (controller) {
+                  scroll = controller;
+                  return ListView(
+                    controller: controller,
                     children: List.generate(
                       40,
                       (i) => SizedBox(height: 60, child: Text('row $i')),
                     ),
-                  ),
-                  Positioned(
-                    right: 16,
-                    bottom: 16,
-                    child: ScrollToTopButton(controller: scroll),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ),
@@ -44,7 +40,7 @@ void main() {
         expect(scroll.offset, 0);
         expect(find.byTooltip('맨 위로'), findsNothing);
         await tester.pumpWidget(const SizedBox());
-        scroll.dispose();
+        expect(tester.takeException(), isNull);
       },
     );
   }

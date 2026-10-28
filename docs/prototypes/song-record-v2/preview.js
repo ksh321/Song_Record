@@ -768,8 +768,8 @@ window.Prototype.render();
   const R=window.RENDER,phone=R.phone;
   R.phone=function(screen,interactive=true){
     const html=phone(screen,interactive);
-    return ['charts','charts-ky','songs','songs-groups'].includes(screen.id) || /^(songs-sort-|review-group-sort-)/.test(screen.id)
-      ? html.replace('</article>','<button type="button" class="chart-to-top" data-chart-top aria-label="맨 위로" hidden>↑</button></article>') : html;
+    return ['charts','charts-ky','songs','songs-groups','recordings','song-detail'].includes(screen.id) || /^live-song-/.test(screen.id) || /^(songs-sort-|review-group-sort-)/.test(screen.id)
+      ? html.slice(0,html.lastIndexOf('</article>'))+'<button type="button" class="chart-to-top" data-chart-top aria-label="맨 위로" hidden>↑</button>'+html.slice(html.lastIndexOf('</article>')) : html;
   };
   document.addEventListener('scroll', event=>{
     if(!event.target.matches?.('.phone-body'))return;

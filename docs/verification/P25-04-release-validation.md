@@ -787,3 +787,16 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 현재 모델 별도 검토: 계정/결과 세대·오래된 refresh·실패/저장 완료 구분·기존 요약 계약·입력/선택 보존 확인. 사용자 현재 Sol 계속 진행 선호 유지. 개인 플리 생성·삭제 없음. 최종 빌드/설치/CI 진행.
 
 - 최종 APK f7ecc79f968a2f50cfaab20b675c06ec3e192db21f144c08d904d88b2b67c415 설치 Success, manifest 전체 소스/기기 APK SHA 일치. 실기에서 내 곡9개 기존 목록 스크롤→오른쪽 아래 맨 위로 표시→클릭 후 상단 복귀/버튼 숨김 확인. 개인 자료 생성·삭제 없음. 플리 생성 지연/일괄 조회는 격리 DB와 지연 callback 위젯 검사로 검증(실제 개인 플리 생성 시간은 미측정). 관련25 PASS·analyze0·HTML 표시/복귀 PASS. 필수 CI 진행 예정.
+
+- 최종 완료: 5bb3255 / Basefa8c1a7, 필수 CI40668708271 PASS; 관련25 PASS·analyze0·HTML 표시/복귀 및 폰 내 곡 상단 복귀 PASS. APKf7ecc79 설치·기기 SHA·소스 일치. 플리 생성/조회는 격리 DB/위젯 검사로 검증; 개인 자료 생성·삭제 없음. ntfy 기존 CI감시기 SERVER_ACCEPTED(수신 미확인), 중복 전송 없음.
+
+### P25-04 전체 녹음·곡 상세 상단 이동/선택 구분선/키 높이 — 2026-10-28
+- 사용자 후속3개: 전체 녹음·곡 상세 맨 위로, 녹음 후 내 곡/플리에서 곡 선택 시 구분선, 녹음 행 키 배지 높이 축소.
+- 변경: 공통 ScrollToTopView가 controller 수명과 오른쪽 아래 ScrollToTopButton을 관리, RecordingWorkspace 전체 녹음/ SongDetailScreen 곡 본문에 적용. 다른 입력대기/상세 동작 유지.
+- RecordingSongPicker의 등록곡·후보곡을 같은 songChoice 하단선으로 구분. 저장/선택/계정 처리 변경 없음. MusicalKeyBadge의 compact 옵션을 RecordingRow에 적용해 최소22px/글자 높이+여백 사용. 색은 기존 공통 설정, 내 곡/플리30px 유지.
+- HTML 공통 top control 대상 확장, 중첩 녹음 article 때문에 최초 article 닫힘에 삽입되던 문제를 최종 phone article 닫힘 삽입으로 보완. 녹음 재생 버튼의 z-index1에 가려지지 않게 상단 이동 z-index20 적용. own/playlist 선택 선 및22px 키 공통 테마 적용.
+- 검사: flutter test test/scroll_to_top_button_test.dart test/music_components_test.dart test/recording_song_picker_test.dart test/song_detail_test.dart test/recording_list_test.dart --reporter expanded →27 PASS; flutter analyze →지적0. wrapper 실제스크롤/복귀/폐기 양쪽 애니메이션 설정 검증. HTML 두 테마에서 전체녹음/곡상세 버튼 표시·실제 클릭·상단 복귀/숨김, 곡 선택 선·녹음 키 높이 PASS. 짧은 시안 목록에는 격리 브라우저에서 길이 보조 요소를 넣어 스크롤만 검증.
+- 현재 모델 별도 검토: controller 폐기·스트림 재구성·화면 전환·기존 키 색/폭·공통 테마·기존 선택 콜백 유지 확인. 새 개인정보/DB/서버 정책 변경 없음. HTML 확인의 초기 실패는 짧은 fixture와 중첩 article 삽입/재생 z-index를 분리해 해결, 최종 통과.
+- 서명 APK4f6dcaf05b63c9140e0fb68c93ed60acae78e65e5b4937d4148659fc93b2050b 준비, 전체 소스/파일SHA 일치. 현재 adb 연결0개. USER-211 USB/잠금 해제 대기, 개인 자료 생성·삭제 없음. 필수 설치/실기 전이므로 커밋·푸시·CI 미실행. 기존 설치본f7ecc79 보존. 남은 순서: USB 확인→install-r→기기SHA/기존 화면 확인→커밋/푸시→필수CI.
+
+- USER-211 사용자 ㄱ 후 USB 실제 확인, 연결 재인식1회 뒤 APK4f6dcaf0 install-r Success·기기SHA/전체 소스 일치. 기존 곡 상세 스크롤→맨 위로 표시/클릭→상단 복귀·숨김 실기 PASS. 전체 녹음3개 기존 행과 얇은 키 표시 확인, 목록은 화면 안에 들어 스크롤 버튼 없음(정상). 긴 목록은 공통 wrapper 위젯/HTML 길이 보조 검사로 검증. 입력대기0개라 실기 선택/새 녹음 생성하지 않고 기존 선택 회귀27검사로 확인. 개인정보 생성·삭제 없음. 커밋/필수CI 진행.

@@ -273,6 +273,20 @@ class _RecordingSongPickerState extends State<RecordingSongPicker> {
     }
   }
 
+  Widget songChoice(Widget child) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
+      ),
+      child: child,
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: appPageBar(context, title: const Text('녹음의 곡 선택')),
@@ -410,31 +424,36 @@ class _RecordingSongPickerState extends State<RecordingSongPicker> {
               ),
               SliverList.builder(
                 itemCount: rows.length,
-                itemBuilder: (context, i) => ListTile(
-                  title: Text(rows[i].view.title),
-                  subtitle: Text(rows[i].view.artist),
-                  trailing: const AppIcon(Icons.chevron_right),
-                  onTap: busy
-                      ? null
-                      : () => select(rows[i].view.id.value, rows[i].view.title),
+                itemBuilder: (context, i) => songChoice(
+                  ListTile(
+                    title: Text(rows[i].view.title),
+                    subtitle: Text(rows[i].view.artist),
+                    trailing: const AppIcon(Icons.chevron_right),
+                    onTap: busy
+                        ? null
+                        : () =>
+                              select(rows[i].view.id.value, rows[i].view.title),
+                  ),
                 ),
               ),
               if (access != null)
                 SliverList.list(
                   children: [
                     for (final item in candidateRows)
-                      ListTile(
-                        title: Text(
-                          (item['candidate_snapshot'] as Map)['title']
-                              as String,
+                      songChoice(
+                        ListTile(
+                          title: Text(
+                            (item['candidate_snapshot'] as Map)['title']
+                                as String,
+                          ),
+                          subtitle: Text(
+                            '${(item['candidate_snapshot'] as Map)['artist']} · TJ ${item['candidate_number']}',
+                          ),
+                          trailing: const AppIcon(Icons.chevron_right),
+                          onTap: busy || !available
+                              ? null
+                              : () => chooseCandidate(item, access),
                         ),
-                        subtitle: Text(
-                          '${(item['candidate_snapshot'] as Map)['artist']} · TJ ${item['candidate_number']}',
-                        ),
-                        trailing: const AppIcon(Icons.chevron_right),
-                        onTap: busy || !available
-                            ? null
-                            : () => chooseCandidate(item, access),
                       ),
                   ],
                 ),

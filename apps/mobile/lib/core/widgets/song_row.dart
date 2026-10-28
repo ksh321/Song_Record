@@ -199,8 +199,9 @@ class SongRow extends StatelessWidget {
 }
 
 class MusicalKeyBadge extends StatelessWidget {
-  const MusicalKeyBadge({required this.value, super.key});
+  const MusicalKeyBadge({required this.value, this.compact = false, super.key});
   final MusicalKey? value;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -213,19 +214,21 @@ class MusicalKeyBadge extends StatelessWidget {
     };
     return Container(
       width: 44,
-      height: 30,
+      height: compact ? null : 30,
+      constraints: compact ? const BoxConstraints(minHeight: 22) : null,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(7),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 3),
+      padding: EdgeInsets.symmetric(horizontal: 3, vertical: compact ? 3 : 0),
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Text(
           keyValue == null ? '미정' : formatMusicalKey(keyValue),
           style: TextStyle(
             fontSize: AppTypography.keyBadgeSize,
+            height: compact ? 1.2 : null,
             color: foreground,
           ),
         ),

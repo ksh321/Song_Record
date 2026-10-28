@@ -108,7 +108,7 @@ class RecordingRow extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              MusicalKeyBadge(value: snapshot.key),
+              MusicalKeyBadge(value: snapshot.key, compact: true),
               if (selected) const AppIcon(Icons.check, size: 18),
             ],
           ),

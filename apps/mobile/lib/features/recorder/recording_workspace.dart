@@ -6,6 +6,7 @@ import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/files/recording_catalog.dart';
 import '../../core/widgets/app_icon.dart';
+import '../../core/widgets/scroll_to_top_button.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../trash/trash_screens.dart';
 import '../trash/trash_workflow.dart';
@@ -106,16 +107,24 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
     ),
   );
 
-  void _open(String title, Widget body) {
+  void _open(String title, Widget body, {bool scrollToTop = false}) {
     Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => Scaffold(
           appBar: appPageBar(context, title: Text(title)),
           body: SafeArea(
-            child: SingleChildScrollView(
-              padding: AppLayout.bodyPadding,
-              child: body,
-            ),
+            child: scrollToTop
+                ? ScrollToTopView(
+                    builder: (scroll) => SingleChildScrollView(
+                      controller: scroll,
+                      padding: AppLayout.bodyPadding,
+                      child: body,
+                    ),
+                  )
+                : SingleChildScrollView(
+                    padding: AppLayout.bodyPadding,
+                    child: body,
+                  ),
           ),
         ),
       ),
@@ -209,7 +218,7 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
               '전체 녹음',
               '지난 녹음 다시 듣기',
               Icons.graphic_eq,
-              () => _open('전체 녹음', _savedList()),
+              () => _open('전체 녹음', _savedList(), scrollToTop: true),
             ),
           ],
         ),

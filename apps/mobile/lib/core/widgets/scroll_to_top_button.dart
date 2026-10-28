@@ -26,3 +26,32 @@ class ScrollToTopButton extends StatelessWidget {
           ),
   );
 }
+
+/// Owns the scroll position and overlays the same control on a scrollable page.
+class ScrollToTopView extends StatefulWidget {
+  const ScrollToTopView({required this.builder, super.key});
+  final Widget Function(ScrollController controller) builder;
+  @override
+  State<ScrollToTopView> createState() => _ScrollToTopViewState();
+}
+
+class _ScrollToTopViewState extends State<ScrollToTopView> {
+  final scroll = ScrollController();
+  @override
+  void dispose() {
+    scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    children: [
+      Positioned.fill(child: widget.builder(scroll)),
+      Positioned(
+        right: 16,
+        bottom: 16,
+        child: ScrollToTopButton(controller: scroll),
+      ),
+    ],
+  );
+}
