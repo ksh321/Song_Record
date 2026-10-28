@@ -8,6 +8,7 @@ import '../../core/theme/app_appearance.dart';
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/content_state.dart';
+import '../../core/widgets/detail_information_card.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/recording_roles_card.dart';
 import '../../core/widgets/recording_row.dart';
@@ -133,15 +134,23 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
     super.dispose();
   }
 
-  void openRecording(RecordingId id) => Navigator.of(context).push<void>(
-    MaterialPageRoute(
-      builder: (_) => SongDetailScreen(
-        watch: widget.watch,
-        auth: widget.auth,
-        recordingId: id.value,
+  void openRecording(RecordingId id) {
+    if (!mounted || changedAccount || tag() != scope) return;
+    final build = context
+        .getInheritedWidgetOfExactType<RecordingAudioAccess>()
+        ?.detailsBuilder;
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (context) => build != null
+            ? build(context, id.value)
+            : SongDetailScreen(
+                watch: widget.watch,
+                auth: widget.auth,
+                recordingId: id.value,
+              ),
       ),
-    ),
-  );
+    );
+  }
 
   void playRecording(RecordingViewData recording) => openRecordingPlayback(
     context,
@@ -385,65 +394,37 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          AppPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text('곡 정보', style: TextStyle(fontSize: 13)),
+          DetailInformationCard(
+            title: '곡 정보',
+            fields: [
+              ('버전', formatVersionCode(view.version)),
+              (
+                '대표 키',
+                view.musicalKey == null
+                    ? '미정'
+                    : formatMusicalKey(view.musicalKey!),
+              ),
+              ('곡 티어', formatSongTier(view.tier)),
+            ],
+            action: widget.prepareEdit == null
+                ? null
+                : TextButton.icon(
+                    icon: const AppIcon(Icons.edit_outlined, size: 14),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(0, 36),
+                      padding: EdgeInsets.zero,
                     ),
-                    if (widget.prepareEdit != null)
-                      TextButton.icon(
-                        icon: const AppIcon(Icons.edit_outlined, size: 14),
-                        style: TextButton.styleFrom(
-                          minimumSize: const Size(0, 36),
-                          padding: EdgeInsets.zero,
-                        ),
-                        onPressed: () => Navigator.of(context).push<bool>(
-                          MaterialPageRoute(
-                            builder: (_) => SongEditScreen(
-                              draft: SongEditDraft(detail),
-                              prepare: widget.prepareEdit!,
-                              auth: widget.auth,
-                            ),
-                          ),
-                        ),
-                        label: const Text('곡 수정'),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: _info('버전', formatVersionCode(view.version)),
-                      ),
-                      VerticalDivider(
-                        width: 24,
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                      Expanded(
-                        child: _info(
-                          '대표 키',
-                          view.musicalKey == null
-                              ? '미정'
-                              : formatMusicalKey(view.musicalKey!),
+                    onPressed: () => Navigator.of(context).push<bool>(
+                      MaterialPageRoute(
+                        builder: (_) => SongEditScreen(
+                          draft: SongEditDraft(detail),
+                          prepare: widget.prepareEdit!,
+                          auth: widget.auth,
                         ),
                       ),
-                      VerticalDivider(
-                        width: 24,
-                        color: Theme.of(context).colorScheme.outline,
-                      ),
-                      Expanded(child: _info('곡 티어', formatSongTier(view.tier))),
-                    ],
+                    ),
+                    label: const Text('곡 수정'),
                   ),
-                ),
-              ],
-            ),
           ),
           SongSuitabilityChoice(
             value: view.isSuitable,
@@ -520,15 +501,7 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
                 key: ValueKey('linked-recording-${r.id.value}'),
                 recording: r,
                 onPlay: () => playRecording(r),
-                onTap: () => Navigator.of(context).push<void>(
-                  MaterialPageRoute(
-                    builder: (_) => SongDetailScreen(
-                      watch: widget.watch,
-                      auth: widget.auth,
-                      recordingId: r.id.value,
-                    ),
-                  ),
-                ),
+                onTap: () => openRecording(r.id),
               ),
             ),
           const SizedBox(height: AppSpacing.lg),
@@ -536,21 +509,6 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
       ),
     );
   }
-
-  Widget _info(String label, String value) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      ),
-      const SizedBox(height: 7),
-      Text(value, style: const TextStyle(fontSize: 14, height: 1.5)),
-    ],
-  );
 
   Widget recording(MySongDetail detail) {
     RecordingViewData? view;

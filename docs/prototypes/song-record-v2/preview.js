@@ -948,3 +948,23 @@ if(window.Prototype.state.screen==='v3-record-source'){
  },true);
  P.render();
 })();
+
+/* Recording details mirror the song information layout; actions live in one menu. */
+(() => {
+ const F=window.FLOW,P=window.Prototype,R=window.RENDER,e=R.esc,base=R.phone;
+ R.phone=function(view,interactive=true){
+   const html=base(view,interactive),r=F.recordFor(view);if(!r||view.name!=='녹음 상세')return html;
+   const t=document.createElement('template');t.innerHTML=html;const body=t.content.querySelector('.phone-body');if(!body)return html;
+   const at=String(r.at),date=at.slice(0,4)+'.'+at.slice(4,6)+'.'+at.slice(6,8)+' '+at.slice(8,10)+':'+at.slice(10,12);
+   const song=F.songs.get(r.songId);
+   body.innerHTML='<header class="record-detail-hero"><h3>'+e(r.title)+'</h3><p>'+e(r.artist)+'</p><small>'+e(date+' · '+F.renderHelpers.duration(r.duration))+'</small></header>'+
+     '<div class="record-detail-actions"><button type="button" class="v3-more" data-record-menu aria-label="녹음 메뉴" aria-expanded="false">⋮</button><div class="record-detail-menu" role="menu" hidden><button role="menuitem" type="button" data-x="edit-record" data-id="'+e(r.id)+'">정보 수정</button><button role="menuitem" type="button" data-ui="record-manage" data-record="'+e(r.id)+'">보관 관리</button><button role="menuitem" type="button" data-to="record-delete">삭제</button></div></div>'+
+     '<section class="song-meta"><h3>녹음 정보</h3><dl><div><dt>버전</dt><dd>'+e(r.version)+'</dd></div><div><dt>키</dt><dd>'+e(r.key)+'</dd></div><div><dt>녹음 티어</dt><dd>'+e(r.tier)+'</dd></div></dl></section>'+
+     '<section class="song-meta"><h3>컨디션과 태그</h3><p>컨디션: '+e(r.condition||'미선택')+'</p><p>태그: '+e(r.tags?.join(', ')||'없음')+'</p></section>'+
+     '<section class="song-meta"><h3>메모</h3><p>'+e(r.note||'아직 작성하지 않았어요.')+'</p></section>'+
+     '<section class="song-meta"><h3>연결 곡</h3><p>'+e(r.songId?'등록된 내 곡에 연결됨':'곡 미연결 녹음')+'</p><button type="button" class="flow-text-button" data-x="relink" data-id="'+e(r.id)+'">곡 연결 변경</button>'+(r.songId?'<button type="button" class="flow-text-button" data-flow="linked-song" data-song="'+e(r.songId)+'">연결된 곡 보기</button><button type="button" class="flow-text-button" data-flow="toggle-representative" data-record="'+e(r.id)+'">'+(song?.representative===r.id?'대표 녹음 해제':'대표 녹음으로 지정')+'</button>':'')+'</section>';
+   return t.innerHTML;
+ };
+ document.addEventListener('click',event=>{const toggle=event.target.closest('[data-record-menu]');if(!toggle)return;event.preventDefault();event.stopImmediatePropagation();const menu=toggle.parentElement.querySelector('[role="menu"]');menu.hidden=!menu.hidden;toggle.setAttribute('aria-expanded',String(!menu.hidden));},true);
+ P.render();
+})();

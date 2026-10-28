@@ -6,12 +6,12 @@ import 'package:song_record/core/widgets/app_page_bar.dart';
 import '../../core/database/local_models.dart';
 import '../../core/domain/song_types.dart';
 import '../../core/sync/local_repository.dart';
-import '../../core/widgets/feature_icon.dart';
+import '../../core/widgets/app_icon.dart';
+import '../../core/widgets/detail_information_card.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../songs/my_song_detail.dart';
 import '../trash/trash_screens.dart';
 import '../trash/trash_workflow.dart';
-import 'recording_audio_panel.dart';
 import 'recording_input_screen.dart';
 import 'recording_manage_screen.dart';
 import 'recording_relink_screen.dart';
@@ -62,10 +62,72 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
       ),
     );
     if (mounted && widget.isCurrent(widget.repository)) {
-      setState(
-        () => future = widget.repository.read(LocalEntity.recording, widget.id),
-      );
+      setState(() {
+        future = widget.repository.read(LocalEntity.recording, widget.id);
+      });
     }
+  }
+
+  void refresh() {
+    if (mounted && widget.isCurrent(widget.repository)) {
+      setState(() {
+        future = widget.repository.read(LocalEntity.recording, widget.id);
+      });
+    }
+  }
+
+  Future<void> relink(Map<String, dynamic> row, int revision) async {
+    if (!widget.isCurrent(widget.repository)) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RecordingRelinkScreen(
+          recording: row,
+          revision: revision,
+          repository: widget.repository,
+          isCurrent: widget.isCurrent,
+          wakeSync: widget.wakeSync,
+        ),
+      ),
+    );
+    refresh();
+  }
+
+  Widget deleteScreen(Map<String, dynamic> row) => DeleteScreen(
+    actions: widget.trash!,
+    id: widget.id,
+    title: row['title_snapshot'] as String,
+    recording: true,
+  );
+
+  Future<void> menu(
+    String action,
+    Map<String, dynamic> row,
+    int revision,
+  ) async {
+    if (!mounted || !widget.isCurrent(widget.repository)) return;
+    if (action == 'edit') {
+      await edit(row, revision);
+      return;
+    }
+    if (action == 'delete' && widget.trash == null) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => action == 'delete'
+            ? deleteScreen(row)
+            : RecordingManageScreen(
+                id: widget.id,
+                title: row['title_snapshot'] as String,
+                artist: row['artist_snapshot'] as String,
+                isCurrent: () => widget.isCurrent(widget.repository),
+                deleteBuilder: widget.trash == null
+                    ? null
+                    : (_) => deleteScreen(row),
+              ),
+      ),
+    );
+    refresh();
   }
 
   @override
@@ -84,8 +146,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
-          final copy = snapshot.data;
-          final raw = copy?.localJson ?? copy?.serverJson;
+          final copy = snapshot.data,
+              raw = snapshot.data?.localJson ?? snapshot.data?.serverJson;
           if (copy == null || copy.tombstone || raw == null) {
             return const Center(child: Text('녹음 정보를 찾을 수 없어요.'));
           }
@@ -94,6 +156,11 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
               row['lifecycle_state'] != 'ACTIVE') {
             return const Center(child: Text('활성 저장 녹음이 아니에요.'));
           }
+          final view = MySongDetail.recordingView(row);
+          final tags = (row['tags'] as List? ?? [])
+              .whereType<Map<String, dynamic>>()
+              .map((t) => t['name_snapshot'])
+              .join(', ');
           return ListView(
             padding: AppLayout.bodyPadding,
             children: [
@@ -104,57 +171,62 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                 ),
                 child: Column(
                   children: [
-                    const FeatureIcon(Icons.music_note_outlined),
-                    const SizedBox(height: 16),
                     Text(
-                      row['title_snapshot'] as String,
+                      view.snapshot.title,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 22,
+                        height: 1.5,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${row['artist_snapshot']} · ${MySongDetail.recordingView(row).dateLabel}',
+                      view.snapshot.artist,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 12,
+                        height: 1.8,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      '${view.dateLabel} · ${view.durationLabel}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.8,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
-              AppPickerField(
-                label: '버전',
-                value: formatVersionCode(
-                  VersionCode.values.firstWhere(
-                    (v) => v.name.toUpperCase() == row['version_code'],
-                  ),
-                ),
-                onPressed: () => edit(row, copy.revision, 'version'),
-              ),
-              AppPickerField(
-                label: '키',
-                value: formatMusicalKey(
-                  MusicalKey(
-                    mode: KeyMode.values.firstWhere(
-                      (k) => k.name.toUpperCase() == row['key_mode'],
+              Align(
+                alignment: Alignment.centerRight,
+                child: PopupMenuButton<String>(
+                  tooltip: '녹음 메뉴',
+                  icon: const AppIcon(Icons.more_vert),
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: 'edit', child: Text('정보 수정')),
+                    const PopupMenuItem(value: 'manage', child: Text('보관 관리')),
+                    PopupMenuItem(
+                      value: 'delete',
+                      enabled: widget.trash != null,
+                      child: const Text('삭제'),
                     ),
-                    shift: row['key_shift'] as int,
-                  ),
+                  ],
+                  onSelected: (action) => menu(action, row, copy.revision),
                 ),
-                onPressed: () => edit(row, copy.revision, 'key'),
               ),
-              AppPickerField(
-                label: '녹음 티어',
-                value: row['tier'] as String? ?? '미정',
-                onPressed: () => edit(row, copy.revision, 'tier'),
-              ),
-              RecordingAudioPanel(
-                widget.id,
-                compact: true,
-                showPlayback: false,
+              const SizedBox(height: 14),
+              DetailInformationCard(
+                title: '녹음 정보',
+                fields: [
+                  ('버전', formatVersionCode(view.snapshot.version)),
+                  ('키', formatMusicalKey(view.snapshot.key)),
+                  ('녹음 티어', row['tier'] as String? ?? '미정'),
+                ],
               ),
               const SizedBox(height: 14),
               AppPanel(
@@ -164,8 +236,22 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                     const Text('컨디션과 태그', style: TextStyle(fontSize: 12)),
                     const SizedBox(height: 8),
                     Text('컨디션: ${row['condition_name_snapshot'] ?? '미선택'}'),
+                    Text('태그: ${tags.isEmpty ? '없음' : tags}'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              AppPanel(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('메모', style: TextStyle(fontSize: 12)),
+                    const SizedBox(height: 8),
                     Text(
-                      '태그: ${(row['tags'] as List? ?? []).whereType<Map<String, dynamic>>().map((t) => t['name_snapshot']).join(', ')}',
+                      (row['note'] as String? ?? '').isEmpty
+                          ? '아직 작성하지 않았어요.'
+                          : row['note'] as String,
+                      style: const TextStyle(fontSize: 15, height: 1.6),
                     ),
                   ],
                 ),
@@ -175,69 +261,15 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text('연습 메모', style: TextStyle(fontSize: 12)),
+                    const Text('연결 곡', style: TextStyle(fontSize: 12)),
                     const SizedBox(height: 8),
-                    Text(
-                      (row['note'] as String? ?? '').isEmpty
-                          ? '아직 작성하지 않았어요.'
-                          : row['note'] as String,
+                    Text(row['song_id'] == null ? '곡 미연결 녹음' : '등록된 내 곡에 연결됨'),
+                    TextButton(
+                      onPressed: () => relink(row, copy.revision),
+                      child: const Text('곡 연결 변경'),
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(height: 14),
-              FilledButton(
-                onPressed: () => edit(row, copy.revision),
-                child: const Text('녹음 정보 수정'),
-              ),
-              Text(row['song_id'] == null ? '곡 미연결 녹음' : '등록된 내 곡에 연결됨'),
-              TextButton(
-                onPressed: () async {
-                  await Navigator.push<void>(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => RecordingRelinkScreen(
-                        recording: row,
-                        revision: copy.revision,
-                        repository: widget.repository,
-                        isCurrent: widget.isCurrent,
-                        wakeSync: widget.wakeSync,
-                      ),
-                    ),
-                  );
-                  if (mounted && widget.isCurrent(widget.repository)) {
-                    setState(
-                      () => future = widget.repository.read(
-                        LocalEntity.recording,
-                        widget.id,
-                      ),
-                    );
-                  }
-                },
-                child: const Text('곡 연결 변경'),
-              ),
-              RecordingAudioPanel(widget.id, showStatus: false),
-              OutlinedButton(
-                onPressed: () => Navigator.push<void>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RecordingManageScreen(
-                      id: widget.id,
-                      title: row['title_snapshot'] as String,
-                      artist: row['artist_snapshot'] as String,
-                      isCurrent: () => widget.isCurrent(widget.repository),
-                      deleteBuilder: widget.trash == null
-                          ? null
-                          : (_) => DeleteScreen(
-                              actions: widget.trash!,
-                              id: widget.id,
-                              title: row['title_snapshot'] as String,
-                              recording: true,
-                            ),
-                    ),
-                  ),
-                ),
-                child: const Text('보관·삭제 관리'),
               ),
             ],
           );

@@ -438,3 +438,11 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 .phone .representative-choice>span:first-child{min-width:0;display:flex;flex-direction:column;gap:6px}
 .phone .representative-choice strong{font-size:16px}.phone .representative-choice small{font-size:12px;color:var(--muted)}
 .phone .representative-info{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:14px 0}
+
+.phone .record-detail-hero{text-align:center;padding:24px 12px}.phone .record-detail-hero h3{font-size:22px;line-height:1.5;margin:0 0 8px}.phone .record-detail-hero p,.phone .record-detail-hero small{font-size:12px;color:var(--muted);line-height:1.8;margin:0}
+.phone .record-detail-actions{display:flex;justify-content:flex-end;position:relative;margin-bottom:14px}
+.phone .record-detail-menu{position:absolute;right:0;top:44px;z-index:45;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 5px 18px #0003;min-width:160px}
+.phone .record-detail-menu[hidden]{display:none}.phone .record-detail-menu button{display:block;width:100%;min-height:44px;text-align:left;border:0;background:transparent;color:var(--text);padding:10px 14px}
+.phone .record-detail-menu button:hover{background:var(--selection-bg)}
+
+.phone .record-detail-actions .v3-more{background:transparent;border:0;box-shadow:none;color:var(--text)}

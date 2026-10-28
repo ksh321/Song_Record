@@ -14,6 +14,7 @@ class RecordingAudioAccess extends InheritedWidget {
     required this.changes,
     required this.refresh,
     this.storageBuilder,
+    this.detailsBuilder,
     required super.child,
     super.key,
   });
@@ -22,6 +23,7 @@ class RecordingAudioAccess extends InheritedWidget {
   final Listenable changes;
   final VoidCallback refresh;
   final Widget Function(BuildContext, String)? storageBuilder;
+  final Widget Function(BuildContext, String)? detailsBuilder;
   @override
   bool updateShouldNotify(RecordingAudioAccess oldWidget) => true;
 }

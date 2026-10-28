@@ -826,6 +826,30 @@ class _SongRecordAppState extends State<SongRecordApp>
         builder: (context, light, _) => MaterialApp(
           builder: (context, child) => RecordingAudioAccess(
             storageBuilder: (context, id) => buildStorage(context, id),
+            detailsBuilder: (context, id) {
+              final repo = localRepository?.call();
+              if (repo == null ||
+                  authController?.phase != AuthPhase.ready ||
+                  authController?.session?.userId != repo.userId) {
+                return const Scaffold(
+                  body: Center(child: Text('계정이 변경됐어요. 다시 열어 주세요.')),
+                );
+              }
+              return RecordingDetailScreen(
+                classificationBuilder: classificationBuilder,
+                id: id,
+                repository: repo,
+                isCurrent: (value) =>
+                    authController?.phase == AuthPhase.ready &&
+                    authController?.session?.userId == value.userId &&
+                    value.userId == localRepository?.call()?.userId,
+                wakeSync: () {
+                  final sync = syncController;
+                  if (sync != null) unawaited(sync.wake());
+                },
+                trash: trashActions(),
+              );
+            },
             store: () {
               final store = accountStore?.call();
               return authController?.phase == AuthPhase.ready &&

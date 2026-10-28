@@ -826,3 +826,17 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 실기: APK17161296 설치/기기·소스SHA 일치. 곡 상세 대표/최신/최저·연결 녹음 모두 사용자색 재생/시간 표시 확인. 대표 목록의 기존1.3초 녹음 선택→정보/메모/고정 확인 버튼→재생0.4/1.3초와 파형 표시→뒤로 정보→뒤로 목록→취소 확인. 연결 녹음의 사용자색 버튼도 재생0.8/1.3초로 이어짐 확인. 대표 지정/해제는 누르지 않아 개인 설정 쓰기 없음. 마지막 앱 전면 이탈을 감지해 추가 조작 중단, 다른 앱은 확인/조작하지 않음.
 - 실기에서 미리보기 제목 잘림을 발견해 해당 제목만18px로 조정. 영향12 PASS, 제목/대표8 PASS(360px 실제 뒤로 버튼이 있는 화면·양쪽 테마 RenderParagraph.didExceedMaxLines=false), 최종 analyze0. 새 테스트의 초기 잘못된 Theme helper명은 실제 AppTheme.preview(light:true)로 교정, 제품 실행 실패와 구분.
 - 최종 APKcf16547b97311eb00ae501502891bf281548e77ce835c65b0a2d135bea3b8688 install-r Success/기기·전체소스 SHA 일치. 기능 실기는17161296에서 확인했고 이후 변경은 제목18px뿐이며 좁은 화면 양쪽 테마 검사로 재검증(기능 실기 반복 불필요). 사용자 다른 앱 사용을 방해하지 않도록 최종 설치 뒤 앱 자동 조작 없음. 원본/계정/키/업로드/서버 설정 변경 없음. 커밋·필수CI 진행.
+
+- 최종 완료: e1af6bc5882b55078829b3e183265a5cb308bec1/Base8a7212d, 필수 CI40681200511 PASS. 연결36검사/후속12/제목·대표8 PASS·analyze0·HTML 두 모드 PASS. 최종 APKcf16547b 설치/전체소스·기기SHA 일치. 사용자색 역할/연결행 및 대표 정보→재생→뒤로→목록취소 실기 확인(기능17161296, 최종 제목18px 좁은화면 재검증). 개인 대표 지정/해제·곡/녹음 생성·삭제 없음. ntfy 기존 CI감시기 SERVER_ACCEPTED(사람 수신 미확인), 중복 알림 없음.
+
+### P25-04 녹음 상세 정보/3점 메뉴 통일 — 2026-10-28
+- 사용자: 녹음 상세의 위쪽3점 메뉴에 정보 수정/보관 관리/삭제 배치, 일반 상세 재생 버튼 제거, 정보 표시는 곡 상세와 유사하게 정리.
+- DetailInformationCard 공통 컴포넌트로 곡 상세와 녹음 상세의 버전/키/티어 표시 통일. label/value 스타일·구분선·고배율 세로 배치 공통. 녹음 상세 hero는 제목/가수/녹음일시·길이, 이후 컨디션·태그/메모/연결 곡 구성. 직접 수정 필드/하단 수정·관리/재생 버튼은 메뉴로 이동 또는 제거, 편집·보관·내보내기·연결 변경·삭제 기능은 기존 경로 보존.
+- RecordingDetailScreen PopupMenuButton3항목(정보 수정/보관 관리/삭제). 삭제는 기존 DeleteScreen recording:true의 명시 재확인 흐름이며 메뉴 열기/진입만으로 삭제하지 않음. 보관 정보는 RecordingManageScreen에서 유지하고 표제만 보관 관리로 정리. 편집·관리·삭제/연결 변경 후 current guard 안에서 다시 읽음.
+- RecordingAudioAccess.detailsBuilder를 App에서 제공, 곡 상세의 역할/연결 행/재생정보 메뉴도 일반 RecordingDetailScreen으로 연결. 기존 owner/current guard와 TrashWorkflow/저장 로직 재사용, 읽기전용 테스트 환경만 기존 snapshot fallback. 대표 지정 미리보기(selectionPreview)는 직전 사용자 ‘듣고 확인’ 요구를 보존해 재생 유지.
+- HTML은 녹음 상세도 곡 정보와 같은 song-meta 구조, 투명3점 메뉴·세 항목으로 정리. 일반 상세의 재생 제거, 연결 보기/대표 빠른 지정/편집/관리 등 기존 시안 기능 보존. 두 테마 메뉴 실제 클릭→수정/관리/삭제 확인 화면 이동 및 모의 원본 상태 유지 PASS.
+- 검사: recording_detail_menu/recording_edit/recording_manage/song_detail/song_representative 28 PASS, 최종 analyze0. 새2개 테마 검사는 메뉴3경로 진입/취소, 일반 상세 재생없음, pending 개수·파일 bytes·가짜 삭제 쓰기0 유지 검증. .local/workflow/record-detail-menu-*.
+- 실패 분리: attempt1은 편집 폼에 뒤로 버튼을 가정한 test harness 오류(취소 사용으로 교정). 실제 RP-DETAIL-ASYNC-SETSTATE1: 기존 edit와 새 refresh의 setState 화살표가 Future 대입값을 반환해 Flutter 계약 위반. 동기 block으로 수정한 후 재발 없음. attempt3의 session expired는 테스트에서 openAccount를 두 번 호출해 첫 lease를 스스로 만료시킨 별도 fixture 오류, 동일 store로 수정해 계정 fence를 약화하지 않고 통과. 초기 로그는 attempt1~3 보존. 같은 제품 근본 원인3회 실패에 해당하지 않음.
+- 현재 모델 별도 검토: UI별 데이터값/메모·분류/연결/관리 기능 보존·원래 삭제 확인과 계정 guard 재사용·일반 상세와 대표 미리보기 분리·팝업 취소 무변경·refresh 수명 및 공유 레이아웃 대조. UI/알려진 setState 계약 오류로 현재 모델 직접 검토, DB/삭제 정책·서버 배포 변경 없음. 빌드/기존 화면 실기(삭제·저장 취소)/필수CI 진행.
+
+- 최종 APK32f32f6cd376d49a95694ffe4c4905f5a572f9aec9706e9265d58478079822d2 install-r Success, 전체 소스/기기 APK SHA 일치. 실기에서 곡 상세 역할 녹음→공통 녹음 상세 진입, 제목/가수/날짜·길이 및 공통3필드/분류/메모/연결 표시·일반 상세 재생 제거 확인.3점 정보 수정→저장 없이 취소, 보관 관리→뒤로 확인. 삭제 메뉴 좌표 진입은 자동 승인 검토가 실제 삭제 가능성을 이유로 거절하여 실행하지 않고 메뉴 취소. 해당 경로는 두 테마 위젯/HTML 검사에서 기존 확인창 진입·취소 및 삭제 쓰기0 확인한 근거 사용. 실제 저장·삭제 없음. 물리 삭제 진입 자체는 미검증으로 구분하며 추가 승인을 요구해 개인 자료를 위험에 노출하지 않음. 최종 diff/공통 테마/기능 보존 검토 완료, 커밋·필수CI 진행.

@@ -87,7 +87,7 @@ class _RecordingManageState extends State<RecordingManageScreen> {
         .dependOnInheritedWidgetOfExactType<RecordingAudioAccess>();
     final enabled = current && !busy;
     return Scaffold(
-      appBar: appPageBar(context, title: const Text('보관·삭제 관리')),
+      appBar: appPageBar(context, title: const Text('보관 관리')),
       body: SafeArea(
         child: ListView(
           padding: AppLayout.bodyPadding,
