@@ -44,6 +44,21 @@ class RecorderService : Service() {
     private var stopping = false
     private val handler = Handler(Looper.getMainLooper())
 
+    private val amplitudeSamples=mutableListOf<Pair<Long,Double>>()
+    private fun sampleAmplitude() {
+        val active=recorder?:return
+        runCatching {
+            val value=(active.maxAmplitude/32768.0).coerceIn(0.0,1.0)
+            amplitudeSamples.add(Pair(currentElapsedMs(),value))
+        }
+    }
+    private val amplitudeTicker=object:Runnable {
+        override fun run() {
+            if(recorder==null || stopping)return
+            sampleAmplitude()
+            handler.postDelayed(this,100)
+        }
+    }
     private val ticker = object : Runnable {
         override fun run() {
             if (recorder == null || stopping) return
@@ -173,6 +188,7 @@ class RecorderService : Service() {
                 start()
             }
 
+            amplitudeSamples.clear()
             recorder = candidate
             startedAtElapsedMs = SystemClock.elapsedRealtime()
             val recordingEntry = entry.copy(
@@ -186,6 +202,7 @@ class RecorderService : Service() {
             publish(recordingState(0L))
             notifyProgress(0L)
             handler.post(ticker)
+            handler.post(amplitudeTicker)
         } catch (failure: RecorderClassifiedException) {
             Log.e("SongRecordRecorder", "stage=$stage code=${failure.code} type=${failure.javaClass.simpleName} cause=${failure.cause?.javaClass?.simpleName ?: "none"}")
             runCatching { newRecorder?.release() }
@@ -250,7 +267,9 @@ class RecorderService : Service() {
             return
         }
 
+        sampleAmplitude()
         stopping = true
+        handler.removeCallbacks(amplitudeTicker)
         handler.removeCallbacks(ticker)
         val elapsedMs = currentElapsedMs()
         publish(recordingState(elapsedMs, "stopping", stopReason))
@@ -318,6 +337,27 @@ class RecorderService : Service() {
             )
             journalEntry = completedEntry
             RecorderRecoveryJournal(this).write(completedEntry)
+            // Capture peaks during recording, so even first playback needs no decode.
+            runCatching {
+                check(amplitudeSamples.isNotEmpty())
+                val peaks=DoubleArray(120)
+                val length=(inspection.durationMs?:elapsedMs).coerceAtLeast(1L)
+                var previousAt=0L
+                for((at,value) in amplitudeSamples) {
+                    val first=((previousAt*120)/length).toInt().coerceIn(0,119)
+                    val last=((at*120)/length).toInt().coerceIn(first,119)
+                    for(bin in first..last)peaks[bin]=maxOf(peaks[bin],value)
+                    previousAt=at
+                }
+                val owner=RecorderAccount.requireScope()
+                com.ksh321.songrecord.PlaybackWaveforms.obtain(this,owner,
+                    requireNotNull(completedEntry.sha256),{RecorderAccount.scope!=owner}) {
+                    mapOf("waveform" to peaks.toList())
+                }
+            }.onFailure {
+                com.ksh321.songrecord.PlaybackWaveforms.prepareFile(this,
+                    RecorderAccount.requireScope(),finalFile,requireNotNull(completedEntry.sha256))
+            }
             publish(RecorderRecovery.completedState(completedEntry, recovered = false))
         } catch (failure: RecorderClassifiedException) {
             runCatching { activeRecorder.release() }

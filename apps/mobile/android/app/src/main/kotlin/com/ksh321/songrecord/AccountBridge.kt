@@ -29,6 +29,7 @@ internal class AccountBridge(private val activity: Activity, private val stopPla
                 "setAccount" -> {
                     RecorderAccount.select(activity, call.argument("userId"), call.argument("environment"))
                     stopPlayback()
+                    PlaybackWaveforms.warmAccount(activity)
                     result.success(null)
                 }
                 "prepareLogout" -> {

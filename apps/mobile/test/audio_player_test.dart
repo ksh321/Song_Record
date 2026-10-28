@@ -17,6 +17,7 @@ class PlayerFake implements AudioPlayerPort {
   bool fail = false;
   int plays = 0, pauses = 0, stops = 0;
   int? seekAt;
+  Completer<void>? seekCompletion;
   Completer<int>? pending;
   Completer<void>? loading;
   @override
@@ -42,6 +43,7 @@ class PlayerFake implements AudioPlayerPort {
   @override
   Future<void> seek(int token, int milliseconds) async {
     seekAt = milliseconds;
+    await seekCompletion?.future;
   }
 
   @override

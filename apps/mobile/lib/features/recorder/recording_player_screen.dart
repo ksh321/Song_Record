@@ -36,6 +36,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
   late final Ticker motion;
   final positionClock = Stopwatch();
   int? scrubPosition;
+  int scrubGeneration = 0;
 
   // Native position reports arrive every 500ms. Interpolate only that interval;
   // stale events must not make a stalled player appear to keep playing.
@@ -162,11 +163,14 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                               .round()
                               .clamp(0, player.duration);
                     });
-                    void commit() {
+                    Future<void> commit() async {
                       final target = scrubPosition;
-                      setState(() => scrubPosition = null);
+                      final generation = scrubGeneration;
                       if (target != null && seekable) {
-                        unawaited(player.seek(target));
+                        await player.seek(target);
+                      }
+                      if (mounted && generation == scrubGeneration) {
+                        setState(() => scrubPosition = null);
                       }
                     }
 
@@ -205,14 +209,20 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                         onHorizontalDragStart: seekable
                             ? (event) {
                                 scrubOriginX = event.localPosition.dx;
-                                scrubOriginPosition = visiblePosition;
-                                setState(() => scrubPosition = visiblePosition);
+                                scrubGeneration++;
+                                scrubOriginPosition =
+                                    scrubPosition ?? visiblePosition;
+                                setState(
+                                  () => scrubPosition = scrubOriginPosition,
+                                );
                               }
                             : null,
                         onHorizontalDragUpdate: seekable
                             ? (event) => scrub(event.localPosition.dx)
                             : null,
-                        onHorizontalDragEnd: seekable ? (_) => commit() : null,
+                        onHorizontalDragEnd: seekable
+                            ? (_) => unawaited(commit())
+                            : null,
                         onHorizontalDragCancel: () =>
                             setState(() => scrubPosition = null),
                         child: CustomPaint(
@@ -248,6 +258,9 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                   children: [
                     IconButton(
                       tooltip: '5초 뒤로',
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(52, 52),
+                      ),
                       onPressed: seekable
                           ? () => unawaited(
                               player.seek(
@@ -258,8 +271,9 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                               ),
                             )
                           : null,
-                      icon: const AppIcon(Icons.replay_5),
+                      icon: const AppIcon(Icons.replay_5, size: 28),
                     ),
+                    const SizedBox(width: 12),
                     IconButton.filled(
                       tooltip: playing ? '일시정지' : '재생',
                       style: IconButton.styleFrom(
@@ -284,8 +298,12 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                             : player.start(widget.recordingId),
                       ),
                     ),
+                    const SizedBox(width: 12),
                     IconButton(
                       tooltip: '5초 앞으로',
+                      style: IconButton.styleFrom(
+                        minimumSize: const Size(52, 52),
+                      ),
                       onPressed: seekable
                           ? () => unawaited(
                               player.seek(
@@ -296,7 +314,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                               ),
                             )
                           : null,
-                      icon: const AppIcon(Icons.forward_5),
+                      icon: const AppIcon(Icons.forward_5, size: 28),
                     ),
                   ],
                 ),

@@ -22,6 +22,7 @@ internal class PlaybackBridge(private val activity: Activity) {
     var events: EventChannel.EventSink?=null
     private var player: MediaPlayer?=null
     private var pending: MethodChannel.Result?=null
+    private val seeks=java.util.ArrayDeque<Pair<Int,MethodChannel.Result>>()
     private var token=0
     private var scope: String?=null
     private var phase="idle"
@@ -49,13 +50,26 @@ internal class PlaybackBridge(private val activity: Activity) {
                     when(call.method) {
                         "play" -> {current.start();emit("playing")}
                         "pause" -> {current.pause();emit("paused")}
-                        "seek" -> current.seekTo((call.argument<Int>("position")?:0).coerceIn(0,duration))
+                        "seek" -> {
+                            check(seeks.size<16)
+                            seeks.addLast(Pair((call.argument<Int>("position")?:0).coerceIn(0,duration),result))
+                            if(seeks.size==1)startSeek()
+                            return
+                        }
                     }
                     result.success(null)
                 }
                 else -> result.notImplemented()
             }
         } catch (_: Exception) {result.error("PLAYBACK_FAILED","재생 상태를 확인해 주세요.",null)}
+    }
+    private fun startSeek() {
+        val request=seeks.peekFirst()?:return
+        try {checkNotNull(player).seekTo(request.first)} catch(_:Exception){fail();return}
+        handler.postDelayed({if(seeks.peekFirst()===request)fail()},5000)
+    }
+    private fun cancelSeeks() {
+        while(seeks.isNotEmpty())seeks.removeFirst().second.error("PLAYBACK_SUPERSEDED","재생 요청이 변경됐습니다.",null)
     }
     private fun load(call: MethodCall,result: MethodChannel.Result) {
         stop(false)
@@ -93,10 +107,17 @@ internal class PlaybackBridge(private val activity: Activity) {
                     val hash=MessageDigest.getInstance("SHA-256").digest(bytes).joinToString(""){"%02x".format(it)}
                     check(hash==checksum)
                 }
+                val ownerScope="$environment/$owner"
+                val cancelled={currentGeneration!=generation || ownerScope!=RecorderAccount.scope}
+                val preparedPeaks=PlaybackWaveforms.obtain(activity,ownerScope,requireNotNull(checksum),cancelled) {
+                    if(bytes!=null)ImportAudioInspector.waveform(bytes,cancelled)
+                    else ImportAudioInspector.inspect(File(source),true,cancelled)
+                }
                 activity.runOnUiThread {
                     if(currentGeneration!=generation)return@runOnUiThread
                     if(scope!=RecorderAccount.scope){fail();return@runOnUiThread}
                     try {
+                        waveform=preparedPeaks
                         val next=MediaPlayer();player=next
                         next.setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
                             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
@@ -105,30 +126,23 @@ internal class PlaybackBridge(private val activity: Activity) {
                             if(scope!=RecorderAccount.scope){fail();return@setOnPreparedListener}
                             duration=it.duration
                             if(duration<1){fail();return@setOnPreparedListener}
-                            val callback=pending;pending=null;emit("paused");callback?.success(duration)
+                            val callback=pending;pending=null;emit("paused");callback?.success(mapOf("duration" to duration,"waveform" to waveform))
                             handler.post(tick)
                         }
                         next.setOnCompletionListener {if(player===it){position=duration;emit("completed")}}
-                        next.setOnSeekCompleteListener {if(player===it)emit(phase)}
+                        next.setOnSeekCompleteListener {
+                            if(player===it) {
+                                val completed=seeks.pollFirst()
+                                emit(phase)
+                                completed?.second?.success(null)
+                                if(seeks.isNotEmpty())startSeek()
+                            }
+                        }
                         next.setOnErrorListener { failed,_,_ -> if(player===failed)fail();true }
                         if(bytes!=null) next.setDataSource(PlaybackMemorySource(bytes)) else next.setDataSource(source)
                         next.prepareAsync()
                     }catch(_:Exception){fail()}
                 }
-                // Both sources use the same decoder. Remote bytes are ephemeral
-                // and shared with the player: no extra request or saved copy.
-                try {
-                        val cancelled = { currentGeneration != generation || scope != RecorderAccount.scope }
-                        val inspected = if(bytes!=null) ImportAudioInspector.waveform(bytes, cancelled)
-                                        else ImportAudioInspector.inspect(File(source), true, cancelled)
-                        val values = inspected["waveform"] as? List<*>
-                        val peaks = values?.map { (it as Number).toDouble() } ?: emptyList()
-                        activity.runOnUiThread {
-                            if(currentGeneration==generation && scope==RecorderAccount.scope && player!=null) {
-                                waveform=peaks; emit(phase)
-                            }
-                        }
-                } catch(_:Exception) { /* Waveform failure never prevents playback. */ }
             } catch(_:Exception) {activity.runOnUiThread {if(currentGeneration==generation)fail()}}
         }
         // Bounded preparation: a dead network request cannot leave the UI loading forever.
@@ -140,11 +154,13 @@ internal class PlaybackBridge(private val activity: Activity) {
         events?.success(mapOf("token" to token,"phase" to phase,"position" to position,"duration" to duration,"waveform" to waveform))
     }
     private fun fail() {
+        cancelSeeks()
         val callback=pending;pending=null
         handler.removeCallbacks(tick);player?.release();player=null
         emit("failed");callback?.error("PLAYBACK_FAILED","파일이나 연결 상태를 확인해 주세요.",null)
     }
     fun stop(notify: Boolean=true) {
+        cancelSeeks()
         generation++;handler.removeCallbacks(tick)
         val callback=pending;pending=null
         player?.release();player=null

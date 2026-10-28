@@ -60,7 +60,9 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(AndroidAudioPlayer.commands, (call) async {
           calls.add(call);
-          return call.method == 'load' ? 10000 : null;
+          return call.method == 'load'
+              ? {'duration': 10000, 'waveform': List.filled(120, .5)}
+              : null;
         });
   });
   tearDown(
@@ -70,7 +72,9 @@ void main() {
 
   test('remote playback uses one verified memory payload without URL or persistent path', () async {
     final fetch = DownloadFake(bytes);
-    expect(await AndroidAudioPlayer(download: fetch).load(source()), 10000);
+    final player = AndroidAudioPlayer(download: fetch);
+    expect(await player.load(source()), 10000);
+    expect(player.preparedWaveform, List.filled(120, .5));
     expect(fetch.calls, 1);
     final args = calls.single.arguments as Map;
     expect(args['kind'], 'memory');
@@ -81,6 +85,28 @@ void main() {
     expect(args.keys, isNot(contains('path')));
     expect(args.keys, isNot(contains('ticket')));
   });
+  test(
+    'native load cannot complete with a missing or malformed waveform',
+    () async {
+      for (final peaks in [
+        <double>[],
+        [double.nan],
+        List.filled(120, 2.0),
+      ]) {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              AndroidAudioPlayer.commands,
+              (call) async => call.method == 'load'
+                  ? {'duration': 10000, 'waveform': peaks}
+                  : null,
+            );
+        await expectLater(
+          AndroidAudioPlayer(download: DownloadFake(bytes)).load(source()),
+          throwsStateError,
+        );
+      }
+    },
+  );
   test(
     'wrong bytes or size cannot reach native playback or waveform',
     () async {

@@ -41,7 +41,14 @@ abstract interface class AudioPlayerPort {
   Future<void> stop();
 }
 
-final class AndroidAudioPlayer implements AudioPlayerPort {
+abstract interface class PreparedWaveformPort {
+  List<double> get preparedWaveform;
+}
+
+final class AndroidAudioPlayer
+    implements AudioPlayerPort, PreparedWaveformPort {
+  @override
+  List<double> preparedWaveform = const [];
   AndroidAudioPlayer({SignedAudioDownload? download})
     : download = download ?? const HttpSignedAudioDownload();
   final SignedAudioDownload download;
@@ -97,7 +104,20 @@ final class AndroidAudioPlayer implements AudioPlayerPort {
       });
     }
     if (generation != _generation) throw StateError('Playback superseded');
-    return (await commands.invokeMethod<int>('load', nativeSource))!;
+    final prepared = (await commands.invokeMapMethod<String, Object?>(
+      'load',
+      nativeSource,
+    ))!;
+    if (generation != _generation) throw StateError('Playback superseded');
+    final values = (prepared['waveform'] as List)
+        .map((v) => (v as num).toDouble())
+        .toList();
+    if (values.length != 120 ||
+        values.any((v) => !v.isFinite || v < 0 || v > 1)) {
+      throw StateError('Waveform preparation failed');
+    }
+    preparedWaveform = List.unmodifiable(values);
+    return prepared['duration'] as int;
   }
 
   @override
@@ -227,6 +247,9 @@ final class AudioPlayback extends ChangeNotifier {
       final loaded = await player.load(source);
       await _guard(token);
       duration = loaded;
+      if (player case PreparedWaveformPort prepared) {
+        waveform = prepared.preparedWaveform;
+      }
       if (duration < 1) throw StateError('No playable audio');
       await player.play(token);
       await _guard(token);
@@ -318,8 +341,13 @@ final class AudioPlayback extends ChangeNotifier {
     final token = _token;
     try {
       await _guard(token);
-      await player.seek(token, milliseconds.clamp(0, duration));
+      final target = milliseconds.clamp(0, duration);
+      await player.seek(token, target);
       await _guard(token);
+      // The native seek future completes only after the seek callback. Keep
+      // the accepted position visible even if the event channel is a frame late.
+      position = target;
+      notifyListeners();
     } catch (_) {
       if (token == _token && !_closed) {
         await _stop();
@@ -376,6 +404,9 @@ final class AudioPlayback extends ChangeNotifier {
       });
       await _guard(token);
       duration = loaded;
+      if (player case PreparedWaveformPort prepared) {
+        waveform = prepared.preparedWaveform;
+      }
       if (duration < 1) throw StateError('No playable audio');
       await player.seek(token, at.clamp(0, duration));
       await player.play(token);

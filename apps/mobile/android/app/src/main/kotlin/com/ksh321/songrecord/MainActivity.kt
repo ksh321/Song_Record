@@ -36,7 +36,13 @@ class MainActivity : FlutterActivity() {
                 val parent = cacheDir.canonicalFile
                 require(file.path.startsWith(parent.path + File.separator))
                 require(file.isFile && file.length() in 1..6L * 1024 * 1024)
-                val inspected = ImportAudioInspector.inspect(file)
+                val owner=com.ksh321.songrecord.recorder.RecorderAccount.requireScope()
+                val inspected = ImportAudioInspector.inspect(file,true) {
+                    com.ksh321.songrecord.recorder.RecorderAccount.scope!=owner
+                }
+                val checksum=com.ksh321.songrecord.recorder.RecorderFileTools.sha256(file)
+                PlaybackWaveforms.obtain(this,owner,checksum,
+                    {com.ksh321.songrecord.recorder.RecorderAccount.scope!=owner}){inspected}
                 runOnUiThread { result.success(inspected) }
             } catch (_: Exception) {
                 runOnUiThread { result.error("IMPORT_AUDIO_INVALID", "Invalid backup audio", null) }

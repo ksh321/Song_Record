@@ -145,12 +145,46 @@ void main() {
 
         final waveform = find.byKey(const ValueKey('playback-waveform'));
         final box = tester.getRect(waveform);
+        port.seekCompletion = Completer<void>();
         await tester.dragFrom(
           Offset(box.right - 10, box.center.dy),
           Offset(-box.width * .7, 0),
         );
         await tester.pump();
         expect(port.seekAt, greaterThan(0));
+        final clockText = find.byWidgetPredicate(
+          (w) => w is Text && w.style?.fontSize == 52,
+        );
+        final selectedTime = tester.widget<Text>(clockText).data;
+        // Native playback may report the old position after finger release.
+        port.stream.add(
+          PlayerEvent(
+            port.sources.last['token'] as int,
+            PlaybackPhase.playing,
+            0,
+            10000,
+          ),
+        );
+        await tester.pump();
+        expect(tester.widget<Text>(clockText).data, selectedTime);
+        final firstCompletion = port.seekCompletion!;
+        port.seekCompletion = Completer<void>();
+        await tester.dragFrom(
+          Offset(box.left + 10, box.center.dy),
+          Offset(box.width * .2, 0),
+        );
+        await tester.pump();
+        final latestTime = tester.widget<Text>(clockText).data;
+        expect(latestTime, isNot(selectedTime));
+        firstCompletion.complete();
+        await tester.pump();
+        expect(tester.widget<Text>(clockText).data, latestTime);
+        port.seekCompletion!.complete();
+        await tester.pump();
+        expect(player.position, port.seekAt);
+        expect(tester.widget<Text>(clockText).data, latestTime);
+        port.seekCompletion = null;
+
         port.stream.add(
           PlayerEvent(
             port.sources.last['token'] as int,

@@ -384,3 +384,7 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 /* Shared playback geometry in both themes. */
 .phone .v3-wave{height:185px}
 .phone .v3-play-controls{margin-top:112px}
+
+/* Playback transport uses the same modest spacing and skip size as beta. */
+.phone .v3-play-controls{gap:12px}
+.phone .v3-skip{width:52px;min-width:52px;min-height:52px;font-size:22px}
