@@ -7,9 +7,11 @@ class DeviceFileCleanupButton extends StatefulWidget {
     super.key,
     required this.cleanup,
     required this.recordingId,
+    this.fullWidth = false,
   });
   final DeviceFileCleanup cleanup;
   final String recordingId;
+  final bool fullWidth;
   @override
   State<DeviceFileCleanupButton> createState() => _State();
 }
@@ -75,6 +77,9 @@ class _State extends State<DeviceFileCleanupButton> {
   @override
   Widget build(BuildContext context) => Column(
     mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: widget.fullWidth
+        ? CrossAxisAlignment.stretch
+        : CrossAxisAlignment.center,
     children: [
       OutlinedButton(
         onPressed: busy ? null : run,

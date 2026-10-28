@@ -217,7 +217,7 @@ void main() {
       expect(find.textContaining('포함 파일 1개 · 미포함 1개'), findsOneWidget);
       expect(find.textContaining('로컬 기준:'), findsOneWidget);
       final start = tester.widget<FilledButton>(
-        find.widgetWithText(FilledButton, '새 백업 시작'),
+        find.widgetWithText(FilledButton, '누락을 확인하고 내보내기'),
       );
       expect(start.onPressed, isNull);
       expect(find.textContaining('비암호화 ZIP'), findsOneWidget);

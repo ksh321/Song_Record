@@ -87,9 +87,12 @@ void main() {
         await tester.tap(find.text('열기'));
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        await tester.ensureVisible(find.text('취소'));
+        await tester.ensureVisible(find.text(kind == '새 곡 찾기' ? '닫기' : '취소'));
         await tester.pumpAndSettle();
-        final button = find.widgetWithText(TextButton, '취소');
+        final button = find.widgetWithText(
+          TextButton,
+          kind == '새 곡 찾기' ? '닫기' : '취소',
+        );
         expect(tester.getSize(button).height, greaterThanOrEqualTo(44));
         expect(
           tester.getBottomLeft(button).dy,

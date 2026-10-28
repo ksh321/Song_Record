@@ -17,11 +17,13 @@ class PlaylistDiscoveryScreen extends StatefulWidget {
     required this.searchLoad,
     this.chartLoad,
     this.auth,
+    this.initiallyCharts = false,
   });
   final SearchIntent intent;
   final KaraokeLoader searchLoad;
   final ChartLoader? chartLoad;
   final AuthController? auth;
+  final bool initiallyCharts;
   @override
   State<PlaylistDiscoveryScreen> createState() =>
       _PlaylistDiscoveryScreenState();
@@ -33,6 +35,7 @@ class _PlaylistDiscoveryScreenState extends State<PlaylistDiscoveryScreen> {
   void initState() {
     super.initState();
     widget.intent.validate();
+    tab = widget.initiallyCharts && widget.chartLoad != null ? 1 : 0;
   }
 
   void select(KaraokeSelection selection) {

@@ -9,9 +9,10 @@ import '../../core/domain/input_validation.dart';
 import '../../core/domain/recording_defaults.dart';
 import '../../core/domain/song_types.dart';
 import '../../core/sync/local_repository.dart';
-import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/musical_key_picker.dart';
+import '../../core/widgets/song_discovery_sheet.dart';
+import '../../core/widgets/tier_picker.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../../core/widgets/version_picker.dart';
 import 'recording_classification_picker.dart';
@@ -30,11 +31,13 @@ class RecordingInputScreen extends StatefulWidget {
     this.conditionLoader,
     this.editing = false,
     this.revision = 0,
+    this.initialField,
     super.key,
   });
   final Map<String, dynamic> recording;
   final bool editing;
   final int revision;
+  final String? initialField;
   final LocalRepository repository;
   final bool Function(LocalRepository) isCurrent;
   final RecordingDiscoveryBuilder? discoveryBuilder;
@@ -113,6 +116,26 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
     tags = List<String>.from(saved['tag_ids'] as List? ?? []);
     unawaited(loadTags());
     unawaited(loadConditions());
+    if (widget.editing && widget.initialField != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!current) return;
+        if (widget.initialField == 'version') {
+          await version();
+        } else if (widget.initialField == 'key') {
+          await key();
+        } else if (widget.initialField == 'tier') {
+          final result = await TierPicker.recording(
+            context: context,
+            selected: RecordingTier.values
+                .where((value) => value.name.toUpperCase() == tier)
+                .firstOrNull,
+          );
+          if (current && result != null) {
+            setState(() => tier = result.value?.name.toUpperCase());
+          }
+        }
+      });
+    }
   }
 
   Future<void> loadConditions() async {
@@ -214,12 +237,16 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
   Future<void> chooseSong() async {
     if (busy || !current) return;
     try {
+      final source = await showRecordingSourceSheet(context);
+      if (!mounted || !current || source == null) return;
       await preserve();
       if (!mounted || !current) return;
       await Navigator.push<void>(
         context,
         MaterialPageRoute(
           builder: (_) => RecordingSongPicker(
+            initialSource: source,
+            closeOnSelected: true,
             recordingId: id,
             repository: widget.repository,
             isCurrent: widget.isCurrent,
@@ -358,6 +385,18 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
     changed();
   }
 
+  Future<void> editNote() async {
+    if (!current || busy) return;
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => _RecordingNoteEditor(initial: note.text),
+      ),
+    );
+    if (!current || result == null) return;
+    setState(() => note.text = result);
+    changed();
+  }
+
   Future<void> correctTime() async {
     final offset = Duration(
       minutes: widget.recording['timezone_offset_minutes'] as int,
@@ -386,6 +425,14 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
     );
     changed();
   }
+
+  List<String> get inputProblems => [
+    if (!validateInput(InputField.title, title.text).isValid)
+      title.text.trim().isEmpty ? '곡명' : '곡명 (200자 이내)',
+    if (!validateInput(InputField.artist, artist.text).isValid)
+      artist.text.trim().isEmpty ? '가수' : '가수 (200자 이내)',
+    if (!validateInput(InputField.note, note.text).isValid) '메모 (2000자 이내)',
+  ];
 
   Future<void> save() async {
     if (busy || !current) return;
@@ -448,6 +495,52 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
     }
   }
 
+  Widget _actions(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (inputProblems.isNotEmpty) ...[
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
+          ),
+          child: Text(
+            '아직 입력하지 않았어요: ${!widget.editing && title.text.trim().isEmpty && artist.text.trim().isEmpty ? '곡 선택' : inputProblems.join(' · ')}',
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+        const SizedBox(height: 14),
+      ],
+      if (error != null) Text(error!),
+      if (widget.editing)
+        TextButton(onPressed: busy ? null : exit, child: const Text('취소')),
+      FilledButton(
+        onPressed:
+            busy ||
+                !widget.isCurrent(widget.repository) ||
+                inputProblems.isNotEmpty
+            ? null
+            : save,
+        child: Text(
+          busy
+              ? '저장 중'
+              : widget.editing
+              ? '변경 저장'
+              : '저장',
+        ),
+      ),
+      if (!widget.editing) const SizedBox(height: 14),
+      if (!widget.editing)
+        OutlinedButton(
+          onPressed: busy ? null : exit,
+          child: const Text('나중에 입력'),
+        ),
+    ],
+  );
+
   @override
   void dispose() {
     timer?.cancel();
@@ -479,126 +572,197 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
         body: SafeArea(
           child: SingleChildScrollView(
             padding: AppLayout.bodyPadding,
-            child: AbsorbPointer(
-              absorbing:
-                  busy ||
-                  !widget.isCurrent(widget.repository) ||
-                  prepared != null,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    widget.editing
-                        ? '저장하면 녹음 정보만 바뀌어요. 취소하면 원래 정보를 유지해요.'
-                        : '필수 정보를 입력하면 녹음을 저장해요. 입력 중 나가도 녹음 파일은 남아요.',
-                  ),
-                  if (!widget.editing)
-                    OutlinedButton(
-                      onPressed: chooseSong,
-                      child: Text(
-                        songId == null ? '내 곡 선택 / 새 곡 찾기' : '연결할 곡 변경',
-                      ),
-                    ),
-                  AppLabeledField(
-                    fieldKey: const ValueKey('recording-title'),
-                    label: '곡명',
-                    controller: title,
-                    onChanged: (_) => changed(),
-                  ),
-                  const SizedBox(height: 14),
-                  AppLabeledField(
-                    fieldKey: const ValueKey('recording-artist'),
-                    label: '가수',
-                    controller: artist,
-                    onChanged: (_) => changed(),
-                  ),
-                  const SizedBox(height: 14),
-                  AppPickerField(
-                    label: '키',
-                    value: formatMusicalKey(defaults.key),
-                    onPressed: key,
-                  ),
-                  AppPickerField(
-                    label: '버전',
-                    value: formatVersionCode(defaults.version),
-                    onPressed: version,
-                  ),
-                  AppPickerField(
-                    label: '녹음 시각',
-                    onPressed: correctTime,
-                    value:
-                        '${wall.year}년 ${wall.month}월 ${wall.day}일 ${wall.hour < 12 ? '오전' : '오후'} ${wall.hour % 12 == 0 ? 12 : wall.hour % 12}:${wall.minute.toString().padLeft(2, '0')}',
-                  ),
-                  if (!widget.editing && songId != null)
-                    TextButton(
-                      onPressed: applyDefaults,
-                      child: const Text('선택 곡의 키·버전 기본값 적용'),
-                    ),
-                  AppPickerField(
-                    label: '컨디션과 태그',
-                    value:
-                        '${classificationConditions().where((r) => r['code'] == condition).firstOrNull?['name'] ?? '선택 안 함'} · 태그 ${tags.length}개',
-                    onPressed: chooseClassifications,
-                  ),
-                  if (widget.editing)
-                    DropdownButtonFormField<String>(
-                      key: const ValueKey('recording-tier'),
-                      initialValue: tier,
-                      decoration: const InputDecoration(labelText: '녹음 티어'),
-                      items: [
-                        const DropdownMenuItem(value: null, child: Text('미정')),
-                        for (final value in ['S', 'A', 'B', 'C', 'D'])
-                          DropdownMenuItem(value: value, child: Text(value)),
-                      ],
-                      onChanged: (v) => setState(() => tier = v),
-                    ),
-                  AppLabeledField(
-                    fieldKey: const ValueKey('recording-note'),
-                    label: '메모 (선택)',
-                    controller: note,
-                    maxLines: 3,
-                    onChanged: (_) => changed(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        bottomNavigationBar: SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md,
-              AppSpacing.md + MediaQuery.viewInsetsOf(context).bottom,
-            ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (error != null) Text(error!),
-                if (widget.editing)
-                  TextButton(
-                    onPressed: busy ? null : exit,
-                    child: const Text('취소'),
-                  ),
-                FilledButton(
-                  onPressed: busy || !widget.isCurrent(widget.repository)
-                      ? null
-                      : save,
-                  child: Text(
-                    busy
-                        ? '저장 중'
-                        : widget.editing
-                        ? '변경 저장'
-                        : '녹음 저장',
+                AbsorbPointer(
+                  absorbing:
+                      busy ||
+                      !widget.isCurrent(widget.repository) ||
+                      prepared != null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (!widget.editing)
+                        AppPickerField(
+                          label: '곡 선택',
+                          trailingLabel: title.text.trim().isEmpty
+                              ? '선택 필요'
+                              : null,
+                          value: title.text.trim().isEmpty
+                              ? '미선택'
+                              : '${title.text} · ${artist.text}',
+                          onPressed: chooseSong,
+                        ),
+                      if (widget.editing) ...[
+                        AppLabeledField(
+                          fieldKey: const ValueKey('recording-title'),
+                          label: '곡명',
+                          controller: title,
+                          onChanged: (_) => setState(changed),
+                        ),
+                        const SizedBox(height: 14),
+                        AppLabeledField(
+                          fieldKey: const ValueKey('recording-artist'),
+                          label: '가수',
+                          controller: artist,
+                          onChanged: (_) => setState(changed),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      AppPickerField(
+                        label: '키',
+                        value: formatMusicalKey(defaults.key),
+                        onPressed: key,
+                      ),
+                      AppPickerField(
+                        label: '버전',
+                        value: formatVersionCode(defaults.version),
+                        onPressed: version,
+                      ),
+                      if (widget.editing)
+                        AppPickerField(
+                          label: '녹음 시각',
+                          onPressed: correctTime,
+                          value:
+                              '${wall.year}년 ${wall.month}월 ${wall.day}일 ${wall.hour < 12 ? '오전' : '오후'} ${wall.hour % 12 == 0 ? 12 : wall.hour % 12}:${wall.minute.toString().padLeft(2, '0')}',
+                        ),
+                      if (!widget.editing && songId != null)
+                        TextButton(
+                          onPressed: applyDefaults,
+                          child: const Text('선택 곡의 키·버전 기본값 적용'),
+                        ),
+                      AppPickerField(
+                        label: '컨디션·태그',
+                        value: [
+                          classificationConditions()
+                                  .where((r) => r['code'] == condition)
+                                  .firstOrNull?['name'] ??
+                              '선택 안 함',
+                          ...availableTags
+                              .where((r) => tags.contains(r['id']))
+                              .map((r) => r['name']),
+                        ].join(' · '),
+                        onPressed: chooseClassifications,
+                      ),
+                      if (widget.editing)
+                        DropdownButtonFormField<String>(
+                          key: const ValueKey('recording-tier'),
+                          initialValue: tier,
+                          decoration: const InputDecoration(labelText: '녹음 티어'),
+                          items: [
+                            const DropdownMenuItem(
+                              value: null,
+                              child: Text('미정'),
+                            ),
+                            for (final value in ['S', 'A', 'B', 'C', 'D'])
+                              DropdownMenuItem(
+                                value: value,
+                                child: Text(value),
+                              ),
+                          ],
+                          onChanged: (v) => setState(() => tier = v),
+                        ),
+                      if (widget.editing)
+                        AppLabeledField(
+                          fieldKey: const ValueKey('recording-note'),
+                          label: '메모 (선택)',
+                          controller: note,
+                          maxLines: 3,
+                          onChanged: (_) => setState(changed),
+                        )
+                      else
+                        AppPickerField(
+                          label: '연습 메모',
+                          value: note.text.isEmpty
+                              ? '아직 입력하지 않았어요.'
+                              : note.text,
+                          onPressed: editNote,
+                        ),
+                    ],
                   ),
                 ),
+                if (!widget.editing) _actions(context),
               ],
             ),
           ),
         ),
+        bottomNavigationBar: widget.editing
+            ? SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    16,
+                    20,
+                    16 + MediaQuery.viewInsetsOf(context).bottom,
+                  ),
+                  child: _actions(context),
+                ),
+              )
+            : null,
       ),
     );
   }
+}
+
+class _RecordingNoteEditor extends StatefulWidget {
+  const _RecordingNoteEditor({required this.initial});
+  final String initial;
+  @override
+  State<_RecordingNoteEditor> createState() => _RecordingNoteEditorState();
+}
+
+class _RecordingNoteEditorState extends State<_RecordingNoteEditor> {
+  late final controller = TextEditingController(text: widget.initial);
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: appPageBar(context, title: const Text('연습 메모')),
+    body: SafeArea(
+      child: SingleChildScrollView(
+        padding: AppLayout.bodyPadding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppLabeledField(
+              fieldKey: const ValueKey('recording-note'),
+              label: '연습 메모',
+              controller: controller,
+              maxLines: 6,
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 8),
+            const Text('최대 2,000자'),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('취소'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton(
+                    onPressed:
+                        validateInput(InputField.note, controller.text).isValid
+                        ? () => Navigator.pop(context, controller.text)
+                        : null,
+                    child: const Text('적용'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

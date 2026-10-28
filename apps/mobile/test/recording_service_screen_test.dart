@@ -52,6 +52,7 @@ class _Gateway implements RecorderGateway {
     emit(
       const RecorderStatus(
         phase: RecorderPhase.completed,
+        recordingId: 'private-id',
         elapsedMs: 12000,
         localState: RecorderLocalState.inputPending,
       ),
@@ -89,6 +90,89 @@ Future<void> _close(WidgetTester t, _Gateway g) async {
 
 void main() {
   testWidgets(
+    'fresh completion opens input once only after the preserved handoff',
+    (t) async {
+      t.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      final g = _Gateway();
+      final handoff = Completer<void>();
+      final opened = <String>[];
+      await t.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListView(
+              children: [
+                RecorderPanel(
+                  gateway: g,
+                  diagnostics: false,
+                  onCompleted: (_) => handoff.future,
+                  onInputReady: opened.add,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await t.pump();
+      await t.tap(find.text('녹음 시작'));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 300));
+      await t.ensureVisible(find.text('녹음 완료'));
+      await t.tap(find.text('녹음 완료'));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 300));
+      expect(opened, isEmpty);
+      handoff.complete();
+      await t.pump();
+      await t.pump(const Duration(seconds: 2));
+      expect(opened, ['private-id']);
+      expect(g.starts, 1);
+      expect(
+        find.byKey(const ValueKey('recorder-start-circle')),
+        findsOneWidget,
+      );
+      await _close(t, g);
+    },
+  );
+  testWidgets(
+    'recovered completion returns to idle without opening an old input',
+    (t) async {
+      final g = _Gateway()
+        ..current = const RecorderStatus(
+          phase: RecorderPhase.completed,
+          recordingId: 'old-id',
+          recovered: true,
+          elapsedMs: 12000,
+        );
+      var opens = 0;
+      await t.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListView(
+              children: [
+                RecorderPanel(
+                  gateway: g,
+                  diagnostics: false,
+                  onCompleted: (_) async {},
+                  onInputReady: (_) => opens++,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await t.pump();
+      await t.pump(const Duration(seconds: 2));
+      expect(opens, 0);
+      expect(g.starts, 0);
+      expect(find.text('00:00'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('recorder-start-circle')),
+        findsOneWidget,
+      );
+      await _close(t, g);
+    },
+  );
+  testWidgets(
     'persisting is single-flight; only successful handoff enables another recording',
     (t) async {
       final g = _Gateway()
@@ -119,11 +203,16 @@ void main() {
       await t.pump();
       await t.pump(const Duration(seconds: 2));
       expect(calls, 1);
-      expect(find.text('새 녹음 시작'), findsNothing);
+      expect(find.byKey(const ValueKey('recorder-start-circle')), findsNothing);
       done.complete();
       await t.pump();
       await t.pump();
-      expect(find.text('새 녹음 시작'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('recorder-start-circle')),
+        findsOneWidget,
+      );
+      expect(find.text('00:00'), findsOneWidget);
+      expect(find.text('녹음이 완료됐어요'), findsNothing);
       await _close(t, g);
     },
   );
@@ -160,14 +249,19 @@ void main() {
       expect(calls, 1);
       expect(g.starts, 0);
       expect(find.text('완료 녹음 듣기'), findsOneWidget);
-      expect(find.text('새 녹음 시작'), findsNothing);
+      expect(find.byKey(const ValueKey('recorder-start-circle')), findsNothing);
       await t.ensureVisible(find.text('입력 대기 저장 다시 시도'));
       await t.tap(find.text('입력 대기 저장 다시 시도'));
       await t.pump();
       await t.pump();
       expect(calls, 2);
       expect(g.starts, 0);
-      expect(find.text('새 녹음 시작'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('recorder-start-circle')),
+        findsOneWidget,
+      );
+      expect(find.text('00:00'), findsOneWidget);
+      expect(find.text('녹음이 완료됐어요'), findsNothing);
       await _close(t, g);
     },
   );

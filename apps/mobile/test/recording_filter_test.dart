@@ -180,6 +180,18 @@ void main() {
       );
       await tester.tap(find.text('필터 0'));
       await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const ValueKey('start')), '0001-01-01');
+      await tester.tap(find.byTooltip('시작 날짜 선택'));
+      await tester.pumpAndSettle();
+      expect(find.byType(DatePickerDialog), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(DatePickerDialog),
+          matching: find.text('취소'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
       await tester.enterText(find.byKey(const ValueKey('start')), '2026-10-11');
       await tester.tap(find.text('취소'));
       await tester.pumpAndSettle();

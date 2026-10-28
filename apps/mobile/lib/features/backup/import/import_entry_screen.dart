@@ -9,6 +9,7 @@ import 'package:song_record/core/widgets/app_page_bar.dart';
 import '../../../core/database/account_store.dart';
 import '../../../core/domain/identifiers.dart';
 import '../../../core/sync/snapshot_transport.dart';
+import '../../../core/widgets/app_icon.dart';
 import '../../../core/widgets/ui_controls.dart';
 import '../../auth/auth_session.dart';
 import '../export/export_preparation.dart';
@@ -280,12 +281,37 @@ class _State extends State<ImportEntryScreen> {
         children: [
           const Text(
             '이 계정에서 만든 백업 파일을 선택해 주세요. 파일과 기존 기록을 자동으로 확인한 뒤 가져올 내용을 보여드려요.',
+            style: TextStyle(fontSize: 12, height: 1.8),
           ),
+          const SizedBox(height: 32),
+          const AppPanel(
+            padding: EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+            child: Column(
+              children: [
+                AppIcon(Icons.insert_drive_file_outlined, size: 28),
+                SizedBox(height: 16),
+                Text(
+                  '백업 파일을 선택해 주세요',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 12),
+                Text('노래기록에서 내보낸 ZIP 파일', style: TextStyle(fontSize: 12)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
           if (busy) const LinearProgressIndicator(),
           if (message != null) Text(message!),
-          FilledButton(
+          OutlinedButton(
             onPressed: busy ? null : () => unawaited(select()),
             child: const Text('파일 선택'),
+          ),
+          const SizedBox(height: 14),
+          const FilledButton(onPressed: null, child: Text('가져오기')),
+          const SizedBox(height: 24),
+          const Text(
+            '기존 기록은 유지해요. 파일 확인 후 가져올 내용을 선택할 수 있어요.',
+            style: TextStyle(fontSize: 12, height: 1.8),
           ),
         ],
       ),

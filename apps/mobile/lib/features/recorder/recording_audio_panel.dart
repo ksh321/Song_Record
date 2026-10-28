@@ -13,6 +13,7 @@ class RecordingAudioAccess extends InheritedWidget {
     required this.createPlayer,
     required this.changes,
     required this.refresh,
+    this.storageBuilder,
     required super.child,
     super.key,
   });
@@ -20,13 +21,23 @@ class RecordingAudioAccess extends InheritedWidget {
   final AudioPlayback Function(AccountStore) createPlayer;
   final Listenable changes;
   final VoidCallback refresh;
+  final Widget Function(BuildContext, String)? storageBuilder;
   @override
   bool updateShouldNotify(RecordingAudioAccess oldWidget) => true;
 }
 
 class RecordingAudioPanel extends StatefulWidget {
-  const RecordingAudioPanel(this.recordingId, {super.key});
+  const RecordingAudioPanel(
+    this.recordingId, {
+    super.key,
+    this.compact = false,
+    this.showStatus = true,
+    this.showPlayback = true,
+  });
   final String recordingId;
+  final bool compact;
+  final bool showStatus;
+  final bool showPlayback;
   @override
   State<RecordingAudioPanel> createState() => _RecordingAudioPanelState();
 }
@@ -99,19 +110,41 @@ class _RecordingAudioPanelState extends State<RecordingAudioPanel> {
             else if (value == null)
               const Text('파일 상태 확인 중')
             else ...[
-              Text(value.informationLabel),
-              Text(value.deviceLabel),
-              Text(value.serverLabel),
-              if (value.pinLabel != null) Text(value.pinLabel!),
-              RecordingPlaybackActions(status: value, onPlay: _play),
+              if (widget.showStatus && widget.compact)
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: Text(
+                    value.serverStored
+                        ? '서버에 보관됨'
+                        : value.device == DeviceAudioState.available
+                        ? '이 기기에 있음'
+                        : '파일 상태 확인',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  children: [
+                    Text(value.informationLabel),
+                    Text(value.deviceLabel),
+                    Text(value.serverLabel),
+                    if (value.pinLabel != null) Text(value.pinLabel!),
+                  ],
+                )
+              else if (widget.showStatus) ...[
+                Text(value.informationLabel),
+                Text(value.deviceLabel),
+                Text(value.serverLabel),
+                if (value.pinLabel != null) Text(value.pinLabel!),
+              ],
+              if (widget.showPlayback)
+                RecordingPlaybackActions(status: value, onPlay: _play),
             ],
-            TextButton(
-              onPressed: () {
-                access!.refresh();
-                _reload();
-              },
-              child: const Text('파일 상태 새로고침'),
-            ),
+            if (widget.showStatus)
+              TextButton(
+                onPressed: () {
+                  access!.refresh();
+                  _reload();
+                },
+                child: const Text('파일 상태 새로고침'),
+              ),
           ],
         );
       },

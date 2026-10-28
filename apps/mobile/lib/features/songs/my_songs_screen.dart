@@ -2,16 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/content_state.dart';
-import '../../core/widgets/hold_actions.dart';
+import '../../core/widgets/editable_collection.dart';
 import '../../core/widgets/song_row.dart';
 import '../../core/widgets/sort_sheet.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../../routing/tab_navigation.dart';
 import '../auth/auth_session.dart';
-import '../trash/trash_screens.dart';
+import '../trash/bulk_song_delete.dart';
 import '../trash/trash_workflow.dart';
 import 'my_song.dart';
 import 'my_song_pages.dart';
@@ -155,38 +154,25 @@ class _MySongsScreenState extends State<MySongsScreen> {
     super.dispose();
   }
 
-  Future<void> holdSong(MySong song) async {
-    final request = generation;
+  Future<bool> deleteSelected(List<String> ids) async {
+    final request = generation, owner = scope;
     final actions = widget.trash;
-    if (actions == null) return;
-    final action = await showHoldActions(
+    if (actions == null) return false;
+    return showBulkSongDelete(
       context,
-      title: song.view.title,
-      deleteLabel: '곡 삭제',
-    );
-    if (!mounted ||
-        generation != request ||
-        tag() != scope ||
-        !identical(actions, widget.trash) ||
-        action != 'delete') {
-      return;
-    }
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => DeleteScreen(
-          actions: actions,
-          id: song.view.id.value,
-          title: song.view.title,
-          auth: widget.auth,
-        ),
-      ),
+      ids: ids,
+      actions: actions,
+      isCurrent: () =>
+          mounted &&
+          generation == request &&
+          tag() == owner &&
+          identical(actions, widget.trash),
     );
   }
 
   Widget songRow(MySong song) => Padding(
     padding: EdgeInsets.zero,
     child: GestureDetector(
-      onLongPress: widget.trash == null ? null : () => holdSong(song),
       child: SongRow.registered(
         song: song.view,
         flat: true,
@@ -219,151 +205,155 @@ class _MySongsScreenState extends State<MySongsScreen> {
     );
     final visible = pages.visible;
     final groups = groupMySongs(pages.ordered, sort);
-    if (pageGeneration != pages.generation) {
-      pageGeneration = pages.generation;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && scroll.hasClients) scroll.jumpTo(0);
-      });
-    }
-    return ListView(
-      controller: scroll,
-      primary: false,
-      padding: AppLayout.bodyPadding,
-      children: [
-        TabHeaderSubtitle(
-          loading || failure != null ? null : '등록된 곡 ${songs.length}개',
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: AppCompactAction(
-            label: '내 곡 등록',
-            onPressed: widget.onFindSong,
+    return EditableCollection(
+      key: ValueKey(scope),
+      ids: visible.map((song) => song.view.id.value).toList(),
+      selectionIds: pages.ordered.map((song) => song.view.id.value).toList(),
+      onDelete: deleteSelected,
+      enabled: !loading && failure == null,
+      deleteLabel: (count) => '선택한 $count곡 삭제',
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TabHeaderSubtitle(
+            loading || failure != null ? null : '등록된 곡 ${songs.length}개',
           ),
-        ),
-        const SizedBox(height: 12),
-        AppSearchField(
-          fieldKey: ValueKey(scope),
-          hint: '내 곡에서 곡명 또는 가수 검색',
-          onChanged: (value) => setState(() => query = value),
-        ),
-        const SizedBox(height: 16),
-        AppOptions<bool>(
-          options: const {false: '전체 목록', true: '티어별 보기'},
-          selected: grouped,
-          onChanged: (v) => setState(() => grouped = v),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: InkWell(
-            onTap: () => setState(() => suitableOnly = !suitableOnly),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 17,
-                  height: 23,
-                  child: Checkbox(
-                    value: suitableOnly,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                    onChanged: (v) => setState(() => suitableOnly = v ?? false),
-                  ),
-                ),
-                const SizedBox(width: 7),
-                AppIcon(
-                  Icons.favorite,
-                  size: 17,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 7),
-                const Expanded(
-                  child: Text('나에게 어울리는 곡만', style: TextStyle(fontSize: 12)),
-                ),
-              ],
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: AppCompactAction(
+              label: '내 곡 등록',
+              onPressed: widget.onFindSong,
             ),
           ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              loading || failure != null ? '—곡' : '${pages.total}곡',
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              key: const ValueKey('my-song-count'),
-            ),
-            TextButton.icon(
-              icon: const AppIcon(Icons.sort),
-              label: Text(sort.label),
-              onPressed: () async {
-                final result = await SortSheet.songs(
-                  context: context,
-                  selected: sort,
-                );
-                if (mounted && result != null) {
-                  setState(() => sort = result.value);
-                }
-              },
-            ),
-          ],
-        ),
-        if (loading)
-          const ContentState(
-            phase: ContentPhase.loading,
-            title: '내 곡을 불러오고 있어요.',
-          )
-        else if (failure != null)
-          ContentState(
-            phase: ContentPhase.error,
-            title: '내 곡을 불러오지 못했어요.',
-            onRetry: bind,
-          )
-        else if (visible.isEmpty)
-          const ContentState(phase: ContentPhase.empty, title: '등록된 내 곡이 없습니다')
-        else if (grouped)
-          for (final group in groups.entries) ...[
-            Semantics(
-              header: true,
-              child: Text(
-                '${group.key} (${group.value.length})',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            if (group.value.isEmpty) const Text('이 티어에 등록된 곡이 없습니다'),
-            if (group.value.isNotEmpty &&
-                !visible.any((s) => s.view.tier == group.value.first.view.tier))
-              const Text('다음 목록에서 볼 수 있어요'),
-            for (final song in group.value.where((s) => visible.contains(s)))
-              songRow(song),
-            const SizedBox(height: AppSpacing.md),
-          ]
-        else
-          for (final song in visible) songRow(song),
-        if (!loading && failure == null && pages.cursor != null)
-          OutlinedButton(
-            onPressed: () => setState(() => pages.next(pages.cursor!)),
-            child: const Text('더 보기'),
+          const SizedBox(height: 12),
+          AppSearchField(
+            fieldKey: ValueKey(scope),
+            hint: '내 곡에서 곡명 또는 가수 검색',
+            onChanged: (value) => setState(() => query = value),
           ),
-        if (widget.watchUnlinked != null)
-          TextButton.icon(
-            icon: const AppIcon(Icons.chevron_right, size: 16),
-            label: Text('곡 미연결 녹음 (${unlinkedCount ?? '—'})'),
-            onPressed: unlinkedCount == null
-                ? null
-                : () => Navigator.of(context).push<void>(
-                    MaterialPageRoute(
-                      builder: (_) => UnlinkedRecordingsScreen(
-                        watch: widget.watchUnlinked!,
-                        auth: widget.auth,
-                        onOpenRecording: widget.onOpenRecording,
-                      ),
+          const SizedBox(height: 16),
+          AppOptions<bool>(
+            options: const {false: '전체 목록', true: '티어별 보기'},
+            selected: grouped,
+            onChanged: (v) => setState(() => grouped = v),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: InkWell(
+              onTap: () => setState(() => suitableOnly = !suitableOnly),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 17,
+                    height: 23,
+                    child: Checkbox(
+                      value: suitableOnly,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                      onChanged: (v) =>
+                          setState(() => suitableOnly = v ?? false),
                     ),
                   ),
+                  const SizedBox(width: 7),
+                  AppIcon(
+                    Icons.favorite,
+                    size: 17,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 7),
+                  const Expanded(
+                    child: Text('나에게 어울리는 곡만', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
           ),
-      ],
+        ],
+      ),
+      actions: (_, _) => Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            loading || failure != null ? '—곡' : '${pages.total}곡',
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            key: const ValueKey('my-song-count'),
+          ),
+          TextButton.icon(
+            icon: const AppIcon(Icons.sort),
+            label: Text(sort.label),
+            onPressed: () async {
+              final result = await SortSheet.songs(
+                context: context,
+                selected: sort,
+              );
+              if (mounted && result != null) {
+                setState(() => sort = result.value);
+              }
+            },
+          ),
+        ],
+      ),
+      row: (id) {
+        final song = visible.firstWhere((song) => song.view.id.value == id);
+        final firstInGroup =
+            grouped &&
+            groups.values.any(
+              (group) => group.isNotEmpty && group.first.view.id.value == id,
+            );
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (firstInGroup)
+              Text(
+                '${groups.entries.firstWhere((entry) => entry.value.contains(song)).key} (${groups.values.firstWhere((group) => group.contains(song)).length})',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            songRow(song),
+          ],
+        );
+      },
+      footer: Column(
+        children: [
+          if (loading)
+            const ContentState(
+              phase: ContentPhase.loading,
+              title: '내 곡을 불러오고 있어요.',
+            ),
+          if (failure != null)
+            ContentState(
+              phase: ContentPhase.error,
+              title: '내 곡을 불러오지 못했어요.',
+              onRetry: bind,
+            ),
+          if (!loading && failure == null && visible.isEmpty)
+            const Text('등록된 내 곡이 없습니다'),
+          if (!loading && failure == null && pages.cursor != null)
+            OutlinedButton(
+              onPressed: () => setState(() => pages.next(pages.cursor!)),
+              child: const Text('더 보기'),
+            ),
+          if (widget.watchUnlinked != null)
+            TextButton.icon(
+              icon: const AppIcon(Icons.chevron_right, size: 16),
+              label: Text('곡 미연결 녹음 (${unlinkedCount ?? '—'})'),
+              onPressed: unlinkedCount == null
+                  ? null
+                  : () => Navigator.of(context).push<void>(
+                      MaterialPageRoute(
+                        builder: (_) => UnlinkedRecordingsScreen(
+                          watch: widget.watchUnlinked!,
+                          auth: widget.auth,
+                          onOpenRecording: widget.onOpenRecording,
+                        ),
+                      ),
+                    ),
+            ),
+        ],
+      ),
     );
   }
 }

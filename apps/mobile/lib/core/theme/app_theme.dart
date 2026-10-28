@@ -54,6 +54,12 @@ abstract final class AppTheme {
         backgroundColor: surface,
         surfaceTintColor: Colors.transparent,
       ),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        headerBackgroundColor: surface,
+        headerForegroundColor: foreground,
+      ),
       dividerColor: line,
       disabledColor: muted,
       textTheme: base.textTheme.apply(

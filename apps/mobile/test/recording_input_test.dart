@@ -261,49 +261,52 @@ void main() {
     expect(await store.readLocalAudio(rec), bytes);
   });
   testWidgets(
-    'required form has no initial tier, refuses empty input and preserves cancel draft',
+    'required cards disable save and preserve deferred note and original audio',
     (t) async {
-      final row = await t.runAsync(
-        () async => (await repo.pendingRecordings()).single,
-      );
-      await t.pumpWidget(
-        MaterialApp(
-          home: RecordingInputScreen(
-            conditionLoader: () async => [],
-            tagLoader: () async => [],
-            recording: row!,
-            repository: repo,
-            isCurrent: (_) => true,
+      await t.runAsync(() async {
+        final row = (await repo.pendingRecordings()).single;
+        await t.pumpWidget(
+          MaterialApp(
+            home: RecordingInputScreen(
+              conditionLoader: () async => [],
+              tagLoader: () async => [],
+              recording: row,
+              repository: repo,
+              isCurrent: (_) => true,
+            ),
           ),
-        ),
-      );
-      await t.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 80)),
-      );
-      await t.pump();
-      expect(find.textContaining('티어'), findsNothing);
-      expect(find.text('키'), findsOneWidget);
-      expect(find.text('원키'), findsOneWidget);
-      await t.tap(find.text('녹음 저장'));
-      await t.pump();
-      expect(find.textContaining('곡명·가수는'), findsOneWidget);
-      await t.enterText(
-        find.byKey(const ValueKey('recording-title')),
-        'input still pending',
-      );
-      await t.runAsync(() async {
-        await t.tap(find.byIcon(Icons.arrow_back));
-        await Future<void>.delayed(const Duration(milliseconds: 80));
-      });
-      await t.pump();
-      await t.pumpWidget(const SizedBox());
-      await t.runAsync(() async {
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await t.pump();
+        expect(find.textContaining('티어'), findsNothing);
+        expect(find.text('키'), findsOneWidget);
+        expect(find.text('원키'), findsOneWidget);
         expect(
-          (await repo.pendingRecordings())
-              .single['input_form']['title_snapshot'],
+          t
+              .widget<FilledButton>(find.widgetWithText(FilledButton, '저장'))
+              .onPressed,
+          isNull,
+        );
+        expect(find.textContaining('아직 입력하지 않았어요:'), findsOneWidget);
+        expect(find.byKey(const ValueKey('recording-title')), findsNothing);
+        await t.tap(find.text('연습 메모'));
+        await t.pumpAndSettle();
+        await t.enterText(
+          find.byKey(const ValueKey('recording-note')),
+          'input still pending',
+        );
+        await t.tap(find.text('적용'));
+        await t.pumpAndSettle();
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+        await t.tap(find.text('나중에 입력'));
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+        await t.pumpAndSettle();
+        expect(
+          (await repo.pendingRecordings()).single['input_form']['note'],
           'input still pending',
         );
         expect(await store.readLocalAudio(rec), bytes);
+        await t.pumpWidget(const SizedBox());
       });
     },
   );
@@ -357,6 +360,13 @@ void main() {
   testWidgets(
     'one save tap stores normalized required information with original zero and no tier',
     (t) async {
+      await t.runAsync(
+        () => repo.preserveRecordingInput(rec, {
+          ...fields(),
+          'title_snapshot': '  노래  ',
+          'artist_snapshot': '  가수  ',
+        }),
+      );
       final row = await t.runAsync(
         () async => (await repo.pendingRecordings()).single,
       );
@@ -375,16 +385,9 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 80)),
       );
       await t.pump();
-      await t.enterText(
-        find.byKey(const ValueKey('recording-title')),
-        '  노래  ',
-      );
-      await t.enterText(
-        find.byKey(const ValueKey('recording-artist')),
-        '  가수  ',
-      );
+      expect(find.text('  노래   ·   가수  '), findsOneWidget);
       await t.runAsync(() async {
-        await t.tap(find.text('녹음 저장'));
+        await t.tap(find.text('저장'));
         await Future<void>.delayed(const Duration(milliseconds: 150));
       });
       for (var attempt = 0; attempt < 10; attempt++) {
@@ -440,8 +443,10 @@ void main() {
     await t.pump();
     t.view.viewInsets = const FakeViewPadding(bottom: 300);
     await t.pump();
+    await t.ensureVisible(find.widgetWithText(FilledButton, '저장'));
+    await t.pumpAndSettle();
     expect(
-      t.getBottomRight(find.widgetWithText(FilledButton, '녹음 저장')).dy,
+      t.getBottomRight(find.widgetWithText(FilledButton, '저장')).dy,
       lessThanOrEqualTo(544),
     );
     expect(t.takeException(), isNull);

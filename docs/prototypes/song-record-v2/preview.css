@@ -206,3 +206,154 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 
 .phone .hold-overlay.hold-order{align-items:flex-end;padding:0}
 .phone .hold-order .control-sheet{height:80%;max-height:80%;border-radius:18px 18px 0 0}
+
+/* My Songs selection mode — prototype approval before beta implementation. */
+.phone.bulk-selecting .phone-header :is(.settings-button,.v4-theme-toggle){display:none}
+.phone .bulk-toolbar{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.phone .bulk-toolbar button{background:transparent;color:var(--text);border:0;font:inherit;font-size:12px;min-height:40px;padding:0;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.phone .bulk-toolbar .bulk-cancel{padding:0 10px;border:1px solid var(--line);border-radius:9px}
+.phone .bulk-box{width:21px;height:21px;box-sizing:border-box;flex:0 0 21px;border:1.5px solid var(--muted);border-radius:5px;display:inline-flex;align-items:center;justify-content:center;color:var(--on-accent,#fff);font-size:15px;line-height:1}
+.phone .bulk-box[aria-checked="true"],.phone .bulk-all[aria-checked="true"] .bulk-box{background:var(--accent);border-color:var(--accent)}
+.phone.bulk-selecting .compact-row{gap:10px}
+.phone.bulk-selecting .phone-body{padding-bottom:90px}
+.phone .bulk-delete-bar{position:absolute;bottom:96px;left:0;right:0;padding:12px 20px;background:var(--surface);border-top:1px solid var(--line);z-index:15}
+.phone .bulk-delete-bar button{width:100%;margin:0}
+.phone .bulk-delete-bar button:disabled{opacity:.45;cursor:default}
+
+/* Selection controls stay outside the scrolling song list. */
+.phone.bulk-selecting .phone-header{flex-shrink:0}
+
+.phone .bulk-toolbar .bulk-cancel{font-size:14px;font-weight:600;padding:0 14px;border-color:var(--muted)}
+.phone .bulk-selection-row{flex:0 0 100%;display:flex;align-items:center;justify-content:space-between;min-height:54px;border-bottom:1px solid var(--line);margin-top:8px;color:var(--muted);font-size:13px}
+.phone .bulk-selection-row .bulk-all{display:flex;align-items:center;gap:10px;min-height:44px;background:transparent;border:0;padding:0;color:var(--text);font:inherit;font-size:14px;font-weight:600}
+
+
+.phone.bulk-selecting .phone-header .bulk-toolbar{flex:0 0 auto;margin-left:auto;justify-content:flex-end}
+
+/* Keep the existing page and row positions when entering selection mode. */
+.phone.bulk-selecting .review-tools{position:relative}
+.phone.bulk-selecting .review-tools>:not(.bulk-selection-row){visibility:hidden}
+.phone .review-tools .bulk-selection-row{position:absolute;inset:0;margin:0;min-height:0;border:0;background:var(--bg)}
+.phone .review-tools .bulk-selection-row .bulk-all{min-height:32px}
+
+/* Whole-list selection and cancellation share the fixed page header. */
+.phone .bulk-toolbar .bulk-all{min-height:40px;font-size:14px;gap:7px}
+.phone .bulk-toolbar{align-items:center;gap:12px}
+.phone .review-tools .bulk-selection-row{justify-content:flex-end}
+
+/* Selection actions stay near the suitability filter, then stick while scrolling. */
+.phone.bulk-selecting .phone-header :is(.settings-button,.v4-theme-toggle){display:flex}
+.phone.bulk-selecting .phone-body>.bulk-toolbar{position:sticky;top:0;z-index:12;flex:0 0 auto;width:100%;box-sizing:border-box;margin:8px 0 0;padding:8px 0;justify-content:space-between;background:var(--bg);border-bottom:1px solid var(--line)}
+
+/* Only the two controls cover content; the space between remains transparent. */
+.phone.bulk-selecting .phone-body>.bulk-toolbar{background:transparent;border-bottom:0;pointer-events:none}
+.phone .bulk-toolbar button{pointer-events:auto;background:var(--bg)}
+.phone .bulk-toolbar .bulk-all{padding:0 8px 0 0;border-radius:8px}
+.phone .bulk-count{color:var(--accent);font-weight:700;margin-left:2px}
+.phone.bulk-selecting .review-tools{display:none}
+
+.phone .pl-edit-tools{display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:12;background:transparent;padding:8px 0;pointer-events:none}
+.phone .pl-edit-tools button{pointer-events:auto;display:flex;align-items:center;gap:8px;background:var(--bg);color:var(--text);min-height:40px;border:1px solid var(--line);border-radius:8px;padding:0 10px;font:inherit}
+.phone .pl-edit-tools .pl-all{border:0;padding-left:0}
+.phone.pl-selecting .v3-draggable{display:flex;align-items:center;gap:10px}
+.phone.pl-selecting .v3-draggable> :not(.pl-edit-check){flex:1;min-width:0}
+.phone.pl-ordering .v3-grip{display:flex!important;align-items:center;justify-content:center;width:32px;min-width:32px;touch-action:none;cursor:grab;color:var(--muted)}
+.phone.pl-ordering .v3-draggable{display:flex;align-items:center;gap:8px}
+.phone.pl-ordering .v3-draggable>:not(.v3-grip){flex:1;min-width:0}
+.phone.pl-selecting .phone-body{padding-bottom:100px}
+.phone .pl-order-popup{position:absolute;right:20px;top:110px;z-index:25;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:8px}
+.phone .pl-order-popup button{background:transparent;color:var(--text);border:0;padding:14px;font:inherit}
+
+.phone .pl-edit-menu[hidden]{display:none!important}
+
+.phone .pl-action-row{display:flex;align-items:center;gap:8px}
+.phone .pl-action-row .pl-order-trigger{flex:0 0 auto;margin:0;white-space:nowrap;font-size:12px;padding:0 12px;min-height:40px}
+.phone .pl-action-row .v4-playlist-create{min-width:0;white-space:nowrap;margin:0;font-size:12px}
+
+/* Keep only playlist creation/reorder actions visible while the list scrolls. */
+.phone .phone-body>.v4-top-actions.pl-action-row{position:sticky;top:0;z-index:13;pointer-events:none;background:transparent}
+.phone .phone-body>.v4-top-actions.pl-action-row>button{pointer-events:auto}
+
+.phone .pl-action-row.pl-actions-compact>button{width:42px;min-width:42px;height:42px;padding:0;justify-content:center;flex:0 0 42px}
+.phone .pl-actions-compact .pl-action-label{display:none}
+.phone .pl-actions-compact .pl-order-trigger>span:first-child{font-size:21px}
+.phone .phone-body:has(.v3-sortable){overflow-anchor:none}
+
+/* Make room for playlist reordering by folding the area above the summary. */
+.phone:has(.v4-playlist-library) .phone-header,
+.phone:has(.v4-playlist-library) .v4-top-actions{max-height:130px;opacity:1;transform:translateY(0);overflow:hidden;transition:max-height .25s ease,min-height .25s ease,padding .25s ease,margin .25s ease,opacity .2s ease,transform .25s ease}
+.phone.pl-ordering:has(.v4-playlist-library) .phone-header,
+.phone.pl-ordering:has(.v4-playlist-library) .v4-top-actions{max-height:0;min-height:0;padding-top:0;padding-bottom:0;margin-top:0;margin-bottom:0;opacity:0;transform:translateY(-24px);pointer-events:none}
+@media(prefers-reduced-motion:reduce){.phone:has(.v4-playlist-library) .phone-header,.phone:has(.v4-playlist-library) .v4-top-actions{transition:none}}
+
+/* No folding motion when reorder is entered from a scrolled list. */
+.phone.pl-fold-instant:has(.v4-playlist-library) .phone-header,
+.phone.pl-fold-instant:has(.v4-playlist-library) .v4-top-actions{transition:none}
+
+/* Selection occupies the existing summary row instead of pushing songs down. */
+.phone.pl-selecting .v4-playlist-summary{position:relative}
+.phone.pl-selecting .v4-playlist-summary>:not(.pl-edit-tools){visibility:hidden}
+.phone.pl-selecting .v4-playlist-summary>.pl-edit-tools{position:absolute;inset:0;padding:0;margin:0;min-height:0}
+.phone.pl-selecting .v4-playlist-summary>.pl-edit-tools button{min-height:32px}
+.phone.pl-selecting .v4-playlist-summary{position:sticky;top:48px;z-index:12;pointer-events:none}
+
+/* Detail selection reuses the existing hint area without moving the pressed row. */
+.phone.pl-selecting .pl-selection-slot:not(.v4-playlist-summary){position:sticky;top:0;z-index:12;color:transparent;pointer-events:none}
+.phone.pl-selecting .pl-selection-slot:not(.v4-playlist-summary)>.pl-edit-tools{position:absolute;inset:0;margin:0;padding:0;color:var(--text)}
+.phone.pl-selecting .pl-selection-slot:not(.v4-playlist-summary)>.pl-edit-tools button{min-height:32px}
+
+/* Hide library creation/reorder actions without shifting the selected item. */
+.phone.pl-selecting:has(.v4-playlist-library) .v4-top-actions.pl-action-row{visibility:hidden;pointer-events:none}
+.phone.pl-selecting:has(.v4-playlist-library) .v4-top-actions.pl-action-row>button{pointer-events:none}
+
+/* Scrolled reorder preserves geometry as well as scrollTop. */
+.phone.pl-order-scrolled:has(.v4-playlist-library) .phone-header{max-height:130px;min-height:88px;padding:14px 20px 18px;opacity:1;transform:none}
+.phone.pl-order-scrolled:has(.v4-playlist-library) .v4-top-actions{max-height:130px;min-height:40px;opacity:0;transform:none;visibility:hidden}
+.phone.pl-order-scrolled .v4-playlist-summary{position:sticky;top:0;z-index:12;pointer-events:none}
+.phone.pl-order-scrolled .v4-playlist-summary>:not(.pl-edit-tools){visibility:hidden}
+.phone.pl-order-scrolled .v4-playlist-summary>.pl-edit-tools{position:absolute;inset:0;margin:0;padding:0}
+
+/* Remove bottom guidance during selection/reorder without changing scroll bounds. */
+.phone:is(.pl-selecting,.pl-ordering) .v3-sort-status,
+.phone:is(.pl-selecting,.pl-ordering) .v3-sortable~.v3-note{visibility:hidden;pointer-events:none}
+
+/* Shared drag outline: all themes and accent choices use this one rule. */
+.v3-drag-ghost{border:2px solid var(--accent);box-sizing:border-box}
+
+/* Shared readable selection controls; no layout shift or opaque toolbar strip. */
+.phone:is(.pl-selecting,.bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) button{height:40px;min-height:40px;padding:0 12px;font-size:14px;font-weight:700;line-height:1.2;background:var(--surface);color:var(--text);border:1px solid var(--muted);border-radius:10px;box-shadow:0 2px 5px #0002}
+.phone:is(.pl-selecting,.bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) :is(.pl-all,.bulk-all){border:1px solid var(--muted);padding:0 12px;gap:8px}
+.phone:is(.pl-selecting,.bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) .bulk-box{width:23px;height:23px;flex-basis:23px;border-width:2px}
+.phone:is(.pl-selecting,.bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) .bulk-count{font-size:15px;font-weight:800;color:var(--accent);margin-left:2px}
+.phone.pl-selecting .pl-selection-slot>.pl-edit-tools{align-items:center}
+.phone.pl-selecting .pl-selection-slot>.pl-edit-tools button{min-height:40px}
+
+/* Detail selection has no instructional text; reserve its controls without shifting songs. */
+.phone .pl-detail-selection-space{height:40px;min-height:40px;flex-shrink:0}
+.phone.pl-selecting .v3-list-tools :is(.pl-order-trigger,[data-v3="add-source"]){visibility:hidden;pointer-events:none}
+/* Detail reorder follows the same fold behavior, except when already scrolled. */
+.phone:has(.v3-list-tools) .phone-header,.phone .v3-list-tools{max-height:130px;overflow:hidden;transition:max-height .25s ease,min-height .25s ease,padding .25s ease,opacity .2s ease,transform .25s ease}
+.phone.pl-ordering:not(.pl-order-scrolled):has(.v3-list-tools) .phone-header,
+.phone.pl-ordering:not(.pl-order-scrolled) .v3-list-tools{max-height:0;min-height:0;padding-top:0;padding-bottom:0;opacity:0;transform:translateY(-24px);pointer-events:none}
+@media(prefers-reduced-motion:reduce){.phone:has(.v3-list-tools) .phone-header,.phone .v3-list-tools{transition:none}}
+
+/* Detail actions share the sticky/compact behavior of the playlist library. */
+.phone .pl-detail-selection-space{height:0;min-height:0;margin:-7px 0}
+.phone .phone-body>.v3-list-tools.pl-action-row{position:sticky;top:0;z-index:13;background:transparent;pointer-events:none;overflow:visible}
+.phone .v3-list-tools.pl-action-row>button{pointer-events:auto}
+.phone .v3-list-tools.pl-actions-compact>span,.phone .v3-list-tools.pl-actions-compact>.v3-more{visibility:hidden;pointer-events:none}
+.phone .pl-add-symbol{font-size:22px;line-height:1}
+.phone.pl-selecting .pl-detail-selection-space.pl-selection-slot{top:48px;z-index:14}
+.phone.pl-selecting .pl-detail-selection-space.pl-selection-slot>.pl-edit-tools{top:-44px;bottom:auto;height:40px}
+
+.phone .draft-missing-hint{color:var(--text);background:var(--selection-bg);border:1px solid var(--selection-line);border-radius:10px;padding:12px;font-size:13px;line-height:1.5}
+.phone .draft-required-field{border-color:var(--accent)}
+.phone .draft-required-label{padding:3px 7px;font-size:11px;white-space:nowrap}
+
+
+/* Shared feature-icon colors, including nested settings groups, for both themes. */
+.phone{--feature-icon-color:var(--accent);--feature-icon-border:var(--accent)}
+.phone :is(.v2-settings-group .item-icon,.item-icon,.review-choice-icon,.v3-source-icon,.v2-avatar){color:var(--feature-icon-color);border:1px solid var(--feature-icon-border);background:transparent}
+
+/* Header settings: icon only, retaining its existing touch target. */
+.phone .phone-header .settings-button,.phone.v4-light .phone-header .settings-button{background:transparent;border:0;box-shadow:none}

@@ -52,8 +52,8 @@ void main() {
           await tester.pump();
           final menus = find.byType(PopupMenuButton<String>);
           if (find.text('시험 목록').evaluate().isNotEmpty &&
-              menus.evaluate().length == 1 &&
-              tester.widget<PopupMenuButton<String>>(menus).enabled) {
+              (menus.evaluate().isEmpty ||
+                  tester.widget<PopupMenuButton<String>>(menus).enabled)) {
             return;
           }
         }
@@ -62,15 +62,46 @@ void main() {
     }
 
     Future<void> chooseIcon(String label) => tester.runAsync(() async {
+      if (find.byType(PopupMenuButton<String>).evaluate().isEmpty) {
+        await tester.tap(find.text('시험 목록'));
+        await tester.pumpAndSettle();
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        while (DateTime.now().isBefore(deadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await tester.pump();
+          final menus = find.byType(PopupMenuButton<String>);
+          if (menus.evaluate().length == 1 &&
+              tester.widget<PopupMenuButton<String>>(menus).enabled) {
+            break;
+          }
+        }
+      }
       await tester.tap(find.byType(PopupMenuButton<String>));
       await tester.pumpAndSettle();
       await tester.tap(find.text('아이콘 수정'));
+      await tester.pumpAndSettle();
+      final deadline = DateTime.now().add(const Duration(seconds: 5));
+      while (find.byType(SimpleDialog).evaluate().isEmpty &&
+          DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        await tester.pump();
+      }
       await tester.pumpAndSettle();
       // The dialog result starts native SQLite work after the exit animation.
       // Keep both the tap and that animation in the real async zone so its
       // transaction can finish before dispatch. Assertions remain unchanged.
       await tester.tap(find.text(label));
       await tester.pumpAndSettle();
+      final saveDeadline = DateTime.now().add(const Duration(seconds: 5));
+      while (DateTime.now().isBefore(saveDeadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        await tester.pump();
+        if ((await repo.pendingWork()).isNotEmpty &&
+            find.byType(SimpleDialog).evaluate().isEmpty) {
+          break;
+        }
+      }
+      expect(await repo.pendingWork(), isNotEmpty);
     });
 
     try {
@@ -104,21 +135,28 @@ void main() {
       expect(find.text('플레이리스트'), findsOneWidget);
       await tester.longPress(find.text('시험 목록'));
       await tester.pumpAndSettle();
-      expect(find.text('플레이리스트 삭제'), findsOneWidget);
+      expect(find.text('선택한 1개 플리 삭제'), findsOneWidget);
       expect(
         find.descendant(of: find.byType(Dialog), matching: find.text('순서 변경')),
         findsNothing,
       ); // One playlist still has delete.
-      await tester.tap(find.text('플레이리스트 삭제'));
+      await tester.tap(find.text('선택한 1개 플리 삭제'));
       await tester.pumpAndSettle();
-      expect(find.text('플레이리스트를 영구 삭제할까요?'), findsOneWidget);
-      await tester.tap(find.text('취소'));
+      expect(find.text('플레이리스트 1개를 삭제할까요?'), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.text('취소'),
+        ),
+      );
       await tester.pumpAndSettle();
       await tester.runAsync(() async {
         expect((await library.load()).single['name'], '시험 목록');
         expect(await repo.pendingWork(), isEmpty);
       });
 
+      await tester.tap(find.text('취소'));
+      await tester.pumpAndSettle();
       await chooseIcon('별');
       await tester.runAsync(sync);
       await settleReads();

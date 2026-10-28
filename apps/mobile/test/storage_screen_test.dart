@@ -26,6 +26,37 @@ StorageView view({bool replacing = false}) => StorageView(
   [],
 );
 void main() {
+  testWidgets(
+    'recording-specific pin keeps revision and requires confirmation',
+    (t) async {
+      final commands = <(String, String, Map<String, Object?>)>[];
+      await t.pumpWidget(
+        MaterialApp(
+          home: StorageScreen(
+            recordingId: id,
+            load: () async => view(replacing: true),
+            requireCurrent: () {},
+            command: (method, path, body, op) async =>
+                commands.add((method, path, body)),
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      await t.tap(find.text('고정 해제'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('취소'));
+      await t.pumpAndSettle();
+      expect(commands, isEmpty);
+      await t.tap(find.text('고정 해제'));
+      await t.pumpAndSettle();
+      await t.tap(find.text('확인'));
+      await t.pumpAndSettle();
+      expect(commands.single.$1, 'DELETE');
+      expect(commands.single.$2, '/v1/pins/1');
+      expect(commands.single.$3, {'base_revision': 7});
+    },
+  );
+
   test('missing usage never becomes sample zero', () {
     expect(() => StorageView({}, [], []), throwsFormatException);
   });

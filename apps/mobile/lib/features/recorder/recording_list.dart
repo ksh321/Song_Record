@@ -6,6 +6,7 @@ import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/hold_actions.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/recording_row.dart';
+import '../../core/widgets/ui_controls.dart';
 import '../songs/my_song_detail.dart';
 import 'recording_audio_panel.dart';
 import 'recording_filter.dart';
@@ -37,6 +38,7 @@ class RecordingList extends StatefulWidget {
 
 class _RecordingListState extends State<RecordingList> {
   final pages = RecordingPages();
+  String query = '';
   Future<void> hold(Map<String, dynamic> row) async {
     final scope = widget.scope;
     final action = await showHoldActions(
@@ -57,6 +59,7 @@ class _RecordingListState extends State<RecordingList> {
   void didUpdateWidget(RecordingList oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.scope != widget.scope) {
+      query = '';
       filter = RecordingFilter();
       sort = RecordingSort.newest;
     }
@@ -108,15 +111,23 @@ class _RecordingListState extends State<RecordingList> {
     return status == null ? view : view.withFileStatus(status);
   }
 
-  void play(Map<String, dynamic> row) {
+  void play(Map<String, dynamic> row, {bool autoplay = true}) {
     final access = context
         .dependOnInheritedWidgetOfExactType<RecordingAudioAccess>();
     final store = access?.store();
-    if (access == null || store == null) return;
+    if (access == null || store == null) {
+      widget.onOpen(row);
+      return;
+    }
     Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => RecordingPlayerScreen(
           recordingId: row['id'] as String,
+          autoplay: autoplay,
+          title:
+              '${row['artist_snapshot']} · ${row['title_snapshot']} ${formatMusicalKey(recordingView(row).snapshot.key)}',
+          initialDuration: recordingView(row).duration.inMilliseconds,
+          onDetails: () => widget.onOpen(row),
           createPlayer: () => access.createPlayer(store),
         ),
       ),
@@ -125,8 +136,18 @@ class _RecordingListState extends State<RecordingList> {
 
   @override
   Widget build(BuildContext context) {
+    final search = query.trim().toLowerCase();
     pages.replace(
-      widget.rows,
+      search.isEmpty
+          ? widget.rows
+          : widget.rows
+                .where(
+                  (row) =>
+                      '${row['title_snapshot'] ?? ''} ${row['artist_snapshot'] ?? ''}'
+                          .toLowerCase()
+                          .contains(search),
+                )
+                .toList(),
       widget.scope,
       complete: widget.metadataComplete,
       lastSync: widget.lastSync,
@@ -137,6 +158,12 @@ class _RecordingListState extends State<RecordingList> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        AppSearchField(
+          fieldKey: ValueKey(widget.scope),
+          hint: '녹음의 곡명 또는 가수 검색',
+          onChanged: (value) => setState(() => query = value),
+        ),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(
@@ -161,7 +188,11 @@ class _RecordingListState extends State<RecordingList> {
 
         if (unknown) const Text('파일 상태 확인 불가 · 결과 개수를 아직 확정할 수 없어요.'),
         if (rows.isEmpty && exact)
-          Text(filter.count == 0 ? '저장된 녹음이 없습니다' : '조건에 맞는 녹음이 없습니다'),
+          Text(
+            filter.count == 0 && search.isEmpty
+                ? '저장된 녹음이 없습니다'
+                : '조건에 맞는 녹음이 없습니다',
+          ),
         for (final row in rows)
           Padding(
             key: ValueKey(row['id']),
@@ -170,7 +201,7 @@ class _RecordingListState extends State<RecordingList> {
               onLongPress: widget.onDelete == null ? null : () => hold(row),
               child: RecordingRow(
                 recording: recordingView(row),
-                onTap: () => widget.onOpen(row),
+                onTap: () => play(row, autoplay: false),
                 onPlay: () => play(row),
               ),
             ),

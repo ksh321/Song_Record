@@ -47,6 +47,7 @@ import '../core/database/account_store.dart';
 import '../core/database/local_models.dart';
 import '../core/sync/snapshot_transport.dart';
 import '../core/theme/app_appearance.dart';
+import '../core/widgets/app_page_bar.dart';
 import '../features/backup/export/export_controller.dart';
 import '../features/backup/export/export_screen.dart';
 import '../features/playlists/playlist_access.dart';
@@ -630,6 +631,68 @@ class _SongRecordAppState extends State<SongRecordApp>
             },
           );
 
+    Widget buildStorage(BuildContext context, [String? recordingId]) {
+      final store = accountStore?.call(), auth = authController;
+      if (store == null ||
+          auth?.phase != AuthPhase.ready ||
+          store.userId != auth?.session?.userId) {
+        return const Scaffold(
+          body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
+        );
+      }
+      final epoch = auth!.accountEpoch;
+      void guard() {
+        store.requireActive();
+        if (auth.phase != AuthPhase.ready ||
+            auth.accountEpoch != epoch ||
+            accountStore?.call() != store ||
+            auth.session?.userId != store.userId) {
+          throw StateError('Storage account changed');
+        }
+      }
+
+      final api = SettingsApi(
+        config.apiBaseUrl,
+        auth.validSession,
+        guard,
+        local: kDebugMode && config.environment == AppEnvironment.dev,
+      );
+      return StorageScreen(
+        recordingId: recordingId,
+        requestBuilder: demandScreen,
+        requireCurrent: guard,
+        accountChanges: auth,
+        load: () async {
+          final usage = await api.get('/v1/storage') as Map<String, dynamic>;
+          final pins = await api.get('/v1/pins') as Map<String, dynamic>;
+          final recordings = await store.savedRecordings();
+          guard();
+          final view = StorageView(
+            usage,
+            (pins['items'] as List).cast<Map<String, dynamic>>(),
+            recordings,
+          );
+          final confirmed = <String>{
+            for (final slot in view.slots)
+              for (final key in [
+                'current_recording_id',
+                'pending_recording_id',
+              ])
+                if (slot[key] case final String id) id,
+          };
+          final resumed = await store.resumePinnedUploads(confirmed);
+          guard();
+          if (resumed > 0) syncController?.wake();
+          return view;
+        },
+        command: (method, path, body, id) async {
+          await api.pinCommand(method, path, body, id);
+          guard();
+          syncController?.wake();
+        },
+      );
+    }
+
     Widget buildSettings(BuildContext context) => SettingsScreen(
       deletionBuilder: authController?.phase == AuthPhase.ready
           ? (_) {
@@ -709,66 +772,7 @@ class _SongRecordAppState extends State<SongRecordApp>
           ),
         );
       },
-      storageBuilder: (_) {
-        final store = accountStore?.call(), auth = authController;
-        if (store == null ||
-            auth?.phase != AuthPhase.ready ||
-            store.userId != auth?.session?.userId) {
-          return const Scaffold(
-            body: SafeArea(child: Center(child: Text('로그인이 필요해요.'))),
-          );
-        }
-        final epoch = auth!.accountEpoch;
-        void guard() {
-          store.requireActive();
-          if (auth.phase != AuthPhase.ready ||
-              auth.accountEpoch != epoch ||
-              accountStore?.call() != store ||
-              auth.session?.userId != store.userId) {
-            throw StateError('Storage account changed');
-          }
-        }
-
-        final api = SettingsApi(
-          config.apiBaseUrl,
-          auth.validSession,
-          guard,
-          local: kDebugMode && config.environment == AppEnvironment.dev,
-        );
-        return StorageScreen(
-          requestBuilder: demandScreen,
-          requireCurrent: guard,
-          accountChanges: auth,
-          load: () async {
-            final usage = await api.get('/v1/storage') as Map<String, dynamic>;
-            final pins = await api.get('/v1/pins') as Map<String, dynamic>;
-            final recordings = await store.savedRecordings();
-            guard();
-            final view = StorageView(
-              usage,
-              (pins['items'] as List).cast<Map<String, dynamic>>(),
-              recordings,
-            );
-            final confirmed = <String>{
-              for (final slot in view.slots)
-                for (final key in [
-                  'current_recording_id',
-                  'pending_recording_id',
-                ])
-                  if (slot[key] case final String id) id,
-            };
-            final resumed = await store.resumePinnedUploads(confirmed);
-            guard();
-            if (resumed > 0) syncController?.wake();
-            return view;
-          },
-          command: (method, path, body, id) async {
-            await api.pinCommand(method, path, body, id);
-            guard();
-            syncController?.wake();
-          },
-        );
-      },
+      storageBuilder: buildStorage,
       classificationBuilder: classificationBuilder,
       backupBuilder: (context) {
         final store = accountStore?.call(), auth = authController;
@@ -821,6 +825,7 @@ class _SongRecordAppState extends State<SongRecordApp>
         valueListenable: lightMode,
         builder: (context, light, _) => MaterialApp(
           builder: (context, child) => RecordingAudioAccess(
+            storageBuilder: (context, id) => buildStorage(context, id),
             store: () {
               final store = accountStore?.call();
               return authController?.phase == AuthPhase.ready &&
@@ -963,39 +968,46 @@ class _SongRecordAppState extends State<SongRecordApp>
                       gateway: recorderGateway,
                       repository: localRepository!,
                       discoveryBuilder: (context, destination, prepare) =>
-                          Scaffold(
-                            appBar: AppBar(title: const Text('녹음에 사용할 새 곡 찾기')),
-                            body: SafeArea(
-                              child:
-                                  destination == SongDiscoveryDestination.manual
-                                  ? SongRegistrationScreen(
-                                      prepare: prepare,
-                                      intent: const SearchIntent(
-                                        returnRoute: '/recording/input',
-                                      ),
-                                      directEntry: true,
-                                    )
-                                  : destination ==
+                          destination == SongDiscoveryDestination.manual
+                          ? SongRegistrationScreen(
+                              prepare: prepare,
+                              intent: const SearchIntent(
+                                returnRoute: '/recording/input',
+                              ),
+                              directEntry: true,
+                            )
+                          : Scaffold(
+                              appBar: appPageBar(
+                                context,
+                                title: Text(
+                                  destination == SongDiscoveryDestination.charts
+                                      ? '인기 차트'
+                                      : '검색',
+                                ),
+                              ),
+                              body: SafeArea(
+                                child:
+                                    destination ==
                                         SongDiscoveryDestination.charts
-                                  ? PopularChartScreen(
-                                      auth: authController,
-                                      load: chartLoad,
-                                      searchLoad: searchLoad,
-                                      prepareRegistration: prepare,
-                                      intent: const SearchIntent(
-                                        returnRoute: '/recording/input',
+                                    ? PopularChartScreen(
+                                        auth: authController,
+                                        load: chartLoad,
+                                        searchLoad: searchLoad,
+                                        prepareRegistration: prepare,
+                                        intent: const SearchIntent(
+                                          returnRoute: '/recording/input',
+                                        ),
+                                      )
+                                    : KaraokeSearchScreen(
+                                        auth: authController,
+                                        load: searchLoad,
+                                        prepareRegistration: prepare,
+                                        intent: const SearchIntent(
+                                          returnRoute: '/recording/input',
+                                        ),
                                       ),
-                                    )
-                                  : KaraokeSearchScreen(
-                                      auth: authController,
-                                      load: searchLoad,
-                                      prepareRegistration: prepare,
-                                      intent: const SearchIntent(
-                                        returnRoute: '/recording/input',
-                                      ),
-                                    ),
+                              ),
                             ),
-                          ),
                       isCurrent: (repo) =>
                           authController?.phase == AuthPhase.ready &&
                           authController?.session?.userId == repo.userId &&

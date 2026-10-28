@@ -195,7 +195,7 @@ void main() {
     expect(gateway.permissionCalls, 1);
     expect(gateway.startCalls, 1);
     expect(gateway.stopCalls, 0);
-    expect(find.text('녹음 중'), findsOneWidget);
+    expect(find.text('목소리를 담고 있어요'), findsOneWidget);
     expect(find.text('00:12'), findsOneWidget);
     expect(find.textContaining('shell-recording'), findsNothing);
 

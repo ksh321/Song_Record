@@ -188,6 +188,11 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
       ),
     );
     if (mounted && current() && saved == true) {
+      if (origin.returnRoute == '/recording/input' &&
+          Navigator.canPop(context)) {
+        Navigator.pop(context);
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('입력을 이 기기에 저장했어요. 연결되면 등록을 진행합니다.')),
       );

@@ -62,9 +62,9 @@ void main() {
         .first;
     expect(tester.getSize(chart), tester.getSize(search));
     expect(tester.getSize(chart).height, greaterThanOrEqualTo(156));
-    expect(tester.getTopLeft(chart).dy, tester.getTopLeft(search).dy);
-    expect(tester.getTopLeft(search).dx - tester.getTopRight(chart).dx, 12);
-    expect(find.text('내 곡에서 선택'), findsOneWidget);
+    expect(tester.getTopLeft(chart).dy, lessThan(tester.getTopLeft(search).dy));
+    expect(tester.getTopLeft(search).dx, lessThan(tester.getTopLeft(chart).dx));
+    expect(find.text('내 곡에서 추가'), findsOneWidget);
     await tester.tap(find.text('검색'));
     await tester.pumpAndSettle();
     expect(result?.destination, SongDiscoveryDestination.search);
@@ -86,8 +86,8 @@ void main() {
     );
     await tester.tap(find.text('열기'));
     await tester.pumpAndSettle();
-    expect(find.text('내 곡에서 선택'), findsNothing);
-    await tester.tap(find.text('취소'));
+    expect(find.text('내 곡에서 추가'), findsNothing);
+    await tester.tap(find.text('닫기'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('열기'));
     await tester.pumpAndSettle();
@@ -125,8 +125,8 @@ void main() {
     await tester.tap(find.text('열기'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    await tester.ensureVisible(find.text('취소'));
-    await tester.tap(find.text('취소'));
+    await tester.ensureVisible(find.text('닫기'));
+    await tester.tap(find.text('닫기'));
     await tester.pumpAndSettle();
     expect(find.text('새 곡 찾기'), findsNothing);
   });
@@ -289,7 +289,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('곡 추가'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('내 곡에서 선택'));
+    await tester.tap(find.text('내 곡에서 추가'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('아침 노래'));
     await tester.pumpAndSettle();

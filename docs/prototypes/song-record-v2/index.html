@@ -970,18 +970,21 @@
     search:'<circle cx="10.8" cy="10.8" r="7"/><path d="m16 16 5 5"/>',
     plus:'<path d="M12 5v14M5 12h14"/>',minus:'<path d="M5 12h14"/>',
     more:'<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>',
+    link:'<path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2"/>',
+    logout:'<path d="M9 4H4v16h5M10 12h11m-5-5 5 5-5 5"/>',
+    personRemove:'<circle cx="9" cy="7" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 10h6"/>',
     settings:'<path d="m9.2 3-.7 2.1-2 .9-2.1-.4-1.5 2.6 1.4 1.7-.2 2.2-1.4 1.7 1.5 2.6 2.2-.4 1.8 1.1.7 2.2h3l.8-2.1 1.9-1 2.2.4 1.5-2.6-1.4-1.7.1-2.2 1.4-1.7-1.5-2.6-2.2.4-1.8-1.1-.7-2.1z" transform="translate(1 1)"/><circle cx="12" cy="12" r="3.2"/>',
     wave:'<path d="M4 10v4M8 5v14M12 8v8M16 3v18M20 10v4"/>',
     moon:'<path d="M20.5 13.1A9 9 0 0 1 10.9 3.5 9 9 0 1 0 20.5 13.1Z"/>',
     star:'<path d="m12 3 2.8 5.8 6.4.9-4.6 4.5 1.1 6.3-5.7-3-5.7 3 1.1-6.3-4.6-4.5 6.4-.9z"/>',
-    people:'<circle cx="9" cy="7" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 4a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4v2"/>',
+    people:'<circle cx="9" cy="7" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 4a3 3 0 0 1 0 6M17 13a5 5 0 0 1 4 5v3"/>',
     chevron:'<path d="m9 5 7 7-7 7"/>',back:'<path d="m15 5-7 7 7 7"/>',
     check:'<path d="m5 12 4 4L19 6"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',
     cloud:'<path d="M6 19a5 5 0 0 1-1-10 7 7 0 0 1 13-2 6 6 0 0 1 0 12Z"/>',
-    file:'<path d="M14 2H5v20h14V7Z M14 2v6h5M8 12h8M8 16h6"/>',
+    file:'<path d="M5 3h9l5 5v13H5zM14 3v6h5M9 14h6M9 17h6"/>',
     pin:'<path d="m9 3 8 8-3 1-2 5-3-3-6 7 7-6-3-3 5-2 1-3Z"/>',
     edit:'<path d="m15 4 5 5M3 21l2-7L16 3l5 5L10 19Z"/>',
-    trash:'<path d="M3 6h18M8 6V3h8v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',
+    trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',
     palette:'<circle cx="12" cy="12" r="9"/><circle cx="8" cy="9" r="1"/><circle cx="14" cy="7" r="1"/><circle cx="17" cy="12" r="1"/><path d="M7 17h4"/>'
   };
   const icon=(name,size=22)=>'<svg aria-hidden="true" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">'+(paths[name]||paths.music)+'</svg>';
@@ -1151,7 +1154,13 @@
   function sheet(title,body){return '<div class="control-overlay"><button type="button" class="control-scrim"'+attrs('close')+' aria-label="닫기"></button><section class="control-sheet" role="dialog" aria-modal="true" aria-label="'+e(title)+'"><div class="control-handle"></div><header class="control-sheet-header"><h3>'+e(title)+'</h3>'+btn('닫기','close',{},'control-close')+'</header>'+body+'</section></div>'}
   function popupHTML(p){
     if(p.kind==='sort'){const options=p.scope==='song'?['최근 추가순','최근 녹음순','티어순','곡명순','가수순']:['최신순','오래된순','곡명순','티어순'],selected=p.scope==='song'?F.ui.songSort:F.ui.recordSort;return sheet('정렬',options.map(v=>'<button type="button" class="control-option '+(v===selected?'selected':'')+'"'+attrs('sort-select',{scope:p.scope,value:v})+'><span>'+v+'</span><span>'+ (v===selected?ic('check',18):'')+'</span></button>').join(''))}
-    if(p.kind==='discover')return sheet('새 곡 찾기','<div class="review-choices">'+choice('인기 차트','discover-charts',{},'chart','순위에서 곡 찾아보기')+choice('검색','discover-search',{},'search','곡명·가수·번호로 찾기')+choice('직접 등록','discover-manual',{},'edit','곡명과 가수를 직접 입력')+'</div>'+(F.ui.context?.playlist?btn('내 곡에서 선택','playlist-picker',{},'review-inline'):'') );
+    if(p.kind==='record-source')return sheet('곡 선택','<div class="review-choices">'+[
+      ['내 곡','record-own','music','등록해 둔 곡에서 선택'],
+      ['플레이리스트','record-lists','list','플리에 담긴 곡에서 선택'],
+      ['검색','record-search','search','곡명·가수·번호로 찾기'],
+      ['직접 등록','record-manual','edit','곡명과 가수를 직접 입력']
+    ].map(([label,action,icon,sub])=>choice(label,action,{},icon,sub).replace('data-flow=','data-v3=')).join('')+'</div>');
+    if(p.kind==='discover')return sheet('새 곡 찾기','<div class="review-choices">'+(F.ui.context?.playlist?choice('내 곡에서 추가','playlist-picker',{},'music','등록해 둔 내 곡에서 선택'):'')+choice('인기 차트','discover-charts',{},'chart','순위에서 곡 찾아보기')+choice('검색','discover-search',{},'search','곡명·가수·번호로 찾기')+choice('직접 등록','discover-manual',{},'edit','곡명과 가수를 직접 입력')+'</div>');
     if(p.kind==='playlists')return sheet('플레이리스트에 추가',[...F.playlists.values()].map(list=>{const key=typeof p.value==='string'?p.value:F.identity(p.value),already=list.items.some(i=>i.key===key);return '<button type="button" class="control-option"'+attrs('add-target',{list:list.id})+(already?' disabled':'')+'><span>'+e(list.title)+'<small>'+list.items.length+'곡</small></span><span>'+ (already?'추가됨':ic('plus',18))+'</span></button>'}).join(''));
     if(p.kind==='delete')return sheet('곡 삭제','<p class="control-caption">'+e(F.songs.get(p.song).title)+' · 연결 녹음 '+F.related(p.song).length+'개<br>곡은 7일 동안 휴지통에 보관되고, 플레이리스트에서는 숨겨져요.</p>'+btn('곡만 삭제하고 녹음 유지','delete-confirm',{song:p.song,keep:1},'command danger')+btn('곡과 녹음 함께 삭제','delete-confirm',{song:p.song,keep:0},'command danger'));
     return '';

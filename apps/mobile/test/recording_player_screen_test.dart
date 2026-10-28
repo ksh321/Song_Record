@@ -12,6 +12,56 @@ import '../tool/local_preservation_fixture.dart';
 import 'audio_player_test.dart' show PlayerFake, UrlFake;
 
 void main() {
+  testWidgets('row preview waits for play and exposes the detail menu', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      final directory = await Directory.systemTemp.createTemp(
+        'player-preview-',
+      );
+      final manager = AccountStoreManager(
+        environment: AppEnvironment.dev,
+        directory: () async => directory,
+        temporaryDirectory: () async => directory,
+      );
+      final store = await manager.openAccount(preservationId(1));
+      final port = PlayerFake();
+      final player = AudioPlayback(
+        store,
+        UrlFake(store.userId, DateTime.now),
+        port,
+      );
+      var opened = 0;
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: RecordingPlayerScreen(
+              recordingId: preservationId(2),
+              createPlayer: () => player,
+              autoplay: false,
+              title: '가수 · 곡 원키',
+              initialDuration: 12000,
+              onDetails: () => opened++,
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(port.plays, 0);
+        expect(find.text('00:12.0'), findsOneWidget);
+        expect(find.text('가수 · 곡 원키'), findsOneWidget);
+        expect(find.byTooltip('설정'), findsNothing);
+        await tester.tap(find.byTooltip('녹음 상세 메뉴'));
+        expect(opened, 1);
+        expect(port.plays, 0);
+      } finally {
+        await tester.pumpWidget(const SizedBox());
+        await port.stream.close();
+        await manager.logout();
+        await directory.delete(recursive: true);
+      }
+    });
+  });
+
   testWidgets('visible playback pauses, resumes, and stops on leaving', (
     tester,
   ) async {
@@ -51,16 +101,16 @@ void main() {
         await ready.future.timeout(const Duration(seconds: 5));
         player.removeListener(observe);
         await tester.pump();
-        expect(find.text('일시정지'), findsOneWidget);
+        expect(find.byTooltip('일시정지'), findsOneWidget);
         await tester.tap(find.byTooltip('5초 뒤로'));
         expect(port.seekAt, 0);
         await tester.tap(find.byTooltip('5초 앞으로'));
         expect(port.seekAt, 5000);
-        await tester.tap(find.text('일시정지'));
+        await tester.tap(find.byTooltip('일시정지'));
         await tester.pump();
         expect(port.pauses, 1);
-        expect(find.text('재생'), findsOneWidget);
-        await tester.tap(find.text('재생'));
+        expect(find.byTooltip('재생'), findsOneWidget);
+        await tester.tap(find.byTooltip('재생'));
         await tester.pump();
         expect(port.plays, 2);
         await tester.pumpWidget(const SizedBox());

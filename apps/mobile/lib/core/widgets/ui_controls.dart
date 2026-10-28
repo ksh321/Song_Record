@@ -250,28 +250,37 @@ class AppCompactAction extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.icon = Icons.add,
+    this.compact = false,
     super.key,
   });
   final String label;
+  final bool compact;
   final VoidCallback? onPressed;
   final IconData icon;
   @override
-  Widget build(BuildContext context) => FilledButton.icon(
-    onPressed: onPressed,
-    icon: AppIcon(icon, size: 16),
-    label: Text(label),
-    style: FilledButton.styleFrom(
-      minimumSize: const Size(0, 40),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      textStyle: const TextStyle(
-        fontFamily: 'ReferenceKR',
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-        height: 1.55,
-      ),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    ),
-  );
+  Widget build(BuildContext context) => compact
+      ? IconButton.filled(
+          onPressed: onPressed,
+          tooltip: label,
+          icon: AppIcon(icon, size: 20),
+          style: IconButton.styleFrom(fixedSize: const Size(42, 42)),
+        )
+      : FilledButton.icon(
+          onPressed: onPressed,
+          icon: AppIcon(icon, size: 16),
+          label: Text(label),
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 40),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            textStyle: const TextStyle(
+              fontFamily: 'ReferenceKR',
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              height: 1.55,
+            ),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        );
 }
 
 class AppPickerField extends StatelessWidget {
@@ -279,9 +288,11 @@ class AppPickerField extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onPressed,
+    this.trailingLabel,
     super.key,
   });
   final String label, value;
+  final String? trailingLabel;
   final VoidCallback? onPressed;
   @override
   Widget build(BuildContext context) => Padding(
@@ -322,7 +333,29 @@ class AppPickerField extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, size: 18),
+                const AppIcon(Icons.chevron_right, size: 18),
+                if (trailingLabel != null) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      trailingLabel!,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -521,6 +554,39 @@ class AppFeatureRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    ),
+  );
+}
+
+/// Common reorder action in both playlist screens and both appearances.
+class AppReorderAction extends StatelessWidget {
+  const AppReorderAction({
+    super.key,
+    required this.onPressed,
+    this.compact = false,
+  });
+  final VoidCallback? onPressed;
+  final bool compact;
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: '순서 변경',
+    child: OutlinedButton(
+      onPressed: onPressed,
+      style: OutlinedButton.styleFrom(
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        minimumSize: Size(compact ? 42 : 0, 40),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12),
+        side: BorderSide(color: Theme.of(context).colorScheme.outline),
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.unfold_more, size: 18),
+          if (!compact) ...[const SizedBox(width: 4), const Text('순서 변경')],
+        ],
       ),
     ),
   );

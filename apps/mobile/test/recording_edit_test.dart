@@ -313,6 +313,48 @@ void main() {
       expect(await repo.selectableRecordingTags(), isEmpty);
     },
   );
+  for (final field in ['key', 'version', 'tier']) {
+    testWidgets('detail $field opens its picker and cancel queues nothing', (
+      t,
+    ) async {
+      final old = (await t.runAsync(row))!;
+      final count = (await t.runAsync(repo.pending))!.length;
+      await t.pumpWidget(
+        MaterialApp(
+          home: RecordingInputScreen(
+            recording: old,
+            repository: repo,
+            isCurrent: (_) => true,
+            editing: true,
+            initialField: field,
+            conditionLoader: () async => [],
+            tagLoader: () async => [],
+          ),
+        ),
+      );
+      await t.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsOneWidget);
+      await t.ensureVisible(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text('취소'),
+        ),
+      );
+      await t.pumpAndSettle();
+      await t.tap(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text('취소'),
+        ),
+      );
+      await t.pumpAndSettle();
+      await t.tap(find.text('취소'));
+      await t.pumpAndSettle();
+      await t.pumpWidget(const SizedBox());
+      expect(await t.runAsync(row), old);
+      expect((await t.runAsync(repo.pending))!.length, count);
+    });
+  }
   testWidgets(
     'saved editor displays tier and cancel discards all unsaved edits',
     (t) async {

@@ -5,6 +5,7 @@ import 'package:song_record/core/widgets/music_row_surface.dart';
 import 'package:song_record/core/widgets/music_view_data.dart';
 
 import 'app_icon.dart';
+import 'editable_collection.dart';
 import 'song_badges.dart';
 
 class SongRow extends StatelessWidget {
@@ -58,6 +59,7 @@ class SongRow extends StatelessWidget {
     final title = song?.title ?? candidate!.title;
     final artist = song?.artist ?? candidate!.artist;
     final isPlaylist = placement == CandidatePlacement.playlist;
+    final editingList = CollectionRowEditing.of(context);
     return MusicRowSurface(
       compact: true,
       flat: flat,
@@ -70,14 +72,17 @@ class SongRow extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final stacked =
-              constraints.maxWidth < 260 ||
-              MediaQuery.textScalerOf(context).scale(14) > 21;
+              !editingList &&
+              (constraints.maxWidth < 260 ||
+                  MediaQuery.textScalerOf(context).scale(14) > 21);
           final copy = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 title,
+                maxLines: editingList ? 1 : null,
+                overflow: editingList ? TextOverflow.ellipsis : null,
                 style: AppTypography.songTitle.copyWith(
                   fontSize: flat ? 16 : 15,
                 ),
@@ -89,6 +94,8 @@ class SongRow extends StatelessWidget {
                           ? '$artist · ${candidate!.sourceLabel}'
                           : artist)
                     : '$artist · ${formatVersionCode(song.version)}',
+                maxLines: editingList ? 1 : null,
+                overflow: editingList ? TextOverflow.ellipsis : null,
                 style: AppTypography.supporting.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                   height: 1.5,

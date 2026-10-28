@@ -199,7 +199,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await _openRecordingTab(tester);
-    expect(find.text('녹음 중'), findsOneWidget);
+    expect(find.text('목소리를 담고 있어요'), findsOneWidget);
     expect(find.text('00:05'), findsOneWidget);
     expect(find.textContaining('test-recording'), findsNothing);
     expect(tester.takeException(), isNull);

@@ -166,8 +166,8 @@ void main() {
           }),
       ]);
       await tester.pumpAndSettle();
-      final list = tester.widget<ListView>(find.byType(ListView).first);
-      await tester.drag(find.byType(ListView).first, const Offset(0, -650));
+      final list = tester.widget<CustomScrollView>(find.byType(CustomScrollView).first);
+      await tester.drag(find.byType(CustomScrollView).first, const Offset(0, -650));
       await tester.pumpAndSettle();
       final before = list.controller!.offset;
       expect(before, greaterThan(0));

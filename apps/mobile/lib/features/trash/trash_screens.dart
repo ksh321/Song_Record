@@ -3,6 +3,7 @@ import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_icon.dart';
+import '../../core/widgets/feature_icon.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../auth/auth_session.dart';
 import 'trash_workflow.dart';
@@ -10,6 +11,13 @@ import 'trash_workflow.dart';
 String trashError(Object error) => error is TrashFailure
     ? error.message
     : '확인하지 못했어요. 원본 파일은 유지돼요. 다시 확인해 주세요.';
+
+String trashDisplayTime(Object? value) {
+  final parsed = value is DateTime ? value : DateTime.tryParse('$value');
+  if (parsed == null) return '시각 확인 필요';
+  final at = parsed.toLocal();
+  return '${at.year}년 ${at.month}월 ${at.day}일 ${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}';
+}
 
 class DeleteScreen extends StatefulWidget {
   const DeleteScreen({
@@ -383,7 +391,13 @@ class _TrashScreenState extends State<TrashScreen> {
           if (invalid)
             const Text('계정이 변경됐어요. 다시 열어 주세요.')
           else ...[
-            const Text('서버 삭제 시각부터 7일 · 대표·고정은 자동 복원되지 않아요.'),
+            const AppPanel(
+              child: Text(
+                '서버 삭제 시각부터 7일 동안 복원할 수 있어요. 대표·고정은 다시 선택해 주세요.',
+                style: TextStyle(fontSize: 12, height: 1.8),
+              ),
+            ),
+            const SizedBox(height: 14),
             if (message != null) Text(message!),
             if (error != null)
               Text(error!, style: const TextStyle(color: AppColors.danger)),
@@ -407,7 +421,7 @@ class _TrashScreenState extends State<TrashScreen> {
                             item['entity_type'] == 'RECORDING')
                           ListTile(
                             contentPadding: EdgeInsets.zero,
-                            leading: Icon(
+                            leading: FeatureIcon(
                               item['entity_type'] == 'SONG'
                                   ? Icons.music_note_outlined
                                   : Icons.mic_none,
@@ -419,7 +433,7 @@ class _TrashScreenState extends State<TrashScreen> {
                                   item['artist'] as String,
                                 if (item['entity_type'] == 'RECORDING') '녹음',
                                 if (item['recorded_at'] != null)
-                                  '${item['recorded_at']}',
+                                  trashDisplayTime(item['recorded_at']),
                               ].join(' · '),
                             ),
                           ),
@@ -431,7 +445,8 @@ class _TrashScreenState extends State<TrashScreen> {
                             : '곡과 녹음 함께 삭제',
                       ),
                       Text(
-                        '서버 삭제: ${batch.deleted.toLocal()}\n서버 만료: ${batch.expires.toLocal()}',
+                        '삭제: ${trashDisplayTime(batch.deleted)}\n보관 기한: ${trashDisplayTime(batch.expires)}',
+                        style: const TextStyle(fontSize: 12, height: 1.8),
                       ),
                       if (batch.items.any((v) => v['state'] == 'PURGE_PENDING'))
                         const Text('영구 삭제 처리 중'),

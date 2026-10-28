@@ -84,9 +84,10 @@ void main() {
             of: find.byType(Dialog),
             matching: find.text('순서 변경'),
           ),
-          findsOneWidget,
+          findsNothing,
         );
-        expect(find.text('목록에서 제거'), findsOneWidget);
+        expect(find.text('선택한 1곡 목록에서 제거'), findsOneWidget);
+        expect(find.byType(Checkbox), findsNWidgets(3));
         await tester.tap(find.text('취소'));
         await tester.pumpAndSettle();
         await tester.tap(find.text('TJ 검사 곡'));
@@ -104,17 +105,19 @@ void main() {
         await settleRead();
         expect(find.text('미등록 TJ 후보'), findsOneWidget);
         expect(find.text('목록에서 제거'), findsNothing);
-        await tester.tap(find.byTooltip('곡 메뉴').first);
+        await tester.longPress(find.text('TJ 검사 곡'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('목록에서 제거'));
+        await tester.tap(find.text('선택한 1곡 목록에서 제거'));
         await tester.pumpAndSettle();
         expect(find.text('이 목록에서만 제거해요. 내 곡과 녹음은 그대로 유지돼요.'), findsOneWidget);
+        await tester.tap(find.descendant(of: find.byType(AlertDialog), matching: find.text('취소')));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('취소'));
         await tester.pumpAndSettle();
         expect(find.text('TJ 검사 곡'), findsOneWidget);
         await tester.tap(find.widgetWithText(FilledButton, '곡 추가'));
         await tester.pumpAndSettle();
-        expect(find.text('내 곡에서 선택'), findsOneWidget);
+        expect(find.text('내 곡에서 추가'), findsOneWidget);
         expect(find.text('직접 등록'), findsOneWidget);
         Navigator.of(tester.element(find.text('직접 등록'))).pop();
         await tester.pumpAndSettle();

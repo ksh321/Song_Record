@@ -12,9 +12,17 @@ class RecordingPlayerScreen extends StatefulWidget {
   const RecordingPlayerScreen({
     required this.recordingId,
     required this.createPlayer,
+    this.autoplay = true,
+    this.title = '녹음 듣기',
+    this.initialDuration = 0,
+    this.onDetails,
     super.key,
   });
   final String recordingId;
+  final bool autoplay;
+  final String title;
+  final int initialDuration;
+  final VoidCallback? onDetails;
   final AudioPlayback Function() createPlayer;
 
   @override
@@ -28,7 +36,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
   void initState() {
     super.initState();
     player = widget.createPlayer();
-    unawaited(player.start(widget.recordingId));
+    if (widget.autoplay) unawaited(player.start(widget.recordingId));
   }
 
   @override
@@ -39,12 +47,32 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
 
   String time(int milliseconds) {
     final seconds = milliseconds ~/ 1000;
-    return '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
+    return '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}.${(milliseconds % 1000) ~/ 100}';
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: appPageBar(context, title: const Text('녹음 재생')),
+    appBar: appPageBar(
+      context,
+      title: Text(
+        widget.title,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 17, height: 1.5),
+      ),
+      showSettings: widget.onDetails == null,
+      actions: [
+        if (widget.onDetails != null)
+          IconButton(
+            tooltip: '녹음 상세 메뉴',
+            icon: const AppIcon(Icons.more_vert),
+            onPressed: () async {
+              if (player.phase == PlaybackPhase.playing) await player.pause();
+              if (mounted) widget.onDetails?.call();
+            },
+          ),
+      ],
+    ),
     body: SafeArea(
       child: AnimatedBuilder(
         animation: player,
@@ -58,41 +86,47 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
           return ListView(
             padding: AppLayout.bodyPadding,
             children: [
-              const SizedBox(height: 24),
+              const SizedBox(height: 40),
               Center(
                 child: Text(
                   time(player.position),
                   style: const TextStyle(
-                    fontSize: 58,
-                    fontWeight: FontWeight.w600,
-                    height: 1.2,
+                    fontSize: 52,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 1,
+                    height: 1.3,
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Center(
                 child: Text(
-                  time(player.duration),
+                  time(
+                    player.duration > 0
+                        ? player.duration
+                        : widget.initialDuration,
+                  ),
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              if (player.waveform.isNotEmpty)
-                SizedBox(
-                  height: 116,
-                  child: CustomPaint(
-                    painter: _Waveform(
-                      player.waveform,
-                      player.duration == 0
-                          ? 0
-                          : player.position / player.duration,
-                      Theme.of(context).colorScheme.primary,
-                    ),
+              const SizedBox(height: 40),
+              SizedBox(
+                height: 135,
+                child: CustomPaint(
+                  painter: _Waveform(
+                    player.waveform,
+                    player.duration == 0
+                        ? 0
+                        : player.position / player.duration,
+                    Theme.of(context).colorScheme.primary,
                   ),
                 ),
+              ),
+              const SizedBox(height: 10),
+              const Text('재생 위치', style: TextStyle(fontSize: 10)),
               Slider(
                 semanticFormatterCallback: (v) => time(v.toInt()),
                 value: player.position.clamp(0, player.duration).toDouble(),
@@ -101,6 +135,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
                     ? (v) => unawaited(player.seek(v.toInt()))
                     : null,
               ),
+              const SizedBox(height: 45),
               if (player.phase == PlaybackPhase.loading)
                 const Center(child: CircularProgressIndicator())
               else if (player.phase == PlaybackPhase.failed ||
@@ -128,19 +163,20 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
                           : null,
                       icon: const AppIcon(Icons.replay_5),
                     ),
-                    FilledButton.icon(
+                    IconButton.filled(
+                      tooltip: playing ? '일시정지' : '재생',
                       style: IconButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.primary,
                         foregroundColor: Theme.of(context)
                             .colorScheme
                             .onPrimary,
-                        minimumSize: const Size(68, 68),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        minimumSize: const Size(76, 76),
+                        shape: const CircleBorder(),
                       ),
                       icon: AppIcon(
                         playing ? Icons.pause : Icons.play_arrow,
                         size: 30,
                       ),
-                      label: Text(playing ? '일시정지' : '재생'),
                       onPressed: () => unawaited(
                         playing
                             ? player.pause()
@@ -180,6 +216,7 @@ class _Waveform extends CustomPainter {
   final Color color;
   @override
   void paint(Canvas canvas, Size size) {
+    if (peaks.isEmpty) return;
     final step = size.width / peaks.length;
     for (var i = 0; i < peaks.length; i++) {
       final height = (peaks[i] * size.height).clamp(1.0, size.height);

@@ -23,10 +23,7 @@ class FeatureIcon extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        border: Border.all(
-          color: accent.withValues(alpha: selected ? 1 : .6),
-          width: selected ? 2 : 1,
-        ),
+        border: Border.all(color: accent, width: selected ? 2 : 1),
         borderRadius: BorderRadius.circular(10),
       ),
       child: AppIcon(icon, size: size * .58, color: accent),

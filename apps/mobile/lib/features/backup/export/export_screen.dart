@@ -86,46 +86,84 @@ class _State extends State<ExportScreen> {
             child: ListView(
               padding: AppLayout.bodyPadding,
               children: [
-                const Text(backupPrivacyNotice),
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: accepted,
-                  onChanged: controller.busy
-                      ? null
-                      : (value) => setState(() {
-                          accepted = value ?? false;
-                        }),
-                  title: const Text('포함 자료와 비암호화 저장 안내를 확인했어요'),
-                ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: online,
-                  onChanged: controller.busy
-                      ? null
-                      : (value) => setState(() {
-                          online = value;
-                        }),
-                  title: const Text('온라인 서버 기준 포함'),
-                  subtitle: const Text(
-                    '끄면 이 기기 기준입니다. 서버 전용 파일과 다른 기기의 최신 변경은 빠질 수 있어요.',
+                const AppPanel(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('포함 대상', style: TextStyle(fontSize: 12)),
+                      SizedBox(height: 8),
+                      Text(
+                        '내 곡·목록·녹음 정보·파일',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ],
                   ),
                 ),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: trash,
-                  onChanged: controller.busy
-                      ? null
-                      : (value) => setState(() {
-                          trash = value;
-                        }),
-                  title: const Text('휴지통 음성 파일도 포함'),
+                const SizedBox(height: 14),
+                AppPanel(
+                  child: Column(
+                    children: [
+                      const Text(
+                        backupPrivacyNotice,
+                        style: TextStyle(fontSize: 12, height: 1.7),
+                      ),
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: accepted,
+                        onChanged: controller.busy
+                            ? null
+                            : (value) => setState(() {
+                                accepted = value ?? false;
+                              }),
+                        title: const Text(
+                          '포함 자료와 비암호화 저장 안내를 확인했어요',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const Text('녹음 중이면 먼저 안전하게 종료합니다. 저장 완료된 파일과 입력 대기 정보를 보존합니다.'),
+                const SizedBox(height: 14),
+                AppPanel(
+                  child: Column(
+                    children: [
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: online,
+                        onChanged: controller.busy
+                            ? null
+                            : (value) => setState(() {
+                                online = value;
+                              }),
+                        title: const Text('온라인 서버 기준 포함'),
+                        subtitle: const Text(
+                          '끄면 이 기기 기준입니다. 서버 전용 파일과 다른 기기의 최신 변경은 빠질 수 있어요.',
+                        ),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: trash,
+                        onChanged: controller.busy
+                            ? null
+                            : (value) => setState(() {
+                                trash = value;
+                              }),
+                        title: const Text('휴지통 음성 파일도 포함'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  '녹음 중이면 먼저 안전하게 종료합니다. 저장 완료된 파일과 입력 대기 정보를 보존합니다.',
+                  style: TextStyle(fontSize: 12, height: 1.7),
+                ),
                 const SizedBox(height: AppSpacing.md),
-                Text(
-                  steps[controller.phase]!,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                if (controller.phase != BackupPhase.ready)
+                  Text(
+                    steps[controller.phase]!,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                 if (controller.busy) ...[
                   const SizedBox(height: AppSpacing.md),
                   const LinearProgressIndicator(),
@@ -179,7 +217,12 @@ class _State extends State<ExportScreen> {
                             fresh: true,
                           )
                         : null,
-                    child: const Text('새 백업 시작'),
+                    child: const Text('누락을 확인하고 내보내기'),
+                  ),
+                  const SizedBox(height: 14),
+                  OutlinedButton(
+                    onPressed: () => Navigator.maybePop(context),
+                    child: const Text('취소'),
                   ),
                 ],
               ],

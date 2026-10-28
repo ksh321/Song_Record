@@ -15,112 +15,135 @@ class SongDiscoveryResult {
   final String? playlistId;
 }
 
-Future<SongDiscoveryResult?> showSongDiscoverySheet({
+class SongSourceOption {
+  const SongSourceOption(this.value, this.title, this.description, this.icon);
+  final String value, title, description;
+  final IconData icon;
+}
+
+Future<String?> showSongSourceSheet({
   required BuildContext context,
-  String? playlistId,
-  String? playlistTitle,
+  required List<SongSourceOption> options,
+  String title = '새 곡 찾기',
 }) {
-  if (playlistId != null && playlistId.trim().isEmpty) {
-    throw ArgumentError.value(playlistId, 'playlistId', '목록 ID가 필요합니다.');
-  }
-  final media = MediaQuery.of(context);
-  return showModalBottomSheet<SongDiscoveryResult>(
+  return showModalBottomSheet<String>(
     context: context,
     useRootNavigator: true,
     useSafeArea: true,
     isScrollControlled: true,
-    showDragHandle: false,
-    backgroundColor: Theme.of(context).colorScheme.surface,
-    barrierColor: AppColors.sheetScrim,
-    barrierLabel: '새 곡 찾기 취소',
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(
-        top: Radius.circular(AppDimensions.sheetTopRadius),
-      ),
-    ),
-    clipBehavior: Clip.antiAlias,
-    constraints: BoxConstraints(
-      maxHeight: media.size.height * AppDimensions.sheetMaxHeightFactor,
-    ),
-    sheetAnimationStyle: media.disableAnimations || media.accessibleNavigation
+    sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
         ? AnimationStyle.noAnimation
-        : const AnimationStyle(
-            duration: AppDimensions.sheetAnimationDuration,
-            reverseDuration: AppDimensions.sheetAnimationDuration,
-          ),
-    builder: (sheetContext) {
-      void choose(SongDiscoveryDestination destination) {
-        Navigator.of(sheetContext)
-            .pop(SongDiscoveryResult(destination, playlistId));
-      }
-
-      return SheetSafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: AppDimensions.sheetPadding,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Semantics(
-                header: true,
-                child: const Text('새 곡 찾기', style: AppTypography.sheetTitle),
-              ),
-              if (playlistTitle != null) ...[
-                const SizedBox(height: AppSpacing.sm),
-                Text(playlistTitle, style: AppTypography.supporting),
+        : null,
+    backgroundColor: Theme.of(context).colorScheme.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (sheetContext) => SheetSafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: AppDimensions.sheetPadding,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text(title, style: AppTypography.sheetTitle)),
+                TextButton(
+                  onPressed: () => Navigator.pop(sheetContext),
+                  child: const Text('닫기'),
+                ),
               ],
-              const SizedBox(height: AppSpacing.lg),
+            ),
+            const SizedBox(height: 16),
+            for (var index = 0; index < options.length; index += 2) ...[
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Expanded(
-                      child: _DiscoveryCard(
-                        title: '인기 차트',
-                        description: '순위에서 곡 찾아보기',
-                        icon: Icons.bar_chart,
-                        onTap: () => choose(SongDiscoveryDestination.charts),
+                    for (
+                      var column = index;
+                      column < index + 2 && column < options.length;
+                      column++
+                    ) ...[
+                      if (column > index) const SizedBox(width: 12),
+                      Expanded(
+                        child: _DiscoveryCard(
+                          title: options[column].title,
+                          description: options[column].description,
+                          icon: options[column].icon,
+                          onTap: () => Navigator.pop(
+                            sheetContext,
+                            options[column].value,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: AppDimensions.choiceCardGap),
-                    Expanded(
-                      child: _DiscoveryCard(
-                        title: '검색',
-                        description: '곡명·가수·번호로 찾기',
-                        icon: Icons.search,
-                        onTap: () => choose(SongDiscoveryDestination.search),
-                      ),
-                    ),
+                    ],
                   ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
-              _DiscoveryCard(
-                title: '직접 등록',
-                description: '곡명과 가수를 직접 입력',
-                icon: Icons.edit_outlined,
-                onTap: () => choose(SongDiscoveryDestination.manual),
-              ),
-              if (playlistId != null) ...[
-                const SizedBox(height: AppSpacing.md),
-                TextButton(
-                  onPressed: () => choose(SongDiscoveryDestination.mySongs),
-                  child: const Text('내 곡에서 선택'),
-                ),
-              ],
-              const SizedBox(height: AppSpacing.sm),
-              TextButton(
-                onPressed: () => Navigator.of(sheetContext).pop(),
-                child: const Text('취소'),
-              ),
+              const SizedBox(height: 12),
             ],
-          ),
+          ],
         ),
-      );
-    },
+      ),
+    ),
   );
 }
+
+Future<SongDiscoveryResult?> showSongDiscoverySheet({
+  required BuildContext context,
+  String? playlistId,
+  String? playlistTitle,
+}) async {
+  if (playlistId != null && playlistId.trim().isEmpty) {
+    throw ArgumentError('목록 ID가 필요합니다.');
+  }
+  final result = await showSongSourceSheet(
+    context: context,
+    options: [
+      if (playlistId != null)
+        const SongSourceOption(
+          'mySongs',
+          '내 곡에서 추가',
+          '등록해 둔 곡에서 선택',
+          Icons.music_note_outlined,
+        ),
+      const SongSourceOption('charts', '인기 차트', '순위에서 곡 찾아보기', Icons.bar_chart),
+      const SongSourceOption('search', '검색', '곡명·가수·번호로 찾기', Icons.search),
+      const SongSourceOption(
+        'manual',
+        '직접 등록',
+        '곡명과 가수를 직접 입력',
+        Icons.edit_outlined,
+      ),
+    ],
+  );
+  return result == null
+      ? null
+      : SongDiscoveryResult(
+          SongDiscoveryDestination.values.byName(result),
+          playlistId,
+        );
+}
+
+Future<String?> showRecordingSourceSheet(
+  BuildContext context,
+) => showSongSourceSheet(
+  context: context,
+  title: '곡 선택',
+  options: const [
+    SongSourceOption('songs', '내 곡', '등록해 둔 곡에서 선택', Icons.music_note_outlined),
+    SongSourceOption(
+      'playlist',
+      '플레이리스트',
+      '목록에 담아 둔 곡에서 선택',
+      Icons.queue_music,
+    ),
+    SongSourceOption('search', '검색', '곡명·가수·번호로 찾기', Icons.search),
+    SongSourceOption('manual', '직접 등록', '곡명과 가수를 직접 입력', Icons.edit_outlined),
+  ],
+);
 
 class _DiscoveryCard extends StatelessWidget {
   const _DiscoveryCard({
@@ -155,7 +178,13 @@ class _DiscoveryCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FeatureIcon(icon),
+              Row(
+                children: [
+                  FeatureIcon(icon),
+                  const Spacer(),
+                  const AppIcon(Icons.chevron_right, size: 14),
+                ],
+              ),
               const SizedBox(height: AppSpacing.md),
               Text(
                 title,
@@ -165,11 +194,6 @@ class _DiscoveryCard extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(description, style: AppTypography.supporting),
-              const SizedBox(height: AppSpacing.sm),
-              const Align(
-                alignment: Alignment.centerRight,
-                child: AppIcon(Icons.chevron_right, size: 14),
-              ),
             ],
           ),
         ),

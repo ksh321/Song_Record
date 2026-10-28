@@ -99,6 +99,7 @@ class StorageScreen extends StatefulWidget {
     required this.requireCurrent,
     this.accountChanges,
     this.requestBuilder,
+    this.recordingId,
     super.key,
   });
   final Future<StorageView> Function() load;
@@ -106,6 +107,7 @@ class StorageScreen extends StatefulWidget {
   final VoidCallback requireCurrent;
   final Listenable? accountChanges;
   final WidgetBuilder? requestBuilder;
+  final String? recordingId;
   @override
   State<StorageScreen> createState() => _StorageState();
 }
@@ -326,11 +328,68 @@ class _StorageState extends State<StorageScreen> {
     );
   }
 
+  Widget focusedRecording(StorageView current) {
+    final id = widget.recordingId!;
+    final matches = current.slots.where(
+      (slot) =>
+          slot['current_recording_id'] == id ||
+          slot['pending_recording_id'] == id,
+    );
+    final slot = matches.firstOrNull;
+    final available = current.candidates.any((row) => row['id'] == id);
+    final full =
+        (current.usage['pinned_used'] as int) >=
+        (current.usage['pinned_limit'] as int);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          current.name(id),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 20),
+        if (slot != null) ...[
+          Text(slot['pending_recording_id'] == id ? '고정 보관 대기 중' : '고정 보관 중'),
+          FilledButton(
+            onPressed: busy || pending != null
+                ? null
+                : () => act(
+                    slot['current_recording_id'] != null &&
+                            slot['pending_recording_id'] == id
+                        ? 'POST'
+                        : 'DELETE',
+                    slot['current_recording_id'] != null &&
+                            slot['pending_recording_id'] == id
+                        ? '/v1/pins/${slot['slot_no']}/replacement/cancel'
+                        : '/v1/pins/${slot['slot_no']}',
+                    {'base_revision': slot['revision']},
+                    '고정 해제',
+                  ),
+            child: const Text('고정 해제'),
+          ),
+        ] else ...[
+          if (full) const Text('고정 보관 한도가 찼어요. 보관량과 고정에서 기존 고정을 변경해 주세요.'),
+          if (!available) const Text('고정할 녹음을 확인하지 못했어요. 최신 상태를 확인해 주세요.'),
+          FilledButton(
+            onPressed: busy || pending != null || full || !available
+                ? null
+                : () => act('POST', '/v1/pins', {
+                    'recording_id': id,
+                    'entitlement_revision':
+                        current.usage['entitlement_revision'],
+                  }, '고정 신청'),
+            child: const Text('고정 보관'),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: appPageBar(
       context,
-      title: const Text('보관량과 고정'),
+      title: Text(widget.recordingId == null ? '보관량과 고정' : '녹음 고정 보관'),
       actions: [
         IconButton(
           tooltip: '새로고침',
@@ -350,7 +409,9 @@ class _StorageState extends State<StorageScreen> {
               onPressed: busy ? null : submit,
               child: const Text('같은 요청 결과 다시 확인'),
             ),
-          if (data case final current?) ...[
+          if (data != null && widget.recordingId != null)
+            focusedRecording(data!),
+          if (data case final current? when widget.recordingId == null) ...[
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(20),

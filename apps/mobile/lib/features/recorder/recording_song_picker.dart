@@ -28,9 +28,13 @@ class RecordingSongPicker extends StatefulWidget {
     this.discoveryBuilder,
     this.watchSongs,
     this.wakeSync,
+    this.initialSource,
+    this.closeOnSelected = false,
     super.key,
   });
   final String recordingId;
+  final bool closeOnSelected;
+  final String? initialSource;
   final LocalRepository repository;
   final bool Function(LocalRepository) isCurrent;
   final RecordingDiscoveryBuilder? discoveryBuilder;
@@ -51,6 +55,29 @@ class _RecordingSongPickerState extends State<RecordingSongPicker> {
   List<Map<String, dynamic>> playlistCandidates = [];
   bool get current => mounted && widget.isCurrent(widget.repository);
   @override
+  void initState() {
+    super.initState();
+    if (widget.initialSource != null) {
+      showSources = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!current) return;
+        if (widget.initialSource == 'playlist') {
+          final access = context
+              .getInheritedWidgetOfExactType<PlaylistAccess>();
+          if (access != null) await choosePlaylist(access);
+        } else if (widget.initialSource == 'search' ||
+            widget.initialSource == 'manual') {
+          await discover(
+            widget.initialSource == 'search'
+                ? SongDiscoveryDestination.search
+                : SongDiscoveryDestination.manual,
+          );
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     query.dispose();
     super.dispose();
@@ -67,11 +94,38 @@ class _RecordingSongPickerState extends State<RecordingSongPicker> {
         widget.recordingId,
         id,
       );
-      if (current) setState(() => selectedTitle = title);
+      if (mounted && current) {
+        setState(() => selectedTitle = title);
+        if (widget.closeOnSelected && Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
+      }
     } catch (_) {
       if (mounted) setState(() => error = '곡을 선택하지 못했어요. 입력 대기 녹음은 보존돼 있어요.');
     } finally {
       if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> chooseSources() async {
+    if (!current || busy) return;
+    final choice = await showRecordingSourceSheet(context);
+    if (!mounted || !current || choice == null) return;
+    if (choice == 'songs') {
+      setState(() {
+        showSources = false;
+        playlistSongIds = null;
+        playlistCandidates = [];
+      });
+    } else if (choice == 'playlist') {
+      final access = context.getInheritedWidgetOfExactType<PlaylistAccess>();
+      if (access != null) await choosePlaylist(access);
+    } else {
+      await discover(
+        choice == 'search'
+            ? SongDiscoveryDestination.search
+            : SongDiscoveryDestination.manual,
+      );
     }
   }
 
@@ -87,6 +141,13 @@ class _RecordingSongPickerState extends State<RecordingSongPicker> {
         builder: (context) => builder(context, destination, prepareSelection),
       ),
     );
+    if (mounted &&
+        current &&
+        widget.closeOnSelected &&
+        selectedTitle != null &&
+        Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
   }
 
   Future<void> Function() prepareSelection(SongRegistrationDraft draft) {
@@ -197,6 +258,13 @@ class _RecordingSongPickerState extends State<RecordingSongPicker> {
             ),
           ),
         );
+        if (mounted &&
+            current &&
+            widget.closeOnSelected &&
+            selectedTitle != null &&
+            Navigator.canPop(context)) {
+          Navigator.pop(context);
+        }
       }
     } catch (_) {
       if (mounted) setState(() => error = '곡을 확인하지 못했어요. 입력 대기 녹음은 보존돼 있어요.');
@@ -311,9 +379,7 @@ class _RecordingSongPickerState extends State<RecordingSongPicker> {
                   children: [
                     if (access != null)
                       TextButton(
-                        onPressed: busy
-                            ? null
-                            : () => setState(() => showSources = true),
+                        onPressed: busy ? null : chooseSources,
                         child: const Text('다른 곳에서 선택'),
                       ),
                     const Text('녹음 파일은 입력 대기로 보관돼요. 내 곡을 검색하거나 새 곡을 찾아 선택하세요.'),

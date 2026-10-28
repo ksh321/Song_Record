@@ -340,67 +340,56 @@ void main() {
   testWidgets(
     'repeated system back while keyboard is open preserves input across process replacement without saving',
     (t) async {
-      final row = (await t.runAsync(repo.pendingRecordings))!.single;
-      await t.pumpWidget(
-        MaterialApp(
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: TextButton(
-                onPressed: () => Navigator.push<void>(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RecordingInputScreen(
-                      recording: row,
-                      repository: repo,
-                      isCurrent: (_) => true,
-                      conditionLoader: () async => [],
-                      tagLoader: () async => [],
+      await t.runAsync(() async {
+        final row = (await repo.pendingRecordings()).single;
+        await t.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.push<void>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RecordingInputScreen(
+                        recording: row,
+                        repository: repo,
+                        isCurrent: (_) => true,
+                        conditionLoader: () async => [],
+                        tagLoader: () async => [],
+                      ),
                     ),
                   ),
+                  child: const Text('open'),
                 ),
-                child: const Text('open'),
               ),
             ),
           ),
-        ),
-      );
-      await t.tap(find.text('open'));
-      await t.pumpAndSettle();
-      await t.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 80)),
-      );
-      await t.pump();
-      await t.enterText(
-        find.byKey(const ValueKey('recording-title')),
-        'unfinished offline',
-      );
-      t.view.viewInsets = const FakeViewPadding(bottom: 300);
-      addTearDown(t.view.resetViewInsets);
-      await t.pump();
-      await t.runAsync(() async {
-        await t.binding.handlePopRoute();
-        await t.binding.handlePopRoute();
-        await Future<void>.delayed(const Duration(milliseconds: 120));
-      });
-      for (var i = 0; i < 10 && find.text('open').evaluate().isEmpty; i++) {
-        await t.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 80)),
         );
+        await t.tap(find.text('open'));
+        await t.pumpAndSettle();
+        await t.tap(find.text('연습 메모'));
+        await t.pumpAndSettle();
+        await t.enterText(
+          find.byKey(const ValueKey('recording-note')),
+          'unfinished offline',
+        );
+        await t.tap(find.text('적용'));
+        await t.pumpAndSettle();
+        t.view.viewInsets = const FakeViewPadding(bottom: 300);
+        addTearDown(t.view.resetViewInsets);
         await t.pump();
-      }
-      await t.pumpAndSettle();
-      expect(find.textContaining('보존에 실패'), findsNothing);
-      expect(find.text('open'), findsOneWidget);
-      await t.pumpWidget(const SizedBox());
-      await t.runAsync(() async {
+        await t.binding.handlePopRoute();
+        await t.binding.handlePopRoute();
+        await Future<void>.delayed(const Duration(milliseconds: 350));
+        await t.pumpAndSettle();
+        expect(find.textContaining('보존에 실패'), findsNothing);
+        expect(find.text('open'), findsOneWidget);
+        await t.pumpWidget(const SizedBox());
         await manager.logout();
         store = await manager.openAccount(owner);
         repo = LocalRepository(store);
         final pending = (await repo.pendingRecordings()).single;
-        expect(
-          (pending['input_form'] as Map)['title_snapshot'],
-          'unfinished offline',
-        );
+        expect((pending['input_form'] as Map)['note'], 'unfinished offline');
         expect(pending['metadata_state'], 'DRAFT');
         expect(await store.readLocalAudio(rec), bytes);
       });

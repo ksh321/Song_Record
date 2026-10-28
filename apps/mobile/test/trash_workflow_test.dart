@@ -80,7 +80,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.longPress(find.text('녹음 유지 검사 곡'));
     await tester.pumpAndSettle();
-    expect(find.text('곡 삭제'), findsOneWidget);
+    expect(find.text('선택한 1곡 삭제'), findsOneWidget);
+    expect(find.text('전체 1'), findsOneWidget);
     await tester.tap(find.text('취소'));
     await tester.pumpAndSettle();
     await tester.runAsync(() async {

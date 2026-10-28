@@ -6,9 +6,10 @@ import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/sync/local_repository.dart';
 import '../../core/widgets/app_icon.dart';
-import '../../core/widgets/feature_icon.dart';
-import '../../core/widgets/hold_actions.dart';
+import '../../core/widgets/editable_collection.dart';
+import '../../core/widgets/folding_scaffold.dart';
 import '../../core/widgets/music_view_data.dart';
+import '../../core/widgets/song_discovery_sheet.dart';
 import '../../core/widgets/song_row.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../auth/auth_session.dart';
@@ -20,7 +21,6 @@ import '../songs/my_song.dart';
 import '../trash/trash_workflow.dart';
 import 'playlist_discovery_screen.dart';
 import 'playlist_library.dart';
-import 'playlist_order_picker.dart';
 import 'playlist_song_picker.dart';
 import 'restore_candidate_song.dart';
 
@@ -35,6 +35,7 @@ class PlaylistDetailScreen extends StatefulWidget {
     this.auth,
     this.onOpenSong,
     this.trash,
+    this.onOptions,
   });
   final PlaylistLibrary library;
   final String id;
@@ -44,14 +45,18 @@ class PlaylistDetailScreen extends StatefulWidget {
   final AuthController? auth;
   final void Function(String)? onOpenSong;
   final TrashActions? trash;
+  final Future<void> Function(String action, Map<String, dynamic> parent)?
+  onOptions;
   @override
   State<PlaylistDetailScreen> createState() => _PlaylistDetailScreenState();
 }
 
 class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   Map<String, dynamic>? parent;
+  Map<String, dynamic>? orderBase;
   List<Map<String, dynamic>> items = [], songs = [];
   bool busy = false;
+  bool headerFolded = false;
   String? error;
   Timer? _refresh;
   bool _loading = false;
@@ -109,18 +114,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   }
 
   Widget? itemRow(Map<String, dynamic> item) {
-    final menu = PopupMenuButton<String>(
-      tooltip: '곡 메뉴',
-      enabled: !busy && parent != null,
-      icon: const AppIcon(Icons.more_vert),
-      onSelected: (value) =>
-          value == 'register' ? registerCandidate(item) : removeItem(item),
-      itemBuilder: (_) => [
-        if (item['song_id'] == null && widget.searchLoad != null)
-          const PopupMenuItem(value: 'register', child: Text('내 곡 등록')),
-        const PopupMenuItem(value: 'remove', child: Text('목록에서 제거')),
-      ],
-    );
     final songId = item['song_id'];
     if (songId != null) {
       final song = songs.where((s) => s['id'] == songId).firstOrNull;
@@ -129,7 +122,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
           ? null
           : SongRow.registered(
               song: MySong(song).view,
-              trailingAction: menu,
               onTap: widget.onOpenSong == null
                   ? null
                   : () => widget.onOpenSong!(songId as String),
@@ -145,7 +137,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         artist: snapshot['artist'] as String,
       ),
       placement: CandidatePlacement.playlist,
-      trailingAction: menu,
       onTap: widget.searchLoad == null ? null : () => registerCandidate(item),
     );
   }
@@ -264,41 +255,30 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   }
 
   Future<void> chooseSource() async {
-    final action = await showModalBottomSheet<String>(
+    final library = widget.library, id = widget.id;
+    final choice = await showSongDiscoverySheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(title: const Text('곡 추가')),
-            ListTile(
-              leading: const FeatureIcon(Icons.music_note_outlined),
-              title: const Text('내 곡에서 선택'),
-              onTap: () => Navigator.pop(context, 'songs'),
-            ),
-            if (widget.searchLoad != null)
-              ListTile(
-                leading: const FeatureIcon(Icons.search),
-                title: const Text('검색·차트에서 추가'),
-                onTap: () => Navigator.pop(context, 'discover'),
-              ),
-            ListTile(
-              leading: const FeatureIcon(Icons.edit_outlined),
-              title: const Text('직접 등록'),
-              onTap: () => Navigator.pop(context, 'manual'),
-            ),
-          ],
-        ),
-      ),
+      playlistId: id,
+      playlistTitle: parent?['name'] as String?,
     );
-    if (!mounted || busy || parent == null) return;
-    switch (action) {
-      case 'songs':
+    if (!mounted ||
+        busy ||
+        parent == null ||
+        library != widget.library ||
+        id != widget.id) {
+      return;
+    }
+    switch (choice?.destination) {
+      case SongDiscoveryDestination.mySongs:
         await add();
-      case 'discover':
-        await discover();
-      case 'manual':
+      case SongDiscoveryDestination.charts:
+        if (widget.searchLoad != null) await discover(charts: true);
+      case SongDiscoveryDestination.search:
+        if (widget.searchLoad != null) await discover();
+      case SongDiscoveryDestination.manual:
         await registerManual();
+      default:
+        break;
     }
   }
 
@@ -381,58 +361,73 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => FoldingScaffold(
+    collapsed: headerFolded,
     appBar: appPageBar(
       context,
       title: Text(parent?['name'] as String? ?? '플레이리스트'),
     ),
     body: SafeArea(
-      child: RefreshIndicator(
+      child: EditableCollection(
+        key: ValueKey('${widget.library.repository.userId}:${widget.id}'),
+        ids: items
+            .where((item) => itemRow(item) != null)
+            .map((item) => item['id'] as String)
+            .toList(),
+        enabled: !busy && parent != null,
         onRefresh: reload,
-        child: ListView(
-          padding: AppLayout.bodyPadding,
+        onHeaderFold: (value) => setState(() => headerFolded = value),
+        header: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (error != null) Text(error!),
-            Row(
-              children: [
-                Text('${items.length}곡'),
-                const Spacer(),
-                TextButton(
-                  onPressed: busy || parent == null || items.length < 2
-                      ? null
-                      : reorder,
-                  child: const Text('순서 변경'),
-                ),
-                AppCompactAction(
-                  label: '곡 추가',
-                  onPressed: busy || parent == null ? null : chooseSource,
-                ),
-              ],
-            ),
-            if (items.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Text('아직 목록에 곡이 없어요.'),
-              ),
-            for (final item in items)
-              if (itemRow(item) case final Widget row)
-                Padding(
-                  key: ValueKey(item['id']),
-                  padding: const EdgeInsets.only(top: 8),
-                  child: GestureDetector(
-                    onLongPress: busy || parent == null
-                        ? null
-                        : () => hold(item),
-                    child: row,
-                  ),
-                ),
+            if (items.isEmpty) const Text('아직 목록에 곡이 없어요.'),
           ],
         ),
+        actions: (compact, reorder) => Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            if (!compact) Text('${items.length}곡'),
+            const Spacer(),
+            AppReorderAction(onPressed: reorder, compact: compact),
+            const SizedBox(width: 8),
+            AppCompactAction(
+              label: '곡 추가',
+              compact: compact,
+              onPressed: busy || parent == null ? null : chooseSource,
+            ),
+            if (widget.onOptions != null && !compact)
+              PopupMenuButton<String>(
+                tooltip: '플레이리스트 메뉴',
+                enabled: !busy && parent != null,
+                icon: const AppIcon(Icons.more_vert),
+                onSelected: (action) async {
+                  await widget.onOptions!(
+                    action,
+                    Map<String, dynamic>.from(parent!),
+                  );
+                  if (!mounted) return;
+                  await reload();
+                  if (context.mounted && parent == null) Navigator.pop(context);
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'rename', child: Text('이름 변경')),
+                  PopupMenuItem(value: 'icon', child: Text('아이콘 수정')),
+                  PopupMenuItem(value: 'delete', child: Text('플레이리스트 삭제')),
+                ],
+              ),
+          ],
+        ),
+        row: (id) => itemRow(items.firstWhere((item) => item['id'] == id))!,
+        onBeginReorder: () => orderBase = Map<String, dynamic>.from(parent!),
+        onReorder: reorder,
+        onDelete: removeSelected,
+        deleteLabel: (count) => '선택한 $count곡 목록에서 제거',
       ),
     ),
   );
 
-  Future<void> discover() async {
+  Future<void> discover({bool charts = false}) async {
     final library = widget.library, id = widget.id;
     final intent = SearchIntent(
       purpose: SearchPurpose.playlist,
@@ -446,6 +441,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
           arguments: intent,
         ),
         builder: (_) => PlaylistDiscoveryScreen(
+          initiallyCharts: charts,
           intent: intent,
           searchLoad: widget.searchLoad!,
           chartLoad: widget.chartLoad,
@@ -481,59 +477,53 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     }
   }
 
-  Future<void> hold(Map<String, dynamic> item) async {
-    final library = widget.library;
-    final id = widget.id;
-    final action = await showHoldActions(
-      context,
-      title:
-          songs.where((v) => v['id'] == item['song_id']).firstOrNull?['title']
-              as String? ??
-          (item['candidate_snapshot'] is Map
-              ? item['candidate_snapshot']['title'] as String?
-              : null) ??
-          '곡',
-      deleteLabel: '목록에서 제거',
-      reorder: items.length > 1,
-    );
-    if (!mounted ||
-        !identical(library, widget.library) ||
-        id != widget.id ||
-        busy ||
-        parent == null ||
-        !items.any((v) => v['id'] == item['id'])) {
-      return;
-    }
-    if (action == 'reorder') await reorder();
-    if (action == 'delete') await removeItem(item);
-  }
-
-  Future<void> reorder() async {
-    final library = widget.library, playlistId = widget.id;
-    final original = Map<String, dynamic>.from(parent!);
-    final titles = <String, String>{};
-    for (final item in items) {
-      final song = songs.where((s) => s['id'] == item['song_id']).firstOrNull;
-      titles[item['id'] as String] =
-          (song?['title'] ??
-                  (item['candidate_snapshot'] as Map?)?['title'] ??
-                  '목록 항목')
-              as String;
-    }
-    final ids = await showModalBottomSheet<List<String>>(
+  Future<bool> removeSelected(List<String> ids) async {
+    final library = widget.library, id = widget.id;
+    final epoch = widget.auth?.accountEpoch;
+    final confirmed = await showDialog<bool>(
       context: context,
-      isScrollControlled: true,
-      builder: (_) => FractionallySizedBox(
-        heightFactor: .8,
-        child: PlaylistOrderPicker(items: items, titles: titles),
+      builder: (context) => AlertDialog(
+        title: Text('${ids.length}곡을 목록에서 제거할까요?'),
+        content: const Text('이 목록에서만 제거해요. 내 곡과 녹음은 그대로 유지돼요.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('제거'),
+          ),
+        ],
       ),
     );
-    if (!mounted ||
-        ids == null ||
-        !identical(library, widget.library) ||
-        playlistId != widget.id) {
-      return;
+    if (confirmed != true) return false;
+    try {
+      for (final itemId in ids) {
+        if (!mounted ||
+            library != widget.library ||
+            id != widget.id ||
+            widget.auth?.accountEpoch != epoch) {
+          throw StateError('Account changed');
+        }
+        final latest = (await library.load()).singleWhere(
+          (row) => row['id'] == id,
+        );
+        if (!mounted || widget.auth?.accountEpoch != epoch) {
+          throw StateError('Account changed');
+        }
+        await library.removeItem(latest, itemId);
+        await widget.afterSave?.call();
+      }
+    } finally {
+      if (mounted) await reload();
     }
+    return true;
+  }
+
+  Future<void> reorder(List<String> ids) async {
+    if (parent == null) return;
+    final original = orderBase ?? Map<String, dynamic>.from(parent!);
     setState(() {
       busy = true;
       error = null;
@@ -544,6 +534,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
       await reload();
     } catch (_) {
       if (mounted) setState(() => error = '순서를 저장하지 못했어요. 최신 목록을 확인해 주세요.');
+      rethrow;
     } finally {
       if (mounted) setState(() => busy = false);
     }

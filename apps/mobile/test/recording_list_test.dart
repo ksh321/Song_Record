@@ -33,6 +33,41 @@ Map<String, dynamic> row(
 };
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  testWidgets('search matches title or artist and clears on account change', (
+    tester,
+  ) async {
+    final rows = [
+      recordingViewFixture(row('a', 'First Song', '2026-10-10T04:00:00Z', 'S')),
+      recordingViewFixture({
+        ...row('b', 'Second Song', '2026-10-10T04:00:00Z', 'A'),
+        'artist_snapshot': '다른 가수',
+      }),
+    ];
+    Widget page(String scope) => MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: RecordingList(scope: scope, rows: rows, onOpen: (_) {}),
+        ),
+      ),
+    );
+    await tester.pumpWidget(page('a'));
+    await tester.enterText(find.byType(TextField), ' FIRST ');
+    await tester.pumpAndSettle();
+    expect(find.text('First Song'), findsOneWidget);
+    expect(find.text('Second Song'), findsNothing);
+    await tester.enterText(find.byType(TextField), '다른');
+    await tester.pumpAndSettle();
+    expect(find.text('First Song'), findsNothing);
+    expect(find.text('Second Song'), findsOneWidget);
+    await tester.pumpWidget(page('b'));
+    await tester.pumpAndSettle();
+    expect(find.text('First Song'), findsOneWidget);
+    expect(find.text('Second Song'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller?.text ?? '',
+      isEmpty,
+    );
+  });
   testWidgets(
     'hold recording offers deletion, cancel and scope change do not delete',
     (tester) async {

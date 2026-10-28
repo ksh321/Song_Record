@@ -40,6 +40,7 @@ class RecordingWorkspace extends StatefulWidget {
 }
 
 class _RecordingWorkspaceState extends State<RecordingWorkspace> {
+  bool _capturing = false;
   late final Stream<List<Map<String, dynamic>>> _pending = _watch();
   Stream<List<Map<String, dynamic>>> _watch() async* {
     while (mounted) {
@@ -95,6 +96,7 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
     IconData icon,
     VoidCallback open,
   ) => Card(
+    margin: EdgeInsets.zero,
     child: AppFeatureRow(
       title: title,
       subtitle: subtitle,
@@ -120,6 +122,41 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
     );
   }
 
+  Future<void> _openCompletedInput(String id) async {
+    final repo = widget.repository();
+    if (repo == null || !widget.isCurrent(repo)) return;
+    try {
+      final rows = await repo.pendingRecordings();
+      if (!mounted ||
+          !widget.isCurrent(repo) ||
+          !TickerMode.valuesOf(context).enabled ||
+          WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed ||
+          !(ModalRoute.of(context)?.isCurrent ?? true)) {
+        return;
+      }
+      final matches = rows.where((row) => row['id'] == id);
+      if (matches.isEmpty) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => RecordingInputScreen(
+            classificationBuilder: widget.classificationBuilder,
+            recording: matches.first,
+            repository: repo,
+            isCurrent: widget.isCurrent,
+            discoveryBuilder: widget.discoveryBuilder,
+            wakeSync: widget.wakeSync,
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted && widget.isCurrent(repo)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('녹음은 보관됐어요. 입력 대기에서 곡 정보를 입력해 주세요.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListView(
     padding: AppLayout.bodyPadding,
@@ -128,35 +165,54 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
         gateway: widget.gateway,
         diagnostics: false,
         onCompleted: _persist,
+        onInputReady: _openCompletedInput,
+        onPhaseChanged: (phase) {
+          final capturing =
+              phase == RecorderPhase.recording ||
+              phase == RecorderPhase.starting ||
+              phase == RecorderPhase.stopping;
+          if (mounted && _capturing != capturing) {
+            setState(() => _capturing = capturing);
+          }
+        },
       ),
-      const SizedBox(height: 20),
+      const SizedBox(height: 14),
       Text(
-        '한 번에 최대 6분',
+        _capturing ? '6분이 되면 자동으로 마무리해요.' : '한 번에 최대 6분',
         textAlign: TextAlign.center,
         style: TextStyle(
           fontSize: 11,
+          height: 1.55,
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
-      const SizedBox(height: 60),
-      StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _pending,
-        builder: (context, snapshot) => _entry(
-          '입력 대기',
-          snapshot.hasError
-              ? '목록을 다시 확인해 주세요'
-              : snapshot.hasData
-              ? '곡 정보를 기다리는 녹음 ${snapshot.data!.length}개'
-              : '목록 확인 중',
-          Icons.schedule,
-          () => _open('입력 대기', _pendingList()),
+      Offstage(
+        offstage: _capturing,
+        child: Column(
+          children: [
+            const SizedBox(height: 74),
+            StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _pending,
+              builder: (context, snapshot) => _entry(
+                '입력 대기',
+                snapshot.hasError
+                    ? '목록을 다시 확인해 주세요'
+                    : snapshot.hasData
+                    ? '곡 정보를 기다리는 녹음 ${snapshot.data!.length}개'
+                    : '목록 확인 중',
+                Icons.schedule,
+                () => _open('입력 대기', _pendingList()),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _entry(
+              '전체 녹음',
+              '지난 녹음 다시 듣기',
+              Icons.graphic_eq,
+              () => _open('전체 녹음', _savedList()),
+            ),
+          ],
         ),
-      ),
-      _entry(
-        '전체 녹음',
-        '지난 녹음 다시 듣기',
-        Icons.graphic_eq,
-        () => _open('전체 녹음', _savedList()),
       ),
     ],
   );
@@ -175,11 +231,12 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
           Text('입력 대기 ${rows.length}개'),
           for (final row in rows)
             ListTile(
-              title: Text((row['title_snapshot'] as String?) ?? '곡 정보 입력 대기'),
+              leading: const Icon(Icons.mic_none),
+              title: Text(_pendingLabel(row)),
               subtitle: Text(
                 row['input_selection'] is Map
                     ? '선택한 곡: ${row['input_selection']['title_snapshot']}'
-                    : '정보 입력 대기 · ${row['recorded_at']}',
+                    : '곡 미선택 · 이 기기에 파일 있음',
               ),
               trailing: const AppIcon(Icons.chevron_right),
               onTap: () {
@@ -203,6 +260,15 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
       );
     },
   );
+
+  String _pendingLabel(Map<String, dynamic> row) {
+    final at = DateTime.parse(row['recorded_at'] as String)
+        .toUtc()
+        .add(Duration(minutes: row['timezone_offset_minutes'] as int? ?? 0));
+    final spec = row['file'] as Map? ?? row['file_spec'] as Map?;
+    final seconds = ((spec?['duration_ms'] as int? ?? 0) / 1000).floor();
+    return '${at.month}월 ${at.day}일 · ${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
+  }
 
   Widget _savedList() => StreamBuilder<RecordingCatalog>(
     stream: _watchSaved(),

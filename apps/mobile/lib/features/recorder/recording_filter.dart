@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/files/recording_file_status.dart';
+import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/ui_controls.dart';
 
 enum RecordingFileFilter {
@@ -153,20 +155,89 @@ class _RecordingFilterScreenState extends State<RecordingFilterScreen> {
   }
 
   Widget choice(String field, String title, Map<String, String> options) =>
-      DropdownButtonFormField<String>(
-        key: ValueKey('$field:${draft[field]}'),
-        initialValue: draft[field],
-        isExpanded: true,
-        decoration: InputDecoration(labelText: title),
-        items: [
-          const DropdownMenuItem(value: null, child: Text('전체')),
-          for (final entry in options.entries)
-            DropdownMenuItem(value: entry.key, child: Text(entry.value)),
-        ],
-        onChanged: (value) => setState(
-          () => value == null ? draft.remove(field) : draft[field] = value,
+      Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              key: ValueKey('$field:${draft[field]}'),
+              initialValue: draft[field],
+              isExpanded: true,
+              decoration: const InputDecoration(),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('전체')),
+                for (final entry in options.entries)
+                  DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+              ],
+              onChanged: (value) => setState(
+                () =>
+                    value == null ? draft.remove(field) : draft[field] = value,
+              ),
+            ),
+          ],
         ),
       );
+  Widget dateField(
+    String field,
+    String label,
+    TextEditingController controller,
+  ) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
+      const SizedBox(height: 8),
+      TextField(
+        key: ValueKey(field),
+        controller: controller,
+        decoration: InputDecoration(
+          hintText: '년-월-일',
+          suffixIcon: IconButton(
+            tooltip: '$label 선택',
+            icon: const AppIcon(Icons.calendar_month_outlined),
+            onPressed: () async {
+              final current = DateTime.tryParse(controller.text);
+              final selected = await showDatePicker(
+                context: context,
+                builder: (context, child) => Localizations.override(
+                  context: context,
+                  locale: const Locale('ko'),
+                  delegates: GlobalMaterialLocalizations.delegates,
+                  child: child!,
+                ),
+                initialDate:
+                    current != null &&
+                        current.year >= 1000 &&
+                        current.year <= 9999
+                    ? current
+                    : DateTime.now(),
+                firstDate: DateTime(1000),
+                lastDate: DateTime(9999, 12, 31),
+              );
+              if (!mounted || selected == null) return;
+              controller.text =
+                  "${selected.year.toString().padLeft(4, '0')}-${selected.month.toString().padLeft(2, '0')}-${selected.day.toString().padLeft(2, '0')}";
+            },
+          ),
+        ),
+      ),
+      const SizedBox(height: 14),
+    ],
+  );
   void apply() {
     for (final entry in {
       'start': start.text.trim(),
@@ -216,68 +287,68 @@ class _RecordingFilterScreenState extends State<RecordingFilterScreen> {
               child: ListView(
                 padding: AppLayout.bodyPadding,
                 children: [
-                  const Text('조건은 모두 함께 적용됩니다. 기간은 한국 시간 기준이에요.'),
-                  TextField(
-                    key: const ValueKey('start'),
-                    controller: start,
-                    decoration: const InputDecoration(
-                      labelText: '시작일 (YYYY-MM-DD)',
+                  AppPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        dateField('start', '시작 날짜', start),
+                        dateField('end', '종료 날짜', end),
+                        choice('song_id', '곡', {'UNLINKED': '미연결', ...songs}),
+                        choice('key_mode', '키 모드', {
+                          'ORIGINAL': '원키',
+                          'MALE': '남',
+                          'FEMALE': '여',
+                        }),
+                        choice('key_shift', '반음', {
+                          for (var i = -12; i <= 12; i++)
+                            '$i': i > 0 ? '+$i' : '$i',
+                        }),
+                        choice('version_code', '버전', {
+                          'NORMAL': '일반 반주',
+                          'MR': 'MR',
+                          'LIVE': 'LIVE',
+                        }),
+                        choice('tier', '티어', {
+                          'S': 'S',
+                          'A': 'A',
+                          'B': 'B',
+                          'C': 'C',
+                          'D': 'D',
+                          'UNSET': '미정',
+                        }),
+                        choice('condition_code', '컨디션', {
+                          'VERY_GOOD': '매우 좋음',
+                          'GOOD': '좋음',
+                          'NORMAL': '보통',
+                          'BAD': '안 좋음',
+                          for (final row in widget.rows)
+                            if (row['condition_code'] is String &&
+                                row['condition_name_snapshot'] is String)
+                              row['condition_code'] as String:
+                                  row['condition_name_snapshot'] as String,
+                          'UNSET': '미선택',
+                        }),
+                        choice('tag', '태그', tags),
+                        choice('file', '파일 상태', {
+                          for (final v in RecordingFileFilter.values)
+                            v.name: v.label,
+                        }),
+                        if (error != null) Text(error!),
+                        TextButton(
+                          onPressed: () => setState(() {
+                            draft.clear();
+                            start.clear();
+                            end.clear();
+                            error = null;
+                          }),
+                          child: const Text('초기화'),
+                        ),
+                        const Text(
+                          '기간은 한국 시간 기준이에요.',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ],
                     ),
-                  ),
-                  TextField(
-                    key: const ValueKey('end'),
-                    controller: end,
-                    decoration: const InputDecoration(
-                      labelText: '종료일 (YYYY-MM-DD)',
-                    ),
-                  ),
-                  choice('song_id', '곡 / 미연결', {'UNLINKED': '미연결', ...songs}),
-                  choice('key_mode', '키 모드', {
-                    'ORIGINAL': '원키',
-                    'MALE': '남',
-                    'FEMALE': '여',
-                  }),
-                  choice('key_shift', '반음', {
-                    for (var i = -12; i <= 12; i++) '$i': i > 0 ? '+$i' : '$i',
-                  }),
-                  choice('version_code', '버전', {
-                    'NORMAL': '일반 반주',
-                    'MR': 'MR',
-                    'LIVE': 'LIVE',
-                  }),
-                  choice('tier', '녹음 티어', {
-                    'S': 'S',
-                    'A': 'A',
-                    'B': 'B',
-                    'C': 'C',
-                    'D': 'D',
-                    'UNSET': '미정',
-                  }),
-                  choice('condition_code', '컨디션', {
-                    'VERY_GOOD': '매우 좋음',
-                    'GOOD': '좋음',
-                    'NORMAL': '보통',
-                    'BAD': '안 좋음',
-                    for (final row in widget.rows)
-                      if (row['condition_code'] is String &&
-                          row['condition_name_snapshot'] is String)
-                        row['condition_code'] as String:
-                            row['condition_name_snapshot'] as String,
-                    'UNSET': '미선택',
-                  }),
-                  choice('tag', '태그 1개', tags),
-                  choice('file', '파일 상태', {
-                    for (final v in RecordingFileFilter.values) v.name: v.label,
-                  }),
-                  if (error != null) Text(error!),
-                  TextButton(
-                    onPressed: () => setState(() {
-                      draft.clear();
-                      start.clear();
-                      end.clear();
-                      error = null;
-                    }),
-                    child: const Text('초기화'),
                   ),
                 ],
               ),

@@ -1,8 +1,8 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:song_record/core/theme/app_theme.dart';
-import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/features/recorder/recorder_gateway.dart';
 
 import '../../core/widgets/app_icon.dart';
@@ -12,6 +12,8 @@ class RecorderPanel extends StatefulWidget {
     required this.gateway,
     this.diagnostics = true,
     this.onCompleted,
+    this.onInputReady,
+    this.onPhaseChanged,
     super.key,
   });
 
@@ -20,6 +22,8 @@ class RecorderPanel extends StatefulWidget {
   /// The P02 diagnostic view is only for verification; AppShell uses the product view.
   final bool diagnostics;
   final Future<void> Function(RecorderStatus)? onCompleted;
+  final ValueChanged<String>? onInputReady;
+  final ValueChanged<RecorderPhase>? onPhaseChanged;
 
   @override
   State<RecorderPanel> createState() => _RecorderPanelState();
@@ -40,6 +44,7 @@ class _RecorderPanelState extends State<RecorderPanel>
   bool _commandPending = false;
   bool _statusLoaded = false;
   bool _persisting = false;
+  bool _startedHere = false;
   String? _persistedId;
   String? _persistError;
   String? _operationError;
@@ -133,7 +138,18 @@ class _RecorderPanelState extends State<RecorderPanel>
     });
     try {
       await widget.onCompleted!(status);
-      if (mounted) setState(() => _persistedId = status.recordingId);
+      if (mounted) {
+        setState(() => _persistedId = status.recordingId);
+        final openInput = _startedHere;
+        _startedHere = false;
+        if (openInput &&
+            WidgetsBinding.instance.lifecycleState ==
+                AppLifecycleState.resumed &&
+            TickerMode.valuesOf(context).enabled &&
+            (ModalRoute.of(context)?.isCurrent ?? true)) {
+          widget.onInputReady?.call(status.recordingId!);
+        }
+      }
     } on Object {
       if (mounted) {
         setState(() => _persistError = '녹음 파일은 보존돼 있어요. 입력 대기 저장을 다시 시도해 주세요.');
@@ -145,10 +161,12 @@ class _RecorderPanelState extends State<RecorderPanel>
 
   void _applyStatus(RecorderStatus status) {
     if (!mounted) return;
+    final changed = _status.phase != status.phase;
     setState(() {
       _status = status;
       _statusLoaded = true;
     });
+    if (changed) widget.onPhaseChanged?.call(status.phase);
   }
 
   void _clearOperationError() {
@@ -186,10 +204,12 @@ class _RecorderPanelState extends State<RecorderPanel>
         _showError('녹음 화면으로 돌아온 뒤 시작해 주세요.');
         return;
       }
+      _startedHere = true;
       await widget.gateway.start();
       await Future<void>.delayed(const Duration(milliseconds: 250));
       await _refreshStatus(reportErrors: true);
     } on Object catch (error) {
+      _startedHere = false;
       _startGraceDeadline = null;
       unawaited(_refreshStatus());
       _showError(error.toString());
@@ -245,14 +265,19 @@ class _RecorderPanelState extends State<RecorderPanel>
 
   Widget _buildProduct(BuildContext context) {
     final recording = _status.phase == RecorderPhase.recording;
-    final completed = _status.phase == RecorderPhase.completed;
+    final handedOff =
+        _status.phase == RecorderPhase.completed &&
+        _status.recordingId != null &&
+        widget.onCompleted != null &&
+        _persistedId == _status.recordingId;
+    final completed = _status.phase == RecorderPhase.completed && !handedOff;
     final busy =
         _commandPending ||
         _status.phase == RecorderPhase.starting ||
         _status.phase == RecorderPhase.stopping;
     // Display only the native service's monotonic-clock observation. Polling
     // refreshes it; Flutter never advances the elapsed value independently.
-    final seconds = _status.elapsedMs.clamp(0, 360000) ~/ 1000;
+    final seconds = handedOff ? 0 : _status.elapsedMs.clamp(0, 360000) ~/ 1000;
     final time =
         '${(seconds ~/ 60).toString().padLeft(2, '0')}:${(seconds % 60).toString().padLeft(2, '0')}';
     final warning = switch (_status.limitWarning) {
@@ -263,49 +288,85 @@ class _RecorderPanelState extends State<RecorderPanel>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 24),
+        const SizedBox(height: 26),
         Text(
           completed
               ? '녹음이 완료됐어요'
               : recording
-              ? '녹음 중'
+              ? '목소리를 담고 있어요'
               : busy
               ? '녹음 준비·마무리 중'
               : '오늘의 목소리를 남겨요',
           style: const TextStyle(
-            fontSize: 22,
+            fontSize: 21,
             fontWeight: FontWeight.w700,
-            height: 1.5,
+            height: 1.6,
           ),
           textAlign: TextAlign.center,
         ),
+        const SizedBox(height: 7),
         if (!completed && !recording && !busy)
           Text(
             '부르고, 듣고, 다음 연습을 준비해요.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 12,
+              height: 1.9,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-        const SizedBox(height: AppSpacing.md),
+        if (recording)
+          Text(
+            '화면을 잠가도 녹음은 이어져요.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              height: 1.9,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        const SizedBox(height: 38),
         Text(
           time,
           key: const ValueKey('recorder-service-time'),
           style: const TextStyle(
-            fontSize: 52,
-            fontWeight: FontWeight.w600,
-            height: 1.2,
+            fontSize: 54,
+            fontWeight: FontWeight.w500,
+            letterSpacing: 3,
+            height: 1.55,
           ),
           textAlign: TextAlign.center,
         ),
+        if (recording) const SizedBox(height: 28),
+        if (recording)
+          ExcludeSemantics(
+            child: SizedBox(
+              height: 80,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  31,
+                  (i) => Flexible(
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      width: 4,
+                      height:
+                          12 + (math.sin(i * 1.2).abs() * 50).roundToDouble(),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         if (warning != null)
           Semantics(
             liveRegion: true,
             child: Text(warning, textAlign: TextAlign.center),
           ),
-        if (recording)
-          const Text('진행 알림에서도 녹음을 완료할 수 있어요.', textAlign: TextAlign.center),
         if (completed) ...[
           Text(
             _status.stopReason == 'time_limit'
@@ -354,7 +415,7 @@ class _RecorderPanelState extends State<RecorderPanel>
             '알림 권한이 꺼져 있어요. 녹음은 계속되며 진행 알림은 보이지 않을 수 있어요.',
             textAlign: TextAlign.center,
           ),
-        const SizedBox(height: AppSpacing.lg),
+        SizedBox(height: recording ? 40 : 54),
         if (!completed)
           Center(
             child: TextButton(
@@ -367,6 +428,8 @@ class _RecorderPanelState extends State<RecorderPanel>
               style: TextButton.styleFrom(
                 foregroundColor: Theme.of(context).colorScheme.onSurface,
                 minimumSize: const Size(116, 116),
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -380,6 +443,17 @@ class _RecorderPanelState extends State<RecorderPanel>
                         color: Theme.of(context).colorScheme.primary,
                         width: 3,
                       ),
+                      color: recording
+                          ? Theme.of(context).colorScheme.primary
+                                .withValues(alpha: .10)
+                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Theme.of(context).colorScheme.primary
+                              .withValues(alpha: .06),
+                          spreadRadius: 12,
+                        ),
+                      ],
                     ),
                     alignment: Alignment.center,
                     child: Container(
@@ -392,16 +466,24 @@ class _RecorderPanelState extends State<RecorderPanel>
                       height: recording ? 32 : 64,
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.primary,
-                        borderRadius: BorderRadius.circular(recording ? 6 : 32),
+                        borderRadius: BorderRadius.circular(recording ? 0 : 32),
                       ),
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Text(recording ? '녹음 완료' : '녹음 시작'),
+                  Text(
+                    recording ? '녹음 완료' : '녹음 시작',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      height: 1.55,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
+        if (!completed) const SizedBox(height: 32),
         if (completed) ...[
           TextButton(onPressed: _playLatest, child: const Text('완료 녹음 듣기')),
           if (_persisting)

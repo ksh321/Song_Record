@@ -3,6 +3,7 @@ import 'package:song_record/app/app_tab.dart';
 
 import '../core/theme/app_appearance.dart';
 import '../core/widgets/app_icon.dart';
+import '../core/widgets/folding_scaffold.dart';
 
 /// Navigation context for one tab, retained only for this shell's lifetime.
 /// This is UI selection, not account data or process-death restoration.
@@ -14,6 +15,13 @@ class TabNavigation extends ChangeNotifier {
   final _navigatorKey = GlobalKey<NavigatorState>();
   String? _selectedPlaylistId;
   String? _subtitle;
+  bool _headerFolded = false;
+  void foldHeader(bool value) {
+    if (_headerFolded == value) return;
+    _headerFolded = value;
+    notifyListeners();
+  }
+
   void updateHeaderSubtitle(String? value) {
     if (_subtitle == value) return;
     _subtitle = value;
@@ -181,7 +189,9 @@ class _TabPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return FoldingScaffold(
+      collapsed:
+          !showBack && (TabNavigation.maybeOf(context)?._headerFolded ?? false),
       appBar: AppBar(
         toolbarHeight:
             (MediaQuery.textScalerOf(context).scale(26) * 1.3 +
@@ -246,16 +256,7 @@ class _TabPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            icon: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              alignment: Alignment.center,
-              child: const AppIcon(Icons.settings_outlined, size: 20),
-            ),
+            icon: const AppIcon(Icons.settings_outlined, size: 20),
           ),
           const SizedBox(width: 20),
         ],

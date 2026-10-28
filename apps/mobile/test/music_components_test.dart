@@ -6,6 +6,7 @@ import 'package:song_record/core/domain/recording_snapshot.dart';
 import 'package:song_record/core/domain/song_types.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
+import 'package:song_record/core/widgets/editable_collection.dart';
 import 'package:song_record/core/widgets/music_view_data.dart';
 import 'package:song_record/core/widgets/recording_roles_card.dart';
 import 'package:song_record/core/widgets/recording_row.dart';
@@ -70,6 +71,26 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('선택 모드에서는 Material 안의 긴 곡명도 한 줄로 유지한다', (tester) async {
+    const title = 'Lost Stars(Begin Again OST) 아주 긴 제목';
+    await show(
+      tester,
+      SizedBox(
+        width: 300,
+        child: CollectionRowEditing(
+          active: true,
+          child: SongRow.registered(song: song(title: title), flat: true),
+        ),
+      ),
+    );
+    expect(tester.widget<Text>(find.text(title)).maxLines, 1);
+    expect(
+      tester.widget<Text>(find.text(title)).overflow,
+      TextOverflow.ellipsis,
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('등록곡은 기본 버전도 표시하고 번호는 숨기며 추가된 항목을 막는다', (tester) async {
     var taps = 0;
