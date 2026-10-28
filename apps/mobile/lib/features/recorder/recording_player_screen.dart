@@ -284,7 +284,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                         color: controlIconColor,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 24),
                     IconButton.filled(
                       tooltip: playing ? '일시정지' : '재생',
                       style: IconButton.styleFrom(
@@ -297,7 +297,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                       ),
                       icon: AppIcon(
                         playing ? Icons.pause : Icons.play_arrow,
-                        size: 30,
+                        size: 42,
                       ),
                       onPressed: () => unawaited(
                         playing
@@ -309,7 +309,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                             : player.start(widget.recordingId),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 24),
                     IconButton(
                       tooltip: '5초 앞으로',
                       style: IconButton.styleFrom(

@@ -387,7 +387,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         actions: (compact, reorder) => Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            if (!compact) Text('${items.length}곡'),
+            Text('${items.length}곡'),
             const Spacer(),
             AppReorderAction(onPressed: reorder, compact: compact),
             const SizedBox(width: 8),
@@ -396,7 +396,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
               compact: compact,
               onPressed: busy || parent == null ? null : chooseSource,
             ),
-            if (widget.onOptions != null && !compact)
+            if (widget.onOptions != null)
               PopupMenuButton<String>(
                 tooltip: '플레이리스트 메뉴',
                 enabled: !busy && parent != null,

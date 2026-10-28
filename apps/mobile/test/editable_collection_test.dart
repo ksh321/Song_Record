@@ -2,8 +2,73 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/core/widgets/editable_collection.dart';
 import 'package:song_record/core/widgets/folding_scaffold.dart';
+import 'package:song_record/core/widgets/ui_controls.dart';
 
 void main() {
+  for (final library in [false, true]) {
+    testWidgets(
+      'scroll compacts actions and highlights count only when pinned library=$library',
+      (tester) async {
+        final ids = List.generate(30, (i) => '$i');
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: EditableCollection(
+                ids: ids,
+                header: const SizedBox(height: 100),
+                belowActions: library ? const Text('summary') : null,
+                actions: (compact, reorder) => Row(
+                  children: [
+                    const Text('30곡'),
+                    const Spacer(),
+                    AppReorderAction(onPressed: reorder, compact: compact),
+                    AppCompactAction(
+                      label: '곡 추가',
+                      onPressed: () {},
+                      compact: compact,
+                    ),
+                    const Icon(Icons.more_vert),
+                  ],
+                ),
+                row: (id) => SizedBox(height: 70, child: Text('track $id')),
+                onReorder: (_) async {},
+                onDelete: (_) async => false,
+                deleteLabel: (n) => '$n 삭제',
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('곡 추가'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('collection-scrolled-bar')),
+          findsNothing,
+        );
+        final scroll = tester
+            .widget<CustomScrollView>(find.byType(CustomScrollView))
+            .controller!;
+        scroll.jumpTo(350);
+        await tester.pumpAndSettle();
+        expect(find.text('곡 추가'), findsNothing);
+        expect(find.text('순서 변경'), findsNothing);
+        expect(find.text('30곡'), findsOneWidget);
+        expect(find.byIcon(Icons.more_vert), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('collection-scrolled-bar')),
+          library ? findsNothing : findsOneWidget,
+        );
+        scroll.jumpTo(0);
+        await tester.pumpAndSettle();
+        expect(find.text('곡 추가'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('collection-scrolled-bar')),
+          findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'long title selection preserves rows; only top reorder folds header',
     (tester) async {

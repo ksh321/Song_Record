@@ -396,3 +396,12 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 
 .phone .v3-player .v3-play-controls .v3-play-main{color:var(--on-accent)}
 .phone:is(.pl-selecting,.bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) :is(.pl-all,.bulk-all){padding-left:5px}
+
+/* Playback proportions and scrolled-only list readability. */
+.phone .v3-play-controls{gap:24px}
+.phone .v3-play-main{font-size:42px}
+.phone .v3-list-tools.pl-actions-compact>span,.phone .v3-list-tools.pl-actions-compact>.v3-more{visibility:visible;pointer-events:auto}
+.phone .phone-body>.v3-list-tools.pl-action-row.pl-actions-compact{background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 3px 5px #0002}
+
+.phone .review-tools{position:sticky;top:0;z-index:12}
+.phone .review-tools.list-header-scrolled{background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 3px 5px #0002}

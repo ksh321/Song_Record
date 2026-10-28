@@ -874,7 +874,10 @@ window.Prototype.render();
 
 /* Compact playlist actions while scrolling; preserve accessible names. */
 (()=>{
- function sync(body){const bar=body?.querySelector(':scope > .v4-top-actions.pl-action-row, :scope > .v3-list-tools.pl-action-row');if(!bar)return;
+ function sync(body){
+ const tools=body?.querySelector(':scope > .review-tools');
+ if(tools)tools.classList.toggle('list-header-scrolled',body.scrollTop>0 && tools.getBoundingClientRect().top<=body.getBoundingClientRect().top+6);
+ const bar=body?.querySelector(':scope > .v4-top-actions.pl-action-row, :scope > .v3-list-tools.pl-action-row');if(!bar)return;
  const order=bar.querySelector('.pl-order-trigger'),add=bar.querySelector('.v4-playlist-create,[data-v3="add-source"]');
  if(order&&!order.querySelector('.pl-action-label')){order.innerHTML='<span aria-hidden="true">↕</span><span class="pl-action-label">순서 변경</span>';order.setAttribute('aria-label','순서 변경');order.title='순서 변경';}
  if(add&&!add.querySelector('.pl-action-label')){for(const n of [...add.childNodes])if(n.nodeType===3)n.remove();const label=document.createElement('span');label.className='pl-action-label';const title=add.matches('.v4-playlist-create')?'새 플레이리스트':'곡 추가';label.textContent=title;if(!add.querySelector('svg')){const plus=document.createElement('span');plus.className='pl-add-symbol';plus.textContent='+';plus.setAttribute('aria-hidden','true');add.append(plus);}add.append(label);add.setAttribute('aria-label',title);add.title=title;}
