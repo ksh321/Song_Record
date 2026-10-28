@@ -17,6 +17,7 @@ class PlaylistCreateScreen extends StatefulWidget {
 
 class _PlaylistCreateScreenState extends State<PlaylistCreateScreen> {
   String name = '', icon = 'music';
+  String? error;
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: appPageBar(context, title: const Text('새 플레이리스트')),
@@ -32,7 +33,13 @@ class _PlaylistCreateScreenState extends State<PlaylistCreateScreen> {
             ),
             const SizedBox(width: 8),
             FilledButton(
-              onPressed: () => Navigator.pop(context, (name: name, icon: icon)),
+              onPressed: () {
+                if (name.trim().isEmpty) {
+                  setState(() => error = '플레이리스트 이름을 입력해 주세요.');
+                  return;
+                }
+                Navigator.pop(context, (name: name.trim(), icon: icon));
+              },
               child: const Text('만들기'),
             ),
           ],
@@ -49,7 +56,10 @@ class _PlaylistCreateScreenState extends State<PlaylistCreateScreen> {
                 TextField(
                   onChanged: (value) => name = value,
                   maxLength: 100,
-                  decoration: const InputDecoration(counterText: ''),
+                  decoration: InputDecoration(
+                    counterText: '',
+                    errorText: error,
+                  ),
                 ),
                 const SizedBox(height: 32),
                 const Text('아이콘'),

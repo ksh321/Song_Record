@@ -190,7 +190,7 @@ class _RecordingWorkspaceState extends State<RecordingWorkspace> {
         offstage: _capturing,
         child: Column(
           children: [
-            const SizedBox(height: 74),
+            const SizedBox(height: 24),
             StreamBuilder<List<Map<String, dynamic>>>(
               stream: _pending,
               builder: (context, snapshot) => _entry(

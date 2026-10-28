@@ -31,6 +31,7 @@ class RecordingPlayerScreen extends StatefulWidget {
 
 class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
   late final AudioPlayback player;
+  int? scrubPosition;
 
   @override
   void initState() {
@@ -89,7 +90,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
               const SizedBox(height: 40),
               Center(
                 child: Text(
-                  time(player.position),
+                  time(scrubPosition ?? player.position),
                   style: const TextStyle(
                     fontSize: 52,
                     fontWeight: FontWeight.w400,
@@ -115,27 +116,86 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
               const SizedBox(height: 40),
               SizedBox(
                 height: 135,
-                child: CustomPaint(
-                  painter: _Waveform(
-                    player.waveform,
-                    player.duration == 0
-                        ? 0
-                        : player.position / player.duration,
-                    Theme.of(context).colorScheme.primary,
-                  ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    void scrub(double x) => setState(() {
+                      scrubPosition =
+                          (x / constraints.maxWidth * player.duration)
+                              .round()
+                              .clamp(0, player.duration);
+                    });
+                    void commit() {
+                      final target = scrubPosition;
+                      setState(() => scrubPosition = null);
+                      if (target != null && seekable) {
+                        unawaited(player.seek(target));
+                      }
+                    }
+
+                    return Semantics(
+                      label: '재생 위치',
+                      value: time(scrubPosition ?? player.position),
+                      increasedValue: time(
+                        (player.position + 5000).clamp(0, player.duration),
+                      ),
+                      decreasedValue: time(
+                        (player.position - 5000).clamp(0, player.duration),
+                      ),
+                      onIncrease: seekable
+                          ? () => unawaited(
+                              player.seek(
+                                (player.position + 5000).clamp(
+                                  0,
+                                  player.duration,
+                                ),
+                              ),
+                            )
+                          : null,
+                      onDecrease: seekable
+                          ? () => unawaited(
+                              player.seek(
+                                (player.position - 5000).clamp(
+                                  0,
+                                  player.duration,
+                                ),
+                              ),
+                            )
+                          : null,
+                      child: GestureDetector(
+                        key: const ValueKey('playback-waveform'),
+                        behavior: HitTestBehavior.opaque,
+                        onTapUp: seekable
+                            ? (event) {
+                                scrub(event.localPosition.dx);
+                                commit();
+                              }
+                            : null,
+                        onHorizontalDragStart: seekable
+                            ? (event) => scrub(event.localPosition.dx)
+                            : null,
+                        onHorizontalDragUpdate: seekable
+                            ? (event) => scrub(event.localPosition.dx)
+                            : null,
+                        onHorizontalDragEnd: seekable ? (_) => commit() : null,
+                        onHorizontalDragCancel: () =>
+                            setState(() => scrubPosition = null),
+                        child: CustomPaint(
+                          size: Size.infinite,
+                          painter: _Waveform(
+                            player.waveform,
+                            player.duration == 0
+                                ? 0
+                                : (scrubPosition ?? player.position) /
+                                      player.duration,
+                            Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
-              const SizedBox(height: 10),
-              const Text('재생 위치', style: TextStyle(fontSize: 10)),
-              Slider(
-                semanticFormatterCallback: (v) => time(v.toInt()),
-                value: player.position.clamp(0, player.duration).toDouble(),
-                max: player.duration > 0 ? player.duration.toDouble() : 1,
-                onChanged: seekable
-                    ? (v) => unawaited(player.seek(v.toInt()))
-                    : null,
-              ),
-              const SizedBox(height: 45),
+              const SizedBox(height: 96),
               if (player.phase == PlaybackPhase.loading)
                 const Center(child: CircularProgressIndicator())
               else if (player.phase == PlaybackPhase.failed ||
@@ -180,7 +240,9 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen> {
                       onPressed: () => unawaited(
                         playing
                             ? player.pause()
-                            : player.phase == PlaybackPhase.paused
+                            : player.phase == PlaybackPhase.paused ||
+                                  (player.phase == PlaybackPhase.completed &&
+                                      player.position < player.duration)
                             ? player.resume()
                             : player.start(widget.recordingId),
                       ),
@@ -218,6 +280,13 @@ class _Waveform extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (peaks.isEmpty) return;
     final step = size.width / peaks.length;
+    canvas.drawLine(
+      Offset(size.width * progress, 0),
+      Offset(size.width * progress, size.height),
+      Paint()
+        ..color = color
+        ..strokeWidth = 2,
+    );
     for (var i = 0; i < peaks.length; i++) {
       final height = (peaks[i] * size.height).clamp(1.0, size.height);
       final paint = Paint()

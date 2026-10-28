@@ -102,6 +102,15 @@ void main() {
         player.removeListener(observe);
         await tester.pump();
         expect(find.byTooltip('일시정지'), findsOneWidget);
+        expect(find.byType(Slider), findsNothing);
+        final waveform = find.byKey(const ValueKey('playback-waveform'));
+        final box = tester.getRect(waveform);
+        await tester.dragFrom(
+          Offset(box.left + 10, box.center.dy),
+          Offset(box.width * .7, 0),
+        );
+        await tester.pump();
+        expect(port.seekAt, greaterThan(0));
         await tester.tap(find.byTooltip('5초 뒤로'));
         expect(port.seekAt, 0);
         await tester.tap(find.byTooltip('5초 앞으로'));
@@ -113,6 +122,21 @@ void main() {
         await tester.tap(find.byTooltip('재생'));
         await tester.pump();
         expect(port.plays, 2);
+        final loads = port.sources.length;
+        port.stream.add(
+          PlayerEvent(
+            port.sources.last['token'] as int,
+            PlaybackPhase.completed,
+            2000,
+            10000,
+          ),
+        );
+        await tester.pump();
+        await tester.tap(find.byTooltip('재생'));
+        await tester.pump();
+        expect(port.plays, 3);
+        expect(port.sources.length, loads);
+        expect(player.position, 2000);
         await tester.pumpWidget(const SizedBox());
         await tester.pump();
         expect(port.stops, greaterThanOrEqualTo(2));

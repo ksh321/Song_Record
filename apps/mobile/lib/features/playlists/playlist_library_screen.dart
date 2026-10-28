@@ -138,6 +138,7 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
   Future<void> edit([Map<String, dynamic>? row]) async {
     if (row == null) {
       final library = widget.library;
+      final epoch = widget.auth?.accountEpoch;
       final result = await Navigator.of(context)
           .push<({String name, String icon})>(
             MaterialPageRoute(
@@ -147,10 +148,17 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
               ),
             ),
           );
-      if (!mounted || result == null || !identical(library, widget.library)) {
+      if (!mounted || result == null || widget.auth?.accountEpoch != epoch) {
         return;
       }
-      await run(() => library.create(result.name, icon: result.icon)());
+      await run(() async {
+        if (!library.repository.sharesActiveStoreWith(
+          widget.library.repository,
+        )) {
+          throw StateError('Account changed');
+        }
+        await widget.library.create(result.name, icon: result.icon)();
+      });
       return;
     }
     var input = row['name'] as String;

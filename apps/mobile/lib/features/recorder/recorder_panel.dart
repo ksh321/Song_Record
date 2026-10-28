@@ -288,7 +288,7 @@ class _RecorderPanelState extends State<RecorderPanel>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 26),
+        const SizedBox(height: 8),
         Text(
           completed
               ? '녹음이 완료됐어요'
@@ -325,7 +325,7 @@ class _RecorderPanelState extends State<RecorderPanel>
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-        const SizedBox(height: 38),
+        const SizedBox(height: 16),
         Text(
           time,
           key: const ValueKey('recorder-service-time'),
@@ -415,7 +415,7 @@ class _RecorderPanelState extends State<RecorderPanel>
             '알림 권한이 꺼져 있어요. 녹음은 계속되며 진행 알림은 보이지 않을 수 있어요.',
             textAlign: TextAlign.center,
           ),
-        SizedBox(height: recording ? 40 : 54),
+        const SizedBox(height: 24),
         if (!completed)
           Center(
             child: TextButton(
@@ -483,7 +483,7 @@ class _RecorderPanelState extends State<RecorderPanel>
               ),
             ),
           ),
-        if (!completed) const SizedBox(height: 32),
+        if (!completed) const SizedBox(height: 8),
         if (completed) ...[
           TextButton(onPressed: _playLatest, child: const Text('완료 녹음 듣기')),
           if (_persisting)

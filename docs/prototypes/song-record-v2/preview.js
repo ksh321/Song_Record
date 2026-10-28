@@ -345,7 +345,7 @@
   }
   const selection=(label,description,action,attrs='',glyph='music')=>`<button type="button" class="v3-source" data-v3="${action}" ${attrs}><span class="v3-source-icon">${icon(glyph,22)}</span><span><strong>${e(label)}</strong><small>${e(description)}</small></span>${icon('chevron',16)}</button>`;
   const titleOf=item=>F.songs.get(item.songId)?.title||item.candidate?.title||F.catalog.get('TJ:'+item.key.slice(3))?.title||'곡';
-  function dragRow(kind,id,label,html){return `<div class="v3-draggable" data-drag-kind="${kind}" data-drag-id="${e(id)}" tabindex="0" aria-label="${e(label)} 순서 변경: 길게 누르거나 스페이스 키"><span class="v3-grip" aria-hidden="true">⠿</span>${html}</div>`;}
+  function dragRow(kind,id,label,html){return `<div class="v3-draggable" data-drag-kind="${kind}" data-drag-id="${e(id)}" tabindex="0" aria-label="${e(label)} 순서 변경: 스페이스 키"><span class="v3-grip" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16M4 15h16"/></svg></span>${html}</div>`;}
   function playlistView(list){
     const items=list.items.filter(i=>!i.hiddenBy);
     return `<div class="v3-list-tools"><span>${items.length}곡</span>${button('곡 추가','add-source',`data-list="${e(list.id)}"`,'command primary')}<button type="button" class="v3-more" data-ui="list-menu" data-list="${e(list.id)}" aria-label="플레이리스트 메뉴">⋮</button></div>`+
@@ -371,7 +371,7 @@
   function playback(){
     const r=F.recordings.get(s.record)||F.recordings.get('r2'),available=r.local||r.cloud==='보관됨';
     const bars=Array.from({length:74},(_,i)=>`<i style="height:${10+Math.round(Math.abs(Math.sin(i*1.7)*Math.cos(i*.23))*70)}%"></i>`).join('');
-    return `<div class="v3-player"><div class="v3-player-time" data-v3-time>${time(s.position)}</div><p class="v3-player-total">${time(r.duration)}</p><div class="v3-wave" aria-hidden="true">${bars}<span class="v3-playhead" style="left:${s.position/r.duration*100}%"></span></div><label class="v3-seek-label">재생 위치<input type="range" data-v3-seek aria-label="재생 위치" min="0" max="${r.duration}" step="0.1" value="${s.position}"></label><div class="v3-play-controls">${button('↶ 5','skip','data-seconds="-5" aria-label="5초 뒤로"','v3-skip')}${button(s.playing?'Ⅱ':'▶','play',`aria-label="${s.playing?'일시 정지':'재생'}" ${available?'':'disabled'}`,'v3-play-main')}${button('5 ↷','skip','data-seconds="5" aria-label="5초 앞으로"','v3-skip')}</div><p class="v3-player-state">${e(X.fileState(r))}</p></div>`;
+    return `<div class="v3-player"><div class="v3-player-time" data-v3-time>${time(s.position)}</div><p class="v3-player-total">${time(r.duration)}</p><div class="v3-wave" data-wave-seek tabindex="0" role="slider" aria-label="재생 위치" aria-valuemin="0" aria-valuemax="${r.duration}" aria-valuenow="${s.position}">${bars}<span class="v3-playhead" style="left:${s.position/r.duration*100}%"></span></div><div class="v3-play-controls">${button('↶ 5','skip','data-seconds="-5" aria-label="5초 뒤로"','v3-skip')}${button(s.playing?'Ⅱ':'▶','play',`aria-label="${s.playing?'일시 정지':'재생'}" ${available?'':'disabled'}`,'v3-play-main')}${button('5 ↷','skip','data-seconds="5" aria-label="5초 앞으로"','v3-skip')}</div><p class="v3-player-state">${e(X.fileState(r))}</p></div>`;
   }
   function backupSummary(example='review',done=false){
     return `<div class="v3-import-summary">${field(done?'가져온 기록':'가져올 기록','내 곡 3개 · 녹음 정보 8개 · 녹음 파일 7개')}`+
@@ -609,6 +609,20 @@
     }
   },true);
   window.addEventListener('input',event=>{if(event.target.hasAttribute('data-v3-seek')){s.position=Number(event.target.value);updatePlayer();}});
+  let wavePointer = null;
+  function seekWave(event) {
+    const wave = document.querySelector('.device-holder [data-wave-seek]');
+    const recording = F.recordings.get(s.record);
+    if (!wave || !recording) return;
+    const rect = wave.getBoundingClientRect();
+    s.position = Math.max(0, Math.min(recording.duration, (event.clientX - rect.left) / rect.width * recording.duration));
+    wave.setAttribute('aria-valuenow', s.position);
+    updatePlayer();
+  }
+  window.addEventListener('pointerdown', event => {const wave=event.target.closest('[data-wave-seek]');if(!wave)return;wavePointer=event.pointerId;wave.setPointerCapture(event.pointerId);seekWave(event);});
+  window.addEventListener('pointermove', event => {if(wavePointer===event.pointerId)seekWave(event);});
+  for(const name of ['pointerup','pointercancel'])window.addEventListener(name,event=>{if(event.pointerId===wavePointer)wavePointer=null;});
+  window.addEventListener('keydown',event=>{if(!event.target.matches('[data-wave-seek]')||!['ArrowLeft','ArrowRight'].includes(event.key))return;event.preventDefault();const r=F.recordings.get(s.record);s.position=Math.max(0,Math.min(r.duration,s.position+(event.key==='ArrowLeft'?-5:5)));updatePlayer();});
   function updatePlayer(){const r=F.recordings.get(s.record);if(!r)return;const root=document.querySelector('.device-holder');const timeNode=root?.querySelector('[data-v3-time]');if(timeNode)timeNode.textContent=time(s.position);const slider=root?.querySelector('[data-v3-seek]');if(slider)slider.value=s.position;const head=root?.querySelector('.v3-playhead');if(head)head.style.left=s.position/r.duration*100+'%';}
   setInterval(()=>{if(current()!=='v2-playback'){s.playing=false;return;}if(!s.playing)return;const duration=F.recordings.get(s.record)?.duration||0;s.position=Math.min(duration,s.position+.1);updatePlayer();if(s.position>=duration){s.playing=false;render();}},100);
   // Pointer drag is provisional until release; Escape/cancel restores the saved order.
@@ -837,8 +851,8 @@ window.Prototype.render();
  if(mode==='select'){const all=document.createElement('button');all.className='pl-all';const rows=[...c.children];const checked=rows.length>0&&rows.every(x=>selected.has(x.dataset.dragId));all.innerHTML=`<span class="bulk-box" aria-checked="${checked}">${checked?'✓':''}</span> 전체 <span class="bulk-count">${selected.size}</span>`;all.onclick=()=>{rows.forEach(x=>checked?selected.delete(x.dataset.dragId):selected.add(x.dataset.dragId));draw();};bar.append(all);
  rows.forEach(row=>{const check=document.createElement('span');check.className='pl-edit-check bulk-box';check.setAttribute('aria-checked',String(selected.has(row.dataset.dragId)));check.textContent=selected.has(row.dataset.dragId)?'✓':'';row.prepend(check);});
  const footer=document.createElement('div');footer.className='pl-edit-footer bulk-delete-bar';const del=document.createElement('button');del.className='command primary';del.textContent=scope==='all'?`선택한 ${selected.size}개 플리 삭제`:`선택한 ${selected.size}곡 목록에서 제거`;del.disabled=!selected.size;del.onclick=()=>{if(!window.confirm(scope==='all'?'선택한 플레이리스트를 삭제할까요? 내 곡과 녹음은 유지됩니다.':'선택한 곡을 이 목록에서만 제거할까요? 내 곡과 녹음은 유지됩니다.'))return;if(scope==='all')selected.forEach(id=>F.playlists.delete(id));else{const list=F.playlists.get(scope);list.items=list.items.filter(x=>!selected.has(x.id));}reset();renderKeepingScroll();};footer.append(del);r.append(footer);
- }else{const done=document.createElement('button');done.textContent='완료';done.onclick=()=>{reset();renderKeepingScroll();};bar.append(done);}
- bar.append(cancel);if(mode==='select'||(mode==='order'&&orderScrolled&&scope==='all')){const summary=scope==='all'?r.querySelector('.v4-playlist-summary'):c.previousElementSibling;summary.classList.add('pl-selection-slot');summary.removeAttribute('aria-hidden');summary.append(bar);}else c.before(bar);scrollBody.scrollTop=scrollTop;
+ }else{bar.append(cancel);const done=document.createElement('button');done.textContent='완료';done.onclick=()=>{reset();renderKeepingScroll();};bar.append(done);}
+ if(mode==='select')bar.append(cancel);if(mode==='select'||(mode==='order'&&scope==='all')){const summary=scope==='all'?r.querySelector('.v4-playlist-summary'):c.previousElementSibling;summary.classList.add('pl-selection-slot');summary.removeAttribute('aria-hidden');summary.append(bar);}else c.before(bar);scrollBody.scrollTop=scrollTop;
  }
  const prev=window.EDIT_UI.afterRender;window.EDIT_UI.afterRender=function(...args){prev?.apply(this,args);draw();};
  window.addEventListener('click',ev=>{const row=ev.target.closest('.device-holder .v3-draggable');if(!row||!mode)return;ev.preventDefault();ev.stopImmediatePropagation();if(mode==='select'){selected.has(row.dataset.dragId)?selected.delete(row.dataset.dragId):selected.add(row.dataset.dragId);draw();}},true);

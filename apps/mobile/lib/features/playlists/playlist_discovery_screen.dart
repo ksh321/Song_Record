@@ -45,47 +45,22 @@ class _PlaylistDiscoveryScreenState extends State<PlaylistDiscoveryScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: appPageBar(context, title: const Text('목록에 추가할 곡 찾기')),
+    appBar: appPageBar(context, title: Text(tab == 1 ? '인기 차트' : '검색')),
     body: SafeArea(
-      child: Column(
-        children: [
-          SegmentedButton<int>(
-            segments: [
-              const ButtonSegment(value: 0, label: Text('검색')),
-              ButtonSegment(
-                value: 1,
-                label: const Text('인기 차트'),
-                enabled: widget.chartLoad != null,
-              ),
-            ],
-            selected: {tab},
-            onSelectionChanged: (value) => setState(() => tab = value.single),
-          ),
-          Expanded(
-            child: IndexedStack(
-              index: tab,
-              children: [
-                KaraokeSearchScreen(
-                  load: widget.searchLoad,
-                  auth: widget.auth,
-                  intent: widget.intent,
-                  onSelected: select,
-                ),
-                if (widget.chartLoad != null)
-                  PopularChartScreen(
-                    load: widget.chartLoad!,
-                    searchLoad: widget.searchLoad,
-                    auth: widget.auth,
-                    intent: widget.intent,
-                    onSelected: select,
-                  )
-                else
-                  const SizedBox.shrink(),
-              ],
+      child: tab == 1
+          ? PopularChartScreen(
+              load: widget.chartLoad!,
+              searchLoad: widget.searchLoad,
+              auth: widget.auth,
+              intent: widget.intent,
+              onSelected: select,
+            )
+          : KaraokeSearchScreen(
+              load: widget.searchLoad,
+              auth: widget.auth,
+              intent: widget.intent,
+              onSelected: select,
             ),
-          ),
-        ],
-      ),
     ),
   );
 }

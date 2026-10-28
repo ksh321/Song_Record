@@ -36,6 +36,7 @@ class EditableCollection extends StatefulWidget {
     this.onRefresh,
     this.footer = const SizedBox.shrink(),
     this.enabled = true,
+    this.rowSpacing = 8,
   });
   final List<String> ids;
   final List<String>? selectionIds;
@@ -51,6 +52,7 @@ class EditableCollection extends StatefulWidget {
   final Future<void> Function(List<String>)? onReorder;
   final String Function(int) deleteLabel;
   final bool enabled;
+  final double rowSpacing;
   @override
   State<EditableCollection> createState() => _EditableCollectionState();
 }
@@ -341,7 +343,7 @@ class _EditableCollectionState extends State<EditableCollection> {
                       final id = ids[index];
                       return Padding(
                         key: ValueKey(id),
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.only(bottom: widget.rowSpacing),
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onLongPress: enabled && ordering == null

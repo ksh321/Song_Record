@@ -61,7 +61,7 @@ class MusicRowSurface extends StatelessWidget {
                       : const EdgeInsets.all(
                           AppDimensions.compactSongRowPadding,
                         )),
-              child: child,
+              child: Align(alignment: Alignment.centerLeft, child: child),
             ),
           ),
         ),

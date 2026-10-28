@@ -33,6 +33,7 @@ void main() {
                     context,
                     MaterialPageRoute(
                       builder: (_) => PlaylistDiscoveryScreen(
+                        initiallyCharts: true,
                         intent: intent,
                         searchLoad: playlistSearchFixture,
                         chartLoad: playlistChartFixture,
@@ -49,8 +50,7 @@ void main() {
       Future<void> open() async {
         await t.tap(find.text('원래 목록'));
         await t.pumpAndSettle();
-        await t.tap(find.text('인기 차트'));
-        await t.pumpAndSettle();
+        expect(find.byType(SegmentedButton<int>), findsNothing);
         await t.tap(find.text('금영'));
         await t.pumpAndSettle();
         await t.tap(find.text('미등록 TJ 후보'));

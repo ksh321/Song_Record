@@ -357,3 +357,22 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 
 /* Header settings: icon only, retaining its existing touch target. */
 .phone .phone-header .settings-button,.phone.v4-light .phone-header .settings-button{background:transparent;border:0;box-shadow:none}
+
+/* Shared compact recorder layout and waveform-only seeking. */
+.phone .v2-record-intro{padding-top:8px;padding-bottom:0}
+.phone:has(.v2-record-intro) .phone-body{gap:10px}
+.phone .v2-timer{margin:0}
+.phone:has(.v2-record-intro) .record-control-wrap{padding-top:24px;padding-bottom:8px;margin:0}
+.phone .v2-record-footnote{margin:14px 0 24px}
+.phone .v3-wave{border:0;touch-action:pan-y;cursor:ew-resize}
+.phone .v3-player .v3-wave i{background:var(--accent)}
+.phone .v3-playhead{background:var(--accent);box-shadow:none}
+.phone .v3-play-controls{margin-top:96px}
+.phone.pl-ordering .pl-edit-tools{justify-content:space-between}
+.phone.pl-ordering .v3-grip{order:2;width:44px;min-width:44px;flex:0 0 44px;font-size:24px}
+.phone .compact-row{align-items:center;padding-top:14px;padding-bottom:14px}
+.phone.pl-ordering .v4-playlist-summary{position:sticky;top:0;z-index:12;min-height:52px;pointer-events:none}
+.phone.pl-ordering .v4-playlist-summary>:not(.pl-edit-tools){visibility:hidden}
+.phone.pl-ordering .v4-playlist-summary>.pl-edit-tools{position:absolute;inset:0;padding:0;margin:0;pointer-events:auto}
+.phone.pl-ordering .v3-draggable{background:transparent;border:0;padding:0}
+.phone.pl-ordering .v3-draggable>.v3-list-song{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px;min-height:78px}

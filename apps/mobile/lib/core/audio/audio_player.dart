@@ -279,7 +279,10 @@ final class AudioPlayback extends ChangeNotifier {
   }
 
   Future<void> resume() async {
-    if (phase != PlaybackPhase.paused) return;
+    if (phase != PlaybackPhase.paused &&
+        !(phase == PlaybackPhase.completed && position < duration)) {
+      return;
+    }
     final token = _token;
     try {
       await _guard(token);

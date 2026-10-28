@@ -207,6 +207,7 @@ class _MySongsScreenState extends State<MySongsScreen> {
     final groups = groupMySongs(pages.ordered, sort);
     return EditableCollection(
       key: ValueKey(scope),
+      rowSpacing: 0,
       ids: visible.map((song) => song.view.id.value).toList(),
       selectionIds: pages.ordered.map((song) => song.view.id.value).toList(),
       onDelete: deleteSelected,

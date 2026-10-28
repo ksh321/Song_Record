@@ -61,7 +61,12 @@ void main() {
             await t.tap(find.text('취소'));
             await t.pumpAndSettle();
             await t.tap(find.text('이 기기 파일 정리'));
-            await Future<void>.delayed(const Duration(milliseconds: 120));
+            final deadline = DateTime.now().add(const Duration(seconds: 10));
+            while (find.text('파일을 복구하지 못할 수 있음을 이해했습니다').evaluate().isEmpty &&
+                DateTime.now().isBefore(deadline)) {
+              await Future<void>.delayed(const Duration(milliseconds: 20));
+              await t.pump();
+            }
             await t.pumpAndSettle();
             expect(find.text('파일을 복구하지 못할 수 있음을 이해했습니다'), findsOneWidget);
             await t.tap(find.text('취소'));
