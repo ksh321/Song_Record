@@ -812,3 +812,17 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 현재 모델 별도 검토: 옵션 기본값으로 범위 제한, 기존 값/해제/취소 보존, 폰트·동적 높이·테마 선·내 곡/후보 공통 적용 확인. UI만 변경, 계정/DB/동기화/삭제 판단 변경 없음. 서명 빌드/설치·기존 대표 선택 취소 실기 및 필수CI 진행 예정. 새 녹음·선택 저장/삭제 없이 진행.
 
 - 최종 서명 APK9840ddd9526736b8b0f73318b8a23c7484cb3fb0a9f5901934b703e26126259d install-r Success, 소스/기기APK SHA 일치. 기존 곡의 대표 녹음 선택창에서 실제 항목 사이 선 확인 후 뒤로 취소(설정 저장 없음). 곡 선택 높이는 기존 격리 선택 회귀/HTML62px 검증 사용, 새 녹음은 만들지 않음. 개인 자료 생성·삭제 없음. 대상 커밋 필수 CI 진행.
+
+### P25-04 곡 상세 재생 공통화·대표 미리보기·역할 카드 정리 — 2026-10-28
+- 이전 곡 선택 여백/대표선 커밋8a7212d 필수 CI40676459497 PASS, APK9840ddd9 설치·대표선 취소 실기 완료. 결과 수집 중 사용자 추가 요청으로 같은P25 후속을 계속함.
+- 사용자 추가: 곡 상세 녹음의 재생/시간 버튼을 전체 녹음과 동일한 사용자 색·공통 관리로 연결. 대표 녹음 목록에서 정보/재생을 확인한 뒤 명시 지정. 최신/최저 티어 녹음 UI를 공통화.
+- 원인: SongDetailScreen의 RecordingRow에 onPlay가 빠져 비활성 색으로 표시됨. 기존 RecordingRow는 이미 공통 컴포넌트였음. RecordingList/곡 상세/역할은 새 recording_navigation.dart의 openRecordingPlayback을 함께 사용. 기존 RecordingAudioAccess.createPlayer(store)의 계정/파일/재생 방어를 재사용하고, 상세 진입은 기존 스냅샷 경로 사용.
+- RecordingRolesCard 3역할을 동일 RecordingRow 카드로 표시: 날짜·사용자색 재생/시간 → 티어·곡명·가수·키. 역할 계산·unique count·접기 정책은 유지. 연결 녹음 행도 같은 재생 콜백.
+- showSelectionSheet의 선택적 onPreview(callback bool) 추가: false/뒤로면 목록 유지, true일 때만 결과 반환. 대표 선택은 root navigator 위 SongDetailScreen(selectionPreview)로 열어 정보·RecordingAudioPanel 재생·메모를 확인. ‘이 녹음을 대표로 지정’ 버튼을 명시적으로 눌러야 결과를 내고 기존 준비/저장 경로 실행. 반복 확인 방지·계정 변경/활성 녹음 확인, 미리보기 뒤 최신 부모 detail로 명령 준비. 스키마/서버/원래 대표 규칙 변경 없음.
+- HTML은 R.recordCard를 전체/연결/역할에서 재사용하고 대표 미리보기는 앱과 같은 정보/재생/메모 구역으로 표시. 대표 행 클릭은 preview→기존 모의 재생 왕복→확인/취소로 연결, 취소 시 representative 유지. 두 테마 실제 클릭 확인 PASS.
+- 검사: 관련 selection_sheets/song_representative/song_detail/music_components/recording_list/recording_player_screen 36 PASS. 분석 지적0. 신규 검사는 미리보기 취소/확인 결과와 root sheet 위 preview·확인 전 저장0/확인 후1을 검증. 공통 행 재사용으로 중복된 기존 단일 finder는 연결행 키/모든 행 최소높이 검사로 범위를 명확히 함(기존 검증 약화 없음). 초기 harness 실패는 중복 finder/미리보기 스트림 미발행 상태 pumpAndSettle 대기였고, 실제 데이터 전달 후 최종통과.
+- 현재 모델 별도 검토: 같은 공통 행/플레이어 사용·snapshot 보존·명시 확인/중복 방지·최신 detail 및 계정 fence·취소 부작용 없음·자원 수명(기존Playerdispose) 대조. 사용자 현재 Sol 계속 진행 예외 선호 유지. 개인 자료 시험 생성/삭제/대표 지정은 하지 않고 실기 확인창 취소로 검증 예정. 최종 빌드/설치/CI 진행.
+
+- 실기: APK17161296 설치/기기·소스SHA 일치. 곡 상세 대표/최신/최저·연결 녹음 모두 사용자색 재생/시간 표시 확인. 대표 목록의 기존1.3초 녹음 선택→정보/메모/고정 확인 버튼→재생0.4/1.3초와 파형 표시→뒤로 정보→뒤로 목록→취소 확인. 연결 녹음의 사용자색 버튼도 재생0.8/1.3초로 이어짐 확인. 대표 지정/해제는 누르지 않아 개인 설정 쓰기 없음. 마지막 앱 전면 이탈을 감지해 추가 조작 중단, 다른 앱은 확인/조작하지 않음.
+- 실기에서 미리보기 제목 잘림을 발견해 해당 제목만18px로 조정. 영향12 PASS, 제목/대표8 PASS(360px 실제 뒤로 버튼이 있는 화면·양쪽 테마 RenderParagraph.didExceedMaxLines=false), 최종 analyze0. 새 테스트의 초기 잘못된 Theme helper명은 실제 AppTheme.preview(light:true)로 교정, 제품 실행 실패와 구분.
+- 최종 APKcf16547b97311eb00ae501502891bf281548e77ce835c65b0a2d135bea3b8688 install-r Success/기기·전체소스 SHA 일치. 기능 실기는17161296에서 확인했고 이후 변경은 제목18px뿐이며 좁은 화면 양쪽 테마 검사로 재검증(기능 실기 반복 불필요). 사용자 다른 앱 사용을 방해하지 않도록 최종 설치 뒤 앱 자동 조작 없음. 원본/계정/키/업로드/서버 설정 변경 없음. 커밋·필수CI 진행.

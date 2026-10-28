@@ -14,11 +14,13 @@ import '../../core/widgets/recording_row.dart';
 import '../../core/widgets/scroll_to_top_button.dart';
 import '../../core/widgets/selection_sheet.dart';
 import '../../core/widgets/song_badges.dart';
+import '../../core/widgets/song_row.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../../routing/app_routes.dart';
 import '../../routing/tab_navigation.dart';
 import '../auth/auth_session.dart';
 import '../recorder/recording_audio_panel.dart';
+import '../recorder/recording_navigation.dart';
 import '../trash/trash_screens.dart';
 import '../trash/trash_workflow.dart';
 import 'my_song_detail.dart';
@@ -34,6 +36,7 @@ class SongDetailScreen extends StatefulWidget {
     required this.watch,
     this.auth,
     this.recordingId,
+    this.selectionPreview = false,
     this.prepareEdit,
     this.prepareRepresentative,
     this.trash,
@@ -42,6 +45,7 @@ class SongDetailScreen extends StatefulWidget {
   final SongDetailWatch watch;
   final AuthController? auth;
   final String? recordingId;
+  final bool selectionPreview;
   final SongEditPreparer? prepareEdit;
   final RepresentativePreparer? prepareRepresentative;
   final TrashActions? trash;
@@ -56,7 +60,7 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
   bool changedAccount = false;
   late final String scope = tag();
   int generation = 0;
-  bool choosing = false, savingSuitability = false;
+  bool choosing = false, savingSuitability = false, confirmingSelection = false;
   String? representativeError;
   Future<void> Function()? representativeCommand;
   String tag() =>
@@ -139,6 +143,13 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
     ),
   );
 
+  void playRecording(RecordingViewData recording) => openRecordingPlayback(
+    context,
+    recording,
+    isCurrent: () => mounted && !changedAccount && tag() == scope,
+    onDetails: () => openRecording(recording.id),
+  );
+
   Future<void> chooseRepresentative(MySongDetail value) async {
     if (choosing || changedAccount || widget.prepareRepresentative == null) {
       return;
@@ -148,6 +159,21 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
         context: context,
         title: '대표 녹음 선택',
         showDividers: true,
+        onPreview: (id) async {
+          if (!mounted || changedAccount || tag() != scope) return false;
+          if (id == null) return true;
+          return await Navigator.of(context, rootNavigator: true).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => SongDetailScreen(
+                    watch: widget.watch,
+                    auth: widget.auth,
+                    recordingId: id,
+                    selectionPreview: true,
+                  ),
+                ),
+              ) ==
+              true;
+        },
         selected: value.roles.representative?.value,
         options: [
           for (final r in value.recordings)
@@ -163,9 +189,15 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
       if (!mounted || result == null || changedAccount || tag() != scope) {
         return;
       }
+      final current = detail;
+      if (current == null ||
+          current.song == null ||
+          current.song!.view.id != value.song!.view.id) {
+        return;
+      }
       try {
         representativeCommand = widget.prepareRepresentative!(
-          value,
+          current,
           result.value == null ? null : RecordingId(result.value!),
         );
       } catch (_) {
@@ -198,7 +230,14 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
     final value = detail;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.recordingId == null ? '곡 상세' : '녹음 정보'),
+        title: Text(
+          widget.selectionPreview
+              ? '대표 녹음 확인'
+              : widget.recordingId == null
+              ? '곡 상세'
+              : '녹음 정보',
+          style: widget.selectionPreview ? const TextStyle(fontSize: 18) : null,
+        ),
         actions: [
           const ThemeToggle(),
           IconButton(
@@ -219,6 +258,30 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
           const SizedBox(width: 20),
         ],
       ),
+      bottomNavigationBar: widget.selectionPreview
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: FilledButton(
+                  onPressed:
+                      !confirmingSelection &&
+                          !changedAccount &&
+                          tag() == scope &&
+                          value != null &&
+                          value.song != null &&
+                          value.recordings.any(
+                            (r) => r.id.value == widget.recordingId,
+                          )
+                      ? () {
+                          setState(() => confirmingSelection = true);
+                          Navigator.of(context).pop(true);
+                        }
+                      : null,
+                  child: const Text('이 녹음을 대표로 지정'),
+                ),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: changedAccount
             ? const ContentState(
@@ -436,6 +499,8 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
                 ? null
                 : () => chooseRepresentative(detail),
             onOpenRecording: openRecording,
+            onPlayRecording: (id) =>
+                playRecording(detail.recordings.firstWhere((r) => r.id == id)),
           ),
           if (representativeError != null) ...[
             Text(representativeError!),
@@ -452,7 +517,9 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
             Padding(
               padding: const EdgeInsets.only(top: AppSpacing.sm),
               child: RecordingRow(
+                key: ValueKey('linked-recording-${r.id.value}'),
                 recording: r,
+                onPlay: () => playRecording(r),
                 onTap: () => Navigator.of(context).push<void>(
                   MaterialPageRoute(
                     builder: (_) => SongDetailScreen(
@@ -500,18 +567,46 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
     return ListView(
       padding: AppLayout.bodyPadding,
       children: [
-        Text(snapshot.title, style: Theme.of(context).textTheme.headlineSmall),
-        Text(snapshot.artist),
-        Text(formatVersionCode(snapshot.version)),
-        Text(formatMusicalKey(snapshot.key)),
-        Text('녹음 티어: ${formatRecordingTier(view.tier)}'),
-        Text(view.dateLabel),
-        Text(view.durationLabel),
-        Text(view.fileAvailability.label),
-        RecordingAudioPanel(view.id.value),
-        const SizedBox(height: AppSpacing.md),
-        const Text('녹음 당시 메모'),
-        Text(snapshot.note.isEmpty ? '작성한 메모가 없어요.' : snapshot.note),
+        AppPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                snapshot.title,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 6),
+              Text(snapshot.artist),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(formatVersionCode(snapshot.version)),
+                  MusicalKeyBadge(value: snapshot.key),
+                  Text('녹음 티어: ${formatRecordingTier(view.tier)}'),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(view.dateLabel),
+              Text(view.durationLabel),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        AppPanel(child: RecordingAudioPanel(view.id.value, compact: true)),
+        const SizedBox(height: 14),
+        AppPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('녹음 당시 메모'),
+              const SizedBox(height: 8),
+              Text(snapshot.note.isEmpty ? '작성한 메모가 없어요.' : snapshot.note),
+            ],
+          ),
+        ),
       ],
     );
   }

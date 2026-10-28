@@ -25,7 +25,9 @@ Future<SelectionResult<T>?> showSelectionSheet<T>({
   required List<SelectionOption<T>> options,
   String? description,
   bool showDividers = false,
+  Future<bool> Function(T value)? onPreview,
 }) {
+  var previewing = false;
   final choices = List<SelectionOption<T>>.unmodifiable(options);
   if (choices.isEmpty ||
       choices.map((option) => option.value).toSet().length != choices.length ||
@@ -102,9 +104,20 @@ Future<SelectionResult<T>?> showSelectionSheet<T>({
                     trailing: option.value == selected
                         ? const AppIcon(Icons.check, semanticLabel: '선택됨')
                         : null,
-                    onTap: () =>
-                        Navigator.of(sheetContext)
-                            .pop(SelectionResult<T>(option.value)),
+                    onTap: () async {
+                      if (previewing) return;
+                      previewing = true;
+                      try {
+                        final accepted =
+                            onPreview == null || await onPreview(option.value);
+                        if (sheetContext.mounted && accepted) {
+                          Navigator.of(sheetContext)
+                              .pop(SelectionResult<T>(option.value));
+                        }
+                      } finally {
+                        previewing = false;
+                      }
+                    },
                   ),
                 ),
               ),

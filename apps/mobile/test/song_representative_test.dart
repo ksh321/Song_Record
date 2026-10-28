@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_paths.dart';
@@ -39,6 +40,45 @@ MySongDetail roles({String? representative}) => MySongDetail({
   ],
 });
 void main() {
+  testWidgets(
+    'representative confirmation title fits a narrow phone in both themes',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      for (final theme in [AppTheme.dark(), AppTheme.preview(light: true)]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute(
+                      builder: (_) => SongDetailScreen(
+                        watch: () => Stream.value(fixture.detail()),
+                        recordingId: id(30),
+                        selectionPreview: true,
+                      ),
+                    ),
+                  ),
+                  child: const Text('미리보기 열기'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('미리보기 열기'));
+        await tester.pumpAndSettle();
+        final paragraph = tester.renderObject<RenderParagraph>(
+          find.text('대표 녹음 확인'),
+        );
+        expect(paragraph.didExceedMaxLines, isFalse);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      }
+    },
+  );
+
   TestWidgetsFlutterBinding.ensureInitialized();
   test('three roles stay metadata based and overlap is counted once', () {
     final value = roles(representative: id(30));
@@ -454,6 +494,73 @@ void main() {
       await root.delete(recursive: true);
     }
   });
+  testWidgets(
+    'representative preview opens above root sheet and saves only on confirm',
+    (tester) async {
+      final stream = StreamController<MySongDetail>.broadcast();
+      var prepared = 0;
+      RecordingId? chosen;
+      final value = roles(representative: id(30));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.dark(),
+          home: Navigator(
+            onGenerateRoute: (_) => MaterialPageRoute(
+              builder: (_) => SongDetailScreen(
+                watch: () => stream.stream,
+                prepareRepresentative: (detail, recording) {
+                  prepared++;
+                  chosen = recording;
+                  return () async {};
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      stream.add(value);
+      await tester.pump();
+      await tester.scrollUntilVisible(
+        find.text('대표 녹음'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.ensureVisible(find.text('대표 녹음'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('대표 녹음'));
+      await tester.pumpAndSettle();
+      final option = find
+          .descendant(
+            of: find.byType(BottomSheet),
+            matching: find.byType(ListTile),
+          )
+          .first;
+      await tester.tap(option);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      stream.add(value);
+      await tester.pumpAndSettle();
+      expect(find.text('대표 녹음 확인'), findsOneWidget);
+      expect(find.text('녹음 당시 제목'), findsOneWidget);
+      expect(prepared, 0);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('대표 녹음 선택'), findsOneWidget);
+      expect(prepared, 0);
+      await tester.tap(option);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      stream.add(value);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('이 녹음을 대표로 지정'));
+      await tester.pumpAndSettle();
+      expect(prepared, 1);
+      expect(chosen, value.recordings.first.id);
+      await tester.pumpWidget(const SizedBox());
+      await stream.close();
+    },
+  );
+
   testWidgets(
     'role rows stay visible while only explanation collapses; cancelled choice does not save',
     (tester) async {

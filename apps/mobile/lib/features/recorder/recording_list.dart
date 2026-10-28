@@ -8,11 +8,10 @@ import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/recording_row.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../songs/my_song_detail.dart';
-import 'recording_audio_panel.dart';
 import 'recording_filter.dart';
+import 'recording_navigation.dart';
 import 'recording_order.dart';
 import 'recording_pages.dart';
-import 'recording_player_screen.dart';
 
 export 'recording_order.dart';
 
@@ -111,28 +110,13 @@ class _RecordingListState extends State<RecordingList> {
     return status == null ? view : view.withFileStatus(status);
   }
 
-  void play(Map<String, dynamic> row, {bool autoplay = true}) {
-    final access = context
-        .dependOnInheritedWidgetOfExactType<RecordingAudioAccess>();
-    final store = access?.store();
-    if (access == null || store == null) {
-      widget.onOpen(row);
-      return;
-    }
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => RecordingPlayerScreen(
-          recordingId: row['id'] as String,
-          autoplay: autoplay,
-          title:
-              '${row['artist_snapshot']} · ${row['title_snapshot']} ${formatMusicalKey(recordingView(row).snapshot.key)}',
-          initialDuration: recordingView(row).duration.inMilliseconds,
-          onDetails: () => widget.onOpen(row),
-          createPlayer: () => access.createPlayer(store),
-        ),
-      ),
-    );
-  }
+  void play(Map<String, dynamic> row, {bool autoplay = true}) =>
+      openRecordingPlayback(
+        context,
+        recordingView(row),
+        autoplay: autoplay,
+        onDetails: () => widget.onOpen(row),
+      );
 
   @override
   Widget build(BuildContext context) {

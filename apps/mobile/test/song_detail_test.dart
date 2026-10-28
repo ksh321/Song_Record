@@ -109,9 +109,8 @@ void main() {
       MaterialApp(
         theme: AppTheme.dark(),
         routes: {
-          '/settings': (_) => Scaffold(
-            appBar: AppBar(title: const Text('앱 설정 도착')),
-          ),
+          '/settings': (_) =>
+              Scaffold(appBar: AppBar(title: const Text('앱 설정 도착'))),
         },
         home: Navigator(
           onGenerateRoute: (_) => MaterialPageRoute<void>(
@@ -149,13 +148,15 @@ void main() {
       expect(find.text('곡메모'), findsOneWidget);
       expect(find.text('언어'), findsNothing);
       await tester.scrollUntilVisible(
-        find.text('녹음 당시 제목'),
+        find.byKey(ValueKey('linked-recording-${id(30)}')),
         300,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.ensureVisible(find.text('녹음 당시 제목'));
+      await tester.ensureVisible(
+        find.byKey(ValueKey('linked-recording-${id(30)}')),
+      );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('녹음 당시 제목'));
+      await tester.tap(find.byKey(ValueKey('linked-recording-${id(30)}')));
       await tester.pump();
       data.add(detail());
       await tester.pumpAndSettle();

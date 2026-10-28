@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:song_record/core/domain/domain_ordering.dart';
 import 'package:song_record/core/domain/identifiers.dart';
-import 'package:song_record/core/domain/song_types.dart';
 import 'package:song_record/core/theme/app_tokens.dart';
 import 'package:song_record/core/widgets/music_view_data.dart';
 
 import 'app_icon.dart';
+import 'recording_row.dart';
 
 class RecordingRolesCard extends StatelessWidget {
   RecordingRolesCard({
@@ -14,6 +14,7 @@ class RecordingRolesCard extends StatelessWidget {
     required Map<RecordingId, RecordingViewData> recordings,
     this.onChooseRepresentative,
     this.onOpenRecording,
+    this.onPlayRecording,
     super.key,
   }) : recordings = Map.unmodifiable(recordings) {
     for (final id in selection.uniqueIds) {
@@ -31,6 +32,7 @@ class RecordingRolesCard extends StatelessWidget {
   final Map<RecordingId, RecordingViewData> recordings;
   final VoidCallback? onChooseRepresentative;
   final ValueChanged<RecordingId>? onOpenRecording;
+  final ValueChanged<RecordingId>? onPlayRecording;
 
   @override
   Widget build(BuildContext context) {
@@ -112,55 +114,48 @@ class RecordingRolesCard extends StatelessWidget {
         : id == null || onOpenRecording == null
         ? null
         : () => onOpenRecording!(id);
-    return Semantics(
-      button: true,
-      enabled: tap != null,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: tap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              minHeight: AppDimensions.recordRoleRowMinHeight,
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: tap,
             child: Padding(
-              padding: AppDimensions.recordRoleRowPadding,
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          label,
-                          style: const TextStyle(
-                            fontSize: AppTypography.roleTitleSize,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.xs),
-                        Text(
-                          recording == null
-                              ? empty
-                              : '${recording.dateLabel} · ${recording.durationLabel} · ${formatRecordingTier(recording.tier)}',
-                          style: AppTypography.supporting,
-                        ),
-                      ],
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: AppTypography.roleTitleSize,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
                   if (action != null)
                     Text(action, style: AppTypography.supporting)
                   else if (recording != null)
-                    const AppIcon(Icons.chevron_right, size: 16)
-                  else
-                    const Text('—', style: AppTypography.supporting),
+                    const AppIcon(Icons.chevron_right, size: 16),
                 ],
               ),
             ),
           ),
-        ),
+          const SizedBox(height: 6),
+          if (recording == null)
+            Text(empty, style: AppTypography.supporting)
+          else
+            RecordingRow(
+              recording: recording,
+              onTap: onOpenRecording == null
+                  ? null
+                  : () => onOpenRecording!(recording.id),
+              onPlay: onPlayRecording == null
+                  ? null
+                  : () => onPlayRecording!(recording.id),
+            ),
+        ],
       ),
     );
   }

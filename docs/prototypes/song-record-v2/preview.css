@@ -429,3 +429,12 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 .phone .phone-body :is([data-flow="pick-record-song"],[data-v3="record-pick"]){min-height:60px;padding:8px 0;margin:0;gap:10px}
 .phone .phone-body :is([data-flow="pick-record-song"],[data-v3="record-pick"]) .compact-copy small{margin-top:3px}
 .phone .phone-body [data-flow="representative"]{border:0;border-bottom:1px solid var(--line,#393939);border-radius:0;background:transparent}
+
+.phone .record-role-section{padding:10px 0}
+.phone .record-role-section>.flow-role-row{min-height:36px;padding:4px 0;border:0;display:flex;align-items:center;justify-content:space-between}
+.phone .record-role-section .v3-record-card{margin:6px 0 0}
+
+.phone .representative-choice{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:72px;padding:12px 0;text-align:left;color:var(--text);background:transparent;border:0;border-bottom:1px solid var(--line)}
+.phone .representative-choice>span:first-child{min-width:0;display:flex;flex-direction:column;gap:6px}
+.phone .representative-choice strong{font-size:16px}.phone .representative-choice small{font-size:12px;color:var(--muted)}
+.phone .representative-info{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:14px 0}

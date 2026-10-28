@@ -292,10 +292,13 @@ void main() {
         tester.getSize(find.byType(SongRow).first).height,
         greaterThanOrEqualTo(AppDimensions.compactSongRowMinHeight),
       );
-      expect(
-        tester.getSize(find.byType(RecordingRow)).height,
-        greaterThanOrEqualTo(AppDimensions.recordRowMinHeight),
-      );
+      final recordingRows = find.byType(RecordingRow);
+      for (var index = 0; index < recordingRows.evaluate().length; index++) {
+        expect(
+          tester.getSize(recordingRows.at(index)).height,
+          greaterThanOrEqualTo(AppDimensions.recordRowMinHeight),
+        );
+      }
       expect(find.text(longSong.title), findsNWidgets(2));
     }
   });

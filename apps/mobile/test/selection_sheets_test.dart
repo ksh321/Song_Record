@@ -38,6 +38,40 @@ Future<void> launch(
 }
 
 void main() {
+  testWidgets(
+    'preview cancellation leaves selection unchanged until explicit confirmation',
+    (tester) async {
+      SelectionResult<String?>? result;
+      var accepted = false, previews = 0;
+      await launch(tester, (context) async {
+        result = await showSelectionSheet<String?>(
+          context: context,
+          title: '대표 선택 검사',
+          selected: null,
+          options: const [
+            SelectionOption('one', '미리 볼 녹음'),
+            SelectionOption(null, '대표 해제'),
+          ],
+          onPreview: (value) async {
+            previews++;
+            return accepted;
+          },
+        );
+      });
+      await tester.tap(find.text('미리 볼 녹음'));
+      await tester.pumpAndSettle();
+      expect(previews, 1);
+      expect(result, isNull);
+      expect(find.text('대표 선택 검사'), findsOneWidget);
+      accepted = true;
+      await tester.tap(find.text('미리 볼 녹음'));
+      await tester.pumpAndSettle();
+      expect(previews, 2);
+      expect(result?.value, 'one');
+      expect(find.text('대표 선택 검사'), findsNothing);
+    },
+  );
+
   testWidgets('내 곡과 녹음 정렬은 서로 다른 항목과 선택값을 반환한다', (tester) async {
     SelectionResult<SongSort>? song;
     await launch(tester, (context) async {

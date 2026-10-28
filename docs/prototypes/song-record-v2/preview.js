@@ -367,6 +367,7 @@
     const available=r.local||r.cloud==='보관됨';
     return `<article class="v3-record-card"><button type="button" class="v3-record-copy" data-v3="record-open" data-record="${e(r.id)}"><time>${e(date)}${!r.songId?" · 곡 미연결":""}</time><span class="v3-record-song"><span class="tier" data-tier="${e(r.tier)}">${e(r.tier)}</span><span class="compact-copy"><strong>${e(r.title)}</strong><small>${e(r.artist)}</small></span><span class="key ${r.key.startsWith('여')?'female':r.key.startsWith('남')?'male':''}">${e(r.key)}</span></span></button><div class="v3-record-action">${button('▶ '+F.renderHelpers.duration(r.duration),'record-play',`data-record="${e(r.id)}" aria-label="${e(r.title)} 재생 ${F.renderHelpers.duration(r.duration)}" ${available?'':'disabled'}`,'v3-duration')}<small>${e(!available?'재생할 파일 없음':'')}</small></div></article>`;
   }
+  R.recordCard=recordCard;
   const time=value=>F.renderHelpers.duration(Math.floor(value))+'.'+Math.floor((value%1)*10);
   function playback(){
     const r=F.recordings.get(s.record)||F.recordings.get('r2'),available=r.local||r.cloud==='보관됨';
@@ -916,5 +917,34 @@ if(window.Prototype.state.screen==='v3-record-source'){
  if(missing.length){const hint=document.createElement('div');hint.className='draft-missing-hint';hint.id='draft-missing-hint';hint.setAttribute('role','status');hint.textContent='아직 입력하지 않았어요: '+missing.join(' · ');button.before(hint);button.setAttribute('aria-describedby',hint.id);
  const songButton=r.querySelector('[data-v3="record-source"]');if(missing.includes('곡 선택')&&songButton){songButton.classList.add('draft-required-field');songButton.setAttribute('aria-label','곡 선택 · 필수 입력');const badge=document.createElement('small');badge.className='draft-missing-hint draft-required-label';badge.textContent='선택 필요';songButton.append(badge);}}
  };
+ P.render();
+})();
+
+/* Recording roles and representative review use the same recording card. */
+(() => {
+ const F=window.FLOW,P=window.Prototype,R=window.RENDER,e=R.esc,base=R.phone;
+ let review=null;
+ const screen={id:'representative-review',name:'대표 녹음 확인',tab:'songs',back:'live-representative',group:'03 내 곡',blocks:[]};
+ F.addScreen(screen);P.map.set(screen.id,screen);
+ R.phone=function(view,interactive=true){
+   const t=document.createElement('template');t.innerHTML=base(view,interactive);
+   const phone=t.content.querySelector('.phone'),body=phone?.querySelector('.phone-body');if(!body)return t.innerHTML;
+   const song=F.songs.get(F.songScreens.get(view.id));
+   if(song){const roles=F.roles(song.id),names={'대표 녹음':'representative','최신 녹음':'latest','최저 티어 녹음':'lowest'};
+     for(const old of body.querySelectorAll('.flow-role-card>.flow-role-row')){const name=old.querySelector('strong')?.textContent,r=roles[names[name]];if(!r)continue;
+       const section=document.createElement('section');section.className='record-role-section';const head=old.cloneNode(true);head.innerHTML='<strong>'+e(name)+'</strong><span>'+(names[name]==='representative'?'변경':'›')+'</span>';section.append(head);section.insertAdjacentHTML('beforeend',R.recordCard(r));
+       const copy=section.querySelector('.v3-record-copy');delete copy.dataset.v3;copy.dataset.to=F.recordRoute(r.id);old.replaceWith(section);
+     }
+   }
+   if(view.id==='live-representative')for(const old of body.querySelectorAll('[data-flow="representative"]')){const r=F.recordings.get(old.dataset.record);if(!r)continue;delete old.dataset.flow;old.dataset.repPreview=r.id;old.className='representative-choice';old.innerHTML='<span><strong>'+e(r.title)+'</strong><small>'+e(String(r.at).slice(0,4)+'.'+String(r.at).slice(4,6)+'.'+String(r.at).slice(6,8)+' '+String(r.at).slice(8,10)+':'+String(r.at).slice(10,12)+' · '+F.renderHelpers.duration(r.duration)+' · '+r.tier)+'</small></span><span>›</span>';}
+   if(view.id===screen.id){const r=F.recordings.get(review);if(r){const card=document.createElement('template');card.innerHTML=R.recordCard(r);const at=card.content.querySelector('time')?.textContent||'';const available=r.local||r.cloud==='보관됨';body.innerHTML='<section class="song-meta"><h3>'+e(r.title)+'</h3><p>'+e(r.artist)+'</p><div class="representative-info"><span>'+e(r.version)+'</span><span class="key '+(r.key.startsWith('여')?'female':r.key.startsWith('남')?'male':'')+'">'+e(r.key)+'</span><span>녹음 티어: '+e(r.tier)+'</span></div><p>'+e(at)+'</p><p>'+e(F.renderHelpers.duration(r.duration))+'</p></section><section class="song-meta"><p>'+e(window.X.fileState(r))+'</p><button type="button" class="command secondary" data-v3="record-play" data-record="'+e(r.id)+'" '+(available?'':'disabled')+'>재생</button></section><section class="song-meta"><h3>녹음 당시 메모</h3><p>'+e(r.note||'작성한 메모가 없어요.')+'</p></section><button type="button" class="command primary" data-rep-confirm>이 녹음을 대표로 지정</button><button type="button" class="command secondary" data-rep-cancel>목록으로 돌아가기</button>';}}
+
+   return t.innerHTML;
+ };
+ document.addEventListener('click',event=>{const t=event.target.closest('[data-rep-preview],[data-rep-confirm],[data-rep-cancel]');if(!t)return;event.preventDefault();event.stopImmediatePropagation();
+   if(t.hasAttribute('data-rep-preview')){review=t.dataset.repPreview;P.go(screen.id);}
+   else if(t.hasAttribute('data-rep-cancel'))P.back();
+   else{const r=F.recordings.get(review);if(r&&F.songs.get(r.songId)?.active){F.setRepresentative(r.songId,r.id);P.returnTo(F.songRoute(r.songId));}}
+ },true);
  P.render();
 })();
