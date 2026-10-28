@@ -272,29 +272,36 @@ class _MySongsScreenState extends State<MySongsScreen> {
           ),
         ],
       ),
-      actions: (_, _) => Row(
+      actions: (compact, _) => Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            loading || failure != null ? '—곡' : '${pages.total}곡',
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+          CollectionControlSurface(
+            active: compact,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Text(
+              loading || failure != null ? '—곡' : '${pages.total}곡',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              key: const ValueKey('my-song-count'),
             ),
-            key: const ValueKey('my-song-count'),
           ),
-          TextButton.icon(
-            icon: const AppIcon(Icons.sort),
-            label: Text(sort.label),
-            onPressed: () async {
-              final result = await SortSheet.songs(
-                context: context,
-                selected: sort,
-              );
-              if (mounted && result != null) {
-                setState(() => sort = result.value);
-              }
-            },
+          CollectionControlSurface(
+            active: compact,
+            child: TextButton.icon(
+              icon: const AppIcon(Icons.sort),
+              label: Text(sort.label),
+              onPressed: () async {
+                final result = await SortSheet.songs(
+                  context: context,
+                  selected: sort,
+                );
+                if (mounted && result != null) {
+                  setState(() => sort = result.value);
+                }
+              },
+            ),
           ),
         ],
       ),

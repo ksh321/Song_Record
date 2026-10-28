@@ -758,3 +758,13 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - HTML 동일 재생 비율·플리 compact·정보bar 스크롤 클래스 대응. 검사9 PASS(스크롤 아래→위 라벨/정보·메뉴 보존·조건부 배경 포함), HTML 두 테마 PASS. 분석 import정렬 안내 수정 후 재검사, 빌드 진행 중. 현재 모델 별도 코드 검토: 공통경로·기존 순서/선택 보호·버튼 접근성 대조. 서버/DB 변경 없음.
 
 - 최종 분석0, 서명 APK047c2c3f754328deeda31f02d011aeb8afa44dfd50edf123769266a27b54d26a 소스 대조/install-r Success. 추가 HTML 스크롤 실검사에서 초기 투명 배경 CSS 우선순위/폰 안쪽4px 경계 판정 차이를 발견해 HTML만 보완. 두 테마에서 고정 영역 불투명·축약 라벨·곡수/메뉴 유지 PASS, ui-scroll-*.png 시각 확인. 네이티브는 관련 Sliver 스크롤 전후9검사 통과. 개인 조작/서버 변경 없음. 최종 커밋/CI 대기.
+
+- 최종 완료: 224276ba44c40bc50516b6253cb2b8e676223063/Basef371b86, CI40657580166 필수 Flutter 검사/Android build PASS. APK047c2c3f install-r Success·소스 대조, 관련9 PASS·분석0·HTML 두 테마 스크롤 시각 확인. 설치 뒤 USB 해제로 기기SHA 재조회는 미실행이며 확인 실적으로 합산하지 않음. 기존 CI 감시기 ntfy SERVER_ACCEPTED(수신 미확인), 중복 알림 없음. 서버/개인 데이터 변경 없음.
+
+### P25-04 개별 정보 강조·투명 공간 터치 통과 — 2026-10-28
+- 사용자 정정: 내 곡/플리 상세의 전체 고정bar 배경을 원하지 않음. 개별 항목만 강조하고 사이 투명 공간은 아래 목록을 터치하도록 변경.
+- CollectionBar 전체 decoration 제거. 공통 CollectionControlSurface로 스크롤 중 내 곡 곡수/정렬, 상세 곡수/메뉴만 작은 표면·테두리·그림자 적용. 일반 Row/Spacer/Padding은 hit-test를 선점하지 않음. 맨 위에서는 원래 표시, 기존선택/순서유지.
+- 관련5 PASS: 스크롤 중 compact/원복, 가운데 빈 공간 탭이 실제 하부 곡 onTap에 전달되고 강조 곡수영역은 전달하지 않음, 두 테마 순서변경/선택 회귀 유지. 분석0. HTML 두 테마에서도 elementFromPoint로 빈 공간의 이벤트 통과 확인, 전체bg투명/개별bg불투명·메뉴 유지 PASS. HTML 곡수span flex:1로 영역이 넓어지는 문제도 flex자동폭으로 보완.
+- 현재 모델 별도 검토: 터치 영역·행동 보존·높이52 내 항목패딩·테마 공통성 확인. 빌드/설치 진행, 서버/데이터 변경 없음.
+
+- APK15c2db77ac6eb20c9826e272894863ba2e6db8316d27cd668af341e1a0d5c33e 소스/APK 대조 후 install-r Success, 기기SHA 일치. 개별 강조/투명 간격 하부 터치5 PASS·분석0·HTML 두 테마 hit-test 확인 완료. 미승인 개인 데이터 조작/서버 변경 없음. 최종 커밋/필수CI 진행.

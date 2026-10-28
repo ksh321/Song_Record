@@ -405,3 +405,16 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 
 .phone .review-tools{position:sticky;top:0;z-index:12}
 .phone .review-tools.list-header-scrolled{background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 3px 5px #0002}
+
+/* Highlight only count/filter/menu, and let the gaps reach the underlying list. */
+.phone .phone-body>.v3-list-tools.pl-action-row.pl-actions-compact,
+.phone .review-tools.list-header-scrolled{background:transparent;border:0;box-shadow:none;pointer-events:none}
+.phone .review-tools{pointer-events:none}
+.phone .review-tools>*,.phone .v3-list-tools.pl-actions-compact>span{pointer-events:auto}
+.phone .review-tools.list-header-scrolled>*,
+.phone .v3-list-tools.pl-actions-compact>span,
+.phone .v3-list-tools.pl-actions-compact>.v3-more{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 2px 4px #0002}
+.phone .review-tools.list-header-scrolled>small,
+.phone .v3-list-tools.pl-actions-compact>span{padding:6px 8px}
+
+.phone .v3-list-tools.pl-actions-compact>span{flex:0 0 auto;margin-right:auto}

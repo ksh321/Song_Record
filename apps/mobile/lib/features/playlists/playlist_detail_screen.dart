@@ -387,7 +387,11 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         actions: (compact, reorder) => Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text('${items.length}곡'),
+            CollectionControlSurface(
+              active: compact,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Text('${items.length}곡'),
+            ),
             const Spacer(),
             AppReorderAction(onPressed: reorder, compact: compact),
             const SizedBox(width: 8),
@@ -397,24 +401,29 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
               onPressed: busy || parent == null ? null : chooseSource,
             ),
             if (widget.onOptions != null)
-              PopupMenuButton<String>(
-                tooltip: '플레이리스트 메뉴',
-                enabled: !busy && parent != null,
-                icon: const AppIcon(Icons.more_vert),
-                onSelected: (action) async {
-                  await widget.onOptions!(
-                    action,
-                    Map<String, dynamic>.from(parent!),
-                  );
-                  if (!mounted) return;
-                  await reload();
-                  if (context.mounted && parent == null) Navigator.pop(context);
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'rename', child: Text('이름 변경')),
-                  PopupMenuItem(value: 'icon', child: Text('아이콘 수정')),
-                  PopupMenuItem(value: 'delete', child: Text('플레이리스트 삭제')),
-                ],
+              CollectionControlSurface(
+                active: compact,
+                child: PopupMenuButton<String>(
+                  tooltip: '플레이리스트 메뉴',
+                  enabled: !busy && parent != null,
+                  icon: const AppIcon(Icons.more_vert),
+                  onSelected: (action) async {
+                    await widget.onOptions!(
+                      action,
+                      Map<String, dynamic>.from(parent!),
+                    );
+                    if (!mounted) return;
+                    await reload();
+                    if (context.mounted && parent == null) {
+                      Navigator.pop(context);
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'rename', child: Text('이름 변경')),
+                    PopupMenuItem(value: 'icon', child: Text('아이콘 수정')),
+                    PopupMenuItem(value: 'delete', child: Text('플레이리스트 삭제')),
+                  ],
+                ),
               ),
           ],
         ),

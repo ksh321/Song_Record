@@ -10,6 +10,7 @@ void main() {
       'scroll compacts actions and highlights count only when pinned library=$library',
       (tester) async {
         final ids = List.generate(30, (i) => '$i');
+        var rowTaps = 0;
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
@@ -19,7 +20,11 @@ void main() {
                 belowActions: library ? const Text('summary') : null,
                 actions: (compact, reorder) => Row(
                   children: [
-                    const Text('30곡'),
+                    CollectionControlSurface(
+                      active: compact && !library,
+                      padding: const EdgeInsets.all(8),
+                      child: const Text('30곡'),
+                    ),
                     const Spacer(),
                     AppReorderAction(onPressed: reorder, compact: compact),
                     AppCompactAction(
@@ -30,7 +35,15 @@ void main() {
                     const Icon(Icons.more_vert),
                   ],
                 ),
-                row: (id) => SizedBox(height: 70, child: Text('track $id')),
+                row: (id) => GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => rowTaps++,
+                  child: SizedBox(
+                    height: 70,
+                    width: double.infinity,
+                    child: Text('track $id'),
+                  ),
+                ),
                 onReorder: (_) async {},
                 onDelete: (_) async => false,
                 deleteLabel: (n) => '$n 삭제',
@@ -41,7 +54,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('곡 추가'), findsOneWidget);
         expect(
-          find.byKey(const ValueKey('collection-scrolled-bar')),
+          find.byKey(const ValueKey('collection-control-surface')),
           findsNothing,
         );
         final scroll = tester
@@ -54,14 +67,24 @@ void main() {
         expect(find.text('30곡'), findsOneWidget);
         expect(find.byIcon(Icons.more_vert), findsOneWidget);
         expect(
-          find.byKey(const ValueKey('collection-scrolled-bar')),
+          find.byKey(const ValueKey('collection-control-surface')),
           library ? findsNothing : findsOneWidget,
         );
+        // Only the small control surface may intercept hits; the middle gap
+        // must reach the song underneath the pinned bar.
+        await tester.tapAt(const Offset(200, 26));
+        await tester.pump();
+        expect(rowTaps, 1);
+        if (!library) {
+          await tester.tap(find.text('30곡'));
+          await tester.pump();
+          expect(rowTaps, 1);
+        }
         scroll.jumpTo(0);
         await tester.pumpAndSettle();
         expect(find.text('곡 추가'), findsOneWidget);
         expect(
-          find.byKey(const ValueKey('collection-scrolled-bar')),
+          find.byKey(const ValueKey('collection-control-surface')),
           findsNothing,
         );
         expect(tester.takeException(), isNull);

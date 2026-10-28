@@ -232,10 +232,6 @@ class _EditableCollectionState extends State<EditableCollection> {
                       selecting ||
                       ordering != null,
                   delegate: _CollectionBar(
-                    highlightOnScroll:
-                        widget.belowActions == null &&
-                        !selecting &&
-                        ordering == null,
                     builder: (compact) => Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: selecting
@@ -472,12 +468,7 @@ class _EditableCollectionState extends State<EditableCollection> {
 }
 
 class _CollectionBar extends SliverPersistentHeaderDelegate {
-  _CollectionBar({
-    required this.builder,
-    this.extent = 52,
-    this.highlightOnScroll = false,
-  });
-  final bool highlightOnScroll;
+  _CollectionBar({required this.builder, this.extent = 52});
   final Widget Function(bool) builder;
   final double extent;
   @override
@@ -492,26 +483,42 @@ class _CollectionBar extends SliverPersistentHeaderDelegate {
   ) {
     if (extent == 0) return const SizedBox.shrink();
     final scrolled = shrinkOffset > 0 || overlapsContent;
-    final child = SizedBox(height: maxExtent, child: builder(scrolled));
-    if (!highlightOnScroll || !scrolled) return child;
-    final colors = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      key: const ValueKey('collection-scrolled-bar'),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        border: Border(bottom: BorderSide(color: colors.outlineVariant)),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow.withValues(alpha: .10),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: child,
-    );
+    return SizedBox(height: maxExtent, child: builder(scrolled));
   }
 
   @override
   bool shouldRebuild(covariant _CollectionBar oldDelegate) => true;
+}
+
+class CollectionControlSurface extends StatelessWidget {
+  const CollectionControlSurface({
+    required this.active,
+    required this.child,
+    this.padding = EdgeInsets.zero,
+    super.key,
+  });
+  final bool active;
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  @override
+  Widget build(BuildContext context) {
+    if (!active) return child;
+    final colors = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      key: const ValueKey('collection-control-surface'),
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colors.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow.withValues(alpha: .10),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(padding: padding, child: child),
+    );
+  }
 }
