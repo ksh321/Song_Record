@@ -717,3 +717,11 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 관련17 PASS, 분석0. 초기 native 준비 빌드abc8f59 통과/미설치. 응답 계약까지 합친 최종 빌드 진행 중. 처음 새 녹음의 실기와 최종 설치/전체검사/커밋/CI 미완료.
 
 - 최종 검증: 전체1,308 PASS(04:26 ui-wave-ready-full-rerun.log), 영향17 PASS·분석0. 첫 전체1,307 PASS/1FAIL은 기존 recording_manage_screen_test 확인창 대기 실패; 단독2 PASS 뒤 코드/단언 변경 없이 전체 재실행 통과. 보호 검사 약화 없음. APK71d8b234 설치/기기SHA 일치. 사용자 새4.5초 녹음 첫 재생0.8초 화면에 실제 파형 표시(library-wave-new-first-play). 잔상·버튼 판본94ea58에서도 해제 후7.7초 화면 유지 확인. 직접 생성/삭제/메타데이터 저장 없음. 서버 배포 없음. 현재 모델 별도 검토 완료, 사용자 Sol 진행 예외 근거는 위 기록. 최종 커밋/CI 대기.
+
+- 최종 완료: d4ff30d72d5c34c35222e41b23a7b108d51182ea/Base589a5c4, 필수 CI40646010346 Scope/Flutter analyze·test·Android build PASS. 서버/MySQL skipped는 통과 실적으로 합산하지 않음. 기존 감시기 ntfy SERVER_ACCEPTED, 실제 수신과 구분·중복 알림 없음. APK71d8b234/소스/전체1308/영향17/분석0/첫 재생·잔상·버튼 실기 근거 일치. USER209 완료. 새 서버 배포 없음.
+
+### P25-04 5초 아이콘 크기 균형 — 2026-10-28
+- 사용자: 현재 간격 확정, 5초 아이콘만 적당히 확대. 두 AppIcon28→34(공통 skipIconSize), 버튼52/간격12/재생76 유지. HTML 공통 skip 글자22→27로 비율 대응.
+- 두 테마 HTML 검사 PASS, 재생 화면 기존2 PASS, 분석0. 현재 모델 별도 diff 검토: 값 공유·폭52 안에34+기본padding16이 들어감·가로 간격 불변. 새 테스트 추가 없음. 서명 빌드·설치 확인 진행.
+
+- APKc6b9798332c5f12b4641f352c8fa530bfdd7500b5c1f59bb110cf1a3347022e7 install-r Success, 소스/기기해시 일치. 사용자 ㄱ 뒤 재생 화면 library-skip-player-size에서 커진 두 아이콘·기존 간격·중앙 버튼 시각 확인. 개인 저장/삭제 없음. 중간 다른 화면은 입력 중단 후 준비 회신을 받고 진행. 최종 커밋/CI 대기.

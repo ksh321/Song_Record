@@ -32,6 +32,7 @@ class RecordingPlayerScreen extends StatefulWidget {
 
 class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
     with SingleTickerProviderStateMixin {
+  static const skipIconSize = 34.0;
   late final AudioPlayback player;
   late final Ticker motion;
   final positionClock = Stopwatch();
@@ -271,7 +272,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                               ),
                             )
                           : null,
-                      icon: const AppIcon(Icons.replay_5, size: 28),
+                      icon: const AppIcon(Icons.replay_5, size: skipIconSize),
                     ),
                     const SizedBox(width: 12),
                     IconButton.filled(
@@ -314,7 +315,7 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
                               ),
                             )
                           : null,
-                      icon: const AppIcon(Icons.forward_5, size: 28),
+                      icon: const AppIcon(Icons.forward_5, size: skipIconSize),
                     ),
                   ],
                 ),
