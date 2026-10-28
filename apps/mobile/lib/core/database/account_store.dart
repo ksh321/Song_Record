@@ -360,6 +360,55 @@ final class AccountStore {
         return result;
       });
 
+  Future<Map<String, List<Map<String, dynamic>>>> playlistSummaryItems() =>
+      _run(
+        () => _database.transaction(() async {
+          final parents = await _database
+              .customSelect(
+                "SELECT entity_id,COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='PLAYLIST' AND tombstone=0",
+                variables: [Variable(userId)],
+              )
+              .get();
+          final result = <String, List<Map<String, dynamic>>>{};
+          for (final row in parents) {
+            final raw = row.readNullable<String>('payload');
+            if (raw == null) continue;
+            _validatePayloadOwner(raw);
+            final value = jsonDecode(raw) as Map<String, dynamic>;
+            final id = row.read<String>('entity_id');
+            if (value['id'] != id) {
+              throw StateError('Playlist identity mismatch');
+            }
+            if (value['deleted_at'] == null && value['status'] != 'DELETED') {
+              result[id] = [];
+            }
+          }
+          final items = await _database
+              .customSelect(
+                "SELECT COALESCE(local_payload,server_payload) AS payload FROM metadata_copies WHERE user_id=? AND entity_type='PLAYLIST_ITEM' AND tombstone=0",
+                variables: [Variable(userId)],
+              )
+              .get();
+          for (final row in items) {
+            final raw = row.readNullable<String>('payload');
+            if (raw == null) continue;
+            _validatePayloadOwner(raw);
+            final value = jsonDecode(raw) as Map<String, dynamic>;
+            if (value['hidden_by_batch_id'] == null &&
+                value['playlist_deleted_at'] == null &&
+                value['status'] != 'DELETED') {
+              result[value['playlist_id']]?.add(value);
+            }
+          }
+          for (final items in result.values) {
+            items.sort(
+              (a, b) => (a['position'] as int).compareTo(b['position'] as int),
+            );
+          }
+          return result;
+        }),
+      );
+
   /// Only active saved recordings with no song; no file or queue writes.
   Future<List<Map<String, dynamic>>> readUnlinkedRecordings() => _run(() async {
     final rows = await _database

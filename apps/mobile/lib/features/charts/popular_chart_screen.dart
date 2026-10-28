@@ -3,6 +3,7 @@ import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/widgets/content_state.dart';
 import '../../core/widgets/music_view_data.dart';
+import '../../core/widgets/scroll_to_top_button.dart';
 import '../../core/widgets/song_row.dart';
 import '../../core/widgets/ui_controls.dart';
 import '../auth/auth_session.dart';
@@ -300,21 +301,7 @@ class _PopularChartScreenState extends State<PopularChartScreen> {
           Positioned(
             right: 16,
             bottom: 16,
-            child: ListenableBuilder(
-              listenable: _scroll,
-              builder: (context, _) =>
-                  !_scroll.hasClients || _scroll.offset < 64
-                  ? const SizedBox.shrink()
-                  : IconButton.filled(
-                      tooltip: '맨 위로',
-                      onPressed: () => _scroll.animateTo(
-                        0,
-                        duration: const Duration(milliseconds: 280),
-                        curve: Curves.easeOutCubic,
-                      ),
-                      icon: const Icon(Icons.keyboard_arrow_up),
-                    ),
-            ),
+            child: ScrollToTopButton(controller: _scroll),
           ),
         ],
       );

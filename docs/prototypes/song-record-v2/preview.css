@@ -418,3 +418,5 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 .phone .v3-list-tools.pl-actions-compact>span{padding:6px 8px}
 
 .phone .v3-list-tools.pl-actions-compact>span{flex:0 0 auto;margin-right:auto}
+
+.phone.bulk-selecting .chart-to-top{display:none}

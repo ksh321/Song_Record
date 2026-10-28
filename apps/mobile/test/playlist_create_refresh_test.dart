@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -25,6 +26,8 @@ void main() {
         '00000000-0000-4000-8000-000000001234',
       );
       final refresh = ValueNotifier(0);
+      final afterSave = Completer<void>();
+      final syncChanges = ChangeNotifier();
       try {
         await tester.pumpWidget(
           MaterialApp(
@@ -32,6 +35,8 @@ void main() {
               valueListenable: refresh,
               builder: (_, value, child) => PlaylistLibraryScreen(
                 library: PlaylistLibrary(LocalRepository(store)),
+                syncChanges: syncChanges,
+                afterSave: () => afterSave.future,
               ),
             ),
           ),
@@ -67,8 +72,31 @@ void main() {
         expect(rows, hasLength(1));
         expect(rows.single['name'], '새 시험 목록');
         expect(rows.single['icon'], 'star');
+        // A deliberately unfinished sync must not hold creation or the UI.
+        final visibleDeadline = DateTime.now().add(const Duration(seconds: 5));
+        while (find.text('새 시험 목록').evaluate().isEmpty &&
+            DateTime.now().isBefore(visibleDeadline)) {
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await tester.pump();
+        }
+        expect(afterSave.isCompleted, isFalse);
+        expect(find.text('새 시험 목록'), findsOneWidget);
+        final create = find.widgetWithText(FilledButton, '새 플레이리스트');
+        expect(tester.widget<FilledButton>(create).onPressed, isNotNull);
+        // Multiple sync changes and same-store facade rebuilds preserve the row.
+        for (var i = 0; i < 10; i++) {
+          syncChanges.notifyListeners();
+        }
+        refresh.value++;
+        await tester.pump();
+        expect(find.text('새 시험 목록'), findsOneWidget);
+        afterSave.complete();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await tester.pumpAndSettle();
       } finally {
         await tester.pumpWidget(const SizedBox());
+        if (!afterSave.isCompleted) afterSave.complete();
+        syncChanges.dispose();
         refresh.dispose();
         await manager.logout();
         await root.delete(recursive: true);

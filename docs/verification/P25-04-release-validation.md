@@ -768,3 +768,22 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 현재 모델 별도 검토: 터치 영역·행동 보존·높이52 내 항목패딩·테마 공통성 확인. 빌드/설치 진행, 서버/데이터 변경 없음.
 
 - APK15c2db77ac6eb20c9826e272894863ba2e6db8316d27cd668af341e1a0d5c33e 소스/APK 대조 후 install-r Success, 기기SHA 일치. 개별 강조/투명 간격 하부 터치5 PASS·분석0·HTML 두 테마 hit-test 확인 완료. 미승인 개인 데이터 조작/서버 변경 없음. 최종 커밋/필수CI 진행.
+
+- 최종 완료: fa8c1a7edd0a8f089807933efbc1f4a3a0b0535c/Base224276b, 필수 CI40660321822 Flutter 검사/Android build PASS. APK15c2db77 설치·기기SHA/소스 일치. 관련5 PASS·분석0·HTML 두 모드 투명/개별 강조/실제 포인터 통과 확인. ntfy 기존 CI 감시기 SERVER_ACCEPTED(수신 미확인), 중복 알림 없음. 서버/개인 데이터 변경 없음.
+
+### 플레이리스트 생성 지연 원인 조사 — 2026-10-28 (구현 변경 없음)
+- 요청은 원인 분석. 실제 사용자 플리 생성/삭제 없이 코드·격리 임시DB 계측만 수행.
+- 생성은 PlaylistLibrary.create→LocalRepository.save→AccountStore.saveEdit 로컬 저장. production afterSave는 unawaited(sync.wake)이므로 서버 응답을 직접 기다리지 않음.
+- 확인된 병목 구조: 화면 run은 save→afterSave→reload 전체 완료 뒤 busy 해제. reload는 모든 목록 및 모든 내 곡을 읽고, 각 플리마다 playlistItems가 계정 전체 PLAYLIST_ITEM을 읽어 Dart 필터링. 목록수N/전체항목M에서 요약 조회가 N×M 구조. pendingWork 조회도 load/pendingOrder/rejectedOrder로 반복. sync 시작/종료 notifyListeners도 reload 호출하므로 명시적reload와 중첩·세대 폐기 가능. 계정 DB작업은 하나의 _serialize 대기열 사용.
+- 격리 Windows 실측(빈 목록, 실제 폰 아님): 1개 cold 저장90.8ms/list87.8ms/요약26.3ms/순서27.2ms;11개 저장10.4/list17.0/요약35.4/순서25.3ms;51개9.4/24.0/112.0/22.4ms;101개14.0/21.9/209.0/28.6ms. 요약 비용 증가 확인, 이 결과만으로 사용자 폰에서 수초 지연의 지배 원인을 확정하지 않음.
+- 개선 후보: 로컬 생성 후 새 행을 먼저 반영, 전체 요약은 분리/일괄 조회, sync 알림 reload 병합, 같은 계정 facade 재생성 시 rows/EditableCollection 재초기화 방지. 실제 폰 단계별 타임스탬프가 없어 정확한 시간 비중은 미확정. 임시 실측 로그 .local/workflow/playlist-create-perf.log 보존.
+
+### P25-04 플리 생성 즉시 반영·요약 일괄 조회·내 곡 맨 위로 — 2026-10-28
+- 사용자 승인: 생성 후 로컬 행 우선 반영/후속 요약·동기화 분리/겹친 조회 병합. 추가로 인기차트와 같은 내 곡 맨 위로 버튼 요청.
+- createVisible은 기존 prepareCreate/save 후 해당 저장 행 한 건을 다시 읽어 반영, 서버 응답을 기다리지 않음. 계정 epoch/active store 동일성 확인 뒤 화면 rows/빈 요약을 먼저 갱신하고 busy 해제, afterSave 및 reload는 후속 수행. 저장 전 시작한 refresh는 generation으로 적용 거부. 같은 active store facade 교체는 rows 및 EditableCollection identity 유지, 계정/store 교체 시 초기화. reload는 실행 중 Future와 한 개 후속 요청으로 알림을 병합.
+- 읽기 전용 playlistSummaryItems는 기존 계정 직렬화/transaction 안에서 active 부모와 전체 항목을 각1회 읽고 동일 숨김/삭제/순서 조건으로 묶음. 기존 summaries의 N번 전체 항목 조회를 대체. 별도 스키마·동기화 쓰기 정책 변경 없음.
+- 회귀25 PASS: afterSave Completer를 미완료로 둔 상태에서도 행 표시/생성 버튼 활성, sync 알림10회·facade 재생성에서도 유지. 묶음/기존조회 결과 대조·삭제 부모 제외·다른 계정 및 stale store 차단 포함. 분석0. 격리 Windows 101개 요약209ms→7.26ms(실기 수치 아님); 11개35.4→6.3ms/51개112→8.3ms. 이전/이후 로그 .local/workflow/playlist-create-perf*.log.
+- ScrollToTopButton 공통 컴포넌트를 차트와 내 곡에서 재사용:64px 이상일 때 오른쪽 아래 표시, 280ms easeOutCubic, 동작 축소 설정이면 즉시 이동. 내 곡 선택/순서 모드에서는 숨김. 두 설정의 위치0 복귀 검사 및 HTML songs/charts 동일 버튼 표시/숨김/복귀 PASS.
+- 현재 모델 별도 검토: 계정/결과 세대·오래된 refresh·실패/저장 완료 구분·기존 요약 계약·입력/선택 보존 확인. 사용자 현재 Sol 계속 진행 선호 유지. 개인 플리 생성·삭제 없음. 최종 빌드/설치/CI 진행.
+
+- 최종 APK f7ecc79f968a2f50cfaab20b675c06ec3e192db21f144c08d904d88b2b67c415 설치 Success, manifest 전체 소스/기기 APK SHA 일치. 실기에서 내 곡9개 기존 목록 스크롤→오른쪽 아래 맨 위로 표시→클릭 후 상단 복귀/버튼 숨김 확인. 개인 자료 생성·삭제 없음. 플리 생성 지연/일괄 조회는 격리 DB와 지연 callback 위젯 검사로 검증(실제 개인 플리 생성 시간은 미측정). 관련25 PASS·analyze0·HTML 표시/복귀 PASS. 필수 CI 진행 예정.

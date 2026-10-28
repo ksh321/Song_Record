@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'scroll_to_top_button.dart';
+
 class CollectionRowEditing extends InheritedWidget {
   const CollectionRowEditing({
     super.key,
@@ -37,6 +39,7 @@ class EditableCollection extends StatefulWidget {
     this.footer = const SizedBox.shrink(),
     this.enabled = true,
     this.rowSpacing = 8,
+    this.showScrollToTop = false,
   });
   final List<String> ids;
   final List<String>? selectionIds;
@@ -53,6 +56,7 @@ class EditableCollection extends StatefulWidget {
   final String Function(int) deleteLabel;
   final bool enabled;
   final double rowSpacing;
+  final bool showScrollToTop;
   @override
   State<EditableCollection> createState() => _EditableCollectionState();
 }
@@ -418,6 +422,12 @@ class _EditableCollectionState extends State<EditableCollection> {
               ],
             ),
           ),
+          if (widget.showScrollToTop && !selecting && ordering == null)
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: ScrollToTopButton(controller: scroll),
+            ),
           if (selecting)
             Positioned(
               left: 16,

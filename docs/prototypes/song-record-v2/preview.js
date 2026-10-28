@@ -768,7 +768,7 @@ window.Prototype.render();
   const R=window.RENDER,phone=R.phone;
   R.phone=function(screen,interactive=true){
     const html=phone(screen,interactive);
-    return ['charts','charts-ky'].includes(screen.id)
+    return ['charts','charts-ky','songs','songs-groups'].includes(screen.id) || /^(songs-sort-|review-group-sort-)/.test(screen.id)
       ? html.replace('</article>','<button type="button" class="chart-to-top" data-chart-top aria-label="맨 위로" hidden>↑</button></article>') : html;
   };
   document.addEventListener('scroll', event=>{

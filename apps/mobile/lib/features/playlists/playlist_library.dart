@@ -173,10 +173,14 @@ final class PlaylistLibrary {
     List<Map<String, dynamic>> playlists,
   ) async {
     final available = {for (final song in await songs()) song['id']: song};
+    final grouped = await repository.playlistSummaryItems();
     final result = <String, PlaylistSummary>{};
     for (final playlist in playlists) {
       final id = playlist['id'] as String;
-      result[id] = PlaylistSummary.fromItems(await items(id), available);
+      result[id] = PlaylistSummary.fromItems(
+        grouped[id] ?? const [],
+        available,
+      );
     }
     return result;
   }
@@ -293,6 +297,32 @@ final class PlaylistLibrary {
       changes: {'name': name, 'icon': icon},
     );
     return () => repository.save(command);
+  }
+
+  Future<Map<String, dynamic>> createVisible(
+    String input, {
+    String icon = 'music',
+  }) async {
+    final name = _name(input);
+    final command = repository.prepareCreate(
+      entity: LocalEntity.playlist,
+      draft: {'name': name, 'icon': icon, 'deleted_at': null},
+      changes: {'name': name, 'icon': icon},
+    );
+    await repository.save(command);
+    final saved = await repository.read(LocalEntity.playlist, command.entityId);
+    if (saved == null || saved.tombstone) {
+      throw StateError('Playlist no longer available');
+    }
+    final raw = saved.localJson ?? saved.serverJson;
+    if (raw == null) throw StateError('Missing saved playlist');
+    final value = jsonDecode(raw) as Map<String, dynamic>;
+    if (value['id'] != command.entityId ||
+        value['deleted_at'] != null ||
+        value['status'] == 'DELETED') {
+      throw StateError('Playlist changed');
+    }
+    return {...value, 'local_base_revision': saved.revision};
   }
 
   Map<String, Object?> _payload(Map<String, dynamic> row) =>

@@ -206,6 +206,7 @@ class _MySongsScreenState extends State<MySongsScreen> {
     final visible = pages.visible;
     final groups = groupMySongs(pages.ordered, sort);
     return EditableCollection(
+      showScrollToTop: true,
       key: ValueKey(scope),
       rowSpacing: 0,
       ids: visible.map((song) => song.view.id.value).toList(),

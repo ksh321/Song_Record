@@ -90,6 +90,9 @@ final class LocalRepository
     return () => _store.saveEdit(edit, expectedEffectivePayload: baseline);
   }
 
+  Future<Map<String, List<Map<String, dynamic>>>> playlistSummaryItems() =>
+      _store.playlistSummaryItems();
+
   Future<List<Map<String, dynamic>>> playlistItems(String id) =>
       _store.playlistItems(id);
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:song_record/core/widgets/app_page_bar.dart';
 
@@ -70,6 +72,45 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
   String? orderNotice;
   String? error;
   int _loadGeneration = 0;
+  Object _collectionIdentity = Object();
+  Future<void>? _reloadFuture;
+  bool _reloadAgain = false;
+
+  bool sameStore(PlaylistLibrary a, PlaylistLibrary b) {
+    try {
+      return a.repository.sharesActiveStoreWith(b.repository);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> reload() {
+    _reloadAgain = true;
+    if (busy) return Future.value();
+    return _reloadFuture ??= _drainReloads().whenComplete(
+      () => _reloadFuture = null,
+    );
+  }
+
+  Future<void> _drainReloads() async {
+    while (mounted && _reloadAgain && !busy) {
+      _reloadAgain = false;
+      await _reloadOnce();
+    }
+  }
+
+  Future<void> refreshAfterCreate(PlaylistLibrary library) async {
+    if (!mounted || !sameStore(library, widget.library)) return;
+    try {
+      await widget.afterSave?.call();
+    } catch (_) {
+      if (mounted && sameStore(library, widget.library)) {
+        setState(() => error = '목록은 기기에 저장됐어요. 설정에서 전송 상태를 확인해 주세요.');
+      }
+    }
+    if (mounted && sameStore(library, widget.library)) await reload();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -80,12 +121,14 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
   @override
   void didUpdateWidget(PlaylistLibraryScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.library != widget.library) {
+    final changedStore = !sameStore(oldWidget.library, widget.library);
+    if (changedStore) {
+      _loadGeneration++;
+      _collectionIdentity = Object();
       rows = [];
       summaries = {};
     }
-    if (oldWidget.syncChanges != widget.syncChanges ||
-        oldWidget.library != widget.library) {
+    if (oldWidget.syncChanges != widget.syncChanges || changedStore) {
       oldWidget.syncChanges?.removeListener(reload);
       widget.syncChanges?.addListener(reload);
       reload();
@@ -98,10 +141,10 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
     super.dispose();
   }
 
-  Future<void> reload() async {
+  Future<void> _reloadOnce() async {
     final generation = ++_loadGeneration;
     final library = widget.library;
-    if (mounted) setState(() => loading = true);
+    if (mounted && rows.isEmpty) setState(() => loading = true);
     try {
       final value = await library.load();
       final previews = await library.summaries(value);
@@ -109,7 +152,7 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
       final rejected = await library.rejectedOrder();
       if (mounted &&
           generation == _loadGeneration &&
-          identical(library, widget.library)) {
+          sameStore(library, widget.library)) {
         setState(() {
           rows = value;
           summaries = previews;
@@ -151,14 +194,50 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
       if (!mounted || result == null || widget.auth?.accountEpoch != epoch) {
         return;
       }
-      await run(() async {
-        if (!library.repository.sharesActiveStoreWith(
-          widget.library.repository,
-        )) {
+      if (busy) return;
+      setState(() {
+        busy = true;
+        error = null;
+      });
+      var saved = false;
+      try {
+        if (!sameStore(library, widget.library)) {
           throw StateError('Account changed');
         }
-        await widget.library.create(result.name, icon: result.icon)();
-      });
+        final row = await widget.library.createVisible(
+          result.name,
+          icon: result.icon,
+        );
+        if (!mounted ||
+            widget.auth?.accountEpoch != epoch ||
+            !sameStore(library, widget.library)) {
+          return;
+        }
+        _loadGeneration++; // A pre-save refresh must not replace the new row.
+        setState(() {
+          rows = [...rows.where((p) => p['id'] != row['id']), row];
+          summaries = {
+            ...summaries,
+            row['id'] as String: const PlaylistSummary(0, '첫 곡을 담아보세요'),
+          };
+          loading = false;
+        });
+        saved = true;
+      } catch (_) {
+        if (mounted && sameStore(library, widget.library)) {
+          setState(() => error = '목록을 저장하지 못했어요. 다시 시도해 주세요.');
+        }
+      } finally {
+        if (mounted) {
+          setState(() => busy = false);
+          if (!saved && _reloadAgain) unawaited(reload());
+        }
+      }
+      if (saved) {
+        unawaited(refreshAfterCreate(library));
+      } else if (mounted && _reloadAgain) {
+        unawaited(reload());
+      }
       return;
     }
     var input = row['name'] as String;
@@ -356,7 +435,10 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() => busy = false);
+        if (_reloadAgain) unawaited(reload());
+      }
     }
   }
 
@@ -369,7 +451,7 @@ class _PlaylistLibraryScreenState extends State<PlaylistLibraryScreen> {
     body: SafeArea(
       top: !widget.embedded,
       child: EditableCollection(
-        key: ObjectKey(widget.library),
+        key: ObjectKey(_collectionIdentity),
         ids: rows.map((row) => row['id'] as String).toList(),
         enabled: !busy && !loading,
         onHeaderFold: (value) {
