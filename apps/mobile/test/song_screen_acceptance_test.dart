@@ -124,6 +124,12 @@ void main() {
           scrollable: find.byType(Scrollable).first,
         );
         expect(find.text('일반 반주'), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.byTooltip('곡 메뉴'),
+          -200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
         await tester.tap(find.byTooltip('곡 메뉴'));
         await tester.pumpAndSettle();
         expect(find.text('곡 삭제'), findsOneWidget);
