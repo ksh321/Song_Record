@@ -68,6 +68,7 @@ void main() {
               ),
             );
             Future<void> settle() async {
+              await t.pump(const Duration(milliseconds: 400));
               await Future<void>.delayed(const Duration(milliseconds: 120));
               await t.pumpAndSettle();
             }
@@ -76,31 +77,57 @@ void main() {
             expect(find.byType(DetailInformationCard), findsOneWidget);
             expect(find.text('재생'), findsNothing);
             expect(find.text('녹음 정보 수정'), findsNothing);
-            for (final action in ['정보 수정', '보관 관리', '삭제']) {
+            await t.tap(find.text('정보 수정'));
+            await settle();
+            expect(find.byType(RecordingInputScreen), findsOneWidget);
+            await t.tap(find.text('취소'));
+            await settle();
+            for (final section in [
+              'recording-note-detail',
+              'recording-classification-detail',
+            ]) {
+              final card = find.byKey(ValueKey(section));
+              await t.ensureVisible(card);
+              await t.tap(card);
+              await settle();
+              final editor = t.widget<RecordingInputScreen>(
+                find.byType(RecordingInputScreen),
+              );
+              expect(
+                editor.initialField,
+                section.contains('note') ? 'note' : 'classifications',
+              );
+              expect(
+                find.byKey(const ValueKey('recording-title')),
+                findsNothing,
+              );
+              expect(
+                find.byKey(const ValueKey('recording-tier')),
+                findsNothing,
+              );
+              expect(
+                find.byKey(const ValueKey('recording-note')),
+                section.contains('note') ? findsOneWidget : findsNothing,
+              );
+              await t.tap(find.text('취소'));
+              await settle();
+            }
+            for (final action in ['보관 관리', '삭제']) {
               await t.ensureVisible(find.byTooltip('녹음 메뉴'));
               await t.tap(find.byTooltip('녹음 메뉴'));
               await t.pumpAndSettle();
-              expect(find.text('정보 수정'), findsOneWidget);
-              expect(find.text('보관 관리'), findsOneWidget);
-              expect(find.text('삭제'), findsOneWidget);
+              final popup = find.byType(PopupMenuItem<String>);
+              expect(popup, findsNWidgets(2));
               await t.tap(find.text(action));
               await settle();
-              if (action == '정보 수정') {
-                expect(find.byType(RecordingInputScreen), findsOneWidget);
-              }
-              if (action == '보관 관리') {
-                expect(find.byType(RecordingManageScreen), findsOneWidget);
-              }
-              if (action == '삭제') {
-                expect(find.byType(DeleteScreen), findsOneWidget);
-              }
-              if (action == '정보 수정') {
-                await t.tap(find.text('취소'));
-              } else {
-                await t.pageBack();
-              }
+              expect(
+                action == '삭제'
+                    ? find.byType(DeleteScreen)
+                    : find.byType(RecordingManageScreen),
+                findsOneWidget,
+              );
+              await t.pageBack();
               await settle();
-              expect(find.byType(RecordingDetailScreen), findsOneWidget);
             }
             expect(trash.writes, 0);
             expect((await repo.pending()).length, count);

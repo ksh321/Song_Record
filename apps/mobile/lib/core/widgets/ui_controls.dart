@@ -369,9 +369,11 @@ class AppPanel extends StatelessWidget {
   const AppPanel({
     required this.child,
     this.padding = const EdgeInsets.all(16),
+    this.onTap,
     super.key,
   });
   final Widget child;
+  final VoidCallback? onTap;
   final EdgeInsetsGeometry padding;
   @override
   Widget build(BuildContext context) => Material(
@@ -381,7 +383,12 @@ class AppPanel extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
     ),
     clipBehavior: Clip.antiAlias,
-    child: Padding(padding: padding, child: child),
+    child: onTap == null
+        ? Padding(padding: padding, child: child)
+        : InkWell(
+            onTap: onTap,
+            child: Padding(padding: padding, child: child),
+          ),
   );
 }
 

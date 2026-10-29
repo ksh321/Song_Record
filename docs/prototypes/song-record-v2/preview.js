@@ -958,13 +958,41 @@ if(window.Prototype.state.screen==='v3-record-source'){
    const at=String(r.at),date=at.slice(0,4)+'.'+at.slice(4,6)+'.'+at.slice(6,8)+' '+at.slice(8,10)+':'+at.slice(10,12);
    const song=F.songs.get(r.songId);
    body.innerHTML='<header class="record-detail-hero"><h3>'+e(r.title)+'</h3><p>'+e(r.artist)+'</p><small>'+e(date+' · '+F.renderHelpers.duration(r.duration))+'</small></header>'+
-     '<div class="record-detail-actions"><button type="button" class="v3-more" data-record-menu aria-label="녹음 메뉴" aria-expanded="false">⋮</button><div class="record-detail-menu" role="menu" hidden><button role="menuitem" type="button" data-x="edit-record" data-id="'+e(r.id)+'">정보 수정</button><button role="menuitem" type="button" data-ui="record-manage" data-record="'+e(r.id)+'">보관 관리</button><button role="menuitem" type="button" data-to="record-delete">삭제</button></div></div>'+
-     '<section class="song-meta"><h3>녹음 정보</h3><dl><div><dt>버전</dt><dd>'+e(r.version)+'</dd></div><div><dt>키</dt><dd>'+e(r.key)+'</dd></div><div><dt>녹음 티어</dt><dd>'+e(r.tier)+'</dd></div></dl></section>'+
+     '<div class="record-detail-actions"><button type="button" class="v3-more" data-record-menu aria-label="녹음 메뉴" aria-expanded="false">⋮</button><div class="record-detail-menu" role="menu" hidden><button role="menuitem" type="button" data-ui="record-manage" data-record="'+e(r.id)+'">보관 관리</button><button role="menuitem" type="button" data-to="record-delete">삭제</button></div></div>'+
+     '<section class="song-meta"><div class="song-meta-heading"><h3>녹음 정보</h3><button type="button" class="song-edit-link" data-x="edit-record" data-id="'+e(r.id)+'">정보 수정</button></div><dl><div><dt>버전</dt><dd>'+e(r.version)+'</dd></div><div><dt>키</dt><dd>'+e(r.key)+'</dd></div><div><dt>녹음 티어</dt><dd>'+e(r.tier)+'</dd></div></dl></section>'+
      '<section class="song-meta"><h3>컨디션과 태그</h3><p>컨디션: '+e(r.condition||'미선택')+'</p><p>태그: '+e(r.tags?.join(', ')||'없음')+'</p></section>'+
      '<section class="song-meta"><h3>메모</h3><p>'+e(r.note||'아직 작성하지 않았어요.')+'</p></section>'+
      '<section class="song-meta"><h3>연결 곡</h3><p>'+e(r.songId?'등록된 내 곡에 연결됨':'곡 미연결 녹음')+'</p><button type="button" class="flow-text-button" data-x="relink" data-id="'+e(r.id)+'">곡 연결 변경</button>'+(r.songId?'<button type="button" class="flow-text-button" data-flow="linked-song" data-song="'+e(r.songId)+'">연결된 곡 보기</button><button type="button" class="flow-text-button" data-flow="toggle-representative" data-record="'+e(r.id)+'">'+(song?.representative===r.id?'대표 녹음 해제':'대표 녹음으로 지정')+'</button>':'')+'</section>';
    return t.innerHTML;
  };
  document.addEventListener('click',event=>{const toggle=event.target.closest('[data-record-menu]');if(!toggle)return;event.preventDefault();event.stopImmediatePropagation();const menu=toggle.parentElement.querySelector('[role="menu"]');menu.hidden=!menu.hidden;toggle.setAttribute('aria-expanded',String(!menu.hidden));},true);
+ P.render();
+})();
+
+/* Detail sections open focused editors; cancel leaves the source untouched. */
+(() => {
+ const F=window.FLOW,P=window.Prototype,R=window.RENDER,e=R.esc,base=R.phone;
+ const screen={id:'detail-section-edit',name:'메모 수정',tab:'songs',group:'상세 수정',blocks:[]};
+ F.addScreen(screen);P.map.set(screen.id,screen);let target=null;
+ R.phone=function(view,interactive=true){
+  const t=document.createElement('template');t.innerHTML=base(view,interactive);const body=t.content.querySelector('.phone-body');if(!body)return t.innerHTML;
+  if(view.id===screen.id&&target){
+   const r=(target.type==='song'?F.songs:F.recordings).get(target.id);if(!r)return t.innerHTML;
+   const choices=[...new Set(['좋음','보통','피곤함',r.condition].filter(Boolean))];const tags=[...new Set(['고음','호흡','발음',...(r.tags||[])])];
+   body.innerHTML='<form class="x-form" onsubmit="return false">'+(target.field==='note'?'<label>메모<textarea name="note" maxlength="2000">'+e(r.note||'')+'</textarea></label>':'<label>컨디션<select name="condition"><option value="">선택 안 함</option>'+choices.map(v=>'<option '+(v===r.condition?'selected':'')+'>'+e(v)+'</option>').join('')+'</select></label><fieldset><legend>태그</legend>'+tags.map(v=>'<label><input type="checkbox" name="tags" value="'+e(v)+'" '+(r.tags?.includes(v)?'checked':'')+'>'+e(v)+'</label>').join('')+'</fieldset>')+'<button type="button" class="command primary" data-section-save>변경 저장</button><button type="button" class="command secondary" data-section-cancel>취소</button></form>';
+  }else{
+   const r=F.recordFor(view),s=F.songFor(view),record=r&&view.name==='녹음 상세';
+   if(record||s&&view.name==='곡 상세')for(const panel of body.querySelectorAll('.song-meta,.field')){
+    const title=panel.querySelector('h3,.field-label,label,small')?.textContent?.trim();
+    if(title==='메모'||title==='컨디션과 태그'&&record){panel.dataset.sectionEdit=title==='메모'?'note':'classifications';panel.dataset.sectionType=record?'record':'song';panel.dataset.sectionId=(record?r:s).id;panel.tabIndex=0;panel.setAttribute('role','button');panel.setAttribute('aria-label',title+' 수정');}
+   }
+  }return t.innerHTML;
+ };
+ const activate=event=>{const button=event.target.closest('[data-section-edit],[data-section-save],[data-section-cancel]');if(!button)return;event.preventDefault();event.stopImmediatePropagation();
+  if(button.hasAttribute('data-section-edit')){target={id:button.dataset.sectionId,type:button.dataset.sectionType,field:button.dataset.sectionEdit};screen.name=target.field==='note'?'메모 수정':'컨디션과 태그';P.go(screen.id);}
+  else if(button.hasAttribute('data-section-cancel'))P.back();
+  else{const form=document.querySelector('.device-holder .x-form'),data=new FormData(form),r=(target.type==='song'?F.songs:F.recordings).get(target.id);if(target.field==='note')r.note=String(data.get('note')||'');else{r.condition=data.get('condition');r.tags=data.getAll('tags');}P.back();}
+ };
+ document.addEventListener('click',activate,true);document.addEventListener('keydown',event=>{if(['Enter',' '].includes(event.key)&&event.target.matches('[data-section-edit]'))activate(event);},true);
  P.render();
 })();

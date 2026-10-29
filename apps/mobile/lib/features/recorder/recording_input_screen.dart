@@ -68,6 +68,10 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
   bool busy = false, allowExit = false;
   List<String>? operationIds;
   Map<String, Object?>? prepared;
+  bool get noteOnly => widget.editing && widget.initialField == 'note';
+  bool get classificationsOnly =>
+      widget.editing && widget.initialField == 'classifications';
+  bool get sectionOnly => noteOnly || classificationsOnly;
   bool get current => mounted && widget.isCurrent(widget.repository);
   String get id => widget.recording['id'] as String;
 
@@ -563,7 +567,15 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
       child: Scaffold(
         appBar: appPageBar(
           context,
-          title: Text(widget.editing ? '녹음 정보 수정' : '녹음 정보 입력'),
+          title: Text(
+            noteOnly
+                ? '메모 수정'
+                : classificationsOnly
+                ? '컨디션과 태그'
+                : widget.editing
+                ? '녹음 정보 수정'
+                : '녹음 정보 입력',
+          ),
           leading: IconButton(
             onPressed: busy ? null : exit,
             icon: const AppIcon(Icons.arrow_back),
@@ -583,69 +595,72 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      if (!widget.editing)
+                      if (!sectionOnly) ...[
+                        if (!widget.editing)
+                          AppPickerField(
+                            label: '곡 선택',
+                            trailingLabel: title.text.trim().isEmpty
+                                ? '선택 필요'
+                                : null,
+                            value: title.text.trim().isEmpty
+                                ? '미선택'
+                                : '${title.text} · ${artist.text}',
+                            onPressed: chooseSong,
+                          ),
+                        if (widget.editing) ...[
+                          AppLabeledField(
+                            fieldKey: const ValueKey('recording-title'),
+                            label: '곡명',
+                            controller: title,
+                            onChanged: (_) => setState(changed),
+                          ),
+                          const SizedBox(height: 14),
+                          AppLabeledField(
+                            fieldKey: const ValueKey('recording-artist'),
+                            label: '가수',
+                            controller: artist,
+                            onChanged: (_) => setState(changed),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                         AppPickerField(
-                          label: '곡 선택',
-                          trailingLabel: title.text.trim().isEmpty
-                              ? '선택 필요'
-                              : null,
-                          value: title.text.trim().isEmpty
-                              ? '미선택'
-                              : '${title.text} · ${artist.text}',
-                          onPressed: chooseSong,
+                          label: '키',
+                          value: formatMusicalKey(defaults.key),
+                          onPressed: key,
                         ),
-                      if (widget.editing) ...[
-                        AppLabeledField(
-                          fieldKey: const ValueKey('recording-title'),
-                          label: '곡명',
-                          controller: title,
-                          onChanged: (_) => setState(changed),
+                        AppPickerField(
+                          label: '버전',
+                          value: formatVersionCode(defaults.version),
+                          onPressed: version,
                         ),
-                        const SizedBox(height: 14),
-                        AppLabeledField(
-                          fieldKey: const ValueKey('recording-artist'),
-                          label: '가수',
-                          controller: artist,
-                          onChanged: (_) => setState(changed),
-                        ),
-                        const SizedBox(height: 14),
+                        if (widget.editing)
+                          AppPickerField(
+                            label: '녹음 시각',
+                            onPressed: correctTime,
+                            value:
+                                '${wall.year}년 ${wall.month}월 ${wall.day}일 ${wall.hour < 12 ? '오전' : '오후'} ${wall.hour % 12 == 0 ? 12 : wall.hour % 12}:${wall.minute.toString().padLeft(2, '0')}',
+                          ),
+                        if (!widget.editing && songId != null)
+                          TextButton(
+                            onPressed: applyDefaults,
+                            child: const Text('선택 곡의 키·버전 기본값 적용'),
+                          ),
                       ],
-                      AppPickerField(
-                        label: '키',
-                        value: formatMusicalKey(defaults.key),
-                        onPressed: key,
-                      ),
-                      AppPickerField(
-                        label: '버전',
-                        value: formatVersionCode(defaults.version),
-                        onPressed: version,
-                      ),
-                      if (widget.editing)
+                      if (!noteOnly)
                         AppPickerField(
-                          label: '녹음 시각',
-                          onPressed: correctTime,
-                          value:
-                              '${wall.year}년 ${wall.month}월 ${wall.day}일 ${wall.hour < 12 ? '오전' : '오후'} ${wall.hour % 12 == 0 ? 12 : wall.hour % 12}:${wall.minute.toString().padLeft(2, '0')}',
+                          label: '컨디션·태그',
+                          value: [
+                            classificationConditions()
+                                    .where((r) => r['code'] == condition)
+                                    .firstOrNull?['name'] ??
+                                '선택 안 함',
+                            ...availableTags
+                                .where((r) => tags.contains(r['id']))
+                                .map((r) => r['name']),
+                          ].join(' · '),
+                          onPressed: chooseClassifications,
                         ),
-                      if (!widget.editing && songId != null)
-                        TextButton(
-                          onPressed: applyDefaults,
-                          child: const Text('선택 곡의 키·버전 기본값 적용'),
-                        ),
-                      AppPickerField(
-                        label: '컨디션·태그',
-                        value: [
-                          classificationConditions()
-                                  .where((r) => r['code'] == condition)
-                                  .firstOrNull?['name'] ??
-                              '선택 안 함',
-                          ...availableTags
-                              .where((r) => tags.contains(r['id']))
-                              .map((r) => r['name']),
-                        ].join(' · '),
-                        onPressed: chooseClassifications,
-                      ),
-                      if (widget.editing)
+                      if (widget.editing && !sectionOnly)
                         DropdownButtonFormField<String>(
                           key: const ValueKey('recording-tier'),
                           initialValue: tier,
@@ -663,22 +678,24 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
                           ],
                           onChanged: (v) => setState(() => tier = v),
                         ),
-                      if (widget.editing)
-                        AppLabeledField(
-                          fieldKey: const ValueKey('recording-note'),
-                          label: '메모 (선택)',
-                          controller: note,
-                          maxLines: 3,
-                          onChanged: (_) => setState(changed),
-                        )
-                      else
-                        AppPickerField(
-                          label: '연습 메모',
-                          value: note.text.isEmpty
-                              ? '아직 입력하지 않았어요.'
-                              : note.text,
-                          onPressed: editNote,
-                        ),
+                      if (!classificationsOnly) ...[
+                        if (widget.editing)
+                          AppLabeledField(
+                            fieldKey: const ValueKey('recording-note'),
+                            label: '메모 (선택)',
+                            controller: note,
+                            maxLines: 3,
+                            onChanged: (_) => setState(changed),
+                          )
+                        else
+                          AppPickerField(
+                            label: '연습 메모',
+                            value: note.text.isEmpty
+                                ? '아직 입력하지 않았어요.'
+                                : note.text,
+                            onPressed: editNote,
+                          ),
+                      ],
                     ],
                   ),
                 ),

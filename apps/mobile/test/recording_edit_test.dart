@@ -313,6 +313,98 @@ void main() {
       expect(await repo.selectableRecordingTags(), isEmpty);
     },
   );
+  for (final section in ['note', 'classifications']) {
+    testWidgets(
+      'focused $section save preserves other metadata and historical tags',
+      (t) async {
+        await t.runAsync(() async {
+          await repo.save(
+            repo.prepareCreate(
+              entity: LocalEntity.tag,
+              entityId: other,
+              draft: {'name': '저장 당시 태그', 'archived_at': null},
+              changes: {'name': '저장 당시 태그'},
+            ),
+          );
+          final prior = await row();
+          await repo.saveRecordingDetails(
+            rec,
+            {
+              ...values(),
+              'tag_ids': [other],
+            },
+            repo.recordingEditOperationIds(),
+            prior,
+            0,
+          );
+          final tag = (await repo.read(LocalEntity.tag, other))!;
+          await repo.save(
+            repo.preparePatch(
+              entity: LocalEntity.tag,
+              entityId: other,
+              baseRevision: tag.revision,
+              draft: {'name': '변경한 이름', 'archived_at': '2026-10-29T00:00:00Z'},
+              changes: {
+                'name': '변경한 이름',
+                'archived_at': '2026-10-29T00:00:00Z',
+              },
+            ),
+          );
+          final old = await row();
+          expect(old['tag_ids'], [other]);
+          await t.pumpWidget(
+            MaterialApp(
+              home: RecordingInputScreen(
+                recording: old,
+                repository: repo,
+                isCurrent: (_) => true,
+                editing: true,
+                initialField: section,
+              ),
+            ),
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 150));
+          await t.pumpAndSettle();
+          expect(find.byKey(const ValueKey('recording-title')), findsNothing);
+          if (section == 'note') {
+            await t.enterText(
+              find.byKey(const ValueKey('recording-note')),
+              '새로운 메모',
+            );
+            t.testTextInput.hide();
+            await t.pump();
+          }
+          await t.tap(find.text('변경 저장'));
+          await t.pump();
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          await t.pump(const Duration(milliseconds: 400));
+          final after = await row();
+          for (final key in [
+            'title_snapshot',
+            'artist_snapshot',
+            'key_mode',
+            'key_shift',
+            'version_code',
+            'tier',
+            'recorded_at',
+            'timezone_id',
+            'timezone_offset_minutes',
+            'condition_code',
+            'condition_name_snapshot',
+            'tags',
+            'tag_ids',
+            'song_id',
+          ]) {
+            expect(after[key], old[key], reason: key);
+          }
+          expect(after['note'], section == 'note' ? '새로운 메모' : old['note']);
+          expect(await store.readLocalAudio(rec), bytes);
+          await t.pumpWidget(const SizedBox());
+          expect(t.takeException(), isNull);
+        });
+      },
+    );
+  }
   for (final field in ['key', 'version', 'tier']) {
     testWidgets('detail $field opens its picker and cancel queues nothing', (
       t,

@@ -208,7 +208,6 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                   tooltip: '녹음 메뉴',
                   icon: const AppIcon(Icons.more_vert),
                   itemBuilder: (_) => [
-                    const PopupMenuItem(value: 'edit', child: Text('정보 수정')),
                     const PopupMenuItem(value: 'manage', child: Text('보관 관리')),
                     PopupMenuItem(
                       value: 'delete',
@@ -222,6 +221,15 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
               const SizedBox(height: 14),
               DetailInformationCard(
                 title: '녹음 정보',
+                action: TextButton.icon(
+                  icon: const AppIcon(Icons.edit_outlined, size: 14),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    padding: EdgeInsets.zero,
+                  ),
+                  onPressed: () => edit(row, copy.revision),
+                  label: const Text('정보 수정'),
+                ),
                 fields: [
                   ('버전', formatVersionCode(view.snapshot.version)),
                   ('키', formatMusicalKey(view.snapshot.key)),
@@ -230,6 +238,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
               ),
               const SizedBox(height: 14),
               AppPanel(
+                key: const ValueKey('recording-classification-detail'),
+                onTap: () => edit(row, copy.revision, 'classifications'),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -242,6 +252,8 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
               ),
               const SizedBox(height: 14),
               AppPanel(
+                key: const ValueKey('recording-note-detail'),
+                onTap: () => edit(row, copy.revision, 'note'),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [

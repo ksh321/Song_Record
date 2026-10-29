@@ -11,6 +11,7 @@ import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/features/auth/auth_session.dart';
 import 'package:song_record/features/songs/my_song_detail.dart';
 import 'package:song_record/features/songs/song_detail_screen.dart';
+import 'package:song_record/features/songs/song_edit_screen.dart';
 
 import 'auth_session_test.dart' as auth_fixtures;
 
@@ -100,6 +101,52 @@ void main() {
       await root.delete(recursive: true);
     }
   });
+  for (final light in [false, true]) {
+    testWidgets(
+      'song memo tap edits only memo and preserves other values light=$light',
+      (t) async {
+        final data = StreamController<MySongDetail>.broadcast();
+        var saves = 0;
+        await t.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.preview(light: light),
+            home: SongDetailScreen(
+              watch: () => data.stream,
+              prepareEdit: (draft) {
+                expect(draft.title, '현재곡');
+                expect(draft.artist, '현재가수');
+                expect(draft.note, '수정한 메모');
+                expect(draft.tier?.name, 'a');
+                return () async {
+                  saves++;
+                };
+              },
+            ),
+          ),
+        );
+        data.add(detail());
+        await t.pump();
+        final memo = find.byKey(const ValueKey('song-note-detail'));
+        await t.ensureVisible(memo);
+        await t.tap(memo);
+        await t.pumpAndSettle();
+        expect(
+          t.widget<SongEditScreen>(find.byType(SongEditScreen)).noteOnly,
+          isTrue,
+        );
+        expect(find.byType(TextField), findsOneWidget);
+        await t.enterText(find.byType(TextField), '수정한 메모');
+        t.testTextInput.hide();
+        await t.pump();
+        await t.ensureVisible(find.text('저장'));
+        await t.tap(find.text('저장'));
+        await t.pump();
+        expect(saves, 1);
+        await t.pumpWidget(const SizedBox());
+        await t.runAsync(data.close);
+      },
+    );
+  }
   testWidgets('detail settings opens app settings above the tab navigator', (
     t,
   ) async {

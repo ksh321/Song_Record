@@ -451,6 +451,19 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
                   },
           ),
           AppPanel(
+            key: const ValueKey('song-note-detail'),
+            onTap: widget.prepareEdit == null
+                ? null
+                : () => Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) => SongEditScreen(
+                        draft: SongEditDraft(detail),
+                        prepare: widget.prepareEdit!,
+                        auth: widget.auth,
+                        noteOnly: true,
+                      ),
+                    ),
+                  ),
             padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

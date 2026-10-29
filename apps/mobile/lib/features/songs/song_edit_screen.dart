@@ -18,8 +18,10 @@ class SongEditScreen extends StatefulWidget {
     required this.draft,
     required this.prepare,
     this.auth,
+    this.noteOnly = false,
     super.key,
   });
+  final bool noteOnly;
   final SongEditDraft draft;
   final SongEditPreparer prepare;
   final AuthController? auth;
@@ -98,7 +100,7 @@ class _SongEditScreenState extends State<SongEditScreen> {
     child: Scaffold(
       appBar: appPageBar(
         context,
-        title: const Text('곡 정보 수정'),
+        title: Text(widget.noteOnly ? '메모 수정' : '곡 정보 수정'),
         leading: IconButton(
           tooltip: '취소',
           onPressed: busy ? null : () => Navigator.of(context).pop(false),
@@ -118,18 +120,20 @@ class _SongEditScreenState extends State<SongEditScreen> {
                     padding: const EdgeInsets.all(14),
                     child: Column(
                       children: [
-                        AppLabeledField(
-                          label: '곡명',
-                          controller: title,
-                          enabled: editable,
-                        ),
-                        const SizedBox(height: 14),
-                        AppLabeledField(
-                          label: '가수',
-                          controller: artist,
-                          enabled: editable,
-                        ),
-                        const SizedBox(height: 14),
+                        if (!widget.noteOnly) ...[
+                          AppLabeledField(
+                            label: '곡명',
+                            controller: title,
+                            enabled: editable,
+                          ),
+                          const SizedBox(height: 14),
+                          AppLabeledField(
+                            label: '가수',
+                            controller: artist,
+                            enabled: editable,
+                          ),
+                          const SizedBox(height: 14),
+                        ],
                         AppLabeledField(
                           label: '메모',
                           controller: note,
@@ -140,64 +144,68 @@ class _SongEditScreenState extends State<SongEditScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  AppPickerField(
-                    onPressed: !editable
-                        ? null
-                        : () async {
-                            final result = await VersionPicker.show(
-                              context: context,
-                              selected: widget.draft.version,
-                            );
-                            if (mounted && editable && result != null) {
-                              setState(
-                                () => widget.draft.version = result.value,
+                  if (!widget.noteOnly) ...[
+                    const SizedBox(height: 14),
+                    AppPickerField(
+                      onPressed: !editable
+                          ? null
+                          : () async {
+                              final result = await VersionPicker.show(
+                                context: context,
+                                selected: widget.draft.version,
                               );
-                            }
-                          },
-                    label: '버전',
-                    value: formatVersionCode(widget.draft.version),
-                  ),
-                  AppPickerField(
-                    onPressed: !editable
-                        ? null
-                        : () async {
-                            final result = await MusicalKeyPicker.song(
-                              context: context,
-                              selected: widget.draft.musicalKey,
-                            );
-                            if (mounted && editable && result != null) {
-                              setState(
-                                () => widget.draft.musicalKey = result.value,
+                              if (mounted && editable && result != null) {
+                                setState(
+                                  () => widget.draft.version = result.value,
+                                );
+                              }
+                            },
+                      label: '버전',
+                      value: formatVersionCode(widget.draft.version),
+                    ),
+                    AppPickerField(
+                      onPressed: !editable
+                          ? null
+                          : () async {
+                              final result = await MusicalKeyPicker.song(
+                                context: context,
+                                selected: widget.draft.musicalKey,
                               );
-                            }
-                          },
-                    label: '대표 키',
-                    value: widget.draft.musicalKey == null
-                        ? '미정'
-                        : formatMusicalKey(widget.draft.musicalKey!),
-                  ),
-                  AppPickerField(
-                    onPressed: !editable
-                        ? null
-                        : () async {
-                            final result = await TierPicker.song(
-                              context: context,
-                              selected: widget.draft.tier,
-                            );
-                            if (mounted && editable && result != null) {
-                              setState(() => widget.draft.tier = result.value);
-                            }
-                          },
-                    label: '곡 티어',
-                    value: formatSongTier(widget.draft.tier),
-                  ),
-                  SongSuitabilityChoice(
-                    value: widget.draft.isSuitable,
-                    onChanged: !editable
-                        ? null
-                        : (v) => setState(() => widget.draft.isSuitable = v),
-                  ),
+                              if (mounted && editable && result != null) {
+                                setState(
+                                  () => widget.draft.musicalKey = result.value,
+                                );
+                              }
+                            },
+                      label: '대표 키',
+                      value: widget.draft.musicalKey == null
+                          ? '미정'
+                          : formatMusicalKey(widget.draft.musicalKey!),
+                    ),
+                    AppPickerField(
+                      onPressed: !editable
+                          ? null
+                          : () async {
+                              final result = await TierPicker.song(
+                                context: context,
+                                selected: widget.draft.tier,
+                              );
+                              if (mounted && editable && result != null) {
+                                setState(
+                                  () => widget.draft.tier = result.value,
+                                );
+                              }
+                            },
+                      label: '곡 티어',
+                      value: formatSongTier(widget.draft.tier),
+                    ),
+                    SongSuitabilityChoice(
+                      value: widget.draft.isSuitable,
+                      onChanged: !editable
+                          ? null
+                          : (v) => setState(() => widget.draft.isSuitable = v),
+                    ),
+                  ],
                   if (error != null) Text(error!, semanticsLabel: error),
                   FilledButton(
                     onPressed: busy || revoked ? null : save,
