@@ -893,3 +893,9 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 소스 d5a44e7fd5bb6d05ea172fd05866508f1ab20333 푸시 완료, 새 원격조회 Base8d9597f0720712ba1f422a7c42a32c853c309804와 일치. CI40810838201 진행; Scope/Flutter analyze·test·Android build 필수, API/MySQL/개발도구는 영향없음 N/A. 기존감시PID13596 사용, 별도 AI반복호출/추가 알림 없음. RB-PLAYER-DETAIL-SPACE1은 정보링크가 기존여백에 추가되어 재생원이 밀린 실기 발견1회→40px 기존공간 대체1회→최종 밝은/어두운 폰 정상.
 
 - CI40810838201은 분석/범위 PASS, 전체 테스트1327 PASS·1 FAIL이라 Android build는 skipped(통과 아님). RB-CI-MENU-VIS1: song_screen_acceptance의 큰글자·긴제목 시험이 일반반주로 스크롤한 뒤 화면밖 곡 메뉴를 그대로 tap하여 메뉴 미개방1회. Sliver header로 바뀐 목록에서 버튼 가시성 확보를 테스트에 추가; 기존 전체 강조색/큰글자·실제 메뉴/곡삭제 표시·544px 안쪽/예외없음 판정은 유지. 해당6 PASS/최종분석0(16.1초), 별도현재모델 diff 검토. 앱 소스/설치APK d9b6649 불변이며 재설치 필요없음. 실패 알림은 기존감시의 SERVER_ACCEPTED(사람수신미확인), 다음 수정 SHA에서 필수 CI 다시 확인.
+
+- 최종 완료: c81d3c69e05b105f0e8ab18fe1ca1a9401808b62/누적Base8d9597f0720712ba1f422a7c42a32c853c309804(두 번째 push 직전 원격d5a44e7 확인). CI40811702323 필수 Scope·Flutter analyze/test/Android build PASS, 서버/MySQL·API 계약·개발도구는 영향없음 N/A(통과 합산 없음). 로컬 연결41/여백2재검증/화면수용6 PASS·분석0·HTML두테마 PASS. 최종APKd9b66493439aeb277224de80c28661667e4987ef524c8be1e22752c5629c3bb8 설치/전체소스260개·기기SHA 일치, linked7/full8 선택·전체·취소/행위치 유지·두테마 및 제목·재생정보→상세 실기 확인. 실제 개인 곡/녹음 저장·삭제 없음. 현재 대화 직접 구현·별도검토(사용자 현 모델 진행 허용); 필수 검사 생략 없음. 기존감시 ntfy SERVER_ACCEPTED(사람수신 미확인), 중복 전송 없음. 빌드/테스트/CI감시 종료, UI미리보기 서버63142만 의도적으로 유지.
+
+### P25-04 녹음 재생 버튼 위치 HTML 미리보기 — 2026-10-29
+- 사용자 요청: 다른 UI는 유지하고 키/재생 위치만 HTML에서 비교. preview.css만 변경하여 오른쪽 중앙에 재생, 키는 왼쪽 정보 끝에 배치. 날짜·티어·글자·색/행64px 유지, 재생 pill은24px 외형/44px 터치영역. 베타/앱 소스·DB 변경 없음.
+- 두 테마에서 카드64px·버튼76×44·세로중앙/키와12px 분리 실제 측정 PASS, 화면 이미지 검토. 기존 연결/전체 녹음 hold/전체·취소/확인체크/행위치 유지 및 재생정보 진입 브라우저 회귀 PASS. 현재 모델 별도 CSS diff/기존 선택 오버레이·공통테마 검토. 원격추적 origin/main 대비0/0(새 원격조회 아님). 원시검사 record-play-right-*에 보존.
