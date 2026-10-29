@@ -169,11 +169,9 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: SingleChildScrollView(
-              child: RecordingList(
-                rows: rows.map(recordingViewFixture).toList(),
-                onOpen: (_) {},
-              ),
+            body: RecordingList(
+              rows: rows.map(recordingViewFixture).toList(),
+              onOpen: (_) {},
             ),
           ),
         ),
@@ -234,11 +232,9 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: SingleChildScrollView(
-              child: RecordingList(
-                rows: [recordingViewFixture(r)],
-                onOpen: (_) {},
-              ),
+            body: RecordingList(
+              rows: [recordingViewFixture(r)],
+              onOpen: (_) {},
             ),
           ),
         ),

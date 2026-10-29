@@ -9,10 +9,10 @@ import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/content_state.dart';
 import '../../core/widgets/detail_information_card.dart';
+import '../../core/widgets/editable_collection.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/recording_roles_card.dart';
 import '../../core/widgets/recording_row.dart';
-import '../../core/widgets/scroll_to_top_button.dart';
 import '../../core/widgets/selection_sheet.dart';
 import '../../core/widgets/song_badges.dart';
 import '../../core/widgets/song_row.dart';
@@ -22,6 +22,7 @@ import '../../routing/tab_navigation.dart';
 import '../auth/auth_session.dart';
 import '../recorder/recording_audio_panel.dart';
 import '../recorder/recording_navigation.dart';
+import '../trash/bulk_recording_delete.dart';
 import '../trash/trash_screens.dart';
 import '../trash/trash_workflow.dart';
 import 'my_song_detail.dart';
@@ -323,10 +324,50 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
   Widget song(MySongDetail detail) {
     final view = detail.song!.view;
     final value = detail;
-    return ScrollToTopView(
-      builder: (scroll) => ListView(
-        controller: scroll,
-        padding: AppLayout.bodyPadding,
+    final recordings = {for (final r in detail.recordings) r.id.value: r};
+    return EditableCollection(
+      key: ValueKey('linked-recordings-${view.id.value}-$scope'),
+      actionExtent: 0,
+      showScrollToTop: true,
+      ids: recordings.keys.toList(),
+      selectionEnabled: widget.trash != null,
+      onDelete: (ids) async {
+        if (changedAccount || tag() != scope || widget.trash == null) {
+          return false;
+        }
+        return showBulkRecordingDelete(
+          context,
+          recordings: {
+            for (final id in ids)
+              id: '${recordings[id]!.snapshot.title} · ${recordings[id]!.dateLabel}',
+          },
+          actions: widget.trash!,
+          isCurrent: () => mounted && !changedAccount && tag() == scope,
+        );
+      },
+      deleteLabel: (count) => '선택한 $count개 녹음 삭제',
+      actions: (_, _) => const SizedBox.shrink(),
+      belowActions: SizedBox(
+        height: 48,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text('연결 녹음 (${detail.recordings.length})'),
+        ),
+      ),
+      row: (id) {
+        final r = recordings[id]!;
+        return RecordingRow(
+          key: ValueKey('linked-recording-$id'),
+          recording: r,
+          onPlay: () => playRecording(r),
+          onTap: () => openRecording(r.id),
+        );
+      },
+      footer: detail.recordings.isEmpty
+          ? const Text('연결된 녹음이 없어요.')
+          : const SizedBox(height: AppSpacing.lg),
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
@@ -504,19 +545,6 @@ class _SongDetailScreenState extends State<SongDetailScreen> {
             ),
           ],
           if (choosing) const Text('대표 저장 중'),
-          const SizedBox(height: AppSpacing.lg),
-          Text('연결 녹음 (${detail.recordings.length})'),
-          if (detail.recordings.isEmpty) const Text('연결된 녹음이 없어요.'),
-          for (final r in detail.recordings)
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.sm),
-              child: RecordingRow(
-                key: ValueKey('linked-recording-${r.id.value}'),
-                recording: r,
-                onPlay: () => playRecording(r),
-                onTap: () => openRecording(r.id),
-              ),
-            ),
           const SizedBox(height: AppSpacing.lg),
         ],
       ),

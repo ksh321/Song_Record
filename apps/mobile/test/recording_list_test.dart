@@ -45,9 +45,7 @@ void main() {
     ];
     Widget page(String scope) => MaterialApp(
       home: Scaffold(
-        body: SingleChildScrollView(
-          child: RecordingList(scope: scope, rows: rows, onOpen: (_) {}),
-        ),
+        body: RecordingList(scope: scope, rows: rows, onOpen: (_) {}),
       ),
     );
     await tester.pumpWidget(page('a'));
@@ -69,11 +67,12 @@ void main() {
     );
   });
   testWidgets(
-    'hold recording offers deletion, cancel and scope change do not delete',
-    (tester) async {
-      var deleted = 0;
+    'hold selects recordings; cancel and scope change discard selection',
+    (t) async {
+      final deleted = <String>[];
       final rows = [
-        recordingViewFixture(row('a', '시험 녹음', '2026-10-10T04:00:00Z', 'S')),
+        recordingViewFixture(row('a', '첫 녹음', '2026-10-10T04:00:00Z', 'S')),
+        recordingViewFixture(row('b', '둘째 녹음', '2026-10-11T04:00:00Z', 'A')),
       ];
       Widget page(String scope) => MaterialApp(
         home: Scaffold(
@@ -81,29 +80,34 @@ void main() {
             scope: scope,
             rows: rows,
             onOpen: (_) {},
-            onDelete: (_) => deleted++,
+            onDelete: (values) async {
+              deleted.addAll(values.map((r) => r['id'] as String));
+              return true;
+            },
           ),
         ),
       );
-      await tester.pumpWidget(page('a'));
-      await tester.longPress(find.text('시험 녹음'));
-      await tester.pumpAndSettle();
-      expect(find.text('녹음 삭제'), findsOneWidget);
-      expect(deleted, 0);
-      await tester.tap(find.text('취소'));
-      await tester.pumpAndSettle();
-      expect(deleted, 0);
-      await tester.longPress(find.text('시험 녹음'));
-      await tester.pumpAndSettle();
-      await tester.pumpWidget(page('b'));
-      await tester.tap(find.text('녹음 삭제'));
-      await tester.pumpAndSettle();
-      expect(deleted, 0);
-      await tester.longPress(find.text('시험 녹음'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('녹음 삭제'));
-      await tester.pumpAndSettle();
-      expect(deleted, 1);
+      await t.pumpWidget(page('a'));
+      await t.longPress(find.text('첫 녹음'));
+      await t.pumpAndSettle();
+      expect(find.textContaining('전체 '), findsOneWidget);
+      expect(find.text('취소'), findsOneWidget);
+      expect(deleted, isEmpty);
+      await t.tap(find.text('취소'));
+      await t.pumpAndSettle();
+      expect(find.textContaining('전체 '), findsNothing);
+      await t.longPress(find.text('첫 녹음'));
+      await t.pumpAndSettle();
+      await t.pumpWidget(page('b'));
+      await t.pumpAndSettle();
+      expect(find.textContaining('전체 '), findsNothing);
+      await t.longPress(find.text('첫 녹음'));
+      await t.pumpAndSettle();
+      await t.tap(find.textContaining('전체 '));
+      await t.pumpAndSettle();
+      await t.tap(find.text('선택한 2개 녹음 삭제'));
+      await t.pumpAndSettle();
+      expect(deleted.toSet(), rows.map((r) => r['id']).toSet());
     },
   );
   test('four sorts preserve fileless rows, tier ties use actual instant and deterministic id', () {
@@ -164,11 +168,9 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: SingleChildScrollView(
-              child: RecordingList(
-                rows: rows.map(recordingViewFixture).toList(),
-                onOpen: (r) => opened = r['id'] as String,
-              ),
+            body: RecordingList(
+              rows: rows.map(recordingViewFixture).toList(),
+              onOpen: (r) => opened = r['id'] as String,
             ),
           ),
         ),

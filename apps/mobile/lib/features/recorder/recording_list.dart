@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/domain/song_types.dart';
 import '../../core/files/recording_file_status.dart';
 import '../../core/widgets/app_icon.dart';
-import '../../core/widgets/hold_actions.dart';
+import '../../core/widgets/editable_collection.dart';
 import '../../core/widgets/music_view_data.dart';
 import '../../core/widgets/recording_row.dart';
 import '../../core/widgets/ui_controls.dart';
@@ -25,7 +25,7 @@ class RecordingList extends StatefulWidget {
     this.onDelete,
     super.key,
   });
-  final ValueChanged<Map<String, dynamic>>? onDelete;
+  final Future<bool> Function(List<Map<String, dynamic>>)? onDelete;
   final String scope;
   final bool metadataComplete;
   final DateTime? lastSync;
@@ -38,22 +38,6 @@ class RecordingList extends StatefulWidget {
 class _RecordingListState extends State<RecordingList> {
   final pages = RecordingPages();
   String query = '';
-  Future<void> hold(Map<String, dynamic> row) async {
-    final scope = widget.scope;
-    final action = await showHoldActions(
-      context,
-      title: row['title_snapshot'] as String? ?? '녹음',
-      deleteLabel: '녹음 삭제',
-    );
-    if (!mounted ||
-        scope != widget.scope ||
-        action != 'delete' ||
-        !widget.rows.any((v) => v['id'] == row['id'])) {
-      return;
-    }
-    widget.onDelete?.call(row);
-  }
-
   @override
   void didUpdateWidget(RecordingList oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -139,66 +123,77 @@ class _RecordingListState extends State<RecordingList> {
     pages.select(filter, sort);
     final rows = pages.visible, unknown = pages.unknownFiles > 0;
     final exact = widget.metadataComplete && !unknown;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        AppSearchField(
-          fieldKey: ValueKey(widget.scope),
-          hint: '녹음의 곡명 또는 가수 검색',
-          onChanged: (value) => setState(() => query = value),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                exact ? '저장 녹음 ${pages.total}개' : '현재 확인된 ${pages.total}개',
-              ),
-            ),
-            TextButton.icon(
-              onPressed: chooseFilter,
-              icon: const AppIcon(Icons.filter_list),
-              label: Text('필터 ${filter.count}'),
-            ),
-            TextButton.icon(
-              onPressed: chooseSort,
-              icon: const AppIcon(Icons.sort),
-              label: Text(sort.label),
-            ),
-          ],
-        ),
-        if (!widget.metadataComplete)
-          const Text('동기화 중 · 전체 개수는 아직 확정되지 않았어요.'),
+    final byId = {for (final row in pages.ordered) row['id'] as String: row};
+    return EditableCollection(
+      key: ValueKey(widget.scope),
+      showScrollToTop: true,
+      ids: rows.map((r) => r['id'] as String).toList(),
+      selectionIds: pages.ordered.map((r) => r['id'] as String).toList(),
+      selectionEnabled: widget.onDelete != null,
+      onDelete: (ids) =>
+          widget.onDelete?.call([
+            for (final id in ids)
+              if (byId[id] != null) byId[id]!,
+          ]) ??
+          Future.value(false),
+      deleteLabel: (count) => '선택한 $count개 녹음 삭제',
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppSearchField(
+            fieldKey: ValueKey(widget.scope),
+            hint: '녹음의 곡명 또는 가수 검색',
+            onChanged: (value) => setState(() => query = value),
+          ),
+          const SizedBox(height: 12),
+          if (!widget.metadataComplete)
+            const Text('동기화 중 · 전체 개수는 아직 확정되지 않았어요.'),
 
-        if (unknown) const Text('파일 상태 확인 불가 · 결과 개수를 아직 확정할 수 없어요.'),
-        if (rows.isEmpty && exact)
-          Text(
-            filter.count == 0 && search.isEmpty
-                ? '저장된 녹음이 없습니다'
-                : '조건에 맞는 녹음이 없습니다',
-          ),
-        for (final row in rows)
-          Padding(
-            key: ValueKey(row['id']),
-            padding: const EdgeInsets.only(top: 8),
-            child: GestureDetector(
-              onLongPress: widget.onDelete == null ? null : () => hold(row),
-              child: RecordingRow(
-                recording: recordingView(row),
-                onTap: () => play(row, autoplay: false),
-                onPlay: () => play(row),
-              ),
+          if (unknown) const Text('파일 상태 확인 불가 · 결과 개수를 아직 확정할 수 없어요.'),
+          if (rows.isEmpty && exact)
+            Text(
+              filter.count == 0 && search.isEmpty
+                  ? '저장된 녹음이 없습니다'
+                  : '조건에 맞는 녹음이 없습니다',
+            ),
+        ],
+      ),
+      actions: (_, _) => Row(
+        children: [
+          Expanded(
+            child: Text(
+              exact ? '저장 녹음 ${pages.total}개' : '현재 확인된 ${pages.total}개',
             ),
           ),
-        if (pages.cursor != null)
-          TextButton(
-            onPressed: () => setState(() {
-              final cursor = pages.cursor;
-              if (cursor != null) pages.next(cursor);
-            }),
-            child: Text('다음 ${pages.limit}개'),
+          TextButton.icon(
+            onPressed: chooseFilter,
+            icon: const AppIcon(Icons.filter_list),
+            label: Text('필터 ${filter.count}'),
           ),
-      ],
+          TextButton.icon(
+            onPressed: chooseSort,
+            icon: const AppIcon(Icons.sort),
+            label: Text(sort.label),
+          ),
+        ],
+      ),
+      row: (id) {
+        final row = byId[id]!;
+        return RecordingRow(
+          recording: recordingView(row),
+          onTap: () => widget.onOpen(row),
+          onPlay: () => play(row),
+        );
+      },
+      footer: pages.cursor == null
+          ? const SizedBox.shrink()
+          : TextButton(
+              onPressed: () => setState(() {
+                final cursor = pages.cursor;
+                if (cursor != null) pages.next(cursor);
+              }),
+              child: Text('다음 ${pages.limit}개'),
+            ),
     );
   }
 }

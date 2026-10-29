@@ -38,6 +38,8 @@ class EditableCollection extends StatefulWidget {
     this.onRefresh,
     this.footer = const SizedBox.shrink(),
     this.enabled = true,
+    this.selectionEnabled = true,
+    this.actionExtent = 52,
     this.rowSpacing = 8,
     this.showScrollToTop = false,
   });
@@ -55,6 +57,8 @@ class EditableCollection extends StatefulWidget {
   final Future<void> Function(List<String>)? onReorder;
   final String Function(int) deleteLabel;
   final bool enabled;
+  final bool selectionEnabled;
+  final double actionExtent;
   final double rowSpacing;
   final bool showScrollToTop;
   @override
@@ -210,7 +214,7 @@ class _EditableCollectionState extends State<EditableCollection> {
                   SliverPersistentHeader(
                     pinned: !selecting && ordering == null,
                     delegate: _CollectionBar(
-                      extent: folded ? 0 : 52,
+                      extent: folded ? 0 : widget.actionExtent,
                       builder: (compact) => Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Visibility(
@@ -354,7 +358,10 @@ class _EditableCollectionState extends State<EditableCollection> {
                         padding: EdgeInsets.only(bottom: widget.rowSpacing),
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
-                          onLongPress: enabled && ordering == null
+                          onLongPress:
+                              enabled &&
+                                  widget.selectionEnabled &&
+                                  ordering == null
                               ? () => setState(() {
                                   captureRowHeights();
                                   selecting = true;

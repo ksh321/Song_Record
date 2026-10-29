@@ -67,6 +67,12 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
+          await tester.scrollUntilVisible(
+            find.byTooltip('5초 뒤로'),
+            180,
+            scrollable: find.byType(Scrollable).first,
+          );
+          await tester.pumpAndSettle();
           final expected = light ? Colors.black : Colors.white;
           for (final icon in [Icons.replay_5, Icons.forward_5]) {
             final actual = tester.widget<AppIcon>(
@@ -93,7 +99,13 @@ void main() {
           );
         }
 
-        await tester.tap(find.byTooltip('녹음 상세 메뉴'));
+        await tester.scrollUntilVisible(
+          find.text('녹음 정보 보기'),
+          -180,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('녹음 정보 보기'));
         expect(opened, 1);
         expect(port.plays, 0);
       } finally {

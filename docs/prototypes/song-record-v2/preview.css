@@ -321,10 +321,10 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 .v3-drag-ghost{border:2px solid var(--accent);box-sizing:border-box}
 
 /* Shared readable selection controls; no layout shift or opaque toolbar strip. */
-.phone:is(.pl-selecting,.bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) button{height:40px;min-height:40px;padding:0 12px;font-size:14px;font-weight:700;line-height:1.2;background:var(--surface);color:var(--text);border:1px solid var(--muted);border-radius:10px;box-shadow:0 2px 5px #0002}
-.phone:is(.pl-selecting,.bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) :is(.pl-all,.bulk-all){border:1px solid var(--muted);padding:0 12px;gap:8px}
-.phone:is(.pl-selecting,.bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) .bulk-box{width:23px;height:23px;flex-basis:23px;border-width:2px}
-.phone:is(.pl-selecting,.bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) .bulk-count{font-size:15px;font-weight:800;color:var(--accent);margin-left:2px}
+.phone:is(.pl-selecting,.bulk-selecting,.recording-bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) button{height:40px;min-height:40px;padding:0 12px;font-size:14px;font-weight:700;line-height:1.2;background:var(--surface);color:var(--text);border:1px solid var(--muted);border-radius:10px;box-shadow:0 2px 5px #0002}
+.phone:is(.pl-selecting,.bulk-selecting,.recording-bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) :is(.pl-all,.bulk-all){border:1px solid var(--muted);padding:0 12px;gap:8px}
+.phone:is(.pl-selecting,.bulk-selecting,.recording-bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) .bulk-box{width:23px;height:23px;flex-basis:23px;border-width:2px}
+.phone:is(.pl-selecting,.bulk-selecting,.recording-bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) .bulk-count{font-size:15px;font-weight:800;color:var(--accent);margin-left:2px}
 .phone.pl-selecting .pl-selection-slot>.pl-edit-tools{align-items:center}
 .phone.pl-selecting .pl-selection-slot>.pl-edit-tools button{min-height:40px}
 
@@ -395,7 +395,7 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 .phone .v3-player .v3-play-controls .v3-skip{color:var(--playback-control-icon)}
 
 .phone .v3-player .v3-play-controls .v3-play-main{color:var(--on-accent)}
-.phone:is(.pl-selecting,.bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) :is(.pl-all,.bulk-all){padding-left:5px}
+.phone:is(.pl-selecting,.bulk-selecting,.recording-bulk-selecting) :is(.pl-edit-tools,.bulk-toolbar) :is(.pl-all,.bulk-all){padding-left:5px}
 
 /* Playback proportions and scrolled-only list readability. */
 .phone .v3-play-controls{gap:24px}
@@ -446,3 +446,10 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 .phone .record-detail-menu button:hover{background:var(--selection-bg)}
 
 .phone .record-detail-actions .v3-more{background:transparent;border:0;box-shadow:none;color:var(--text)}
+
+.phone .recording-info-link{margin:0 0 14px auto;display:flex;justify-content:flex-end;color:var(--accent)}
+.phone.recording-bulk-selecting .recording-bulk-tools{position:sticky;top:0;height:0;min-height:0;margin:0;padding:0;z-index:15;overflow:visible;display:flex;justify-content:space-between;pointer-events:none;background:transparent;border:0}
+.phone.recording-bulk-selecting .recording-bulk-tools button{pointer-events:auto;min-height:40px;padding:0 10px;border:1px solid var(--muted);border-radius:10px;background:var(--surface);color:var(--text);font-weight:700;box-shadow:0 2px 5px #0002}
+.phone.recording-bulk-selecting .recording-bulk-check{flex:0 0 23px;box-sizing:border-box;border-color:var(--accent)}
+.phone.recording-bulk-selecting .v3-record-card{box-sizing:border-box;overflow:hidden}
+.phone.recording-bulk-selecting .v3-record-song .compact-copy :is(strong,small){white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

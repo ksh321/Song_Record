@@ -466,8 +466,8 @@
     if(screen.id==='playlist-create'){const form=body.querySelector('form');if(form)form.insertAdjacentHTML('beforeend',iconPicker('music'));}
     if(screen.id==='v2-playback'){
       const r=F.recordings.get(s.record)||F.recordings.get('r2');heading.textContent=r.artist+' · '+r.title+' '+r.key;heading.classList.add('v3-player-title');
-      const settings=phone.querySelector('.settings-button');if(settings)settings.outerHTML=button('⋮','record-details','aria-label="녹음 상세 메뉴"','v3-more');
-      else heading.insertAdjacentHTML('afterend',button('⋮','record-details','aria-label="녹음 상세 메뉴"','v3-more'));
+      const settings=phone.querySelector('.settings-button');settings?.remove();
+      body.insertAdjacentHTML('afterbegin',button('녹음 정보 보기 ›','record-details','','flow-text-button recording-info-link'));
       phone.classList.add('v3-player-phone');
     }
     if(['v2-draft-tags','x-record-edit','record-filter'].includes(screen.id)){
@@ -545,11 +545,12 @@
   // Window capture intentionally precedes the legacy document handlers.
   let pressedButton=null,ignoreNativeClick=null;
   window.addEventListener('dragstart',event=>{if(event.target.closest('.phone button'))event.preventDefault();},true);
-  window.addEventListener('pointerdown',event=>{const b=event.target.closest('.device-holder button');pressedButton=b&&!b.disabled&&!b.closest('.v3-draggable')&&event.button===0?{b,x:event.clientX,y:event.clientY,id:event.pointerId}:null;},true);
+  window.addEventListener('pointerdown',event=>{window.RECORDING_EDIT?.pointerDown();const b=event.target.closest('.device-holder button');pressedButton=b&&!b.disabled&&!b.closest('.v3-draggable')&&event.button===0?{b,x:event.clientX,y:event.clientY,id:event.pointerId}:null;},true);
   window.addEventListener('pointercancel',()=>{pressedButton=null;},true);
   window.addEventListener('pointerup',event=>{const press=pressedButton;pressedButton=null;if(!press||press.id!==event.pointerId||!press.b.isConnected||Math.hypot(event.clientX-press.x,event.clientY-press.y)<4)return;const target=document.elementFromPoint(event.clientX,event.clientY);if(target?.closest('button')!==press.b)return;ignoreNativeClick={button:press.b,until:performance.now()+500};press.b.click();},true);
   window.addEventListener('click',event=>{if(event.isTrusted&&ignoreNativeClick&&performance.now()<ignoreNativeClick.until&&event.target.closest('button')===ignoreNativeClick.button){event.preventDefault();event.stopImmediatePropagation();ignoreNativeClick=null;}},true);
   window.addEventListener('click',event=>{
+    if(window.RECORDING_EDIT?.handleClick(event))return;
     if(window.PLAYLIST_EDIT?.active()&&event.target.closest('.device-holder .v3-draggable'))return;
     if(!event.target.closest('.v3-song-top-actions'))for(const menu of document.querySelectorAll('.v3-song-menu:not([hidden])')){menu.hidden=true;menu.parentElement.querySelector('[data-v3="song-menu"]').setAttribute('aria-expanded','false');}
     const b=event.target.closest('button');if(!b||b.disabled)return;const d=b.dataset;
@@ -596,7 +597,7 @@
       case 'record-search':F.close();F.ui.catalogQuery='';F.ui.brand='TJ';go('search');break;
       case 'record-manual':F.close();go('v2-manual');break;
       case 'record-pick':if(d.song){F.selectSong(d.song);window.Prototype.returnTo(F.ui.context?.draft||'draft');}else register(F.catalog.get(d.candidate));break;
-      case 'record-open':openRecord(d.record);break;
+      case 'record-open':go(F.recordRoute(d.record));break;
       case 'record-play':openRecord(d.record,true);break;
       case 'record-details':s.playing=false;go(F.recordRoute(s.record));break;
       case 'play':{const r=F.recordings.get(s.record);if(r&&(r.local||r.cloud==='보관됨')){if(s.position>=r.duration)s.position=0;s.playing=!s.playing;render();}break;}
@@ -812,7 +813,7 @@ window.Prototype.render();
   const drag=target.closest('.v3-draggable');
   if(drag){window.PLAYLIST_EDIT.select(drag);return;}
   const recordId=target.closest('[data-record]')?.dataset.record;
-  if(recordId){const r=F.recordings.get(recordId);if(!r)return;dialog(r.title,[['녹음 삭제',()=>dialog('녹음을 휴지통으로 옮길까요?',[['녹음 삭제',()=>{r.active=false;const id='record-batch-'+Date.now();r.trashBatch=id;window.X.batches.set(id,{id,recordOnly:true,records:[{id:r.id}],items:[],deletedAt:Date.now()});P.render();}]])]]);return;}
+  if(recordId){if(window.RECORDING_EDIT?.select(target)){blockClick=false;return;}const r=F.recordings.get(recordId);if(!r)return;dialog(r.title,[['녹음 삭제',()=>dialog('녹음을 휴지통으로 옮길까요?',[['녹음 삭제',()=>{r.active=false;const id='record-batch-'+Date.now();r.trashBatch=id;window.X.batches.set(id,{id,recordOnly:true,records:[{id:r.id}],items:[],deletedAt:Date.now()});P.render();}]])]]);return;}
   const route=target.closest('[data-to]')?.dataset.to,song=F.songFor(route);if(song?.active){bulk=new Set([song.id]);paintBulk();}
  }
 
@@ -995,4 +996,33 @@ if(window.Prototype.state.screen==='v3-record-source'){
  };
  document.addEventListener('click',activate,true);document.addEventListener('keydown',event=>{if(['Enter',' '].includes(event.key)&&event.target.matches('[data-section-edit]'))activate(event);},true);
  P.render();
+})();
+
+/* Recording multi-select uses the library controls without moving held rows. */
+(() => {
+ const F=window.FLOW,P=window.Prototype,R=window.RENDER,e=R.esc,base=R.phone;
+ let selected=null,scope=null,ignoreClick=false;const heights=new Map();
+ const root=()=>document.querySelector('.device-holder .phone');
+ const rows=()=>[...(root()?.querySelectorAll('.phone-body .v3-record-card')||[])].filter(r=>!r.closest('.record-role-section'));
+ const id=row=>row.querySelector('[data-record]')?.dataset.record;
+ function paint(){const r=root();if(!r)return;if(scope!==P.state.screen){selected=null;heights.clear();}
+  r.querySelectorAll('.recording-bulk-tools,.recording-bulk-footer,.recording-bulk-check').forEach(x=>x.remove());r.classList.toggle('recording-bulk-selecting',selected!==null);
+  if(selected===null){rows().forEach(row=>{row.style.height='';});return;}
+  const visible=rows(),ids=visible.map(id);selected=new Set([...selected].filter(v=>ids.includes(v)));
+  const all=ids.length>0&&ids.every(v=>selected.has(v));const toolbar=document.createElement('div');toolbar.className='bulk-toolbar recording-bulk-tools';
+  toolbar.innerHTML='<button type="button" class="bulk-all" aria-label="전체 선택"><span class="bulk-box">'+(all?'✓':'')+'</span>전체 <span class="bulk-count">'+selected.size+'</span></button><button type="button" class="bulk-cancel">취소</button>';
+  toolbar.querySelector('.bulk-all').onclick=()=>{selected=all?new Set():new Set(ids);paint();};toolbar.querySelector('.bulk-cancel').onclick=()=>{selected=null;paint();};const body=r.querySelector('.phone-body');toolbar.style.marginBottom=-(parseFloat(getComputedStyle(body).rowGap)||0)+'px';body.prepend(toolbar);
+  visible.forEach(row=>{const key=id(row);row.style.height=heights.get(key)+'px';const box=document.createElement('span');box.className='bulk-check bulk-box recording-bulk-check';box.setAttribute('role','checkbox');box.setAttribute('aria-checked',String(selected.has(key)));box.textContent=selected.has(key)?'✓':'';row.prepend(box);});
+  const footer=document.createElement('div');footer.className='bulk-delete-bar recording-bulk-footer';footer.innerHTML='<button type="button" class="command primary" '+(!selected.size?'disabled':'')+'>선택한 '+selected.size+'개 녹음 삭제</button>';r.append(footer);
+  footer.querySelector('button').onclick=()=>{const ids=[...selected],overlay=document.createElement('div');overlay.className='control-overlay hold-overlay';overlay.innerHTML='<section class="control-sheet" role="dialog" aria-modal="true"><h3>선택한 '+ids.length+'개 녹음 삭제</h3><p>휴지통으로 이동하며 고정이 해제돼요. 복원해도 대표·고정은 자동으로 돌아오지 않아요.</p><label><input type="checkbox" data-recording-confirm>선택한 녹음 삭제와 고정 해제를 확인했어요</label><button type="button" class="command primary" data-recording-delete disabled>휴지통으로 이동</button><button type="button" class="command secondary" data-recording-cancel>취소</button></section>';r.append(overlay);
+   overlay.querySelector('[data-recording-confirm]').onchange=event=>overlay.querySelector('[data-recording-delete]').disabled=!event.target.checked;
+   overlay.querySelector('[data-recording-cancel]').onclick=()=>overlay.remove();
+   overlay.querySelector('[data-recording-delete]').onclick=()=>{ids.forEach((key,i)=>{const v=F.recordings.get(key);if(!v?.active)return;v.active=false;v.pinned=false;const batch='record-batch-'+Date.now()+'-'+i;v.trashBatch=batch;const song=F.songs.get(v.songId);if(song?.representative===key)song.representative=null;window.X.batches.set(batch,{id:batch,recordOnly:true,records:[{id:key}],items:[],deletedAt:Date.now()});});selected=null;overlay.remove();P.render();};
+  };
+ }
+ window.RECORDING_EDIT={select(target){if(!(P.state.screen==='recordings'||F.songScreens.has(P.state.screen)))return false;const card=target.closest('.v3-record-card');if(!card||card.closest('.record-role-section'))return false;scope=P.state.screen;rows().forEach(row=>heights.set(id(row),row.getBoundingClientRect().height));selected=new Set([id(card)]);ignoreClick=true;paint();return true;}};
+ window.RECORDING_EDIT.pointerDown=()=>{ignoreClick=false;};
+ window.RECORDING_EDIT.handleClick=event=>{if(selected===null||event.target.closest('.hold-overlay'))return false;const card=event.target.closest('.device-holder .v3-record-card');if(!card||card.closest('.record-role-section'))return false;event.preventDefault();event.stopImmediatePropagation();if(ignoreClick){ignoreClick=false;return true;}const key=id(card);selected.has(key)?selected.delete(key):selected.add(key);paint();return true;};
+ window.addEventListener('keydown',event=>{if(event.key==='Escape'&&selected!==null){event.preventDefault();selected=null;paint();}},true);
+ R.phone=function(view,interactive=true){const html=base(view,interactive);if(interactive)setTimeout(paint,0);return html;};
 })();

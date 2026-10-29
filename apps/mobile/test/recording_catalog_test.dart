@@ -206,12 +206,10 @@ void main() {
       Widget app(List<Map<String, dynamic>> rows, {bool complete = true}) =>
           MaterialApp(
             home: Scaffold(
-              body: SingleChildScrollView(
-                child: RecordingList(
-                  rows: rows.map(recordingViewFixture).toList(),
-                  metadataComplete: complete,
-                  onOpen: (_) {},
-                ),
+              body: RecordingList(
+                rows: rows.map(recordingViewFixture).toList(),
+                metadataComplete: complete,
+                onOpen: (_) {},
               ),
             ),
           );
@@ -224,7 +222,11 @@ void main() {
       );
       await tester.pumpWidget(app(rows));
       expect(find.text('저장 녹음 55개'), findsOneWidget);
-      await tester.ensureVisible(find.text('다음 50개'));
+      await tester.scrollUntilVisible(
+        find.text('다음 50개'),
+        400,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('다음 50개'));
       await tester.pumpAndSettle();
       expect(find.text('다음 50개'), findsNothing);

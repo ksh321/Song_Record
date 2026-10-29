@@ -5,6 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:song_record/core/widgets/app_page_bar.dart';
 
 import '../../core/audio/audio_player.dart';
+import '../../core/theme/app_tokens.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../core/widgets/ui_controls.dart';
 
@@ -98,17 +99,6 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
         style: const TextStyle(fontSize: 17, height: 1.5),
       ),
       showSettings: widget.onDetails == null,
-      actions: [
-        if (widget.onDetails != null)
-          IconButton(
-            tooltip: '녹음 상세 메뉴',
-            icon: const AppIcon(Icons.more_vert),
-            onPressed: () async {
-              if (player.phase == PlaybackPhase.playing) await player.pause();
-              if (mounted) widget.onDetails?.call();
-            },
-          ),
-      ],
     ),
     body: SafeArea(
       child: AnimatedBuilder(
@@ -127,7 +117,25 @@ class _RecordingPlayerScreenState extends State<RecordingPlayerScreen>
           return ListView(
             padding: AppLayout.bodyPadding,
             children: [
-              const SizedBox(height: 40),
+              if (widget.onDetails != null)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      textStyle: AppTypography.button.copyWith(inherit: false),
+                    ),
+                    onPressed: () async {
+                      if (player.phase == PlaybackPhase.playing) {
+                        await player.pause();
+                      }
+                      if (mounted) widget.onDetails?.call();
+                    },
+                    icon: const AppIcon(Icons.chevron_right),
+                    iconAlignment: IconAlignment.end,
+                    label: const Text('녹음 정보 보기'),
+                  ),
+                ),
+              if (widget.onDetails == null) const SizedBox(height: 40),
               Center(
                 child: Text(
                   time(scrubPosition ?? visiblePosition),
