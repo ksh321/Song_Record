@@ -459,4 +459,4 @@ button,input,textarea,select{font:inherit}button{touch-action:manipulation}butto
 .phone .v3-record-copy{grid-column:1;min-width:0}
 .phone .v3-record-copy time{margin-right:0}
 .phone .v3-record-action{align-self:center;min-width:0}
-.phone .v3-record-action .v3-duration{width:100%;height:44px;min-height:44px;display:flex;align-items:center;justify-content:center;padding:0 6px;border-radius:12px;font-size:16px;font-weight:600;line-height:1.25;font-variant-numeric:tabular-nums}
+.phone .v3-record-action .v3-duration{width:100%;height:36px;min-height:36px;display:flex;align-items:center;justify-content:center;padding:0 6px;border-radius:12px;font-size:16px;font-weight:600;line-height:1.25;font-variant-numeric:tabular-nums}

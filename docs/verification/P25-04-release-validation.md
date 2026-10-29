@@ -910,3 +910,5 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 
 ### P25-04 녹음 재생 높이 축소 HTML — 2026-10-29
 - 사용자: 재생버튼이 따로 보이므로 높이 조금 축소. 공통 버튼54→44px, 세로중앙으로 조정. 카드64px/키위치·색/우측폭76px/시간·삼각형16px 유지. 두테마 상하10px·키왼쪽·행높이/재생 진입 및 이미지 확인 PASS(record-shorter-*). 별도 현재모델 CSS diff 검토. HTML만 수정, 베타 불변·동일 docs경로 CI NOT_REQUIRED.
+
+- P25-04 HTML 후속: 사용자 더 축소 요청으로 재생44→36px. 두테마 행64px·상하14px/키왼쪽·기존16px삼각형·시간/재생진입 PASS, 이미지·현재모델 CSS diff 검토. 베타 불변, docs경로 CI NOT_REQUIRED. record-shorter36-* 근거.
