@@ -4,6 +4,58 @@ import 'package:song_record/features/recorder/recording_classification_picker.da
 
 void main() {
   testWidgets(
+    'direct save error keeps selection and allows same selection retry',
+    (t) async {
+      var attempts = 0, locked = false;
+      final received = <RecordingClassification>[];
+      await t.pumpWidget(
+        MaterialApp(
+          home: StatefulBuilder(
+            builder: (context, update) => RecordingClassificationPicker(
+              options: (
+                conditions: [
+                  {'code': 'GOOD', 'name': '좋음'},
+                ],
+                tags: [
+                  {'id': 't', 'name': '발성'},
+                ],
+              ),
+              selection: (condition: 'GOOD', tags: ['t']),
+              isCurrent: () => true,
+              locked: locked,
+              applyLabel: '변경 저장',
+              onApply: (value) async {
+                received.add(value);
+                attempts++;
+                if (attempts == 1) {
+                  update(() => locked = true);
+                  throw StateError('synthetic');
+                }
+              },
+            ),
+          ),
+        ),
+      );
+      await t.tap(find.text('변경 저장'));
+      await t.pumpAndSettle();
+      expect(find.textContaining('선택은 유지'), findsOneWidget);
+      expect(
+        t.widget<CheckboxListTile>(find.byType(CheckboxListTile)).value,
+        isTrue,
+      );
+      expect(
+        t.widget<CheckboxListTile>(find.byType(CheckboxListTile)).onChanged,
+        isNull,
+      );
+      await t.tap(find.text('변경 저장'));
+      await t.pumpAndSettle();
+      expect(attempts, 2);
+      expect(received[1].condition, received[0].condition);
+      expect(received[1].tags, received[0].tags);
+      expect(t.takeException(), isNull);
+    },
+  );
+  testWidgets(
     'cancel discards selection; apply returns only the explicit draft',
     (t) async {
       RecordingClassification? result;

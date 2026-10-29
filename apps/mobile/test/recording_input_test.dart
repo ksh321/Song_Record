@@ -298,6 +298,8 @@ void main() {
         await t.tap(find.text('적용'));
         await t.pumpAndSettle();
         await Future<void>.delayed(const Duration(milliseconds: 350));
+        await t.ensureVisible(find.text('나중에 입력'));
+        await t.pumpAndSettle();
         await t.tap(find.text('나중에 입력'));
         await Future<void>.delayed(const Duration(milliseconds: 150));
         await t.pumpAndSettle();

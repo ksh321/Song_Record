@@ -9,6 +9,7 @@ import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/sync/mutation_request.dart';
 import 'package:song_record/features/auth/auth_session.dart';
+import 'package:song_record/features/recorder/recording_classification_picker.dart';
 import 'package:song_record/features/recorder/recording_input_screen.dart';
 
 import 'recording_input_test.dart' as input;
@@ -405,6 +406,49 @@ void main() {
       },
     );
   }
+  testWidgets(
+    'direct classification load failure retries without an intermediate form or writes',
+    (t) async {
+      await t.runAsync(() async {
+        final old = await row();
+        final count = (await repo.pending()).length;
+        var loads = 0;
+        await t.pumpWidget(
+          MaterialApp(
+            home: RecordingInputScreen(
+              recording: old,
+              repository: repo,
+              isCurrent: (_) => true,
+              editing: true,
+              initialField: 'classifications',
+              conditionLoader: () async {
+                loads++;
+                if (loads == 1) throw StateError('synthetic');
+                return [];
+              },
+              tagLoader: () async => [],
+            ),
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await t.pumpAndSettle();
+        expect(find.text('분류 정보를 확인하지 못했어요.'), findsOneWidget);
+        await t.tap(find.text('다시 확인'));
+        await t.pump();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await t.pumpAndSettle();
+        expect(find.byType(RecordingClassificationPicker), findsOneWidget);
+        expect(loads, 2);
+        expect(find.text('컨디션·태그'), findsNothing);
+        await t.tap(find.text('취소'));
+        await t.pump();
+        await t.pumpWidget(const SizedBox());
+        expect(await row(), old);
+        expect((await repo.pending()).length, count);
+        expect(t.takeException(), isNull);
+      });
+    },
+  );
   for (final field in ['key', 'version', 'tier']) {
     testWidgets('detail $field opens its picker and cancel queues nothing', (
       t,

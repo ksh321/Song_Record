@@ -861,3 +861,16 @@ preview.css 끝 Single source 섹션에 tier/key 토큰을 한 번 정의하고,
 - 실기: APK60cfa6a5126295931f92f613b30d2fb713a29410269660e027321f691561c6c2 install-r Success/소스259개·기기APK SHA 일치. 기존 곡 메모 탭→메모만 편집→뒤로취소, 녹음 메모 탭→메모만 편집→취소, 컨디션/태그 탭→해당부분 편집→선택화면→뒤로취소, 정보카드 수정→전체 기존편집→취소 확인. 실제 입력/저장/삭제 없음. 중간ADB daemon 연결단절1회는 start-server 후 정상복구, 앱오류/코드수정실패와 구분. 화면 확인 중 긴 컨디션 제목 잘림을 발견해 기존 선택창과 동일한 짧은 제목 ‘컨디션과 태그’로 변경. 기능수정 없음, 영향검사/최종분석·최종서명빌드 진행.
 
 - 최종 제목 변경 후 녹음 상세/편집 영향15 PASS·최종analyze0(36.2초), HTML 두 테마 재검증 PASS. 최종 APK a448ac2fd7d9ae123e821f5bd554d945d2f4b65b25e6b67b86d35a6b8f24a219 install-r Success/전체소스·기기SHA 일치. 기능 실기는60cfa6a5에서 확인했고 이후 변경은 제목을 기존 선택창과 같은 컨디션과 태그로 줄인 것뿐. 개인 입력/저장/삭제 없음. 빌드/검사 실행 종료, 커밋·필수CI 진행.
+
+- 최종 완료: a78407dfc8f609afe9ed0af5aeeec8c5d42c4f01/Base0238200, 필수 CI40802684644 Scope·Flutter analyze/test/Android build PASS.44개 연결검사/제목 후속15 PASS·최종분석0·HTML 두 테마 PASS. 최종 APKa448ac2fd7d9ae123e821f5bd554d945d2f4b65b25e6b67b86d35a6b8f24a219 설치/전체소스·기기SHA 일치. 곡 메모/녹음 메모/분류 선택/카드수정 진입·취소 실기는60cfa6a5에서 확인했고 이후 최종 변경은 잘린 제목 축약뿐. 개인 정보·계정·녹음 저장/삭제 없음. 기존 태그 이름·분류·키·티어·원음 보존은 격리 SQLite 실제 부분 저장으로 검증. 서버/DB CI는 영향없어 N/A, 통과 실적으로 합산하지 않음. 기존 CI감시 ntfy SERVER_ACCEPTED(사람 수신 미확인), 중복 알림 없음.
+
+### P25-04 연결 곡 정보·분류 바로 선택 — 2026-10-29
+- 사용자: 연결 곡의 곡명·가수·TJ 번호 표시, 분류 탭에서 중간 요약 편집창 제거.
+- 일반 녹음 상세가 같은 계정의 현재 song metadata를 읽어 제목/가수/TJ 표시, 직접 등록의 번호 없음/미연결/정보없음 구분. 실제 원음 당시 snapshot과 현재 곡 정보는 분리. 계정/삭제/DB 저장 정책 변경 없음.
+- RecordingClassificationPicker에 선택적 onApply/저장라벨/잠금 추가. 기존 입력창은 적용 후 폼 복귀 유지, 상세의 classificationsOnly는 로드 뒤 Picker를 직접 표시하고 기존 RecordingInputScreen.save를 호출. 저장 중 이탈·중복 방지, 실패 시 선택/준비된 명령 유지·같은 저장 재시도, 로드실패 다시확인, 정의 관리도 기존경로 유지. HTML은 기존 직접 분류 편집 유지, 연결 곡 정보만 변경.
+- 초기 검사 실패는 fixture song source_type 누락(Song unavailable), Dart record 안 List의 참조동등성을 값동등성으로 잘못 가정, 존재하지 않는 테스트 파일 지정으로 분리. 해당 테스트 입력/기대만 교정하고 제품 보호/검사 약화 없음. 분석 지적은 braces/정렬 스타일3건이며 자동수정 적용. 최종 연결검사/분석·서명 빌드/설치·개인 저장 없이 실기·커밋/CI 진행.
+
+- 최종 로컬 연결 검사 recording_detail_menu/recording_edit/recording_classification_picker/recording_input →27 PASS, analyze0(18.6초). 분류 직접창·취소/실제 기존 저장·역사 태그 보존·로드실패 재시도·선택 잠금/같은 선택 저장 재시도, 현재 곡명/가수/TJ 및 번호없는 곡을 검증. 기존 입력 테스트의 화면 밖 나중에 입력 탭 경고는 ensureVisible 후 실제 탭하도록 강화(제품 일반입력 변경 없음). HTML 두 테마 연결 정보/번호없음/바로 분류선택·취소 PASS. 원시 로그 direct-classification-release-* 및 direct-linked-browser.cjs 보존.
+- 현재 모델 별도 검토: 새 onApply는 선택적이므로 원래 입력창 적용/취소 경로 보존. 상세 직접 저장은 기존 save의 검증·prepared/operation ID·실패재시도·wakeSync 재사용, 준비된 명령 이후 선택잠금과 저장 중 PopScope 유지. 정의 관리/조회실패도 선택 유지. 연결 곡 조회는 기존 같은 계정 repo 읽기/부모 current guard 안에서 실제 현재값 표시, 원음 당시 snapshot 무변경. UI연결 범위이고 DB/삭제/인증 정책 변경 없음. 최종 서명 빌드·설치·개인 저장 없는 실기 진행.
+
+- 최종 APK2a37f1db7832ba9fcf0ad068c6ae96668e878f26aed0215d83ee192f9d3e578c install-r Success, 전체 소스/기기APK SHA 일치. USER-212 ㄱ 뒤 USB·베타 전면 실제 확인. 실기에서 녹음 상세 분류 카드 탭1회→컨디션 드롭다운/태그 체크박스/변경 저장이 있는 선택창 바로 표시(중간 요약 없음)→뒤로취소 확인. 연결 곡의 실제 제목/가수·TJ 번호없음(현재 직접 등록곡) 표시 확인. TJ 번호 있는 경우/앞0 보존은 두 테마 격리 위젯·HTML에서 확인. 개인 선택/저장/삭제 없음. 최종 별도diff·데이터보존·조회/저장 실패 및 재시도 경로 검토 완료, 커밋/필수CI 진행.

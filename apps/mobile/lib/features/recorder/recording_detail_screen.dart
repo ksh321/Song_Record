@@ -93,6 +93,48 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
     refresh();
   }
 
+  Widget linkedSong(Map<String, dynamic> row) {
+    final id = row['song_id'] as String?;
+    if (id == null) return const Text('곡 미연결 녹음');
+    return FutureBuilder<MetadataCopy?>(
+      key: ValueKey(id),
+      future: widget.repository.read(LocalEntity.song, id),
+      builder: (context, snapshot) {
+        if (!widget.isCurrent(widget.repository)) {
+          return const SizedBox.shrink();
+        }
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Text('연결 곡 확인 중…');
+        }
+        final copy = snapshot.data,
+            raw = snapshot.data?.localJson ?? snapshot.data?.serverJson;
+        final song = raw == null
+            ? null
+            : jsonDecode(raw) as Map<String, dynamic>;
+        if (snapshot.hasError ||
+            copy == null ||
+            copy.tombstone ||
+            song?['lifecycle_state'] != 'ACTIVE') {
+          return const Text('연결된 곡 정보를 확인할 수 없어요.');
+        }
+        final number = song!['tj_number'] as String?;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              song['title'] as String,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${song['artist']} · ${number == null || number.isEmpty ? 'TJ 번호 없음' : 'TJ $number'}',
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget deleteScreen(Map<String, dynamic> row) => DeleteScreen(
     actions: widget.trash!,
     id: widget.id,
@@ -275,7 +317,7 @@ class _RecordingDetailScreenState extends State<RecordingDetailScreen> {
                   children: [
                     const Text('연결 곡', style: TextStyle(fontSize: 12)),
                     const SizedBox(height: 8),
-                    Text(row['song_id'] == null ? '곡 미연결 녹음' : '등록된 내 곡에 연결됨'),
+                    linkedSong(row),
                     TextButton(
                       onPressed: () => relink(row, copy.revision),
                       child: const Text('곡 연결 변경'),

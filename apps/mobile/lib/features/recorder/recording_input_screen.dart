@@ -68,6 +68,7 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
   bool busy = false, allowExit = false;
   List<String>? operationIds;
   Map<String, Object?>? prepared;
+  late Future<void> classificationsReady;
   bool get noteOnly => widget.editing && widget.initialField == 'note';
   bool get classificationsOnly =>
       widget.editing && widget.initialField == 'classifications';
@@ -118,8 +119,8 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
     );
     condition = saved['condition_code'] as String?;
     tags = List<String>.from(saved['tag_ids'] as List? ?? []);
-    unawaited(loadTags());
-    unawaited(loadConditions());
+    classificationsReady = Future.wait<void>([loadTags(), loadConditions()])
+        .then((_) {});
     if (widget.editing && widget.initialField != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!current) return;
@@ -151,6 +152,7 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
       setState(() => availableConditions = rows);
     } catch (_) {
       if (current) setState(() => error = '컨디션 정보를 확인하지 못했어요. 입력은 유지돼요.');
+      if (classificationsOnly) rethrow;
     }
   }
 
@@ -175,6 +177,7 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
       if (current) setState(() => availableTags = rows);
     } catch (_) {
       if (mounted) setState(() => error = '태그를 확인하지 못했어요. 녹음은 보존돼 있어요.');
+      if (classificationsOnly) rethrow;
     }
   }
 
@@ -556,6 +559,65 @@ class _RecordingInputScreenState extends State<RecordingInputScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (classificationsOnly) {
+      return FutureBuilder<void>(
+        future: classificationsReady,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done ||
+              snapshot.hasError) {
+            return Scaffold(
+              appBar: appPageBar(context, title: const Text('컨디션과 태그')),
+              body: snapshot.hasError
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('분류 정보를 확인하지 못했어요.'),
+                          TextButton(
+                            onPressed: () => setState(() {
+                              error = null;
+                              classificationsReady = Future.wait<void>([
+                                loadTags(),
+                                loadConditions(),
+                              ]).then((_) {});
+                            }),
+                            child: const Text('다시 확인'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const Center(child: CircularProgressIndicator()),
+            );
+          }
+          return RecordingClassificationPicker(
+            options: (
+              conditions: classificationConditions(),
+              tags: availableTags,
+            ),
+            selection: (condition: condition, tags: List.of(tags)),
+            isCurrent: () => current,
+            locked: prepared != null,
+            applyLabel: '변경 저장',
+            manage: widget.classificationBuilder == null
+                ? null
+                : () async {
+                    await manageClassifications();
+                    return (
+                      conditions: classificationConditions(),
+                      tags: availableTags,
+                    );
+                  },
+            onApply: (selection) async {
+              condition = selection.condition;
+              tags = List.of(selection.tags);
+              await save();
+              if (error != null) throw StateError('Save failed');
+            },
+          );
+        },
+      );
+    }
+
     final wall = time.toUtc().add(
       Duration(minutes: widget.recording['timezone_offset_minutes'] as int),
     );

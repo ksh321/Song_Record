@@ -18,8 +18,14 @@ class RecordingClassificationPicker extends StatefulWidget {
     required this.selection,
     required this.isCurrent,
     this.manage,
+    this.onApply,
+    this.locked = false,
+    this.applyLabel = '적용',
     super.key,
   });
+  final Future<void> Function(RecordingClassification)? onApply;
+  final bool locked;
+  final String applyLabel;
   final ClassificationOptions options;
   final RecordingClassification selection;
   final bool Function() isCurrent;
@@ -33,12 +39,44 @@ class _State extends State<RecordingClassificationPicker> {
   late final selected = widget.selection.tags.toSet();
   late ClassificationOptions options = widget.options;
   bool busy = false;
+  String? error;
+  bool get editable => !busy && !widget.locked;
+  Future<void> apply() async {
+    if (busy || !widget.isCurrent()) return;
+    final selection = (condition: condition, tags: selected.toList());
+    final save = widget.onApply;
+    if (save == null) {
+      Navigator.pop<RecordingClassification>(context, selection);
+      return;
+    }
+    setState(() {
+      busy = true;
+      error = null;
+    });
+    try {
+      await save(selection);
+    } catch (_) {
+      if (mounted) setState(() => error = '저장하지 못했어요. 선택은 유지돼요. 다시 저장해 주세요.');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> manage() async {
-    if (busy || !widget.isCurrent() || widget.manage == null) return;
+    if (!editable || !widget.isCurrent() || widget.manage == null) return;
     setState(() => busy = true);
     try {
       final next = await widget.manage!();
-      if (mounted && widget.isCurrent()) setState(() => options = next);
+      if (mounted && widget.isCurrent()) {
+        setState(() {
+          options = next;
+          error = null;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => error = '분류 정보를 확인하지 못했어요. 선택은 유지돼요. 다시 확인해 주세요.');
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -49,7 +87,7 @@ class _State extends State<RecordingClassificationPicker> {
       Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
       if (widget.manage != null)
         OutlinedButton.icon(
-          onPressed: busy ? null : manage,
+          onPressed: !editable ? null : manage,
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(0, 36),
             padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
@@ -64,101 +102,105 @@ class _State extends State<RecordingClassificationPicker> {
     ],
   );
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: appPageBar(context, title: const Text('컨디션과 태그')),
-    body: SafeArea(
-      child: ListView(
-        padding: AppLayout.bodyPadding,
-        children: [
-          AppPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                heading('컨디션', '컨디션 수정'),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  initialValue: condition,
-                  isExpanded: true,
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('선택 안 함')),
-                    for (final item in options.conditions)
-                      DropdownMenuItem(
-                        value: item['code'] as String,
-                        child: Text(item['name'] as String),
+  Widget build(BuildContext context) => PopScope(
+    canPop: !busy,
+    child: Scaffold(
+      appBar: appPageBar(context, title: const Text('컨디션과 태그')),
+      body: SafeArea(
+        child: ListView(
+          padding: AppLayout.bodyPadding,
+          children: [
+            AppPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  heading('컨디션', '컨디션 수정'),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: condition,
+                    isExpanded: true,
+                    items: [
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('선택 안 함'),
                       ),
-                  ],
-                  onChanged: busy ? null : (v) => setState(() => condition = v),
-                ),
-                const SizedBox(height: 16),
-                heading('태그', '태그 수정'),
-                const SizedBox(height: 6),
-                AppPanel(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 12,
-                  ),
-                  child: Column(
-                    children: [
-                      if (options.tags.isEmpty) const Text('선택할 태그가 없어요.'),
-                      for (final tag in options.tags)
-                        CheckboxListTile(
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          title: Text(
-                            '${tag['name']}${tag['historical'] == true ? ' (기존 기록)' : ''}',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                          value: selected.contains(tag['id']),
-                          onChanged:
-                              busy ||
-                                  tag['historical'] == true &&
-                                      !selected.contains(tag['id'])
-                              ? null
-                              : (v) => setState(() {
-                                  if (v == true) {
-                                    selected.add(tag['id'] as String);
-                                  } else {
-                                    selected.remove(tag['id']);
-                                  }
-                                }),
+                      for (final item in options.conditions)
+                        DropdownMenuItem(
+                          value: item['code'] as String,
+                          child: Text(item['name'] as String),
                         ),
                     ],
+                    onChanged: !editable
+                        ? null
+                        : (v) => setState(() => condition = v),
                   ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: busy ? null : () => Navigator.pop(context),
-                        child: const Text('취소'),
+                  const SizedBox(height: 16),
+                  heading('태그', '태그 수정'),
+                  const SizedBox(height: 6),
+                  AppPanel(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 12,
+                    ),
+                    child: Column(
+                      children: [
+                        if (options.tags.isEmpty) const Text('선택할 태그가 없어요.'),
+                        for (final tag in options.tags)
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            dense: true,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            title: Text(
+                              '${tag['name']}${tag['historical'] == true ? ' (기존 기록)' : ''}',
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            value: selected.contains(tag['id']),
+                            onChanged:
+                                !editable ||
+                                    tag['historical'] == true &&
+                                        !selected.contains(tag['id'])
+                                ? null
+                                : (v) => setState(() {
+                                    if (v == true) {
+                                      selected.add(tag['id'] as String);
+                                    } else {
+                                      selected.remove(tag['id']);
+                                    }
+                                  }),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (error != null)
+                    Text(
+                      error!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: busy
-                            ? null
-                            : () {
-                                if (!widget.isCurrent()) return;
-                                Navigator.pop<RecordingClassification>(
-                                  context,
-                                  (
-                                    condition: condition,
-                                    tags: selected.toList(),
-                                  ),
-                                );
-                              },
-                        child: const Text('적용'),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: busy ? null : () => Navigator.pop(context),
+                          child: const Text('취소'),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: busy ? null : apply,
+                          child: Text(busy ? '저장 중' : widget.applyLabel),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );

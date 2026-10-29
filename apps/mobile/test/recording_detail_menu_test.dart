@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:song_record/config/app_config.dart';
 import 'package:song_record/core/database/account_store.dart';
+import 'package:song_record/core/database/local_models.dart';
 import 'package:song_record/core/sync/local_repository.dart';
 import 'package:song_record/core/theme/app_theme.dart';
 import 'package:song_record/core/widgets/detail_information_card.dart';
 import 'package:song_record/features/recorder/recording_audio_panel.dart';
+import 'package:song_record/features/recorder/recording_classification_picker.dart';
 import 'package:song_record/features/recorder/recording_detail_screen.dart';
 import 'package:song_record/features/recorder/recording_input_screen.dart';
 import 'package:song_record/features/recorder/recording_manage_screen.dart';
@@ -41,12 +43,30 @@ void main() {
           try {
             final store = await manager.openAccount(owner);
             final repo = LocalRepository(store);
-            await capture(repo);
-            await repo.saveRecordingInput(
-              rec,
-              input.fields(),
-              repo.recordingSaveOperationIds(),
+            final song = <String, Object?>{
+              'id': input.song,
+              'source_type': light ? 'MANUAL' : 'TJ',
+              'title': '현재 연결 제목',
+              'artist': '현재 연결 가수',
+              'version_code': 'NORMAL',
+              'tier': null,
+              'note': '',
+              'lifecycle_state': 'ACTIVE',
+              'tj_number': light ? null : '00459',
+            };
+            await repo.save(
+              repo.prepareCreate(
+                entity: LocalEntity.song,
+                entityId: input.song,
+                draft: song,
+                changes: song,
+              ),
             );
+            await capture(repo);
+            await repo.saveRecordingInput(rec, {
+              ...input.fields(),
+              'song_id': input.song,
+            }, repo.recordingSaveOperationIds());
             final count = (await repo.pending()).length;
             await t.pumpWidget(
               MaterialApp(
@@ -70,10 +90,22 @@ void main() {
             Future<void> settle() async {
               await t.pump(const Duration(milliseconds: 400));
               await Future<void>.delayed(const Duration(milliseconds: 120));
+              await t.pump();
+              await Future<void>.delayed(const Duration(milliseconds: 120));
               await t.pumpAndSettle();
             }
 
             await settle();
+            await t.scrollUntilVisible(
+              find.text('현재 연결 제목'),
+              250,
+              scrollable: find.byType(Scrollable).first,
+            );
+            expect(
+              find.text('현재 연결 가수 · ${light ? 'TJ 번호 없음' : 'TJ 00459'}'),
+              findsOneWidget,
+            );
+            await t.ensureVisible(find.text('정보 수정'));
             expect(find.byType(DetailInformationCard), findsOneWidget);
             expect(find.text('재생'), findsNothing);
             expect(find.text('녹음 정보 수정'), findsNothing);
@@ -109,6 +141,17 @@ void main() {
                 find.byKey(const ValueKey('recording-note')),
                 section.contains('note') ? findsOneWidget : findsNothing,
               );
+              if (!section.contains('note')) {
+                expect(
+                  find.byType(RecordingClassificationPicker),
+                  findsOneWidget,
+                );
+                expect(
+                  find.byType(DropdownButtonFormField<String>),
+                  findsOneWidget,
+                );
+                expect(find.text('컨디션·태그'), findsNothing);
+              }
               await t.tap(find.text('취소'));
               await settle();
             }
